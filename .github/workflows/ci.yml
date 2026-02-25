@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  lint-functions:
+    name: Lint Functions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        run: |
+          cd functions
+          npm ci
+      - name: Lint
+        run: |
+          cd functions
+          npm run lint
+
+  lint-web:
+    name: Lint Web
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        run: |
+          cd web
+          npm ci
+      - name: Lint
+        run: |
+          cd web
+          npm run lint
+
+  build-functions:
+    name: Build Functions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        run: |
+          cd functions
+          npm ci
+      - name: Build
+        run: |
+          cd functions
+          npm run build
+
+  build-web:
+    name: Build Web
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        run: |
+          cd web
+          npm ci
+      - name: Build
+        run: |
+          cd web
+          npm run build
+        env:
+          NEXT_PUBLIC_FIREBASE_ENV: dev
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: mortar-dev

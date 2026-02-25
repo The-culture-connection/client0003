@@ -1,0 +1,25 @@
+{
+  "name": "mortar-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "web",
+    "functions"
+  ],
+  "scripts": {
+    "emulators": "firebase emulators:start",
+    "emulators:export": "firebase emulators:export ./emulator-data",
+    "emulators:import": "firebase emulators:start --import=./emulator-data",
+    "seed": "node infra/scripts/seed.js",
+    "lint": "npm run lint --workspaces",
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces"
+  },
+  "devDependencies": {
+    "firebase-tools": "^13.0.0",
+    "firebase-admin": "^13.6.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

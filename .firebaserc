@@ -1,0 +1,9 @@
+{
+  "projects": {
+    "default": "mortar-dev",
+    "stage": "mortar-stage",
+    "production": "mortar-9d29d"
+  },
+  "targets": {},
+  "etags": {}
+}
