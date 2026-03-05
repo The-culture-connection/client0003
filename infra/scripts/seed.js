@@ -16,7 +16,7 @@ if (admin.apps.length === 0) {
 }
 
 // Connect to emulators
-process.env.FIRESTORE_EMULATOR_HOST = "localhost:8080";
+process.env.FIRESTORE_EMULATOR_HOST = "localhost:8085";
 process.env.FIREBASE_AUTH_EMULATOR_HOST = "localhost:9099";
 
 const db = admin.firestore();
@@ -67,7 +67,9 @@ async function seed() {
     ];
 
     console.log("👤 Creating test users...");
-    for (const userData of testUsers) {
+    
+    // Process users in parallel for better performance
+    const userPromises = testUsers.map(async (userData) => {
       try {
         const userRecord = await auth.createUser({
           email: userData.email,
@@ -83,8 +85,12 @@ async function seed() {
           });
         }
 
+        // Batch all Firestore writes for this user
+        const batch = db.batch();
+        
         // Create user document (simulating onUserCreated trigger)
-        await db.collection("users").doc(userRecord.uid).set({
+        const userRef = db.collection("users").doc(userRecord.uid);
+        batch.set(userRef, {
           uid: userRecord.uid,
           email: userData.email,
           display_name: userData.displayName,
@@ -95,14 +101,16 @@ async function seed() {
         });
 
         // Create data room
-        await db.collection("data_rooms").doc(userRecord.uid).set({
+        const dataRoomRef = db.collection("data_rooms").doc(userRecord.uid);
+        batch.set(dataRoomRef, {
           user_id: userRecord.uid,
           created_at: admin.firestore.FieldValue.serverTimestamp(),
           updated_at: admin.firestore.FieldValue.serverTimestamp(),
         });
 
         // Create user progress
-        await db.collection("user_progress").doc(userRecord.uid).set({
+        const userProgressRef = db.collection("user_progress").doc(userRecord.uid);
+        batch.set(userProgressRef, {
           user_id: userRecord.uid,
           created_at: admin.firestore.FieldValue.serverTimestamp(),
           updated_at: admin.firestore.FieldValue.serverTimestamp(),
@@ -110,15 +118,24 @@ async function seed() {
           level: 1,
         });
 
+        // Commit batch (single write operation)
+        await batch.commit();
+
         console.log(`  ✓ Created user: ${userData.email} (${userRecord.uid})`);
+        return {success: true, email: userData.email, uid: userRecord.uid};
       } catch (error) {
         if (error.code === "auth/email-already-exists") {
           console.log(`  ⚠ User already exists: ${userData.email}`);
+          return {success: false, email: userData.email, reason: "exists"};
         } else {
           console.error(`  ✗ Error creating user ${userData.email}:`, error.message);
+          return {success: false, email: userData.email, reason: "error", error: error.message};
         }
       }
-    }
+    });
+
+    // Wait for all users to be created in parallel
+    await Promise.all(userPromises);
 
     console.log("✅ Seed process completed!");
     console.log("\n📝 Test users created:");

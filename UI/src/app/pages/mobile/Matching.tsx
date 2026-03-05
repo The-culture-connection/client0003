@@ -1,164 +1,161 @@
+import { useState } from "react";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
-import { Avatar } from "../../components/ui/avatar";
-import { MapPin, Briefcase, GraduationCap, Heart, X, MessageSquare, Sparkles } from "lucide-react";
+import { X, Heart, MapPin, Briefcase, GraduationCap } from "lucide-react";
 
 export function MobileMatching() {
-  const mockMatches = [
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  const profiles = [
     {
       id: 1,
-      name: "Emily Rodriguez",
-      role: "Tech Lead",
-      company: "Stripe",
+      name: "Sarah Johnson",
+      role: "Product Manager",
+      company: "TechCorp",
+      cohort: "Class of 2023",
       location: "San Francisco, CA",
-      badge: "Alumni",
-      matchScore: 94,
-      matchReasons: [
-        "Same cohort (2024)",
-        "Similar career trajectory",
-        "Both interested in fintech",
-        "Located in Bay Area",
-      ],
-      sharedInterests: ["System Design", "Leadership", "Mentorship"],
+      interests: ["Product Design", "SaaS", "Leadership"],
+      bio: "Passionate about building products that make a difference. Always happy to mentor fellow Mortar alumni!",
+      matchScore: 95,
+    },
+    {
+      id: 2,
+      name: "Michael Chen",
+      role: "Marketing Director",
+      company: "GrowthLabs",
+      cohort: "Class of 2022",
+      location: "New York, NY",
+      interests: ["Growth Marketing", "Analytics", "Branding"],
+      bio: "Growth hacker turned marketing leader. Love connecting with entrepreneurs and sharing what I've learned.",
+      matchScore: 88,
+    },
+    {
+      id: 3,
+      name: "Emily Rodriguez",
+      role: "Tech Entrepreneur",
+      company: "Founder at StartupXYZ",
+      cohort: "Class of 2024",
+      location: "Austin, TX",
+      interests: ["EdTech", "Fundraising", "Community"],
+      bio: "Building the future of education. Always looking to collaborate with fellow founders and innovators.",
+      matchScore: 92,
     },
   ];
 
-  const currentMatch = mockMatches[0];
+  const currentProfile = profiles[currentIndex];
+
+  const handlePass = () => {
+    if (currentIndex < profiles.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+    } else {
+      setCurrentIndex(0);
+    }
+  };
+
+  const handleConnect = () => {
+    if (currentIndex < profiles.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+    } else {
+      setCurrentIndex(0);
+    }
+  };
+
+  if (!currentProfile) {
+    return (
+      <div className="p-4 pb-24">
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">No more profiles to show</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="bg-background min-h-screen flex flex-col">
-      {/* Header */}
-      <div className="bg-card border-b border-border p-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl text-foreground">Suggested Matches</h1>
-          <Badge className="bg-accent text-accent-foreground">
-            <Sparkles className="w-3 h-3 mr-1" />
-            AI Powered
-          </Badge>
-        </div>
-        <p className="text-sm text-muted-foreground mt-1">
-          Alumni we think you should connect with
+    <div className="p-4 pb-24">
+      <div className="mb-4">
+        <h1 className="text-2xl text-foreground mb-1">Matching</h1>
+        <p className="text-sm text-muted-foreground">
+          Connect with alumni who share your interests
         </p>
       </div>
 
-      {/* Match Counter */}
-      <div className="p-4 border-b border-border">
-        <div className="flex items-center justify-center gap-2">
-          <div className="h-2 w-2 rounded-full bg-accent" />
-          <span className="text-sm text-muted-foreground">1 of 12 matches</span>
-          <div className="h-2 w-2 rounded-full bg-muted" />
+      <Card className="p-6 bg-card border-border mb-4">
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-xl text-foreground font-medium">
+              {currentProfile.name}
+            </h2>
+            <Badge className="bg-accent text-accent-foreground">
+              {currentProfile.matchScore}% match
+            </Badge>
+          </div>
+          <p className="text-sm text-muted-foreground mb-1">
+            {currentProfile.role}
+          </p>
+          <p className="text-sm text-accent">{currentProfile.company}</p>
         </div>
-      </div>
 
-      {/* Match Card */}
-      <div className="flex-1 p-4 flex flex-col">
-        <Card className="flex-1 bg-card border-border overflow-hidden flex flex-col">
-          {/* Profile Section */}
-          <div className="p-6 flex-1 overflow-y-auto">
-            <div className="text-center mb-6">
-              <Avatar className="w-24 h-24 bg-accent mx-auto mb-4">
-                <span className="text-accent-foreground text-2xl">
-                  {currentMatch.name.split(" ").map(n => n[0]).join("")}
-                </span>
-              </Avatar>
-              <Badge className="bg-accent text-accent-foreground mb-3">
-                {currentMatch.badge}
+        <div className="space-y-2 text-sm mb-4">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <GraduationCap className="w-4 h-4" />
+            <span>{currentProfile.cohort}</span>
+          </div>
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <MapPin className="w-4 h-4" />
+            <span>{currentProfile.location}</span>
+          </div>
+        </div>
+
+        <p className="text-sm text-muted-foreground leading-relaxed mb-4">
+          {currentProfile.bio}
+        </p>
+
+        <div className="mb-4">
+          <p className="text-sm text-muted-foreground mb-2">Interests</p>
+          <div className="flex flex-wrap gap-2">
+            {currentProfile.interests.map((interest, idx) => (
+              <Badge
+                key={idx}
+                variant="secondary"
+                className="bg-accent/10 text-accent"
+              >
+                {interest}
               </Badge>
-              <h2 className="text-xl text-foreground mb-1">{currentMatch.name}</h2>
-            </div>
-
-            {/* Basic Info */}
-            <div className="space-y-3 mb-6">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center">
-                  <Briefcase className="w-5 h-5 text-accent" />
-                </div>
-                <div>
-                  <p className="text-foreground">{currentMatch.role}</p>
-                  <p className="text-sm text-muted-foreground">{currentMatch.company}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center">
-                  <MapPin className="w-5 h-5 text-accent" />
-                </div>
-                <div>
-                  <p className="text-foreground">{currentMatch.location}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Match Score */}
-            <Card className="p-4 bg-accent/10 border-accent mb-6">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-foreground">Match Score</h3>
-                <span className="text-2xl text-accent">{currentMatch.matchScore}%</span>
-              </div>
-              <div className="w-full bg-muted rounded-full h-2">
-                <div
-                  className="bg-accent h-2 rounded-full transition-all"
-                  style={{ width: `${currentMatch.matchScore}%` }}
-                />
-              </div>
-            </Card>
-
-            {/* Why This Match */}
-            <div className="mb-6">
-              <h3 className="text-foreground mb-3">Why This Match?</h3>
-              <div className="space-y-2">
-                {currentMatch.matchReasons.map((reason, index) => (
-                  <div key={index} className="flex items-start gap-2">
-                    <div className="w-5 h-5 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <div className="w-2 h-2 rounded-full bg-accent" />
-                    </div>
-                    <p className="text-sm text-muted-foreground">{reason}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Shared Interests */}
-            <div>
-              <h3 className="text-foreground mb-3">Shared Interests</h3>
-              <div className="flex flex-wrap gap-2">
-                {currentMatch.sharedInterests.map((interest, index) => (
-                  <Badge
-                    key={index}
-                    variant="outline"
-                    className="border-accent text-accent"
-                  >
-                    {interest}
-                  </Badge>
-                ))}
-              </div>
-            </div>
+            ))}
           </div>
+        </div>
 
-          {/* Actions */}
-          <div className="p-6 border-t border-border">
-            <div className="flex gap-3 mb-4">
-              <Button
-                size="lg"
-                variant="outline"
-                className="flex-1 border-border"
-              >
-                <X className="w-5 h-5 mr-2" />
-                Pass
-              </Button>
-              <Button
-                size="lg"
-                className="flex-1 bg-accent hover:bg-accent/90 text-accent-foreground"
-              >
-                <MessageSquare className="w-5 h-5 mr-2" />
-                Connect
-              </Button>
-            </div>
-            <p className="text-xs text-center text-muted-foreground">
-              Send an intro message to start the conversation
-            </p>
-          </div>
-        </Card>
+        <div className="flex gap-3">
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={handlePass}
+            className="flex-1 border-border text-foreground"
+          >
+            <X className="w-5 h-5 mr-2" />
+            Pass
+          </Button>
+          <Button
+            size="lg"
+            onClick={handleConnect}
+            className="flex-1 bg-accent hover:bg-accent/90 text-accent-foreground"
+          >
+            <Heart className="w-5 h-5 mr-2" />
+            Connect
+          </Button>
+        </div>
+      </Card>
+
+      <div className="flex justify-center gap-2">
+        {profiles.map((_, idx) => (
+          <div
+            key={idx}
+            className={`w-2 h-2 rounded-full ${
+              idx === currentIndex ? "bg-accent" : "bg-muted"
+            }`}
+          />
+        ))}
       </div>
     </div>
   );
