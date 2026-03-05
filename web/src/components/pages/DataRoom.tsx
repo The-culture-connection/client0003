@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,9 @@ import {
   FileSpreadsheet,
   Archive,
 } from "lucide-react";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { db } from "@/lib/firebase";
+import { doc, getDoc, collection, getDocs } from "firebase/firestore";
 
 interface FileNode {
   id: string;
@@ -30,99 +33,105 @@ interface FileNode {
 const mockFileSystem: FileNode[] = [
   {
     id: "1",
-    name: "Course Materials",
+    name: "Corporate Documents",
     type: "folder",
-    children: [
-      {
-        id: "1-1",
-        name: "Business Fundamentals",
-        type: "folder",
-        children: [
-          {
-            id: "1-1-1",
-            name: "Lecture Notes.pdf",
-            type: "file",
-            size: "2.4 MB",
-            modified: "Feb 20, 2026",
-            fileType: "pdf",
-          },
-          {
-            id: "1-1-2",
-            name: "Assignment 1.docx",
-            type: "file",
-            size: "156 KB",
-            modified: "Feb 18, 2026",
-            fileType: "doc",
-          },
-        ],
-      },
-      {
-        id: "1-2",
-        name: "Marketing Strategy",
-        type: "folder",
-        children: [
-          {
-            id: "1-2-1",
-            name: "Marketing Plan Template.xlsx",
-            type: "file",
-            size: "892 KB",
-            modified: "Feb 15, 2026",
-            fileType: "xlsx",
-          },
-        ],
-      },
-    ],
+    children: [],
   },
   {
     id: "2",
-    name: "Resources",
+    name: "Financial Review",
     type: "folder",
-    children: [
-      {
-        id: "2-1",
-        name: "Templates",
-        type: "folder",
-        children: [
-          {
-            id: "2-1-1",
-            name: "Business Plan Template.docx",
-            type: "file",
-            size: "245 KB",
-            modified: "Jan 10, 2026",
-            fileType: "doc",
-          },
-          {
-            id: "2-1-2",
-            name: "Financial Model.xlsx",
-            type: "file",
-            size: "1.2 MB",
-            modified: "Jan 15, 2026",
-            fileType: "xlsx",
-          },
-        ],
-      },
-    ],
+    children: [],
   },
   {
     id: "3",
-    name: "Certificates",
+    name: "Industry",
     type: "folder",
-    children: [
-      {
-        id: "3-1",
-        name: "Business Fundamentals Certificate.pdf",
-        type: "file",
-        size: "456 KB",
-        modified: "Feb 20, 2026",
-        fileType: "pdf",
-      },
-    ],
+    children: [],
+  },
+  {
+    id: "4",
+    name: "Business Plans",
+    type: "folder",
+    children: [],
+  },
+  {
+    id: "5",
+    name: "Intangible Property",
+    type: "folder",
+    children: [],
+  },
+  {
+    id: "6",
+    name: "Financing Documents",
+    type: "folder",
+    children: [],
+  },
+  {
+    id: "7",
+    name: "Employee Relations",
+    type: "folder",
+    children: [],
+  },
+  {
+    id: "8",
+    name: "Insurance",
+    type: "folder",
+    children: [],
+  },
+  {
+    id: "9",
+    name: "User Agreements and Contracts",
+    type: "folder",
+    children: [],
+  },
+  {
+    id: "10",
+    name: "Property Agreements",
+    type: "folder",
+    children: [],
+  },
+  {
+    id: "11",
+    name: "Software Product Development",
+    type: "folder",
+    children: [],
+  },
+  {
+    id: "12",
+    name: "Miscellaneous",
+    type: "folder",
+    children: [],
   },
 ];
 
 export function DataRoomPage() {
+  const { user } = useAuth();
   const [currentPath, setCurrentPath] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [documents, setDocuments] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (user?.uid) {
+      loadDocuments();
+    }
+  }, [user]);
+
+  const loadDocuments = async () => {
+    if (!user?.uid) return;
+
+    try {
+      const dataRoomRef = doc(db, "data_rooms", user.uid);
+      const dataRoomDoc = await getDoc(dataRoomRef);
+      const docs = dataRoomDoc.data()?.documents || [];
+      setDocuments(docs);
+    } catch (error) {
+      console.error("Error loading documents:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getFileIcon = (fileType?: string) => {
     switch (fileType) {
@@ -147,7 +156,6 @@ export function DataRoomPage() {
 
   const getCurrentFolder = (): FileNode[] => {
     if (currentPath.length === 0) return mockFileSystem;
-
     let current: FileNode[] = mockFileSystem;
     for (const pathId of currentPath) {
       const folder = current.find((item) => item.id === pathId);
@@ -190,6 +198,19 @@ export function DataRoomPage() {
     return breadcrumbs;
   };
 
+  if (loading) {
+    return (
+      <div className="p-8">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading data room...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const currentFolder = getCurrentFolder();
   const breadcrumbs = getBreadcrumbs();
 
@@ -202,7 +223,7 @@ export function DataRoomPage() {
       <div className="mb-8">
         <h1 className="text-3xl text-foreground mb-2">Data Room</h1>
         <p className="text-muted-foreground">
-          Access your course materials, resources, and certificates
+          Organize and manage your business documents and assets
         </p>
       </div>
 

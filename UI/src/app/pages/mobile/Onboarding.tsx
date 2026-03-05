@@ -1,280 +1,262 @@
 import { useState } from "react";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
-import { Badge } from "../../components/ui/badge";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
-import { ChevronRight, CheckCircle2 } from "lucide-react";
-import { useNavigate } from "react-router";
+import { Badge } from "../../components/ui/badge";
+import { CheckCircle2 } from "lucide-react";
 
 export function MobileOnboarding() {
-  const [step, setStep] = useState(0);
-  const [userType, setUserType] = useState<"alumni" | "paid" | null>(null);
-  const navigate = useNavigate();
+  const [step, setStep] = useState(1);
 
-  const renderWelcome = () => (
-    <div className="p-6">
-      <div className="text-center mb-8">
-        <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-accent/20 flex items-center justify-center">
-          <span className="text-4xl">🎓</span>
-        </div>
-        <h1 className="text-2xl text-foreground mb-2">Welcome to Mortar</h1>
-        <p className="text-muted-foreground">
-          Connect with alumni and discover opportunities
-        </p>
-      </div>
+  const interests = [
+    "Product Design",
+    "Marketing",
+    "Sales",
+    "Finance",
+    "Operations",
+    "Technology",
+    "Leadership",
+    "Entrepreneurship",
+    "Community",
+    "Networking",
+  ];
 
-      <div className="space-y-3">
-        <Button
-          onClick={() => {
-            setUserType("alumni");
-            setStep(1);
-          }}
-          className="w-full bg-accent hover:bg-accent/90 text-accent-foreground h-auto py-4"
-        >
-          <div className="text-left w-full">
-            <div className="flex items-center justify-between">
-              <span className="text-base">I'm an Alumni</span>
-              <ChevronRight className="w-5 h-5" />
-            </div>
-            <p className="text-xs text-accent-foreground/80 mt-1">
-              Free access with verification
+  const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
+
+  const toggleInterest = (interest: string) => {
+    setSelectedInterests((prev) =>
+      prev.includes(interest)
+        ? prev.filter((i) => i !== interest)
+        : [...prev, interest]
+    );
+  };
+
+  if (step === 1) {
+    return (
+      <div className="p-4 pb-24 min-h-screen flex flex-col">
+        <div className="flex-1">
+          <div className="mb-8 pt-8">
+            <h1 className="text-2xl text-foreground mb-2">Welcome to Mortar!</h1>
+            <p className="text-sm text-muted-foreground">
+              Let's set up your profile to connect you with the right people
             </p>
           </div>
-        </Button>
 
-        <Button
-          onClick={() => {
-            setUserType("paid");
-            setStep(1);
-          }}
-          variant="outline"
-          className="w-full border-border h-auto py-4"
-        >
-          <div className="text-left w-full">
-            <div className="flex items-center justify-between">
-              <span className="text-base">I'm a New User</span>
-              <ChevronRight className="w-5 h-5" />
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Premium membership required
-            </p>
+          <div className="space-y-1 mb-8">
+            {[1, 2, 3, 4].map((s) => (
+              <div
+                key={s}
+                className={`h-1 rounded-full ${
+                  s === step ? "bg-accent" : "bg-muted"
+                }`}
+              />
+            ))}
           </div>
-        </Button>
-      </div>
-    </div>
-  );
 
-  const renderReferral = () => (
-    <div className="p-6">
-      <h2 className="text-xl text-foreground mb-2">Referral Code</h2>
-      <p className="text-sm text-muted-foreground mb-6">
-        {userType === "alumni"
-          ? "Enter your alumni verification code to get free access"
-          : "Who referred you to Mortar?"}
-      </p>
-
-      <div className="space-y-4">
-        <div>
-          <Label htmlFor="referralCode">Referral Code</Label>
-          <Input
-            id="referralCode"
-            type="text"
-            placeholder="Enter code"
-            className="mt-2"
-          />
-        </div>
-
-        {userType === "alumni" && (
-          <Card className="p-4 bg-accent/10 border-accent">
-            <p className="text-xs text-muted-foreground">
-              Your referral code determines your badge type. Alumni badges give
-              you special recognition in the community.
-            </p>
+          <Card className="p-6 bg-card border-border">
+            <h2 className="text-lg text-foreground mb-4">
+              Tell us about yourself
+            </h2>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="name">Full Name</Label>
+                <Input
+                  id="name"
+                  placeholder="Enter your name"
+                  className="mt-2"
+                />
+              </div>
+              <div>
+                <Label htmlFor="role">Current Role</Label>
+                <Input
+                  id="role"
+                  placeholder="e.g., Product Manager"
+                  className="mt-2"
+                />
+              </div>
+              <div>
+                <Label htmlFor="company">Company</Label>
+                <Input
+                  id="company"
+                  placeholder="Where do you work?"
+                  className="mt-2"
+                />
+              </div>
+              <div>
+                <Label htmlFor="location">Location</Label>
+                <Input
+                  id="location"
+                  placeholder="City, State"
+                  className="mt-2"
+                />
+              </div>
+            </div>
           </Card>
-        )}
+        </div>
 
         <Button
           onClick={() => setStep(2)}
-          className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
-        >
-          Continue
-        </Button>
-
-        <Button
-          onClick={() => setStep(2)}
-          variant="ghost"
-          className="w-full"
-        >
-          Skip for now
-        </Button>
-      </div>
-    </div>
-  );
-
-  const renderProfile = () => (
-    <div className="p-6">
-      <h2 className="text-xl text-foreground mb-2">Create Your Profile</h2>
-      <p className="text-sm text-muted-foreground mb-6">
-        Tell us a bit about yourself
-      </p>
-
-      <div className="space-y-4">
-        <div>
-          <Label htmlFor="fullName">Full Name</Label>
-          <Input
-            id="fullName"
-            type="text"
-            placeholder="Enter your name"
-            className="mt-2"
-          />
-        </div>
-
-        <div>
-          <Label htmlFor="role">Current Role</Label>
-          <Input
-            id="role"
-            type="text"
-            placeholder="e.g., Software Engineer"
-            className="mt-2"
-          />
-        </div>
-
-        <div>
-          <Label htmlFor="company">Company</Label>
-          <Input
-            id="company"
-            type="text"
-            placeholder="Where do you work?"
-            className="mt-2"
-          />
-        </div>
-
-        <div>
-          <Label htmlFor="location">Location</Label>
-          <Input
-            id="location"
-            type="text"
-            placeholder="City, State"
-            className="mt-2"
-          />
-        </div>
-
-        <Button
-          onClick={() => setStep(3)}
-          className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+          className="w-full bg-accent hover:bg-accent/90 text-accent-foreground mt-6"
         >
           Continue
         </Button>
       </div>
-    </div>
-  );
+    );
+  }
 
-  const renderTutorial = () => (
-    <div className="p-6">
-      <div className="text-center mb-6">
-        <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-accent/20 flex items-center justify-center">
-          <CheckCircle2 className="w-10 h-10 text-accent" />
+  if (step === 2) {
+    return (
+      <div className="p-4 pb-24 min-h-screen flex flex-col">
+        <div className="flex-1">
+          <div className="mb-8 pt-8">
+            <h1 className="text-2xl text-foreground mb-2">Your Interests</h1>
+            <p className="text-sm text-muted-foreground">
+              Select topics you're interested in (choose at least 3)
+            </p>
+          </div>
+
+          <div className="space-y-1 mb-8">
+            {[1, 2, 3, 4].map((s) => (
+              <div
+                key={s}
+                className={`h-1 rounded-full ${
+                  s <= step ? "bg-accent" : "bg-muted"
+                }`}
+              />
+            ))}
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {interests.map((interest) => (
+              <Badge
+                key={interest}
+                onClick={() => toggleInterest(interest)}
+                className={`cursor-pointer text-sm py-2 px-4 ${
+                  selectedInterests.includes(interest)
+                    ? "bg-accent text-accent-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                {selectedInterests.includes(interest) && (
+                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                )}
+                {interest}
+              </Badge>
+            ))}
+          </div>
         </div>
-        <h2 className="text-xl text-foreground mb-2">You're All Set!</h2>
-        <p className="text-muted-foreground">
-          Here's a quick tour of what you can do
-        </p>
+
+        <div className="flex gap-3 mt-6">
+          <Button
+            variant="outline"
+            onClick={() => setStep(1)}
+            className="flex-1 border-border text-foreground"
+          >
+            Back
+          </Button>
+          <Button
+            onClick={() => setStep(3)}
+            disabled={selectedInterests.length < 3}
+            className="flex-1 bg-accent hover:bg-accent/90 text-accent-foreground"
+          >
+            Continue
+          </Button>
+        </div>
       </div>
+    );
+  }
 
-      <div className="space-y-4 mb-6">
-        <Card className="p-4 bg-card border-border">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center flex-shrink-0">
-              <span className="text-xl">📱</span>
-            </div>
-            <div>
-              <h4 className="text-foreground mb-1">Feed</h4>
-              <p className="text-sm text-muted-foreground">
-                Share updates and connect with the community
-              </p>
-            </div>
+  if (step === 3) {
+    return (
+      <div className="p-4 pb-24 min-h-screen flex flex-col">
+        <div className="flex-1">
+          <div className="mb-8 pt-8">
+            <h1 className="text-2xl text-foreground mb-2">
+              Connect Your Accounts
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Link your professional profiles (optional)
+            </p>
           </div>
-        </Card>
 
-        <Card className="p-4 bg-card border-border">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center flex-shrink-0">
-              <span className="text-xl">👥</span>
-            </div>
-            <div>
-              <h4 className="text-foreground mb-1">Groups</h4>
-              <p className="text-sm text-muted-foreground">
-                Join communities and participate in discussions
-              </p>
-            </div>
+          <div className="space-y-1 mb-8">
+            {[1, 2, 3, 4].map((s) => (
+              <div
+                key={s}
+                className={`h-1 rounded-full ${
+                  s <= step ? "bg-accent" : "bg-muted"
+                }`}
+              />
+            ))}
           </div>
-        </Card>
 
-        <Card className="p-4 bg-card border-border">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center flex-shrink-0">
-              <span className="text-xl">🎯</span>
-            </div>
-            <div>
-              <h4 className="text-foreground mb-1">Explore</h4>
-              <p className="text-sm text-muted-foreground">
-                Discover alumni matches and send intro messages
-              </p>
-            </div>
+          <div className="space-y-3">
+            {[
+              { name: "LinkedIn", icon: "in", color: "bg-blue-600" },
+              { name: "Twitter", icon: "𝕏", color: "bg-black" },
+              { name: "GitHub", icon: "GH", color: "bg-gray-800" },
+            ].map((platform) => (
+              <Card
+                key={platform.name}
+                className="p-4 bg-card border-border flex items-center justify-between"
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`w-10 h-10 ${platform.color} text-white rounded-lg flex items-center justify-center font-bold`}
+                  >
+                    {platform.icon}
+                  </div>
+                  <span className="text-foreground font-medium">
+                    {platform.name}
+                  </span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-border text-foreground"
+                >
+                  Connect
+                </Button>
+              </Card>
+            ))}
           </div>
-        </Card>
+        </div>
 
-        <Card className="p-4 bg-card border-border">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center flex-shrink-0">
-              <span className="text-xl">📅</span>
-            </div>
-            <div>
-              <h4 className="text-foreground mb-1">Events</h4>
-              <p className="text-sm text-muted-foreground">
-                Attend meetups and networking events
-              </p>
-            </div>
-          </div>
-        </Card>
+        <div className="flex gap-3 mt-6">
+          <Button
+            variant="outline"
+            onClick={() => setStep(2)}
+            className="flex-1 border-border text-foreground"
+          >
+            Back
+          </Button>
+          <Button
+            onClick={() => setStep(4)}
+            className="flex-1 bg-accent hover:bg-accent/90 text-accent-foreground"
+          >
+            Continue
+          </Button>
+        </div>
       </div>
-
-      <Button
-        onClick={() => navigate("/mobile")}
-        className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
-      >
-        Get Started
-      </Button>
-    </div>
-  );
+    );
+  }
 
   return (
-    <div className="bg-background min-h-screen flex flex-col">
-      {/* Progress Bar */}
-      {step > 0 && (
-        <div className="p-4 border-b border-border">
-          <div className="w-full bg-muted rounded-full h-2">
-            <div
-              className="bg-accent h-2 rounded-full transition-all duration-300"
-              style={{ width: `${(step / 3) * 100}%` }}
-            />
-          </div>
-          <p className="text-xs text-muted-foreground mt-2">
-            Step {step} of 3
-          </p>
-        </div>
-      )}
-
-      {/* Content */}
-      <div className="flex-1 flex items-center justify-center">
-        <div className="w-full max-w-md">
-          {step === 0 && renderWelcome()}
-          {step === 1 && renderReferral()}
-          {step === 2 && renderProfile()}
-          {step === 3 && renderTutorial()}
-        </div>
+    <div className="p-4 pb-24 min-h-screen flex flex-col justify-center items-center text-center">
+      <div className="w-20 h-20 bg-accent/10 rounded-full flex items-center justify-center mb-6">
+        <CheckCircle2 className="w-10 h-10 text-accent" />
       </div>
+      <h1 className="text-2xl text-foreground mb-2">You're all set!</h1>
+      <p className="text-muted-foreground mb-8">
+        Welcome to the Mortar community. Let's get started!
+      </p>
+      <Button
+        onClick={() => (window.location.href = "/mobile/feed")}
+        className="bg-accent hover:bg-accent/90 text-accent-foreground px-8"
+      >
+        Explore the App
+      </Button>
     </div>
   );
 }

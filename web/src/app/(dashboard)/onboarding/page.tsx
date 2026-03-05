@@ -1,5 +1,5 @@
-import { MatchingOnboardingPage } from "@/components/pages/web/MatchingOnboarding";
+import { SimpleOnboardingPage } from "@/components/pages/SimpleOnboarding";
 
 export default function OnboardingPage() {
-  return <MatchingOnboardingPage />;
+  return <SimpleOnboardingPage />;
 }

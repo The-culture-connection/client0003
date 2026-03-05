@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, BookOpen, FileText, FolderOpen, Award, Calendar, BarChart3 } from "lucide-react";
+import { LayoutDashboard, BookOpen, FileText, FolderOpen, Award, Calendar, BarChart3, Users } from "lucide-react";
 
 const navItems = [
   { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -11,6 +11,7 @@ const navItems = [
   { path: "/data-room", label: "Data Room", icon: FolderOpen },
   { path: "/certificates", label: "Certificates & Badges", icon: Award },
   { path: "/events", label: "Events", icon: Calendar },
+  { path: "/community", label: "Community", icon: Users },
   { path: "/analytics", label: "Analytics", icon: BarChart3 },
 ];
 

@@ -43,7 +43,7 @@ export default function LoginPage() {
           router.push("/verify-email");
           return;
         }
-        // New user (Google sign-in or already verified) - route to onboarding
+        // New user - route to simple onboarding (role selection)
         router.push("/onboarding");
       } else {
         await signIn(email, password);

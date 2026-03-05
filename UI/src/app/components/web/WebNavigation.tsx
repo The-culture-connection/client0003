@@ -1,45 +1,49 @@
 import { Link, useLocation } from "react-router";
-import { LayoutDashboard, BookOpen, FileText, FolderOpen, Award, Calendar, BarChart3, Smartphone } from "lucide-react";
+import { LayoutDashboard, BookOpen, FolderOpen, Award, Users, BarChart3 } from "lucide-react";
 
 const navItems = [
-  { path: "/", label: "Dashboard", icon: LayoutDashboard },
+  { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { path: "/curriculum", label: "Curriculum", icon: BookOpen },
-  { path: "/quizzes", label: "Quizzes", icon: FileText },
   { path: "/data-room", label: "Data Room", icon: FolderOpen },
-  { path: "/certificates", label: "Certificates & Badges", icon: Award },
-  { path: "/events", label: "Events", icon: Calendar },
+  { path: "/community", label: "Community Hub", icon: Users },
   { path: "/analytics", label: "Analytics", icon: BarChart3 },
-  { path: "/mobile", label: "Mobile App", icon: Smartphone },
 ];
 
 export function WebNavigation() {
   const location = useLocation();
 
   return (
-    <nav className="w-64 border-r border-border bg-card fixed left-0 top-0 bottom-0 overflow-y-auto">
-      <div className="p-6">
-        <h1 className="text-xl text-foreground mb-1">Mortar</h1>
-        <p className="text-sm text-muted-foreground">Learning Platform</p>
-      </div>
-      <div className="px-3 pb-3">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = location.pathname === item.path;
-          return (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-colors ${
-                isActive
-                  ? "bg-accent text-accent-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              }`}
-            >
-              <Icon className="w-5 h-5" />
-              <span>{item.label}</span>
+    <nav className="bg-card border-b border-border">
+      <div className="max-w-7xl mx-auto px-8">
+        <div className="flex items-center justify-between h-16">
+          <div className="flex items-center gap-8">
+            <Link to="/" className="text-xl font-bold text-foreground">
+              Mortar
             </Link>
-          );
-        })}
+            <div className="flex items-center gap-1">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = location.pathname === item.path || 
+                  (item.path === "/dashboard" && location.pathname === "/");
+                
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                      isActive
+                        ? "bg-accent text-accent-foreground"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        </div>
       </div>
     </nav>
   );

@@ -163,7 +163,7 @@ flutter run
    ```
    - Verify emulator UI at http://localhost:4000
    - Check Auth emulator on port 9099
-   - Check Firestore emulator on port 8080
+   - Check Firestore emulator on port 8085
    - Check Functions emulator on port 5001
 
 2. **Seed Test Data**

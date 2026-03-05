@@ -99,7 +99,7 @@ See `infra/docs/VERIFICATION_CHECKLIST.md` for complete verification steps.
 
 1. **Custom Claims**: After calling `setUserRole()`, clients must refresh their ID token to see updated roles
 2. **Security Rules**: All writes to progress/badges/certs/approvals must be done via Functions
-3. **Emulator Ports**: Make sure ports 4000, 5001, 8080, 9099, 9199 are available
+3. **Emulator Ports**: Make sure ports 4000, 5001, 8085, 9099, 9199 are available
 
 ## 🆘 Troubleshooting
 
