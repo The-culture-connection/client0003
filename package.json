@@ -11,6 +11,7 @@
     "emulators:export": "firebase emulators:export ./emulator-data",
     "emulators:import": "firebase emulators:start --import=./emulator-data",
     "seed": "node infra/scripts/seed.js",
+    "assign-superadmin": "node infra/scripts/assign-superadmin-roles.js",
     "lint": "npm run lint --workspaces",
     "build": "npm run build --workspaces",
     "test": "npm run test --workspaces"

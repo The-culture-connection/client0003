@@ -1,6 +1,6 @@
 {
   "projects": {
-    "default": "mortar-dev",
+    "default": "mortar-9d29d",
     "stage": "mortar-stage",
     "production": "mortar-9d29d"
   },

@@ -19,7 +19,7 @@ npm run emulators
 
 - [ ] Emulator UI accessible at http://localhost:4000
 - [ ] Auth emulator running on port 9099
-- [ ] Firestore emulator running on port 8080
+- [ ] Firestore emulator running on port 8085
 - [ ] Functions emulator running on port 5001
 
 ### 2. Seed Test Data

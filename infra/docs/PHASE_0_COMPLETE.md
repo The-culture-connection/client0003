@@ -59,7 +59,7 @@ This document confirms that Phase 0 has been successfully implemented.
 ### ✅ Emulator + Seed Data
 - `firebase.json` configured with emulator ports:
   - Auth: 9099
-  - Firestore: 8080
+  - Firestore: 8085
   - Functions: 5001
   - Storage: 9199
   - UI: 4000

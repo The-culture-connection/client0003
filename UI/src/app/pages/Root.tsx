@@ -8,21 +8,10 @@ export function Root() {
 
   return (
     <div className="min-h-screen bg-background">
-      {isMobile ? (
-        <div className="max-w-md mx-auto min-h-screen flex flex-col bg-background">
-          <main className="flex-1 pb-16">
-            <Outlet />
-          </main>
-          <MobileNavigation />
-        </div>
-      ) : (
-        <div className="flex min-h-screen">
-          <WebNavigation />
-          <main className="flex-1 ml-64">
-            <Outlet />
-          </main>
-        </div>
-      )}
+      {isMobile ? <MobileNavigation /> : <WebNavigation />}
+      <main className={isMobile ? "pb-20" : ""}>
+        <Outlet />
+      </main>
     </div>
   );
 }

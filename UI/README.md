@@ -1,7 +1,7 @@
 
-  # Multi-platform UI Design
+  # Overall Project UI
 
-  This is a code bundle for Multi-platform UI Design. The original project is available at https://www.figma.com/design/VsrapCmOdeiWuFaScQ4erf/Multi-platform-UI-Design.
+  This is a code bundle for Overall Project UI. The original project is available at https://www.figma.com/design/VsrapCmOdeiWuFaScQ4erf/Overall-Project-UI.
 
   ## Running the code
 
