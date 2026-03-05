@@ -102,7 +102,7 @@ export function MobileOnboardingPage() {
           <div className="mb-8 pt-8">
             <h1 className="text-2xl text-foreground mb-2">Welcome to Mortar!</h1>
             <p className="text-sm text-muted-foreground">
-              Let's set up your business profile to connect you with the right people
+              Let&apos;s set up your business profile to connect you with the right people
             </p>
           </div>
 
@@ -210,7 +210,7 @@ export function MobileOnboardingPage() {
           <div className="mb-8 pt-8">
             <h1 className="text-2xl text-foreground mb-2">Your Interests</h1>
             <p className="text-sm text-muted-foreground">
-              Select topics you're interested in (choose at least 3)
+              Select topics you&apos;re interested in (choose at least 3)
             </p>
           </div>
 
@@ -345,9 +345,9 @@ export function MobileOnboardingPage() {
       <div className="w-20 h-20 bg-accent/10 rounded-full flex items-center justify-center mb-6">
         <CheckCircle2 className="w-10 h-10 text-accent" />
       </div>
-      <h1 className="text-2xl text-foreground mb-2">You're all set!</h1>
+      <h1 className="text-2xl text-foreground mb-2">You&apos;re all set!</h1>
       <p className="text-muted-foreground mb-8">
-        Welcome to the Mortar community. Let's get started!
+        Welcome to the Mortar community. Let&apos;s get started!
       </p>
       <Button
         onClick={() => router.push("/mobile/feed")}

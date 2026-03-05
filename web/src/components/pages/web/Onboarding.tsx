@@ -105,6 +105,16 @@ export function WebOnboardingPage() {
     }
   };
 
+  // Auto-redirect to dashboard after step 3 completes (with delay)
+  useEffect(() => {
+    if (step === 3) {
+      const timer = setTimeout(() => {
+        router.push("/dashboard");
+      }, 3000); // 3 second delay to show completion message
+      return () => clearTimeout(timer);
+    }
+  }, [step, router]);
+
   const cohorts = [
     "Class of 2024",
     "Class of 2025",
@@ -120,7 +130,7 @@ export function WebOnboardingPage() {
         <div className="mb-8">
           <h1 className="text-3xl text-foreground mb-2">Welcome to Mortar!</h1>
           <p className="text-muted-foreground">
-            Let's set up your business profile to connect you with the right people
+            Let&apos;s set up your business profile to connect you with the right people
           </p>
         </div>
 
@@ -226,7 +236,7 @@ export function WebOnboardingPage() {
         <div className="mb-8">
           <h1 className="text-3xl text-foreground mb-2">Your Interests</h1>
           <p className="text-muted-foreground">
-            Select topics you're interested in (choose at least 3)
+            Select topics you&apos;re interested in (choose at least 3)
           </p>
         </div>
 
@@ -287,16 +297,6 @@ export function WebOnboardingPage() {
     );
   }
 
-  // Auto-redirect to dashboard after step 3 completes (with delay)
-  useEffect(() => {
-    if (step === 3) {
-      const timer = setTimeout(() => {
-        router.push("/dashboard");
-      }, 3000); // 3 second delay to show completion message
-      return () => clearTimeout(timer);
-    }
-  }, [step, router]);
-
   // Step 3: Completion screen - always route to dashboard
   return (
     <div className="p-8 max-w-2xl mx-auto text-center">
@@ -304,12 +304,12 @@ export function WebOnboardingPage() {
         <CheckCircle2 className="w-10 h-10 text-accent" />
       </div>
       <h1 className="text-3xl text-foreground mb-2">
-        {saveSuccess ? "You're all set!" : "Onboarding Complete"}
+        {saveSuccess ? "You&apos;re all set!" : "Onboarding Complete"}
       </h1>
       <p className="text-muted-foreground mb-8">
         {saveSuccess
           ? "Welcome to the Mortar community. Your business profile has been saved."
-          : "You've completed the onboarding steps. You can update your profile later from the dashboard."}
+          : "You&apos;ve completed the onboarding steps. You can update your profile later from the dashboard."}
       </p>
       {error && !saveSuccess && (
         <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg max-w-md mx-auto">

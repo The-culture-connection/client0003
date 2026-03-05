@@ -59,7 +59,7 @@ export default function VerifyEmailPage() {
           <Mail className="w-16 h-16 text-accent mx-auto mb-4" />
           <h1 className="text-2xl text-foreground mb-2">Verify Your Email</h1>
           <p className="text-muted-foreground">
-            We've sent a verification link to <strong>{user?.email}</strong>
+            We&apos;ve sent a verification link to <strong>{user?.email}</strong>
           </p>
           <p className="text-sm text-muted-foreground mt-2">
             Please check your inbox and click the link to verify your email address.

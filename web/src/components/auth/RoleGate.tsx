@@ -24,7 +24,7 @@ export function RoleGate({
     if (!roles.includes(requiredRole)) {
       return fallback || (
         <div className="p-4 text-center text-muted-foreground">
-          You don't have the required role to access this content.
+          You don&apos;t have the required role to access this content.
         </div>
       );
     }
@@ -34,7 +34,7 @@ export function RoleGate({
     if (!userHasPermission(roles, requiredPermission)) {
       return fallback || (
         <div className="p-4 text-center text-muted-foreground">
-          You don't have permission to access this content.
+          You don&apos;t have permission to access this content.
         </div>
       );
     }

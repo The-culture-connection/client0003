@@ -65,7 +65,7 @@ export function MobileProfilePage() {
         </div>
         <p className="text-sm text-muted-foreground leading-relaxed mb-4">
           Passionate entrepreneur with a focus on sustainable business
-          practices. Alumni of Mortar's 2025 cohort, now running a successful
+          practices. Alumni of Mortar&apos;s 2025 cohort, now running a successful
           marketing consultancy.
         </p>
 

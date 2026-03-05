@@ -278,8 +278,8 @@ export function DashboardPage() {
             ...doc.data(),
           }))
           .sort((a, b) => {
-            const dateA = a.event_date?.toDate?.() || new Date(a.event_date);
-            const dateB = b.event_date?.toDate?.() || new Date(b.event_date);
+            const dateA = (a as any).event_date?.toDate?.() || new Date((a as any).event_date || 0);
+            const dateB = (b as any).event_date?.toDate?.() || new Date((b as any).event_date || 0);
             return dateA.getTime() - dateB.getTime();
           })
           .slice(0, 2);
@@ -419,13 +419,13 @@ export function DashboardPage() {
 
   const findNextStep = async (userId: string, modules: any[]) => {
     try {
-      for (const module of modules) {
+      for (const moduleItem of modules) {
         const moduleResultRef = doc(
           db,
           "user_progress",
           userId,
           "module_results",
-          module.id
+          moduleItem.id
         );
         const moduleResultDoc = await getDoc(moduleResultRef);
         const moduleCompleted = moduleResultDoc.data()?.completed;
@@ -437,7 +437,7 @@ export function DashboardPage() {
           "curricula",
           "mortar_masters_online",
           "modules",
-          module.id,
+          moduleItem.id,
           "chapters"
         );
         const chaptersSnapshot = await getDocs(chaptersRef);
@@ -460,8 +460,8 @@ export function DashboardPage() {
               const firstLesson = lessonsSnapshot.docs[0];
               return {
                 type: "lesson",
-                module_id: module.id,
-                module_title: module.title,
+                module_id: moduleItem.id,
+                module_title: moduleItem.title,
                 chapter_id: chapterDoc.id,
                 chapter_title: chapterDoc.data().title,
                 lesson_id: firstLesson.id,
@@ -493,8 +493,8 @@ export function DashboardPage() {
                 if (!lessonProgressDoc.exists() || !lessonProgressDoc.data()?.completed) {
                   return {
                     type: "lesson",
-                    module_id: module.id,
-                    module_title: module.title,
+                    module_id: moduleItem.id,
+                    module_title: moduleItem.title,
                     chapter_id: chapterDoc.id,
                     chapter_title: chapterDoc.data().title,
                     lesson_id: lessonDoc.id,
@@ -509,8 +509,8 @@ export function DashboardPage() {
               if (quizId) {
                 return {
                   type: "quiz",
-                  module_id: module.id,
-                  module_title: module.title,
+                  module_id: moduleItem.id,
+                  module_title: moduleItem.title,
                   chapter_id: chapterDoc.id,
                   chapter_title: chapterDoc.data().title,
                   quiz_id: quizId,

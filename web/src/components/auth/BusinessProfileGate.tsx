@@ -28,7 +28,8 @@ export function BusinessProfileGate({ children }: { children: React.ReactNode })
 
     try {
       const userRef = doc(db, "users", user.uid);
-      const userDoc = await userRef.get();
+      const { getDoc } = await import("firebase/firestore");
+      const userDoc = await getDoc(userRef);
       const userData = userDoc.data();
       
       const complete = userData?.profile_completed === true && 

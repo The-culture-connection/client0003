@@ -681,7 +681,7 @@ export function MatchingOnboardingPage() {
         <div className="mb-8">
           <h1 className="text-3xl text-foreground mb-2">Welcome to MORTAR!</h1>
           <p className="text-muted-foreground">
-            Let's build your entrepreneur profile so we can connect you with the right business opportunities, mentors, and partners
+            Let&apos;s build your entrepreneur profile so we can connect you with the right business opportunities, mentors, and partners
           </p>
         </div>
 
@@ -798,7 +798,7 @@ export function MatchingOnboardingPage() {
         <div className="mb-8">
           <h1 className="text-3xl text-foreground mb-2">What Are You Building?</h1>
           <p className="text-muted-foreground">
-            Tell us what you're looking for as you start your business journey (select all that apply)
+            Tell us what you&apos;re looking for as you start your business journey (select all that apply)
           </p>
         </div>
 
@@ -1151,7 +1151,7 @@ export function MatchingOnboardingPage() {
               Role Titles (optional)
             </h2>
             <p className="text-xs text-muted-foreground mb-3">
-              Enter your role titles separated by commas (e.g., "CEO, Founder, Product Manager")
+              Enter your role titles separated by commas (e.g., &quot;CEO, Founder, Product Manager&quot;)
             </p>
             <Input
               type="text"
@@ -1414,7 +1414,7 @@ export function MatchingOnboardingPage() {
                 <div>
                   <span className="text-foreground font-medium">Allow MORTAR to match me with opportunities *</span>
                   <p className="text-xs text-muted-foreground mt-1">
-                    We'll use your profile to connect you with relevant entrepreneurs, job opportunities, and business partners
+                    We&apos;ll use your profile to connect you with relevant entrepreneurs, job opportunities, and business partners
                   </p>
                 </div>
               </label>
@@ -1501,7 +1501,7 @@ export function MatchingOnboardingPage() {
             </div>
             <h1 className="text-3xl text-foreground mb-2">Onboarding Complete</h1>
             <p className="text-muted-foreground mb-4">
-              You've completed the onboarding steps. You can update your profile later from the dashboard.
+              You&apos;ve completed the onboarding steps. You can update your profile later from the dashboard.
             </p>
             {error && (
               <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg max-w-md mx-auto">
@@ -1525,7 +1525,7 @@ export function MatchingOnboardingPage() {
             <div className="w-20 h-20 bg-accent/10 rounded-full flex items-center justify-center mb-6 mx-auto">
               <CheckCircle2 className="w-10 h-10 text-accent" />
             </div>
-            <h1 className="text-3xl text-foreground mb-2">You're all set!</h1>
+            <h1 className="text-3xl text-foreground mb-2">You&apos;re all set!</h1>
             <p className="text-muted-foreground mb-8">
               Welcome to the Mortar community. Your profile has been saved successfully.
             </p>

@@ -6,6 +6,16 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_FIREBASE_PROJECT_ID: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "mortar-dev",
   },
+  eslint: {
+    // Only run ESLint on these directories during production builds
+    dirs: ['src'],
+    // Allow production builds to complete even with ESLint warnings
+    ignoreDuringBuilds: false,
+  },
+  typescript: {
+    // Allow production builds to complete even with TypeScript errors (if any)
+    ignoreBuildErrors: false,
+  },
   webpack: (config, { isServer }) => {
     // Ensure path aliases are resolved correctly
     config.resolve.alias = {

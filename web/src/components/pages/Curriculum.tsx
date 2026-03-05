@@ -92,7 +92,7 @@ export function CurriculumPage() {
             duration: `${Math.ceil(chaptersSnapshot.size * 0.5)} hours`,
             progress: completed ? 100 : progress,
             locked,
-            badge: module.badge || `${module.title} Master`,
+            badge: `${module.title} Master`, // badge property not in curriculum Module type
             color: completed ? "green" : progress > 0 ? "accent" : "muted",
           };
         })

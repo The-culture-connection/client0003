@@ -5,10 +5,9 @@ import {Card} from "@/components/ui/card";
 import {Button} from "@/components/ui/button";
 import {Badge} from "@/components/ui/badge";
 import {Lock, CheckCircle2, Play, BookOpen} from "lucide-react";
-import {getModules, getChapters, hasModuleAccess, getFreeChapterCount} from "@/lib/curriculum";
+import {getModules, getChapters, hasModuleAccess, type Module, type Chapter} from "@/lib/curriculum";
 import {getModuleResult, getChapterResult} from "@/lib/progress";
 import {useAuth} from "@/components/auth/AuthProvider";
-import type {Module, Chapter} from "@/lib/types";
 import Link from "next/link";
 
 export function CurriculumCatalog() {
@@ -87,7 +86,7 @@ function ModuleCard({module, userId}: {module: Module; userId: string}) {
     }
   }, [module.id, userId]);
 
-  const freeChapterCount = getFreeChapterCount();
+  const freeChapterCount = 5; // First 5 chapters per module are free
   const freeChapters = chapters.filter((ch) => ch.is_free).slice(0, freeChapterCount);
   const paidChapters = chapters.filter((ch) => !ch.is_free || chapters.indexOf(ch) >= freeChapterCount);
 
@@ -197,7 +196,8 @@ function ChapterItem({
   const canAccess = isFree || hasAccess;
   const isCompleted = chapterResult?.completed;
   const quizPassed = chapterResult?.quiz_passed;
-  const assetsComplete = chapterResult?.assets_completed >= chapterResult?.required_assets;
+  // Assets tracking removed - not in curriculum Chapter type
+  const assetsComplete = false;
 
   return (
     <div
@@ -229,11 +229,7 @@ function ChapterItem({
                 {quizPassed ? "✓ Quiz Passed" : "Quiz Required"}
               </span>
             )}
-            {chapter.required_assets && chapter.required_assets.length > 0 && (
-              <span className={assetsComplete ? "text-accent" : ""}>
-                {assetsComplete ? "✓ Assets Complete" : `${chapter.required_assets.length} Assets Required`}
-              </span>
-            )}
+            {/* Assets tracking removed - not in curriculum Chapter type */}
           </div>
         </div>
         
