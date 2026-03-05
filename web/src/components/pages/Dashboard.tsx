@@ -20,9 +20,20 @@ import {
   Zap,
   MessageSquare,
   Target,
+  Download,
+  Edit,
+  LogOut,
+  Star,
+  Flame,
+  TrendingUp,
+  User as UserIcon,
 } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { db } from "@/lib/firebase";
+import { db, auth } from "@/lib/firebase";
+import { signOut } from "firebase/auth";
+import { useRouter } from "next/navigation";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   collection,
   doc,
@@ -63,6 +74,7 @@ interface LeaderboardEntry {
 
 export function DashboardPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [nextStep, setNextStep] = useState<any>(null);
@@ -79,6 +91,14 @@ export function DashboardPage() {
     forumPosts: 0,
   });
   const [currentModuleProgress, setCurrentModuleProgress] = useState(0);
+  
+  // Edit profile state
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editFirstName, setEditFirstName] = useState("");
+  const [editLastName, setEditLastName] = useState("");
+  const [editCity, setEditCity] = useState("");
+  const [editCohort, setEditCohort] = useState("");
+  const [savingProfile, setSavingProfile] = useState(false);
 
   useEffect(() => {
     if (user?.uid) {
@@ -132,7 +152,7 @@ export function DashboardPage() {
         moduleResultsMap.set(doc.id, doc.data());
       });
 
-      const progressData: ModuleProgress[] = modules.map((module, idx) => {
+      let progressData: ModuleProgress[] = modules.map((module, idx) => {
         const result = moduleResultsMap.get(module.id);
         const completed = result?.completed || false;
         const progress = result?.progress_percent || 0;
@@ -157,6 +177,17 @@ export function DashboardPage() {
           locked,
         };
       });
+      
+      // If no modules found, use mock data
+      if (progressData.length === 0) {
+        progressData = [
+          { id: "1", name: "Idea Validation", status: "Completed", progress: 100, locked: false },
+          { id: "2", name: "Customer Discovery", status: "Completed", progress: 100, locked: false },
+          { id: "3", name: "Financial Modeling", status: "In Progress", progress: 65, locked: false },
+          { id: "4", name: "Pitch & Launch", status: "Locked", progress: 0, locked: true },
+        ];
+      }
+      
       setModuleProgress(progressData);
 
       // Calculate current module progress (for the progress ring)
@@ -202,9 +233,10 @@ export function DashboardPage() {
       // Load achievements/badges
       const earnedBadges = userData?.badges?.earned || [];
       const allBadges = [
-        { id: "idea_validator", name: "Idea Validator", color: "yellow" },
-        { id: "customer_explorer", name: "Customer Explorer", color: "blue" },
-        { id: "financial_strategist", name: "Financial Strategist", color: "accent" },
+        { id: "idea_validator", name: "Idea Validator", color: "yellow", icon: Star, description: "Complete Module 1: Idea Validation", progress: moduleProgress.find((m) => m.id === "1")?.progress || 0 },
+        { id: "customer_explorer", name: "Customer Explorer", color: "blue", icon: Users, description: "Complete Module 2: Customer Discovery", progress: moduleProgress.find((m) => m.id === "2")?.progress || 0 },
+        { id: "financial_strategist", name: "Financial Strategist", color: "accent", icon: TrendingUp, description: "Complete Module 3: Financial Modeling", progress: moduleProgress.find((m) => m.id === "3")?.progress || 0 },
+        { id: "launch_master", name: "Launch Master", color: "muted", icon: Flame, description: "Complete Module 4: Pitch & Launch", progress: moduleProgress.find((m) => m.id === "4")?.progress || 0 },
       ];
       const achievementsData: Achievement[] = allBadges.map((badge) => ({
         ...badge,
@@ -212,6 +244,12 @@ export function DashboardPage() {
       }));
       setAchievements(achievementsData.filter((a) => a.earned));
       setNextBadge(achievementsData.find((a) => !a.earned));
+      
+      // Set edit profile initial values
+      setEditFirstName(userData?.first_name || "");
+      setEditLastName(userData?.last_name || "");
+      setEditCity(userData?.business_profile?.city || "");
+      setEditCohort(userData?.business_profile?.cohort_name || "");
 
       // Load leaderboard (mock data for now - would need points system)
       const userPoints = userData?.points?.balance || 3980;
@@ -491,6 +529,51 @@ export function DashboardPage() {
     }
   };
 
+  const handleSaveProfile = async () => {
+    if (!user?.uid) return;
+    
+    setSavingProfile(true);
+    try {
+      const { functions } = await import("@/lib/firebase");
+      const { httpsCallable } = await import("firebase/functions");
+      const setBusinessProfileFn = httpsCallable(functions, "setUserBusinessProfile");
+      
+      await setBusinessProfileFn({
+        first_name: editFirstName,
+        last_name: editLastName,
+        cohort_name: editCohort,
+        city: editCity,
+        state: userProfile?.business_profile?.state || "",
+      });
+      
+      // Also update first_name and last_name in user document
+      const { doc, updateDoc } = await import("firebase/firestore");
+      const userRef = doc(db, "users", user.uid);
+      await updateDoc(userRef, {
+        first_name: editFirstName,
+        last_name: editLastName,
+        updated_at: new Date(),
+      });
+      
+      // Reload dashboard data
+      await loadDashboardData();
+      setIsEditingProfile(false);
+    } catch (error) {
+      console.error("Error saving profile:", error);
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      router.push("/login");
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-6 max-w-7xl mx-auto">
@@ -508,22 +591,147 @@ export function DashboardPage() {
   const cohort = userProfile?.business_profile?.cohort_name || "Not in cohort";
   const city = userProfile?.business_profile?.city || "Unknown";
 
+  // Check if user has partial onboarding status
+  const hasPartialOnboarding = userProfile?.onboarding_status === "partial";
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      {/* Welcome Header - Compact */}
-      <div className="mb-5">
-        <h1 className="text-2xl text-foreground mb-1">
-          Welcome back, <span className="text-accent">{displayName}</span>
-        </h1>
-        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-          <span>Cohort: {cohort}</span>
-          <span>•</span>
-          <span>City: {city}</span>
-          <span>•</span>
-          <span className="text-accent">
-            You completed {weeklyStats.lessonsCompleted} lesson{weeklyStats.lessonsCompleted !== 1 ? "s" : ""} this week 🔥
-          </span>
+      {/* Nudge Banner for Partial Onboarding */}
+      {hasPartialOnboarding && (
+        <Card className="mb-6 p-4 bg-gradient-to-r from-accent/20 to-accent/10 border-accent/30">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Target className="w-5 h-5 text-accent" />
+              <div>
+                <h3 className="text-sm font-bold text-foreground">
+                  Complete your profile to get better matches
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Finish your onboarding to unlock personalized connections and opportunities
+                </p>
+              </div>
+            </div>
+            <Link href="/onboarding">
+              <Button size="sm" className="bg-accent hover:bg-accent/90 text-accent-foreground">
+                Complete Profile
+              </Button>
+            </Link>
+          </div>
+        </Card>
+      )}
+      {/* Top Bar - Welcome Header & Profile Widget */}
+      <div className="flex items-start justify-between gap-4 mb-5">
+        <div className="flex-1">
+          <h1 className="text-2xl text-foreground mb-1">
+            Welcome back, <span className="text-accent">{displayName}</span>
+          </h1>
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <span>Cohort: {cohort}</span>
+            <span>•</span>
+            <span>City: {city}</span>
+            <span>•</span>
+            <span className="text-accent">
+              You completed {weeklyStats.lessonsCompleted} lesson{weeklyStats.lessonsCompleted !== 1 ? "s" : ""} this week 🔥
+            </span>
+          </div>
         </div>
+        
+        {/* Profile Widget - Compact */}
+        <Card className="p-3 bg-card border-border shadow-md min-w-[280px]">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-bold text-foreground">Profile</h3>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsEditingProfile(!isEditingProfile)}
+              className="h-6 px-2 text-accent hover:text-accent/90"
+            >
+              <Edit className="w-3 h-3" />
+            </Button>
+          </div>
+          
+          {isEditingProfile ? (
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  placeholder="First Name"
+                  value={editFirstName}
+                  onChange={(e) => setEditFirstName(e.target.value)}
+                  className="h-7 text-xs"
+                />
+                <Input
+                  placeholder="Last Name"
+                  value={editLastName}
+                  onChange={(e) => setEditLastName(e.target.value)}
+                  className="h-7 text-xs"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  placeholder="City"
+                  value={editCity}
+                  onChange={(e) => setEditCity(e.target.value)}
+                  className="h-7 text-xs"
+                />
+                <Input
+                  placeholder="Cohort"
+                  value={editCohort}
+                  onChange={(e) => setEditCohort(e.target.value)}
+                  className="h-7 text-xs"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  onClick={handleSaveProfile}
+                  disabled={savingProfile}
+                  className="flex-1 h-7 text-xs bg-accent hover:bg-accent/90 text-accent-foreground"
+                >
+                  {savingProfile ? "Saving..." : "Save"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsEditingProfile(false)}
+                  className="h-7 text-xs"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <UserIcon className="w-4 h-4 text-accent" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-foreground truncate">
+                    {userProfile?.display_name || user?.displayName || "User"}
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {userProfile?.business_profile?.cohort_name || "Not in cohort"}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between pt-2 border-t border-border">
+                <div className="flex items-center gap-1.5">
+                  <Trophy className="w-3.5 h-3.5 text-accent" />
+                  <span className="text-xs text-foreground">
+                    <span className="font-bold text-accent">{userProfile?.points?.balance?.toLocaleString() || 0}</span> pts
+                  </span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSignOut}
+                  className="h-6 px-2 text-xs text-destructive border-destructive hover:bg-destructive/10"
+                >
+                  <LogOut className="w-3 h-3 mr-1" />
+                  Sign Out
+                </Button>
+              </div>
+            </div>
+          )}
+        </Card>
       </div>
 
       {/* Hero Action Panel - Compact */}
@@ -606,20 +814,20 @@ export function DashboardPage() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* Left Column - Learning Journey, Data Room, Community, Achievements, Leaderboard */}
-        <div className="lg:col-span-8 space-y-5">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        {/* Left Column - Learning Journey, Data Room, Community */}
+        <div className="lg:col-span-9 space-y-4">
           {/* Learning Journey - Module Path */}
-          <Card className="p-5 bg-card border-border shadow-md">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-foreground">
+          <Card className="p-4 bg-card border-border shadow-md">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-base font-bold text-foreground">
                 Module Journey
               </h2>
               <Badge variant="outline" className="border-accent text-accent text-xs">
                 {moduleProgress.filter((m) => !m.locked && m.status !== "Locked").length} of {moduleProgress.length} Modules
               </Badge>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {moduleProgress.map((module, idx) => {
                 const Icon =
                   module.status === "Completed"
@@ -630,15 +838,15 @@ export function DashboardPage() {
                 return (
                   <div
                     key={module.id}
-                    className={`p-3 rounded-lg border transition-all ${
+                    className={`p-2.5 rounded-lg border transition-all ${
                       module.locked
                         ? "bg-muted/30 border-border/50"
                         : "bg-card border-border hover:border-accent hover:shadow-md"
                     }`}
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2.5">
                       <div
-                        className={`p-2 rounded-lg ${
+                        className={`p-1.5 rounded ${
                           module.locked
                             ? "bg-muted"
                             : module.progress === 100
@@ -647,7 +855,7 @@ export function DashboardPage() {
                         }`}
                       >
                         <Icon
-                          className={`w-5 h-5 ${
+                          className={`w-4 h-4 ${
                             module.locked
                               ? "text-muted-foreground"
                               : module.progress === 100
@@ -659,7 +867,7 @@ export function DashboardPage() {
                       <div className="flex-1">
                         <div className="flex items-center justify-between mb-1">
                           <h3
-                            className={`text-sm font-medium ${
+                            className={`text-xs font-medium ${
                               module.locked
                                 ? "text-muted-foreground"
                                 : "text-foreground"
@@ -671,7 +879,7 @@ export function DashboardPage() {
                             variant={
                               module.progress === 100 ? "default" : "secondary"
                             }
-                            className={`text-xs ${
+                            className={`text-[10px] ${
                               module.locked
                                 ? "bg-muted text-muted-foreground"
                                 : module.progress === 100
@@ -683,7 +891,7 @@ export function DashboardPage() {
                           </Badge>
                         </div>
                         {!module.locked && (
-                          <Progress value={module.progress} className="h-1.5" />
+                          <Progress value={module.progress} className="h-1" />
                         )}
                       </div>
                     </div>
@@ -695,9 +903,9 @@ export function DashboardPage() {
 
           {/* Data Room Asset Progress */}
           {assetProgress.length > 0 && (
-            <Card className="p-5 bg-card border-border shadow-md">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold text-foreground">
+            <Card className="p-4 bg-card border-border shadow-md">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-base font-bold text-foreground">
                   Data Room Progress
                 </h2>
                 <FileText className="w-5 h-5 text-accent" />
@@ -737,14 +945,14 @@ export function DashboardPage() {
           )}
 
           {/* Community Activity */}
-          <Card className="p-5 bg-card border-border shadow-md">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-foreground">
+          <Card className="p-4 bg-card border-border shadow-md">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-base font-bold text-foreground">
                 Community Activity
               </h2>
-              <Users className="w-5 h-5 text-accent" />
+              <Users className="w-4 h-4 text-accent" />
             </div>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {communityActivity.length > 0 ? (
                 communityActivity.map((activity, idx) => (
                   <Link
@@ -755,21 +963,21 @@ export function DashboardPage() {
                         : `/community/meetings/${activity.id}`
                     }
                   >
-                    <div className="p-3 rounded-lg bg-muted/50 border border-border hover:border-accent transition-colors cursor-pointer">
-                      <div className="flex items-start gap-2 mb-1">
+                    <div className="p-2 rounded-lg bg-muted/50 border border-border hover:border-accent transition-colors cursor-pointer">
+                      <div className="flex items-start gap-2">
                         {activity.type === "discussion" ? (
-                          <MessageSquare className="w-4 h-4 text-accent mt-0.5" />
+                          <MessageSquare className="w-3.5 h-3.5 text-accent mt-0.5 flex-shrink-0" />
                         ) : (
-                          <Calendar className="w-4 h-4 text-accent mt-0.5" />
+                          <Calendar className="w-3.5 h-3.5 text-accent mt-0.5 flex-shrink-0" />
                         )}
-                        <div className="flex-1">
-                          <p className="text-sm text-foreground font-medium">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-foreground font-medium truncate">
                             {activity.title || activity.topic}
                           </p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-[10px] text-muted-foreground">
                             {activity.type === "discussion"
-                              ? "Discussion thread • Active now"
-                              : "Meeting proposal • 8 interested"}
+                              ? "Discussion • Active"
+                              : "Meeting • 8 interested"}
                           </p>
                         </div>
                       </div>
@@ -777,7 +985,7 @@ export function DashboardPage() {
                   </Link>
                 ))
               ) : (
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   No recent community activity
                 </p>
               )}
@@ -786,90 +994,36 @@ export function DashboardPage() {
               <Button
                 variant="outline"
                 size="sm"
-                className="w-full mt-4 text-accent border-accent"
+                className="w-full mt-3 h-7 text-xs text-accent border-accent"
               >
                 View Community Hub
               </Button>
             </Link>
           </Card>
 
-          {/* Achievements & Badges - Moved to left column */}
-          <Card className="p-5 bg-card border-border shadow-md">
-            <h2 className="text-lg font-bold text-foreground mb-4">
-              Your Achievements
-            </h2>
-            <div className="space-y-3">
-              {achievements.map((achievement) => (
-                <div key={achievement.id} className="flex items-center gap-2.5">
-                  <div
-                    className={`p-2 rounded-lg ${
-                      achievement.color === "yellow"
-                        ? "bg-yellow-500/10"
-                        : achievement.color === "blue"
-                        ? "bg-blue-500/10"
-                        : "bg-accent/10"
-                    }`}
-                  >
-                    <Award
-                      className={`w-5 h-5 ${
-                        achievement.color === "yellow"
-                          ? "text-yellow-500"
-                          : achievement.color === "blue"
-                          ? "text-blue-500"
-                          : "text-accent"
-                      }`}
-                    />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-foreground">
-                      {achievement.name}
-                    </p>
-                    <p className="text-xs text-muted-foreground">Earned</p>
-                  </div>
-                </div>
-              ))}
-              {nextBadge && (
-                <div className="border-t border-border pt-3 mt-3">
-                  <p className="text-xs font-medium text-muted-foreground mb-2">
-                    NEXT BADGE UNLOCK
-                  </p>
-                  <div className="flex items-center gap-2.5">
-                    <div className="p-2 rounded-lg bg-accent/10">
-                      <Trophy className="w-5 h-5 text-accent" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-foreground">
-                        {nextBadge.name}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Complete Module {moduleProgress.findIndex((m) => !m.locked && m.status !== "Completed") + 1}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </Card>
+        </div>
 
-          {/* Leaderboard - Moved to left column */}
-          <Card className="p-5 bg-card border-border shadow-md">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-foreground">
-                Cohort Leaderboard
+        {/* Right Column - Leaderboard Square, Events and Weekly Progress */}
+        <div className="lg:col-span-3 space-y-4">
+          {/* Leaderboard Square Widget */}
+          <Card className="p-4 bg-card border-border shadow-md">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-bold text-foreground">
+                Leaderboard
               </h2>
-              <Trophy className="w-5 h-5 text-accent" />
+              <Trophy className="w-4 h-4 text-accent" />
             </div>
-            <div className="space-y-2">
-              {leaderboard.map((user, idx) => (
+            <div className="space-y-1.5">
+              {leaderboard.slice(0, 6).map((user, idx) => (
                 <div
                   key={idx}
-                  className={`flex items-center justify-between p-2 rounded ${
+                  className={`flex items-center justify-between p-1.5 rounded text-xs ${
                     user.isYou ? "bg-accent/10 border border-accent/30" : ""
                   }`}
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 flex-1 min-w-0">
                     <span
-                      className={`text-xs font-bold w-6 ${
+                      className={`font-bold w-4 flex-shrink-0 text-[10px] ${
                         user.rank === 1
                           ? "text-yellow-500"
                           : user.rank === 2
@@ -882,51 +1036,47 @@ export function DashboardPage() {
                       #{user.rank}
                     </span>
                     <span
-                      className={`text-sm ${
+                      className={`truncate text-[11px] ${
                         user.isYou
                           ? "font-bold text-accent"
                           : "text-foreground"
                       }`}
                     >
                       {user.name}
-                      {user.isYou && " (You)"}
                     </span>
                   </div>
-                  <span className="text-xs font-medium text-foreground">
+                  <span className="text-[10px] font-medium text-foreground flex-shrink-0 ml-1">
                     {user.points.toLocaleString()}
                   </span>
                 </div>
               ))}
             </div>
-            <p className="text-xs text-muted-foreground mt-3">
-              Points from modules, assets & community
+            <p className="text-[10px] text-muted-foreground mt-2">
+              Points from modules & assets
             </p>
           </Card>
-        </div>
 
-        {/* Right Column - Events and Weekly Progress */}
-        <div className="lg:col-span-4 space-y-5">
           {/* Upcoming Events */}
-          <Card className="p-5 bg-card border-border shadow-md">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-foreground">
+          <Card className="p-4 bg-card border-border shadow-md">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-bold text-foreground">
                 Upcoming Events
               </h2>
-              <Calendar className="w-5 h-5 text-accent" />
+              <Calendar className="w-4 h-4 text-accent" />
             </div>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {upcomingEvents.length > 0 ? (
                 upcomingEvents.map((event) => {
                   const eventDate = event.event_date?.toDate?.() || new Date(event.event_date);
                   return (
                     <div
                       key={event.id}
-                      className="p-3 rounded-lg bg-muted/50 border border-border"
+                      className="p-2.5 rounded-lg bg-muted/50 border border-border"
                     >
-                      <p className="text-sm font-medium text-foreground mb-1">
+                      <p className="text-xs font-medium text-foreground mb-1">
                         {event.title}
                       </p>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                      <div className="flex items-center gap-2 text-[10px] text-muted-foreground mb-2">
                         <span>
                           {eventDate.toLocaleDateString()} — {eventDate.toLocaleTimeString([], {
                             hour: "2-digit",
@@ -938,7 +1088,7 @@ export function DashboardPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="w-full text-accent border-accent hover:bg-accent/10"
+                          className="w-full h-7 text-xs text-accent border-accent hover:bg-accent/10"
                         >
                           RSVP
                         </Button>
@@ -947,7 +1097,7 @@ export function DashboardPage() {
                   );
                 })
               ) : (
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   No upcoming events
                 </p>
               )}
@@ -955,35 +1105,35 @@ export function DashboardPage() {
           </Card>
 
           {/* Weekly Progress */}
-          <Card className="p-5 bg-card border-border shadow-md">
-            <h2 className="text-lg font-bold text-foreground mb-4">
+          <Card className="p-4 bg-card border-border shadow-md">
+            <h2 className="text-sm font-bold text-foreground mb-3">
               Weekly Progress
             </h2>
-            <div className="space-y-3">
+            <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Target className="w-4 h-4 text-accent" />
-                  <span className="text-sm text-foreground">Lessons Completed</span>
+                <div className="flex items-center gap-1.5">
+                  <Target className="w-3.5 h-3.5 text-accent" />
+                  <span className="text-xs text-foreground">Lessons</span>
                 </div>
-                <span className="text-sm font-bold text-accent">
+                <span className="text-xs font-bold text-accent">
                   {weeklyStats.lessonsCompleted}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-accent" />
-                  <span className="text-sm text-foreground">Assets Created</span>
+                <div className="flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 text-accent" />
+                  <span className="text-xs text-foreground">Assets</span>
                 </div>
-                <span className="text-sm font-bold text-accent">
+                <span className="text-xs font-bold text-accent">
                   {weeklyStats.assetsCreated}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4 text-accent" />
-                  <span className="text-sm text-foreground">Forum Posts</span>
+                <div className="flex items-center gap-1.5">
+                  <MessageSquare className="w-3.5 h-3.5 text-accent" />
+                  <span className="text-xs text-foreground">Posts</span>
                 </div>
-                <span className="text-sm font-bold text-accent">
+                <span className="text-xs font-bold text-accent">
                   {weeklyStats.forumPosts}
                 </span>
               </div>

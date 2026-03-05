@@ -1,7 +1,7 @@
 "use client";
 
-import { CurriculumPage } from "@/components/pages/Curriculum";
+import { WebCurriculum } from "@/components/pages/web/Curriculum";
 
 export default function CurriculumPageRoute() {
-  return <CurriculumPage />;
+  return <WebCurriculum />;
 }

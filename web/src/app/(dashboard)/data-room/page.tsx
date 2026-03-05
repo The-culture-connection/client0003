@@ -1,5 +1,7 @@
-import { DataRoomPage } from "@/components/pages/DataRoom";
+"use client";
+
+import { WebDataRoom } from "@/components/pages/web/DataRoom";
 
 export default function DataRoom() {
-  return <DataRoomPage />;
+  return <WebDataRoom />;
 }

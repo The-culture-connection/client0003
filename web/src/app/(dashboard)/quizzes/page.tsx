@@ -1,5 +1,7 @@
-import { QuizzesPage } from "@/components/pages/Quizzes";
+"use client";
+
+import { WebQuizzes } from "@/components/pages/web/Quizzes";
 
 export default function Quizzes() {
-  return <QuizzesPage />;
+  return <WebQuizzes />;
 }

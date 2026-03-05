@@ -1,0 +1,69 @@
+import { createBrowserRouter, redirect } from "react-router";
+import { Root } from "./pages/Root";
+import { LoginPage } from "./pages/Login";
+import { JoinPage } from "./pages/Join";
+import { VerifyEmailPage } from "./pages/VerifyEmail";
+import { WebDashboard } from "./pages/web/Dashboard";
+import { WebCurriculum } from "./pages/web/Curriculum";
+import { WebQuizzes } from "./pages/web/Quizzes";
+import { WebDataRoom } from "./pages/web/DataRoom";
+import { WebEvents } from "./pages/web/Events";
+import { WebAnalytics } from "./pages/web/Analytics";
+import { WebCommunityHub } from "./pages/web/CommunityHub";
+import { MobileFeed } from "./pages/mobile/Feed";
+import { MobileGroups } from "./pages/mobile/Groups";
+import { MobileEvents } from "./pages/mobile/Events";
+import { MobileExplore } from "./pages/mobile/Explore";
+import { MobileMatching } from "./pages/mobile/Matching";
+import { MobileProfile } from "./pages/mobile/Profile";
+import { MobileOnboarding } from "./pages/mobile/Onboarding";
+import { AuthGuard } from "./components/auth/AuthGuard";
+
+// Wrapper component for protected routes
+function ProtectedRoot() {
+  return (
+    <AuthGuard>
+      <Root />
+    </AuthGuard>
+  );
+}
+
+export const router = createBrowserRouter([
+  {
+    path: "/login",
+    Component: LoginPage,
+  },
+  {
+    path: "/join",
+    Component: JoinPage,
+  },
+  {
+    path: "/verify-email",
+    Component: VerifyEmailPage,
+  },
+  {
+    path: "/",
+    Component: ProtectedRoot,
+    children: [
+      // Web routes - all protected by AuthGuard
+      { index: true, Component: WebDashboard },
+      { path: "dashboard", Component: WebDashboard },
+      { path: "curriculum", Component: WebCurriculum },
+      { path: "quizzes", Component: WebQuizzes },
+      { path: "data-room", Component: WebDataRoom },
+      { path: "certificates", loader: () => redirect("/curriculum") },
+      { path: "community", Component: WebCommunityHub },
+      { path: "events", Component: WebEvents },
+      { path: "analytics", Component: WebAnalytics },
+      
+      // Mobile routes - all protected by AuthGuard
+      { path: "mobile/feed", Component: MobileFeed },
+      { path: "mobile/groups", Component: MobileGroups },
+      { path: "mobile/events", Component: MobileEvents },
+      { path: "mobile/explore", Component: MobileExplore },
+      { path: "mobile/matching", Component: MobileMatching },
+      { path: "mobile/profile", Component: MobileProfile },
+      { path: "mobile/onboarding", Component: MobileOnboarding },
+    ],
+  },
+]);

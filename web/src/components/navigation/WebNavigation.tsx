@@ -2,16 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, BookOpen, FileText, FolderOpen, Award, Calendar, BarChart3, Users } from "lucide-react";
+import { LayoutDashboard, BookOpen, FolderOpen, Users, BarChart3 } from "lucide-react";
 
 const navItems = [
   { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { path: "/curriculum", label: "Curriculum", icon: BookOpen },
-  { path: "/quizzes", label: "Quizzes", icon: FileText },
   { path: "/data-room", label: "Data Room", icon: FolderOpen },
-  { path: "/certificates", label: "Certificates & Badges", icon: Award },
-  { path: "/events", label: "Events", icon: Calendar },
-  { path: "/community", label: "Community", icon: Users },
+  { path: "/community", label: "Community Hub", icon: Users },
   { path: "/analytics", label: "Analytics", icon: BarChart3 },
 ];
 

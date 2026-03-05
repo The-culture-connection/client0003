@@ -1,5 +1,7 @@
-import { AnalyticsPage } from "@/components/pages/Analytics";
+"use client";
+
+import { WebAnalytics } from "@/components/pages/web/Analytics";
 
 export default function Analytics() {
-  return <AnalyticsPage />;
+  return <WebAnalytics />;
 }

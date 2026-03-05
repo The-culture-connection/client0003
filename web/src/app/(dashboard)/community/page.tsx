@@ -1,5 +1,7 @@
-import { CommunityHubPage } from "@/components/pages/CommunityHub";
+"use client";
+
+import { WebCommunityHub } from "@/components/pages/web/CommunityHub";
 
 export default function CommunityPage() {
-  return <CommunityHubPage />;
+  return <WebCommunityHub />;
 }

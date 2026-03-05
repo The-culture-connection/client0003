@@ -72,6 +72,14 @@
         { "fieldPath": "offered_skills", "arrayConfig": "CONTAINS" },
         { "fieldPath": "status", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "onboarding_status", "order": "ASCENDING" },
+        { "fieldPath": "updated_at", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

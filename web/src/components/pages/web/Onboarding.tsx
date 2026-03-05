@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,6 +33,7 @@ export function WebOnboardingPage() {
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
   
   // Form data state
   const [formData, setFormData] = useState({
@@ -89,9 +90,13 @@ export function WebOnboardingPage() {
       setSaving(true);
       try {
         await saveProfileData();
+        setSaveSuccess(true);
         setStep(3);
       } catch (err: any) {
         setError(err.message || "Failed to save profile. Please try again.");
+        setSaveSuccess(false);
+        // Still proceed to step 3 even if save fails
+        setStep(3);
       } finally {
         setSaving(false);
       }
@@ -282,20 +287,43 @@ export function WebOnboardingPage() {
     );
   }
 
+  // Auto-redirect to dashboard after step 3 completes (with delay)
+  useEffect(() => {
+    if (step === 3) {
+      const timer = setTimeout(() => {
+        router.push("/dashboard");
+      }, 3000); // 3 second delay to show completion message
+      return () => clearTimeout(timer);
+    }
+  }, [step, router]);
+
+  // Step 3: Completion screen - always route to dashboard
   return (
     <div className="p-8 max-w-2xl mx-auto text-center">
       <div className="w-20 h-20 bg-accent/10 rounded-full flex items-center justify-center mb-6 mx-auto">
         <CheckCircle2 className="w-10 h-10 text-accent" />
       </div>
-      <h1 className="text-3xl text-foreground mb-2">You're all set!</h1>
+      <h1 className="text-3xl text-foreground mb-2">
+        {saveSuccess ? "You're all set!" : "Onboarding Complete"}
+      </h1>
       <p className="text-muted-foreground mb-8">
-        Welcome to the Mortar community. Your business profile has been saved.
+        {saveSuccess
+          ? "Welcome to the Mortar community. Your business profile has been saved."
+          : "You've completed the onboarding steps. You can update your profile later from the dashboard."}
+      </p>
+      {error && !saveSuccess && (
+        <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg max-w-md mx-auto">
+          <p className="text-sm text-destructive">{error}</p>
+        </div>
+      )}
+      <p className="text-sm text-muted-foreground mb-4">
+        Redirecting to dashboard in a few seconds...
       </p>
       <Button
         onClick={() => router.push("/dashboard")}
         className="bg-accent hover:bg-accent/90 text-accent-foreground px-8"
       >
-        Go to Dashboard
+        Go to Dashboard Now
       </Button>
     </div>
   );

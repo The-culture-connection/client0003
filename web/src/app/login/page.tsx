@@ -34,16 +34,8 @@ export default function LoginPage() {
 
     try {
       if (isSignUp) {
-        const user = await signUp(email, password);
-        // Send email verification
-        if (user && !user.emailVerified) {
-          const { sendEmailVerificationEmail } = await import("@/lib/auth");
-          await sendEmailVerificationEmail();
-          // Route to verify email page
-          router.push("/verify-email");
-          return;
-        }
-        // New user - route to simple onboarding (role selection)
+        await signUp(email, password);
+        // New user - route to onboarding
         router.push("/onboarding");
       } else {
         await signIn(email, password);

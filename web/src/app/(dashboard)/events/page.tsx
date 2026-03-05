@@ -1,5 +1,7 @@
-import { EventsPage } from "@/components/pages/Events";
+"use client";
+
+import { WebEvents } from "@/components/pages/web/Events";
 
 export default function Events() {
-  return <EventsPage />;
+  return <WebEvents />;
 }
