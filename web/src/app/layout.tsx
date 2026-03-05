@@ -1,9 +1,11 @@
 import type {Metadata} from "next";
 import "./globals.css";
+import { AuthProvider } from "@/components/auth/AuthProvider";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 export const metadata: Metadata = {
-  title: "MORTAR - Phase 0",
-  description: "MORTAR Foundation - Firebase Monorepo",
+  title: "MORTAR - Learning Platform",
+  description: "MORTAR Learning Platform - Firebase Monorepo",
 };
 
 export default function RootLayout({
@@ -12,8 +14,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body>{children}</body>
+    <html lang="en" suppressHydrationWarning>
+      <body suppressHydrationWarning>
+        <ErrorBoundary>
+          <AuthProvider>{children}</AuthProvider>
+        </ErrorBoundary>
+      </body>
     </html>
   );
 }
