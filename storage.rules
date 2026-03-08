@@ -1,10 +1,25 @@
 rules_version = '2';
 
-// Craft rules based on data in your Firestore database
-// allow write: if firestore.get(
-//    /databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin;
+// Storage rules for curriculum lesson assets
 service firebase.storage {
   match /b/{bucket}/o {
+    // Lesson assets (images) - stored at: lesson_assets/{curriculumId}/{moduleId}/{chapterId}/{lessonId}/{slideId}/{filename}
+    match /lesson_assets/{curriculumId}/{moduleId}/{chapterId}/{lessonId}/{slideId}/{fileName} {
+      // Allow read access to all authenticated users (for published lessons)
+      allow read: if request.auth != null;
+      // Allow write access only to admins (superAdmin role)
+      allow write: if request.auth != null && 
+                     request.auth.token.roles != null && 
+                     'superAdmin' in request.auth.token.roles;
+    }
+    
+    // Legacy course files (for backward compatibility)
+    match /courses/{courseId}/modules/{moduleId}/lessons/{lessonId}/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    
+    // Default: deny all other access
     match /{allPaths=**} {
       allow read, write: if false;
     }

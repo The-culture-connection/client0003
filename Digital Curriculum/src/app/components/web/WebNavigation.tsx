@@ -1,14 +1,35 @@
 import { Link, useLocation, useNavigate } from "react-router";
-import { LayoutDashboard, BookOpen, FolderOpen, Award, Users, BarChart3, LogOut } from "lucide-react";
+import { LayoutDashboard, BookOpen, FolderOpen, Award, Users, BarChart3, LogOut, Shield, ShoppingBag } from "lucide-react";
 import { Button } from "../ui/button";
 import { useAuth } from "../auth/AuthProvider";
 
-const navItems = [
-  { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { path: "/curriculum", label: "Curriculum", icon: BookOpen },
-  { path: "/data-room", label: "Data Room", icon: FolderOpen },
-  { path: "/community", label: "Community Hub", icon: Users },
-  { path: "/analytics", label: "Analytics", icon: BarChart3 },
+interface NavItem {
+  path: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  roles?: string[]; // Legacy: use allowedRoles instead
+  allowedRoles?: string[];
+  deniedRoles?: string[];
+}
+
+const allNavItems: NavItem[] = [
+  { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard }, // Available to all
+  { path: "/curriculum", label: "Curriculum", icon: BookOpen }, // Available to all
+  { path: "/data-room", label: "Data Room", icon: FolderOpen }, // Available to all
+  { path: "/community", label: "Community Hub", icon: Users }, // Available to all
+  { path: "/shop", label: "Shop Mortar", icon: ShoppingBag }, // Available to all
+  { 
+    path: "/analytics", 
+    label: "Analytics", 
+    icon: BarChart3, 
+    deniedRoles: ["Digital Curriculum Students"] // Denied to Digital Curriculum Students
+  },
+  {
+    path: "/admin/auth",
+    label: "Admin",
+    icon: Shield,
+    allowedRoles: ["superAdmin"], // Only superAdmin can see
+  },
 ];
 
 export function WebNavigation() {
@@ -20,6 +41,30 @@ export function WebNavigation() {
     await signOut();
     navigate("/login");
   };
+
+  // Filter navigation items based on user roles
+  const userRoles = user?.roles || [];
+  const navItems = allNavItems.filter((item) => {
+    // If item has deniedRoles, check if user has any of them
+    if (item.deniedRoles && item.deniedRoles.length > 0) {
+      const hasDeniedRole = item.deniedRoles.some((role) => userRoles.includes(role));
+      if (hasDeniedRole) return false;
+    }
+    
+    // If item has allowedRoles, check if user has at least one
+    if (item.allowedRoles && item.allowedRoles.length > 0) {
+      const hasAllowedRole = item.allowedRoles.some((role) => userRoles.includes(role));
+      if (!hasAllowedRole) return false;
+    }
+    
+    // Legacy support: if item has roles (old prop name), treat as allowedRoles
+    if (item.roles && item.roles.length > 0) {
+      const hasRequiredRole = item.roles.some((role) => userRoles.includes(role));
+      if (!hasRequiredRole) return false;
+    }
+    
+    return true;
+  });
 
   return (
     <nav className="bg-card border-b border-border">

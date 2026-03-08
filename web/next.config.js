@@ -16,11 +16,15 @@ const nextConfig = {
     // Allow production builds to complete even with TypeScript errors (if any)
     ignoreBuildErrors: false,
   },
-  webpack: (config, { isServer }) => {
+  webpack: (config, { isServer, dir }) => {
     // Ensure path aliases are resolved correctly
+    // Use 'dir' parameter which is the absolute path to the Next.js app directory
+    const srcPath = path.resolve(dir || __dirname, 'src');
+    
+    // Set alias for @ to point to src directory
     config.resolve.alias = {
       ...config.resolve.alias,
-      '@': path.resolve(__dirname, 'src'),
+      '@': srcPath,
     };
     
     // Ensure client-side only modules are properly handled
@@ -30,6 +34,7 @@ const nextConfig = {
         fs: false,
       };
     }
+    
     return config;
   },
 };

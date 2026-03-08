@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
@@ -9,65 +10,79 @@ import {
   Users,
   CheckCircle2,
   Filter,
+  Loader2,
 } from "lucide-react";
+import { useAuth } from "../../components/auth/AuthProvider";
+import { getEvents, getRegisteredEvents, type Event } from "../../lib/events";
 
 export function WebEvents() {
-  const [filter, setFilter] = useState<"all" | "upcoming" | "registered">(
-    "all"
-  );
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [filter, setFilter] = useState<"all" | "upcoming" | "registered">("all");
+  const [events, setEvents] = useState<Event[]>([]);
+  const [registeredEvents, setRegisteredEvents] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const events = [
-    {
-      id: 1,
-      title: "Networking Workshop",
-      date: "Feb 28, 2026",
-      time: "2:00 PM - 4:00 PM",
-      location: "Main Hall",
-      attendees: 45,
-      maxAttendees: 50,
-      registered: true,
-      type: "workshop",
-    },
-    {
-      id: 2,
-      title: "Guest Speaker: Tech Entrepreneurship",
-      date: "Mar 2, 2026",
-      time: "6:00 PM - 7:30 PM",
-      location: "Auditorium",
-      attendees: 120,
-      maxAttendees: 150,
-      registered: false,
-      type: "speaker",
-    },
-    {
-      id: 3,
-      title: "Career Fair 2026",
-      date: "Mar 5, 2026",
-      time: "10:00 AM - 4:00 PM",
-      location: "Exhibition Center",
-      attendees: 200,
-      maxAttendees: 300,
-      registered: true,
-      type: "fair",
-    },
-    {
-      id: 4,
-      title: "Alumni Mixer",
-      date: "Mar 8, 2026",
-      time: "7:00 PM - 9:00 PM",
-      location: "Rooftop Lounge",
-      attendees: 30,
-      maxAttendees: 40,
-      registered: false,
-      type: "social",
-    },
-  ];
+  useEffect(() => {
+    loadEvents();
+  }, [user]);
+
+  const loadEvents = async () => {
+    setLoading(true);
+    try {
+      const [allEvents, userRegistered] = await Promise.all([
+        getEvents(),
+        user?.uid ? getRegisteredEvents(user.uid) : Promise.resolve([]),
+      ]);
+
+      setEvents(allEvents);
+      setRegisteredEvents(userRegistered.map((e) => e.id));
+    } catch (error) {
+      console.error("Error loading events:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredEvents = events.filter((event) => {
-    if (filter === "registered") return event.registered;
-    if (filter === "upcoming") return !event.registered;
+    if (filter === "registered") {
+      return registeredEvents.includes(event.id);
+    }
+    if (filter === "upcoming") {
+      const eventDate = event.date.toDate ? event.date.toDate() : new Date(event.date);
+      return eventDate >= new Date();
+    }
     return true;
   });
+
+  const formatDate = (timestamp: any): string => {
+    if (!timestamp) return "TBD";
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return date.toLocaleDateString("en-US", {
+      weekday: "short",
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  const isUpcoming = (event: Event): boolean => {
+    const eventDate = event.date.toDate ? event.date.toDate() : new Date(event.date);
+    return eventDate >= new Date();
+  };
+
+  if (loading) {
+    return (
+      <div className="p-8">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <Loader2 className="w-8 h-8 animate-spin text-accent mx-auto mb-4" />
+            <p className="text-muted-foreground">Loading events...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8">
@@ -121,82 +136,85 @@ export function WebEvents() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {filteredEvents.map((event) => (
-          <Card key={event.id} className="p-6 bg-card border-border">
-            <div className="mb-4">
-              <div className="flex items-start justify-between mb-3">
-                <h3 className="text-xl text-foreground font-medium">
-                  {event.title}
-                </h3>
-                {event.registered && (
-                  <Badge className="bg-accent text-accent-foreground">
-                    <CheckCircle2 className="w-3 h-3 mr-1" />
-                    Registered
-                  </Badge>
-                )}
-              </div>
+        {filteredEvents.map((event) => {
+          const isRegistered = registeredEvents.includes(event.id);
+          const registeredCount = event.registered_users?.length || 0;
+          const spotsLeft = event.total_spots - registeredCount;
 
-              <div className="space-y-2 text-sm text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4" />
-                  <span>{event.date}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4" />
-                  <span>{event.time}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4" />
-                  <span>{event.location}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Users className="w-4 h-4" />
-                  <span>
-                    {event.attendees}/{event.maxAttendees} attending
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-4 border-t border-border">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="text-sm text-muted-foreground mb-2">
-                    Spots Available
-                  </div>
-                  <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-accent"
-                      style={{
-                        width: `${
-                          (event.attendees / event.maxAttendees) * 100
-                        }%`,
-                      }}
-                    />
-                  </div>
-                </div>
-                <div className="ml-4">
-                  {event.registered ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="border-border text-foreground"
-                    >
-                      View Details
-                    </Button>
-                  ) : (
-                    <Button
-                      size="sm"
-                      className="bg-accent hover:bg-accent/90 text-accent-foreground"
-                    >
-                      Register
-                    </Button>
+          return (
+            <Card
+              key={event.id}
+              className="p-6 bg-card border-border hover:shadow-lg transition-shadow cursor-pointer"
+              onClick={() => navigate(`/events/${event.id}`)}
+            >
+              <div className="mb-4">
+                <div className="flex items-start justify-between mb-3">
+                  <h3 className="text-xl text-foreground font-medium flex-1">
+                    {event.title}
+                  </h3>
+                  {isRegistered && (
+                    <Badge className="bg-accent text-accent-foreground shrink-0">
+                      <CheckCircle2 className="w-3 h-3 mr-1" />
+                      Registered
+                    </Badge>
                   )}
                 </div>
+
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4" />
+                    <span>{formatDate(event.date)}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4" />
+                    <span>{event.time}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4" />
+                    <span>{event.location}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4" />
+                    <span>
+                      {registeredCount}/{event.total_spots} attending
+                      {spotsLeft > 0 && ` • ${spotsLeft} spots left`}
+                    </span>
+                  </div>
+                </div>
               </div>
-            </div>
-          </Card>
-        ))}
+
+              <div className="pt-4 border-t border-border">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="text-sm text-muted-foreground mb-2">
+                      Spots Available
+                    </div>
+                    <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-accent"
+                        style={{
+                          width: `${(registeredCount / event.total_spots) * 100}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <div className="ml-4">
+                    <Button
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/events/${event.id}`);
+                      }}
+                      className="bg-accent hover:bg-accent/90 text-accent-foreground"
+                    >
+                      {isRegistered ? "View Details" : "View & Register"}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          );
+        })}
       </div>
 
       {filteredEvents.length === 0 && (
@@ -204,7 +222,9 @@ export function WebEvents() {
           <Calendar className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
           <h3 className="text-lg text-foreground mb-2">No events found</h3>
           <p className="text-muted-foreground">
-            Try adjusting your filters to see more events
+            {filter === "registered"
+              ? "You haven't registered for any events yet"
+              : "Try adjusting your filters to see more events"}
           </p>
         </Card>
       )}

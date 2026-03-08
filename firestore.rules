@@ -18,7 +18,7 @@ service cloud.firestore {
     }
     
     function isAdmin() {
-      return hasRole('Admin');
+      return hasRole('Admin') || hasRole('superAdmin');
     }
     
     function hasPermission(permission) {
@@ -60,8 +60,29 @@ service cloud.firestore {
           allow write: if isAdmin();
           
           match /lessons/{lessonId} {
-            allow read: if isAuthenticated();
+            // Learners can read published lessons, admins can read all
+            allow read: if isAuthenticated() && 
+                          (resource.data.is_published == true || isAdmin());
+            // Only admins can write lessons
             allow write: if isAdmin();
+            
+            // Slides subcollection
+            match /slides/{slideId} {
+              // Learners can read slides of published lessons, admins can read all
+              allow read: if isAuthenticated() && 
+                            (get(/databases/$(database)/documents/curricula/$(curriculumId)/modules/$(moduleId)/chapters/$(chapterId)/lessons/$(lessonId)).data.is_published == true || isAdmin());
+              // Only admins can write slides
+              allow write: if isAdmin();
+              
+              // Blocks subcollection
+              match /blocks/{blockId} {
+                // Learners can read blocks of published lessons, admins can read all
+                allow read: if isAuthenticated() && 
+                              (get(/databases/$(database)/documents/curricula/$(curriculumId)/modules/$(moduleId)/chapters/$(chapterId)/lessons/$(lessonId)).data.is_published == true || isAdmin());
+                // Only admins can write blocks
+                allow write: if isAdmin();
+              }
+            }
           }
         }
       }

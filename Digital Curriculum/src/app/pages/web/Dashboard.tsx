@@ -16,7 +16,10 @@ import {
   Zap,
   MessageSquare,
   Target,
+  ShoppingBag,
+  ArrowRight,
 } from "lucide-react";
+import { useNavigate } from "react-router";
 
 export function WebDashboard() {
   return (
@@ -462,6 +465,40 @@ export function WebDashboard() {
                 <span className="text-sm font-bold text-accent">5</span>
               </div>
             </div>
+          </Card>
+
+          {/* Shop Mortar Widget */}
+          <Card className="p-5 bg-gradient-to-br from-accent/10 via-card to-card border-accent/30 shadow-md hover:shadow-lg transition-shadow">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <ShoppingBag className="w-5 h-5 text-accent" />
+                <h2 className="text-lg font-bold text-foreground">Shop Mortar</h2>
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              Discover resources, courses, and services to grow your business
+            </p>
+            <div className="space-y-2 mb-4">
+              <div className="flex items-center gap-2 text-sm text-foreground">
+                <span>📦</span>
+                <span>Business Toolkits & Templates</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-foreground">
+                <span>👥</span>
+                <span>1-on-1 Mentorship Sessions</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-foreground">
+                <span>📚</span>
+                <span>Advanced Courses</span>
+              </div>
+            </div>
+            <Button
+              onClick={() => navigate("/shop")}
+              className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+            >
+              Browse Shop
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
           </Card>
         </div>
       </div>
