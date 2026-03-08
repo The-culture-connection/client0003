@@ -5,6 +5,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router";
+import { DndProvider, useDrag, useDrop } from "react-dnd";
+import { HTML5Backend } from "react-dnd-html5-backend";
 import { useAuth } from "../../components/auth/AuthProvider";
 import {
   getLesson,
@@ -28,6 +30,7 @@ import {
   type BlockType,
 } from "../../lib/curriculum";
 import { SlideRenderer } from "../../components/curriculum/SlideRenderer";
+import { DraggableBlockList } from "./DraggableBlockList";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -55,6 +58,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/ta
 type DeviceView = "desktop" | "tablet" | "mobile";
 
 export function LessonDeckBuilder() {
+  return (
+    <DndProvider backend={HTML5Backend}>
+      <LessonDeckBuilderContent />
+    </DndProvider>
+  );
+}
+
+function LessonDeckBuilderContent() {
   const { curriculumId, moduleId, chapterId, lessonId } = useParams<{
     curriculumId: string;
     moduleId: string;
@@ -84,6 +95,20 @@ export function LessonDeckBuilder() {
         const lessonData = await getLesson(curriculumId, moduleId, chapterId, lessonId);
         if (lessonData) {
           setLesson(lessonData);
+          
+          // Show import status if this is an imported lesson
+          if (lessonData.import_status === "processing") {
+            // Poll for status update
+            const checkStatus = setInterval(async () => {
+              const updated = await getLesson(curriculumId, moduleId, chapterId, lessonId);
+              if (updated && updated.import_status !== "processing") {
+                clearInterval(checkStatus);
+                setLesson(updated);
+              }
+            }, 2000);
+            
+            return () => clearInterval(checkStatus);
+          }
         }
 
         const slidesData = await getSlides(curriculumId, moduleId, chapterId, lessonId);
@@ -123,7 +148,7 @@ export function LessonDeckBuilder() {
     loadSlideData();
   }, [curriculumId, moduleId, chapterId, lessonId, selectedSlideId, slides]);
 
-  const handleAddSlide = async (layoutType: LayoutType) => {
+  const handleAddSlide = async () => {
     if (!curriculumId || !moduleId || !chapterId || !lessonId) return;
 
     try {
@@ -133,7 +158,6 @@ export function LessonDeckBuilder() {
         moduleId,
         chapterId,
         lessonId,
-        layoutType,
         newOrder
       );
       
@@ -328,24 +352,10 @@ export function LessonDeckBuilder() {
           <Card className="p-4">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold">Slides</h2>
-              <Select onValueChange={(value) => handleAddSlide(value as LayoutType)}>
-                <SelectTrigger className="w-[180px]">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Slide
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="title_only">Title Only</SelectItem>
-                  <SelectItem value="text_only">Text Only</SelectItem>
-                  <SelectItem value="title_body">Title + Body</SelectItem>
-                  <SelectItem value="title_left_image_right">Title Left, Image Right</SelectItem>
-                  <SelectItem value="image_left_text_right">Image Left, Text Right</SelectItem>
-                  <SelectItem value="full_image_with_caption">Full Image + Caption</SelectItem>
-                  <SelectItem value="two_column_text">Two Column Text</SelectItem>
-                  <SelectItem value="bullet_list_with_image">Bullet List + Image</SelectItem>
-                  <SelectItem value="centered_callout">Centered Callout</SelectItem>
-                  <SelectItem value="quote_slide">Quote Slide</SelectItem>
-                </SelectContent>
-              </Select>
+              <Button onClick={handleAddSlide} className="bg-accent hover:bg-accent/90">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Slide
+              </Button>
             </div>
 
             {slides.length === 0 ? (
@@ -367,7 +377,7 @@ export function LessonDeckBuilder() {
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium">Slide {index + 1}</span>
                         <span className="text-xs text-muted-foreground">
-                          {slide.layout_type.replace(/_/g, " ")}
+                          {slideBlocks.length} block{slideBlocks.length !== 1 ? "s" : ""}
                         </span>
                       </div>
                       <Button
@@ -628,6 +638,7 @@ function SlideEditorPanel({
               Add Block
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="title">Title</SelectItem>
               <SelectItem value="text">Text</SelectItem>
               <SelectItem value="heading">Heading</SelectItem>
               <SelectItem value="image">Image</SelectItem>
@@ -643,32 +654,22 @@ function SlideEditorPanel({
             No blocks yet. Add your first content block.
           </div>
         ) : (
-          <div className="space-y-2">
-            {blocks.map((block) => (
-              <div
-                key={block.id}
-                className={`
-                  p-3 border rounded-lg cursor-pointer transition-colors
-                  ${selectedBlockId === block.id ? "border-accent bg-accent/10" : "border-border"}
-                `}
-                onClick={() => setSelectedBlockId(block.id || null)}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium capitalize">{block.type}</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (block.id) onDeleteBlock(block.id);
-                    }}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
+          <DraggableBlockList
+            blocks={blocks}
+            selectedBlockId={selectedBlockId}
+            onSelectBlock={setSelectedBlockId}
+            onDeleteBlock={onDeleteBlock}
+            onReorderBlocks={async (newOrder) => {
+              // Update block orders - newOrder is array of block IDs in new order
+              for (let i = 0; i < newOrder.length; i++) {
+                const blockId = newOrder[i];
+                const block = blocks.find((b) => b.id === blockId);
+                if (block && block.id && block.order !== i) {
+                  await onUpdateBlock(block.id, { order: i });
+                }
+              }
+            }}
+          />
         )}
       </div>
 
@@ -720,7 +721,7 @@ function BlockEditorPanel({ block, onUpdate, onUploadImage }: BlockEditorPanelPr
     <Card className="p-4 mt-4">
       <h3 className="font-semibold mb-4">Edit Block</h3>
       <div className="space-y-4">
-        {block.type === "text" || block.type === "heading" || block.type === "quote" || block.type === "callout" ? (
+        {block.type === "title" || block.type === "text" || block.type === "heading" || block.type === "quote" || block.type === "callout" ? (
           <>
             <div>
               <Label>Content</Label>

@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router";
-import { getSlides, getBlocks, getLesson, type Slide, type Block, type Lesson } from "../../lib/curriculum";
+import { getSlides, getBlocks, getLesson, getLessonImages, type Slide, type Block, type Lesson, type LessonImage } from "../../lib/curriculum";
 import { SlideRenderer } from "../../components/curriculum/SlideRenderer";
 import { Button } from "../../components/ui/button";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
@@ -17,10 +17,14 @@ export function LessonPlayer() {
   
   const [lesson, setLesson] = useState<Lesson | null>(null);
   const [slides, setSlides] = useState<Slide[]>([]);
+  const [lessonImages, setLessonImages] = useState<LessonImage[]>([]);
   const [slideBlocks, setSlideBlocks] = useState<Record<string, Block[]>>({});
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const isImageLesson = lesson?.content_type === "images";
+  const itemCount = isImageLesson ? lessonImages.length : slides.length;
 
   // Extract IDs from lesson (assuming lessonId format includes all IDs or we need to pass them)
   // For now, we'll need to modify this to work with the actual route structure
@@ -58,19 +62,21 @@ export function LessonPlayer() {
         }
         setLesson(lessonData);
 
-        // Load slides
-        const slidesData = await getSlides(curriculumId, moduleId, chapterId, lessonId);
-        setSlides(slidesData);
-
-        // Load blocks for each slide
-        const blocksMap: Record<string, Block[]> = {};
-        for (const slide of slidesData) {
-          if (slide.id) {
-            const blocks = await getBlocks(curriculumId, moduleId, chapterId, lessonId, slide.id);
-            blocksMap[slide.id] = blocks;
+        if (lessonData.content_type === "images") {
+          const images = await getLessonImages(curriculumId, moduleId, chapterId, lessonId);
+          setLessonImages(images);
+        } else {
+          const slidesData = await getSlides(curriculumId, moduleId, chapterId, lessonId);
+          setSlides(slidesData);
+          const blocksMap: Record<string, Block[]> = {};
+          for (const slide of slidesData) {
+            if (slide.id) {
+              const blocks = await getBlocks(curriculumId, moduleId, chapterId, lessonId, slide.id);
+              blocksMap[slide.id] = blocks;
+            }
           }
+          setSlideBlocks(blocksMap);
         }
-        setSlideBlocks(blocksMap);
 
         setIsLoading(false);
       } catch (err) {
@@ -85,9 +91,10 @@ export function LessonPlayer() {
 
   const currentSlide = slides[currentSlideIndex];
   const currentBlocks = currentSlide ? slideBlocks[currentSlide.id || ""] || [] : [];
+  const currentImage = isImageLesson ? lessonImages[currentSlideIndex] : null;
 
   const handleNext = () => {
-    if (currentSlideIndex < slides.length - 1) {
+    if (currentSlideIndex < itemCount - 1) {
       setCurrentSlideIndex(currentSlideIndex + 1);
       window.scrollTo(0, 0);
     }
@@ -100,7 +107,7 @@ export function LessonPlayer() {
     }
   };
 
-  const progress = slides.length > 0 ? ((currentSlideIndex + 1) / slides.length) * 100 : 0;
+  const progress = itemCount > 0 ? ((currentSlideIndex + 1) / itemCount) * 100 : 0;
 
   if (isLoading) {
     return (
@@ -121,10 +128,12 @@ export function LessonPlayer() {
     );
   }
 
-  if (!lesson || slides.length === 0) {
+  if (!lesson || itemCount === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-screen space-y-4">
-        <p className="text-muted-foreground">Lesson not found or has no slides</p>
+        <p className="text-muted-foreground">
+          {!lesson ? "Lesson not found or not published" : "Lesson has no content"}
+        </p>
         <Button variant="outline" onClick={() => navigate(-1)}>
           Go Back
         </Button>
@@ -144,7 +153,7 @@ export function LessonPlayer() {
             <h1 className="text-lg font-semibold">{lesson.title}</h1>
           </div>
           <div className="text-sm text-gray-400">
-            Slide {currentSlideIndex + 1} of {slides.length}
+            {currentSlideIndex + 1} of {itemCount}
           </div>
         </div>
         
@@ -159,11 +168,19 @@ export function LessonPlayer() {
 
       {/* Slide Content */}
       <div className="min-h-[calc(100vh-80px)]">
-        {currentSlide ? (
+        {isImageLesson && currentImage ? (
+          <div className="w-full h-full flex items-center justify-center p-8">
+            <img
+              src={currentImage.image_url}
+              alt={currentImage.alt_text || `Slide ${currentSlideIndex + 1}`}
+              className="max-w-full max-h-full object-contain"
+            />
+          </div>
+        ) : currentSlide ? (
           <SlideRenderer slide={currentSlide} blocks={currentBlocks} />
         ) : (
           <div className="flex items-center justify-center h-full">
-            <p className="text-gray-400">No slide content</p>
+            <p className="text-gray-400">No content</p>
           </div>
         )}
       </div>
@@ -183,7 +200,7 @@ export function LessonPlayer() {
           variant="secondary"
           size="lg"
           onClick={handleNext}
-          disabled={currentSlideIndex === slides.length - 1}
+          disabled={currentSlideIndex === itemCount - 1}
         >
           Next
           <ChevronRight className="w-5 h-5 ml-2" />

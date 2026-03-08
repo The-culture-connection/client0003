@@ -20,11 +20,6 @@ export function SlideRenderer({ slide, blocks, className }: SlideRendererProps) 
   // Get blocks sorted by order
   const sortedBlocks = [...blocks].sort((a, b) => (a.order || 0) - (b.order || 0));
   
-  // Get title and body blocks based on layout
-  const titleBlock = sortedBlocks.find((b) => b.type === "heading");
-  const bodyBlocks = sortedBlocks.filter((b) => b.type !== "heading" && b.type !== "image");
-  const imageBlocks = sortedBlocks.filter((b) => b.type === "image");
-  
   return (
     <div
       className={cn("w-full h-full min-h-screen p-8 flex flex-col", className)}
@@ -32,19 +27,15 @@ export function SlideRenderer({ slide, blocks, className }: SlideRendererProps) 
     >
       <div
         className={cn(
-          "flex-1 flex flex-col",
+          "flex-1 flex flex-col justify-center space-y-6",
           slide.text_align === "center" && "items-center text-center",
           slide.text_align === "right" && "items-end text-right",
           slide.text_align === "justify" && "text-justify"
         )}
       >
-        {renderLayout(slide.layout_type, {
-          slide,
-          titleBlock,
-          bodyBlocks,
-          imageBlocks,
-          sortedBlocks,
-        })}
+        {sortedBlocks.map((block) => (
+          <BlockRenderer key={block.id} block={block} />
+        ))}
       </div>
     </div>
   );

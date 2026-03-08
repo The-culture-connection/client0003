@@ -7,6 +7,7 @@ import { Textarea } from "../components/ui/textarea";
 import { Label } from "../components/ui/label";
 import { Badge } from "../components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
+import { Separator } from "../components/ui/separator";
 import {
   Users,
   MessageSquare,
@@ -87,6 +88,7 @@ interface DMReply {
 }
 
 export function AdminPage() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [groups, setGroups] = useState<Group[]>([]);
   const [dms, setDms] = useState<DirectMessage[]>([]);
@@ -118,19 +120,9 @@ export function AdminPage() {
   const [newGroupStatus, setNewGroupStatus] = useState<"Open" | "Closed">("Open");
   const [creatingGroup, setCreatingGroup] = useState(false);
 
-  // Course creation state
+  // Course state
   const [courses, setCourses] = useState<Course[]>([]);
   const [loadingCourses, setLoadingCourses] = useState(false);
-  const [creatingCourse, setCreatingCourse] = useState(false);
-  const [courseTitle, setCourseTitle] = useState("");
-  const [courseDescription, setCourseDescription] = useState("");
-  const [courseModules, setCourseModules] = useState<Array<{ title: string; description: string; price: string; durationMonths: string; lessons: Array<{ title: string }> }>>([]);
-  const [assignmentType, setAssignmentType] = useState<"role" | "user">("role");
-  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
-  const [userEmailInput, setUserEmailInput] = useState("");
-  const [userEmailError, setUserEmailError] = useState<string | null>(null);
-  const [validatedUserId, setValidatedUserId] = useState<string | null>(null);
-  const [availableUsers, setAvailableUsers] = useState<Array<{ uid: string; email: string | null; displayName: string | null }>>([]);
 
   useEffect(() => {
     loadData();
@@ -341,196 +333,7 @@ export function AdminPage() {
     return userDoc.id;
   };
 
-  const handleValidateEmail = async () => {
-    if (!userEmailInput.trim()) {
-      setUserEmailError("Please enter a user email");
-      return;
-    }
-
-    try {
-      const userId = await validateAndGetUserId(userEmailInput.trim());
-      setValidatedUserId(userId);
-      setUserEmailError(null);
-    } catch (error: any) {
-      setValidatedUserId(null);
-      setUserEmailError(error.message || "User does not exist");
-    }
-  };
-
-  const handleCreateCourse = async () => {
-    if (!courseTitle || courseModules.length === 0 || !user) {
-      alert("Please fill in all required fields");
-      return;
-    }
-
-    // Validate all modules and lessons
-    for (const module of courseModules) {
-      if (!module.title || !module.price || !module.durationMonths || module.lessons.length === 0) {
-        alert("All modules must have a title, price, duration (months), and at least one lesson");
-        return;
-      }
-      for (const lesson of module.lessons) {
-        if (!lesson.title) {
-          alert("All lessons must have a title");
-          return;
-        }
-      }
-    }
-
-    // Validate user email if assignment type is "user"
-    let assignedUserIds: string[] = [];
-    if (assignmentType === "user") {
-      if (!userEmailInput.trim()) {
-        setUserEmailError("Please enter a user email");
-        return;
-      }
-      if (!validatedUserId) {
-        setUserEmailError("Please validate the email address first");
-        return;
-      }
-      assignedUserIds = [validatedUserId];
-    }
-
-    setCreatingCourse(true);
-    setUserEmailError(null);
-    try {
-      // Create course structure
-      const modules: Module[] = courseModules.map((moduleData, moduleIndex) => {
-        const module: any = {
-          title: moduleData.title,
-          order: moduleIndex + 1,
-          price: parseFloat(moduleData.price),
-          durationMonths: parseFloat(moduleData.durationMonths) || 0,
-          lessons: moduleData.lessons.map((lessonData, lessonIndex) => ({
-            title: lessonData.title,
-            order: lessonIndex + 1,
-          })),
-        };
-        
-        // Only add description if it has a value
-        if (moduleData.description && moduleData.description.trim()) {
-          module.description = moduleData.description.trim();
-        }
-        
-        return module;
-      });
-
-      // Prepare course data, only include fields with actual values (no undefined)
-      const courseData: any = {
-        title: courseTitle,
-        currency: "USD",
-        modules,
-        createdBy: user.uid,
-        status: "published",
-      };
-
-      // Only add description if it has a value
-      if (courseDescription && courseDescription.trim()) {
-        courseData.description = courseDescription.trim();
-      }
-
-      // Only add assignment fields if they have values (avoid undefined)
-      if (assignmentType === "role" && selectedRoles.length > 0) {
-        courseData.assignedRoles = selectedRoles;
-      } else if (assignmentType === "user" && assignedUserIds.length > 0) {
-        courseData.assignedUserIds = assignedUserIds;
-      }
-
-      const courseId = await createCourse(courseData);
-
-      // Create curriculum structure in the new system
-      // First, create a curriculum (one curriculum per course for now)
-      const curriculumId = await createCurriculum(
-        courseTitle,
-        courseDescription || "",
-        user.uid
-      );
-
-      // Store curriculum structure mapping in course document
-      const curriculumMapping: {
-        curriculumId: string;
-        modules: Array<{
-          moduleId: string;
-          chapters: Array<{
-            chapterId: string;
-            lessons: Array<{ lessonId: string; title: string }>;
-          }>;
-        }>;
-      } = {
-        curriculumId,
-        modules: [],
-      };
-
-      // Create modules, chapters, and lessons in the new curriculum system
-      for (let moduleIndex = 0; moduleIndex < courseModules.length; moduleIndex++) {
-        const moduleData = courseModules[moduleIndex];
-        
-        // Create module in curriculum
-        const moduleId = await createModule(
-          curriculumId,
-          moduleData.title,
-          moduleIndex + 1
-        );
-
-        // Create a default chapter for each module (you can expand this later)
-        const chapterId = await createChapter(
-          curriculumId,
-          moduleId,
-          "Main Chapter",
-          1
-        );
-
-        const lessons: Array<{ lessonId: string; title: string }> = [];
-
-        // Create lessons in the new system
-        for (let lessonIndex = 0; lessonIndex < moduleData.lessons.length; lessonIndex++) {
-          const lessonData = moduleData.lessons[lessonIndex];
-          
-          const lessonId = await createLesson(
-            curriculumId,
-            moduleId,
-            chapterId,
-            lessonData.title,
-            lessonIndex + 1,
-            user.uid
-          );
-          
-          lessons.push({ lessonId, title: lessonData.title });
-        }
-
-        curriculumMapping.modules.push({
-          moduleId,
-          chapters: [{ chapterId, lessons }],
-        });
-      }
-
-      // Store curriculum mapping in course document
-      await updateCourse(courseId, {
-        curriculumMapping: curriculumMapping as any,
-      });
-
-      // Reset form
-      setCourseTitle("");
-      setCourseDescription("");
-      setCourseModules([]);
-      setSelectedRoles([]);
-      setUserEmailInput("");
-      setUserEmailError(null);
-      setValidatedUserId(null);
-      setAssignmentType("role");
-
-      // Reload courses
-      await loadCourses();
-      
-      // Navigate to course detail page
-      navigate(`/courses/${courseId}`);
-    } catch (error) {
-      console.error("Error creating course:", error);
-      alert("Failed to create course. Please try again.");
-    } finally {
-      setCreatingCourse(false);
-    }
-  };
+  // Course creation is now handled in CourseBuilder component
 
   const handleRejectMember = async (groupId: string, userId: string) => {
     try {
@@ -1481,358 +1284,29 @@ export function AdminPage() {
 
         {/* Courses Tab */}
         <TabsContent value="courses" className="space-y-6">
-          <Card className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-foreground">Create New Course</h2>
+          <Card className="p-8 bg-gradient-to-br from-accent/10 via-card to-card border-accent/30">
+            <div className="text-center space-y-6">
+              <div className="space-y-2">
+                <h2 className="text-2xl font-bold text-foreground">Course Management</h2>
+                <p className="text-muted-foreground">
+                  Create and manage courses with modules, lessons, and content
+                </p>
+              </div>
+              
               <Button
-                onClick={() => navigate("/admin/courses/create")}
-                className="bg-accent hover:bg-accent/90"
+                onClick={() => navigate("/admin/courses/builder")}
+                size="lg"
+                className="bg-accent hover:bg-accent/90 text-accent-foreground text-lg px-8 py-6"
               >
-                <Plus className="w-4 h-4 mr-2" />
-                Start Course Wizard
+                <Upload className="w-5 h-5 mr-2" />
+                Upload a Course
               </Button>
-            </div>
-            <p className="text-muted-foreground mb-4">
-              Use the step-by-step wizard to create your course, or use the form below for quick creation.
-            </p>
-            
-            <div className="mb-6">
-              <Separator />
-            </div>
-            
-            <h3 className="text-lg font-semibold text-foreground mb-4">Quick Create (Legacy)</h3>
-            
-            <div className="space-y-6">
-              {/* Basic Course Info */}
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="course-title" className="text-foreground">
-                    Course Title *
-                  </Label>
-                  <Input
-                    id="course-title"
-                    placeholder="Enter course title"
-                    value={courseTitle}
-                    onChange={(e) => setCourseTitle(e.target.value)}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="course-description" className="text-foreground">
-                    Description
-                  </Label>
-                  <Textarea
-                    id="course-description"
-                    placeholder="Enter course description"
-                    value={courseDescription}
-                    onChange={(e) => setCourseDescription(e.target.value)}
-                    rows={3}
-                  />
-                </div>
-
-              </div>
-
-              {/* Modules */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label className="text-foreground text-lg font-semibold">Modules</Label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setCourseModules([
-                        ...courseModules,
-                        {
-                          title: "",
-                          description: "",
-                          price: "",
-                          durationMonths: "",
-                          lessons: [{ title: "" }],
-                        },
-                      ]);
-                    }}
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Module
-                  </Button>
-                </div>
-
-                {courseModules.map((module, moduleIndex) => (
-                  <Card key={moduleIndex} className="p-4 border-border">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-semibold text-foreground">Module {moduleIndex + 1}</h3>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setCourseModules(courseModules.filter((_, i) => i !== moduleIndex));
-                          }}
-                        >
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label className="text-foreground">Module Title *</Label>
-                        <Input
-                          placeholder="Enter module title"
-                          value={module.title}
-                          onChange={(e) => {
-                            const updated = [...courseModules];
-                            updated[moduleIndex].title = e.target.value;
-                            setCourseModules(updated);
-                          }}
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label className="text-foreground">Module Description</Label>
-                        <Textarea
-                          placeholder="Enter module description"
-                          value={module.description}
-                          onChange={(e) => {
-                            const updated = [...courseModules];
-                            updated[moduleIndex].description = e.target.value;
-                            setCourseModules(updated);
-                          }}
-                          rows={2}
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label className="text-foreground">Module Price ($) *</Label>
-                          <Input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            placeholder="0.00"
-                            value={module.price}
-                            onChange={(e) => {
-                              const updated = [...courseModules];
-                              updated[moduleIndex].price = e.target.value;
-                              setCourseModules(updated);
-                            }}
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label className="text-foreground">Duration (months) *</Label>
-                          <Input
-                            type="number"
-                            min="0"
-                            step="0.1"
-                            placeholder="0"
-                            value={module.durationMonths}
-                            onChange={(e) => {
-                              const updated = [...courseModules];
-                              updated[moduleIndex].durationMonths = e.target.value;
-                              setCourseModules(updated);
-                            }}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Lessons */}
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-foreground font-medium">Lessons</Label>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              const updated = [...courseModules];
-                              updated[moduleIndex].lessons.push({ title: "" });
-                              setCourseModules(updated);
-                            }}
-                          >
-                            <Plus className="w-4 h-4 mr-2" />
-                            Add Lesson
-                          </Button>
-                        </div>
-
-                        {module.lessons.map((lesson, lessonIndex) => (
-                          <Card key={lessonIndex} className="p-3 border-border bg-muted/30">
-                            <div className="space-y-3">
-                              <div className="flex items-center justify-between">
-                                <Label className="text-sm font-medium">Lesson {lessonIndex + 1}</Label>
-                                {module.lessons.length > 1 && (
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => {
-                                      const updated = [...courseModules];
-                                      updated[moduleIndex].lessons = updated[moduleIndex].lessons.filter(
-                                        (_, i) => i !== lessonIndex
-                                      );
-                                      setCourseModules(updated);
-                                    }}
-                                  >
-                                    <X className="w-3 h-3" />
-                                  </Button>
-                                )}
-                              </div>
-
-                              <div className="space-y-2">
-                                <Label className="text-sm">Lesson Title *</Label>
-                                <Input
-                                  placeholder="Enter lesson title"
-                                  value={lesson.title}
-                                  onChange={(e) => {
-                                    const updated = [...courseModules];
-                                    updated[moduleIndex].lessons[lessonIndex].title = e.target.value;
-                                    setCourseModules(updated);
-                                  }}
-                                />
-                              </div>
-
-                              <div className="space-y-2">
-                                <Label className="text-sm">Lesson Content</Label>
-                                <div className="flex items-center gap-2">
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => {
-                                      // Navigate to lesson deck builder
-                                      // First, we need to ensure the curriculum/module/chapter/lesson structure exists
-                                      // This will be handled when the course is created
-                                      alert("Please create the course first, then click 'Build Lesson Content' from the course list to create lesson slides.");
-                                    }}
-                                    className="text-sm"
-                                  >
-                                    <BookOpen className="w-4 h-4 mr-2" />
-                                    Build Lesson Content
-                                  </Button>
-                                  <p className="text-xs text-muted-foreground">
-                                    Create slides after course is created
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                          </Card>
-                        ))}
-                      </div>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-
-              {/* Assignment */}
-              <div className="space-y-4">
-                <Label className="text-foreground text-lg font-semibold">Assignment</Label>
-                
-                <div className="space-y-2">
-                  <Label className="text-foreground">Assign To</Label>
-                  <select
-                    value={assignmentType}
-                    onChange={(e) => {
-                      setAssignmentType(e.target.value as "role" | "user");
-                      setSelectedRoles([]);
-                      setUserEmailInput("");
-                      setUserEmailError(null);
-                      setValidatedUserId(null);
-                    }}
-                    className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
-                  >
-                    <option value="role">Role</option>
-                    <option value="user">Specific Users</option>
-                  </select>
-                </div>
-
-                {assignmentType === "role" ? (
-                  <div className="space-y-2">
-                    <Label className="text-foreground">Select Roles</Label>
-                    <div className="space-y-2">
-                      {["Digital Curriculum Students", "Digital Curriculum Alumni", "superAdmin"].map((role) => (
-                        <div key={role} className="flex items-center space-x-2">
-                          <input
-                            type="checkbox"
-                            id={`role-${role}`}
-                            checked={selectedRoles.includes(role)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedRoles([...selectedRoles, role]);
-                              } else {
-                                setSelectedRoles(selectedRoles.filter((r) => r !== role));
-                              }
-                            }}
-                            className="rounded border-border"
-                          />
-                          <Label htmlFor={`role-${role}`} className="text-sm cursor-pointer">
-                            {role}
-                          </Label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <Label htmlFor="user-email" className="text-foreground">User Email *</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="user-email"
-                        type="email"
-                        placeholder="user@example.com"
-                        value={userEmailInput}
-                        onChange={(e) => {
-                          setUserEmailInput(e.target.value);
-                          setUserEmailError(null);
-                          setValidatedUserId(null);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            handleValidateEmail();
-                          }
-                        }}
-                        className="flex-1"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={handleValidateEmail}
-                        disabled={!userEmailInput.trim()}
-                      >
-                        Validate
-                      </Button>
-                    </div>
-                    {userEmailError && (
-                      <p className="text-sm text-destructive">{userEmailError}</p>
-                    )}
-                    {!userEmailError && validatedUserId && (
-                      <p className="text-sm text-green-600">✓ Email validated</p>
-                    )}
-                    <p className="text-xs text-muted-foreground">
-                      Enter the email address and click "Validate" to verify the user exists. You can also press Enter.
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Submit Button */}
-              <Button
-                onClick={handleCreateCourse}
-                disabled={creatingCourse || !courseTitle || courseModules.length === 0 || courseModules.some(m => !m.title || !m.price || !m.durationMonths)}
-                className="w-full"
-              >
-                {creatingCourse ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Creating Course...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="w-4 h-4 mr-2" />
-                    Create Course
-                  </>
-                )}
-              </Button>
+              
+              <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                Click above to create a new course. You'll be able to add course metadata, 
+                create modules with pricing, add lessons, and upload PowerPoint files to automatically 
+                generate lesson content.
+              </p>
             </div>
           </Card>
 

@@ -31,7 +31,6 @@ import { useAuth } from "../../components/auth/AuthProvider";
 import { getCoursesByUserId, getCoursesByRole, type Course } from "../../lib/courses";
 import { getAllCourseProgress, calculateCourseProgress, type CourseProgress } from "../../lib/courseProgress";
 import { getCurrentUserWithRoles } from "../../lib/auth";
-import { SlideViewer } from "../../components/courses/SlideViewer";
 
 export function WebCurriculum() {
   const navigate = useNavigate();
@@ -47,8 +46,6 @@ export function WebCurriculum() {
   const [userApplication, setUserApplication] = useState<GraduationApplication | null>(null);
   const [loadingApplication, setLoadingApplication] = useState(false);
   const [isAlumni, setIsAlumni] = useState(false);
-  const [showSlideViewer, setShowSlideViewer] = useState(false);
-  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
 
   // Load assigned courses and progress
   const loadCourses = useCallback(async () => {
@@ -309,8 +306,20 @@ export function WebCurriculum() {
                   <div className="ml-4 flex gap-2">
                     <Button
                       onClick={() => {
-                        setSelectedCourse(course);
-                        setShowSlideViewer(true);
+                        const mapping = course.curriculumMapping;
+                        const firstModule = mapping?.modules?.[0];
+                        const firstChapter = firstModule?.chapters?.[0];
+                        const firstLesson = firstChapter?.lessons?.[0];
+                        if (mapping && firstModule && firstChapter && firstLesson?.lessonId) {
+                          const params = new URLSearchParams({
+                            curriculumId: mapping.curriculumId,
+                            moduleId: firstModule.moduleId,
+                            chapterId: firstChapter.chapterId,
+                          });
+                          navigate(`/learn/lesson/${firstLesson.lessonId}?${params.toString()}`);
+                        } else {
+                          navigate(`/courses/${course.id}`);
+                        }
                       }}
                       size="sm"
                       className={completed ? "bg-green-500 hover:bg-green-600" : "bg-accent hover:bg-accent/90 text-accent-foreground"}
@@ -513,31 +522,6 @@ export function WebCurriculum() {
           loadUserApplication(); // Reload application status
         }}
       />
-
-      {/* Slide Viewer Modal */}
-      {showSlideViewer && selectedCourse && user && (
-        <SlideViewer
-          course={selectedCourse}
-          courseProgress={courseProgress[selectedCourse.id || ""] || null}
-          userId={user.uid}
-          onProgressUpdate={(updatedProgress) => {
-            if (updatedProgress && selectedCourse) {
-              setCourseProgress((prev) => ({
-                ...prev,
-                [selectedCourse.id || ""]: updatedProgress,
-              }));
-              // Reload courses to update progress
-              loadCourses();
-            }
-          }}
-          onClose={() => {
-            setShowSlideViewer(false);
-            setSelectedCourse(null);
-            // Reload courses to update progress
-            loadCourses();
-          }}
-        />
-      )}
     </div>
   );
 }

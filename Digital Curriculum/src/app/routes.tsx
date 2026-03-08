@@ -30,6 +30,8 @@ import { AdminAuthPage } from "./pages/AdminAuth";
 import { LessonDeckBuilder } from "./pages/admin/LessonDeckBuilder";
 import { LessonPlayer } from "./pages/learn/LessonPlayer";
 import { CourseCreationWizard } from "./pages/admin/CourseCreationWizard";
+import { PptxImportPage } from "./pages/admin/PptxImportPage";
+import { CourseBuilder } from "./pages/admin/CourseBuilder";
 import { AuthGuard } from "./components/auth/AuthGuard";
 import { OnboardingGate } from "./components/auth/OnboardingGate";
 import { RoleGate } from "./components/auth/RoleGate";
@@ -118,6 +120,14 @@ export const router = createBrowserRouter([
         Component: () => (
           <RoleGate allowedRoles={["superAdmin"]}>
             <CourseCreationWizard />
+          </RoleGate>
+        ),
+      },
+      {
+        path: "admin/courses/builder",
+        Component: () => (
+          <RoleGate allowedRoles={["superAdmin"]}>
+            <CourseBuilder />
           </RoleGate>
         ),
       },

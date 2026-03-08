@@ -20,6 +20,7 @@ import {
   Trash2,
   X,
   Loader2,
+  Upload,
 } from "lucide-react";
 import { useAuth } from "../../components/auth/AuthProvider";
 import {
@@ -537,9 +538,35 @@ export function CourseCreationWizard() {
               <div>
                 <h2 className="text-2xl font-bold mb-2">Lesson Titles</h2>
                 <p className="text-muted-foreground">
-                  Set the number of lessons for each module and name them
+                  Set the number of lessons for each module and name them, or import from PPTX
                 </p>
               </div>
+
+              {/* PPTX Import Option */}
+              <Card className="p-4 bg-muted/50 border-dashed">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold mb-1">Import from PPTX</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Upload a PowerPoint file to automatically create lesson content
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      // Navigate to import page - we'll need chapterId
+                      // For now, create a chapter first or use a default
+                      const chapterId = "default"; // This should be created or passed
+                      navigate(
+                        `/admin/curriculum/${curriculumMapping?.curriculumId || "new"}/module/${modules[0]?.id || "new"}/chapter/${chapterId}/import-pptx`
+                      );
+                    }}
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    Import PPTX
+                  </Button>
+                </div>
+              </Card>
 
               <div className="space-y-6">
                 {modules.map((module, moduleIndex) => (

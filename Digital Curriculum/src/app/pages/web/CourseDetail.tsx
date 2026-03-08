@@ -18,10 +18,9 @@ import {
 import { getCourse, type Course, type Module } from "../../lib/courses";
 import { format } from "date-fns";
 import { useAuth } from "../../components/auth/AuthProvider";
-import { getCourseProgress, updateLessonCompletion, markCourseCompleted, calculateCourseProgress, type CourseProgress } from "../../lib/courseProgress";
-import { SlideViewer } from "../../components/courses/SlideViewer";
+import { getCourseProgress, calculateCourseProgress, type CourseProgress } from "../../lib/courseProgress";
 import { getCurrentUserWithRoles } from "../../lib/auth";
-import { Edit, Eye } from "lucide-react";
+import { Edit } from "lucide-react";
 
 export function CourseDetail() {
   const { courseId } = useParams<{ courseId: string }>();
@@ -31,9 +30,6 @@ export function CourseDetail() {
   const [courseProgress, setCourseProgress] = useState<CourseProgress | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedModule, setExpandedModule] = useState<string | null>(null);
-  const [showSlideViewer, setShowSlideViewer] = useState(false);
-  const [startModuleIndex, setStartModuleIndex] = useState<number | null>(null);
-  const [startLessonIndex, setStartLessonIndex] = useState<number | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
@@ -178,7 +174,12 @@ export function CourseDetail() {
 
       {/* Modules */}
       <div className="space-y-4">
-        <h2 className="text-xl font-bold text-foreground">Course Modules</h2>
+        <div>
+          <h2 className="text-xl font-bold text-foreground">Course content</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Expand a module and click Start Lesson to view the lesson (images or slides) in order with Previous/Next.
+          </p>
+        </div>
         {course.modules.length === 0 ? (
           <Card className="p-6">
             <p className="text-muted-foreground text-center">
@@ -246,7 +247,15 @@ export function CourseDetail() {
                       <div className="space-y-2">
                         {module.lessons
                           .sort((a, b) => (a.order || 0) - (b.order || 0))
-                          .map((lesson, lessonIndex) => (
+                          .map((lesson, lessonIndex) => {
+                            const curriculumModule = course.curriculumMapping?.modules[moduleIndex];
+                            const curriculumLesson = curriculumModule?.chapters[0]?.lessons[lessonIndex];
+                            const curriculumLessonId = curriculumLesson?.lessonId;
+                            const lessonIdForProgress = curriculumLessonId || lesson.id || `module_${moduleIndex}_lesson_${lessonIndex}`;
+                            const isCompleted = courseProgress?.lessonsCompleted?.[lessonIdForProgress] || false;
+                            const hasCurriculumContent = Boolean(course.curriculumMapping && curriculumLessonId);
+
+                            return (
                             <div
                               key={lesson.id || lessonIndex}
                               className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
@@ -267,84 +276,59 @@ export function CourseDetail() {
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
-                                {(() => {
-                                  // Find the corresponding lesson in curriculum mapping by matching title or order
-                                  const curriculumModule = course.curriculumMapping?.modules[moduleIndex];
-                                  const curriculumLesson = curriculumModule?.chapters[0]?.lessons.find(
-                                    (l) => l.title === lesson.title || 
-                                    (curriculumModule.chapters[0].lessons.length > lessonIndex && 
-                                     curriculumModule.chapters[0].lessons[lessonIndex])
-                                  ) || curriculumModule?.chapters[0]?.lessons[lessonIndex];
-                                  
-                                  const lessonId = lesson.id || `${module.order}_${lesson.order}`;
-                                  const isCompleted = courseProgress?.lessonsCompleted[lessonId] || false;
-                                  
-                                  return (
-                                    <>
-                                      {isAdmin && course.curriculumMapping && curriculumLesson && (
-                                        <Button
-                                          variant="outline"
-                                          size="sm"
-                                          onClick={() => {
-                                            const curriculumId = course.curriculumMapping!.curriculumId;
-                                            const moduleId = course.curriculumMapping!.modules[moduleIndex].moduleId;
-                                            const chapterId = course.curriculumMapping!.modules[moduleIndex].chapters[0].chapterId;
-                                            const lessonId = curriculumLesson.lessonId;
-                                            navigate(
-                                              `/admin/curriculum/${curriculumId}/module/${moduleId}/chapter/${chapterId}/lesson/${lessonId}/builder`
-                                            );
-                                          }}
-                                        >
-                                          <Edit className="w-4 h-4 mr-2" />
-                                          Build Content
-                                        </Button>
-                                      )}
-                                      {isCompleted ? (
-                                        <Badge variant="outline" className="text-green-600 border-green-600">
-                                          <CheckCircle2 className="w-3 h-3 mr-1" />
-                                          Completed
-                                        </Badge>
-                                      ) : lesson.slideUrl ? (
-                                        <Button
-                                          size="sm"
-                                          className="bg-accent hover:bg-accent/90 text-accent-foreground"
-                                          onClick={() => {
-                                            // Find the global index of this lesson
-                                            let globalIndex = 0;
-                                            course.modules
-                                              .sort((a, b) => (a.order || 0) - (b.order || 0))
-                                              .forEach((m, mIdx) => {
-                                                if (mIdx < moduleIndex) {
-                                                  globalIndex += m.lessons.length;
-                                                } else if (mIdx === moduleIndex) {
-                                                  m.lessons
-                                                    .sort((a, b) => (a.order || 0) - (b.order || 0))
-                                                    .forEach((l, lIdx) => {
-                                                      if (lIdx < lessonIndex) {
-                                                        globalIndex++;
-                                                      }
-                                                    });
-                                                }
-                                              });
-                                            setStartModuleIndex(moduleIndex);
-                                            setStartLessonIndex(lessonIndex);
-                                            setShowSlideViewer(true);
-                                          }}
-                                        >
-                                          <Play className="w-3 h-3 mr-1" />
-                                          Start Lesson
-                                        </Button>
-                                      ) : (
-                                        <Badge variant="secondary" className="text-xs">
-                                          {isAdmin ? "No content yet" : "Not Available"}
-                                        </Badge>
-                                      )}
-                                    </>
-                                  );
-                                })()}
+                                {isAdmin && course.curriculumMapping && curriculumLesson && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      const curriculumId = course.curriculumMapping!.curriculumId;
+                                      const moduleId = course.curriculumMapping!.modules[moduleIndex].moduleId;
+                                      const chapterId = course.curriculumMapping!.modules[moduleIndex].chapters[0].chapterId;
+                                      const lid = curriculumLesson.lessonId;
+                                      navigate(
+                                        `/admin/curriculum/${curriculumId}/module/${moduleId}/chapter/${chapterId}/lesson/${lid}/builder`
+                                      );
+                                    }}
+                                  >
+                                    <Edit className="w-4 h-4 mr-2" />
+                                    Build Content
+                                  </Button>
+                                )}
+                                {isCompleted ? (
+                                  <Badge variant="outline" className="text-green-600 border-green-600">
+                                    <CheckCircle2 className="w-3 h-3 mr-1" />
+                                    Completed
+                                  </Badge>
+                                ) : hasCurriculumContent ? (
+                                  <Button
+                                    size="sm"
+                                    className="bg-accent hover:bg-accent/90 text-accent-foreground"
+                                    onClick={() => {
+                                      const curriculumId = course.curriculumMapping!.curriculumId;
+                                      const moduleId = course.curriculumMapping!.modules[moduleIndex].moduleId;
+                                      const chapterId = course.curriculumMapping!.modules[moduleIndex].chapters[0].chapterId;
+                                      const params = new URLSearchParams({
+                                        curriculumId,
+                                        moduleId,
+                                        chapterId,
+                                      });
+                                      navigate(
+                                        `/learn/lesson/${curriculumLessonId}?${params.toString()}`
+                                      );
+                                    }}
+                                  >
+                                    <Play className="w-3 h-3 mr-1" />
+                                    Start Lesson
+                                  </Button>
+                                ) : (
+                                  <Badge variant="secondary" className="text-xs">
+                                    {isAdmin ? "No content yet" : "Not Available"}
+                                  </Badge>
+                                )}
                               </div>
                             </div>
-                          ))}
+                          );
+                          })}
                       </div>
                     )}
                   </div>
@@ -353,31 +337,6 @@ export function CourseDetail() {
             ))
         )}
       </div>
-
-      {/* Slide Viewer Modal */}
-      {showSlideViewer && course && user && (
-        <SlideViewer
-          course={course}
-          courseProgress={courseProgress}
-          userId={user.uid}
-          onProgressUpdate={(updatedProgress) => {
-            setCourseProgress(updatedProgress);
-            // Reload courses list if we're coming from Curriculum page
-            if (window.location.pathname.includes("/curriculum")) {
-              window.location.reload();
-            }
-          }}
-          onClose={() => {
-            setShowSlideViewer(false);
-            setStartModuleIndex(null);
-            setStartLessonIndex(null);
-            // Reload progress when viewer closes
-            if (user && courseId) {
-              getCourseProgress(user.uid, courseId).then(setCourseProgress);
-            }
-          }}
-        />
-      )}
     </div>
   );
 }

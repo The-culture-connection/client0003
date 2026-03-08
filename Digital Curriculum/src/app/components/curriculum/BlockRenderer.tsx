@@ -39,6 +39,8 @@ interface BlockRendererProps {
 
 export function BlockRenderer({ block }: BlockRendererProps) {
   switch (block.type) {
+    case "title":
+      return <TitleBlockRenderer block={block} />;
     case "text":
       return <TextBlockRenderer block={block} />;
     case "heading":
@@ -54,6 +56,24 @@ export function BlockRenderer({ block }: BlockRendererProps) {
     default:
       return null;
   }
+}
+
+function TitleBlockRenderer({ block }: BlockRendererProps) {
+  if (!block.content) return null;
+  
+  const HeadingTag = block.font_size === "3xl" ? "h1" : block.font_size === "2xl" ? "h1" : "h2";
+  
+  return (
+    <HeadingTag
+      className={cn(
+        "font-bold",
+        fontSizeMap[block.font_size || "3xl"]
+      )}
+      style={{ color: block.color || "#fafcfc" }}
+    >
+      {block.content}
+    </HeadingTag>
+  );
 }
 
 function TextBlockRenderer({ block }: BlockRendererProps) {
