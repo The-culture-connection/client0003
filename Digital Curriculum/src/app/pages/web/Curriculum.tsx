@@ -28,8 +28,9 @@ import { useNavigate } from "react-router";
 import { GraduationApplicationDialog } from "../../components/graduation/GraduationApplicationDialog";
 import { getUserGraduationApplication, type GraduationApplication } from "../../lib/graduation";
 import { useAuth } from "../../components/auth/AuthProvider";
-import { getCoursesByUserId, getCoursesByRole, type Course } from "../../lib/courses";
+import { getCoursesByUserId, getCoursesByRole, getLessonsWithQuiz, type Course } from "../../lib/courses";
 import { getAllCourseProgress, calculateCourseProgress, type CourseProgress } from "../../lib/courseProgress";
+import { getCourseSlideCounts } from "../../lib/curriculum";
 import { getCurrentUserWithRoles } from "../../lib/auth";
 
 export function WebCurriculum() {
@@ -37,6 +38,8 @@ export function WebCurriculum() {
   const { user } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
   const [courseProgress, setCourseProgress] = useState<Record<string, CourseProgress>>({});
+  const [courseSlideCounts, setCourseSlideCounts] = useState<Record<string, Record<string, number>>>({});
+  const [lessonsWithQuizMap, setLessonsWithQuizMap] = useState<Record<string, Record<string, boolean>>>({});
   const [loading, setLoading] = useState(true);
   const [allCompleted, setAllCompleted] = useState(false);
   const [completedCount, setCompletedCount] = useState(0);
@@ -78,14 +81,45 @@ export function WebCurriculum() {
       const progress = await getAllCourseProgress(user.uid);
       setCourseProgress(progress);
 
-      // Calculate overall progress
+      // Load slide counts per course for accurate progress (all slides in course)
+      const countsMap: Record<string, Record<string, number>> = {};
+      const quizMap: Record<string, Record<string, boolean>> = {};
+      await Promise.all(
+        uniqueCourses.map(async (c) => {
+          if (c.id && c.curriculumMapping) {
+            try {
+              countsMap[c.id] = await getCourseSlideCounts(c);
+              const lessonIds = Object.keys(countsMap[c.id]);
+              if (lessonIds.length > 0) {
+                quizMap[c.id] = await getLessonsWithQuiz(c.id, lessonIds);
+              } else {
+                quizMap[c.id] = {};
+              }
+            } catch {
+              countsMap[c.id] = {};
+              quizMap[c.id] = {};
+            }
+          }
+        })
+      );
+      setCourseSlideCounts(countsMap);
+      setLessonsWithQuizMap(quizMap);
+
+      // Calculate overall progress using full course slide counts
       let totalProgress = 0;
       let completedCourses = 0;
 
       uniqueCourses.forEach((course) => {
         const progressData = progress[course.id || ""];
+        const slideCounts = countsMap[course.id ?? ""];
+        const lessonsWithQuiz = quizMap[course.id ?? ""];
         if (progressData) {
-          const courseProgressValue = calculateCourseProgress(course, progressData);
+          const courseProgressValue = calculateCourseProgress(
+            course,
+            progressData,
+            slideCounts && Object.keys(slideCounts).length > 0 ? slideCounts : undefined,
+            lessonsWithQuiz && Object.keys(lessonsWithQuiz).length > 0 ? lessonsWithQuiz : undefined
+          );
           totalProgress += courseProgressValue;
           if (progressData.completed || courseProgressValue === 100) {
             completedCourses++;
@@ -149,13 +183,79 @@ export function WebCurriculum() {
 
   const getCourseProgressValue = (course: Course): number => {
     const progressData = courseProgress[course.id || ""];
+    const slideCounts = courseSlideCounts[course.id || ""];
+    const lessonsWithQuiz = lessonsWithQuizMap[course.id || ""];
     if (!progressData) return 0;
-    return calculateCourseProgress(course, progressData);
+    return calculateCourseProgress(
+      course,
+      progressData,
+      slideCounts && Object.keys(slideCounts).length > 0 ? slideCounts : undefined,
+      lessonsWithQuiz && Object.keys(lessonsWithQuiz).length > 0 ? lessonsWithQuiz : undefined
+    );
   };
 
   const isCourseCompleted = (course: Course): boolean => {
     const progressData = courseProgress[course.id || ""];
     return progressData?.completed || getCourseProgressValue(course) === 100;
+  };
+
+  /** Course the user last progressed in (by updatedAt), for header Continue */
+  const mostRecentCourse = ((): { course: Course; progress: CourseProgress } | null => {
+    let best: { course: Course; progress: CourseProgress } | null = null;
+    const toMs = (t: CourseProgress["updatedAt"]) => {
+      if (!t) return 0;
+      const ts = t as { toMillis?: () => number; seconds?: number };
+      return ts.toMillis ? ts.toMillis() : (ts.seconds ?? 0) * 1000;
+    };
+    courses.forEach((course) => {
+      const p = courseProgress[course.id || ""];
+      if (!p?.updatedAt) return;
+      if (!best || toMs(p.updatedAt) > toMs(best.progress.updatedAt)) {
+        best = { course, progress: p };
+      }
+    });
+    return best;
+  })();
+
+  /** Build lesson player URL for a course (start = first lesson, or resume from progress) */
+  const getLessonUrl = (course: Course, resume?: boolean): string => {
+    const mapping = course.curriculumMapping;
+    const firstModule = mapping?.modules?.[0];
+    const firstChapter = firstModule?.chapters?.[0];
+    const firstLesson = firstChapter?.lessons?.[0];
+    if (!mapping || !firstModule || !firstChapter) return `/courses/${course.id}`;
+    const params = new URLSearchParams({
+      curriculumId: mapping.curriculumId,
+      moduleId: firstModule.moduleId,
+      chapterId: firstChapter.chapterId,
+      courseId: course.id || "",
+    });
+    if (resume && course.id) {
+      const p = courseProgress[course.id];
+      const lastLessonId = p?.lastViewedLessonId;
+      const lastSlideIndex = p?.lastViewedSlideIndex ?? 0;
+      if (lastLessonId) {
+        let foundModuleId = firstModule.moduleId;
+        let foundChapterId = firstChapter.chapterId;
+        mapping.modules.forEach((mod) => {
+          mod.chapters?.forEach((ch) => {
+            ch.lessons?.forEach((l) => {
+              if (l.lessonId === lastLessonId) {
+                foundModuleId = mod.moduleId;
+                foundChapterId = ch.chapterId;
+              }
+            });
+          });
+        });
+        params.set("curriculumId", mapping.curriculumId);
+        params.set("moduleId", foundModuleId);
+        params.set("chapterId", foundChapterId);
+        params.set("slideIndex", String(lastSlideIndex));
+        return `/learn/lesson/${lastLessonId}?${params.toString()}`;
+      }
+    }
+    if (!firstLesson?.lessonId) return `/courses/${course.id}`;
+    return `/learn/lesson/${firstLesson.lessonId}?${params.toString()}`;
   };
 
   if (loading) {
@@ -186,6 +286,41 @@ export function WebCurriculum() {
                 <p className="text-sm text-muted-foreground mb-4">
                   Complete all assigned courses to unlock the Alumni Network application
                 </p>
+                {mostRecentCourse ? (
+                  <div className="mb-4 p-3 rounded-lg bg-muted/50 border border-border">
+                    <p className="text-xs text-muted-foreground mb-1">Most recent progress</p>
+                    <p className="font-medium text-foreground">{mostRecentCourse.course.title}</p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <Progress
+                        value={calculateCourseProgress(
+                          mostRecentCourse.course,
+                          mostRecentCourse.progress,
+                          courseSlideCounts[mostRecentCourse.course.id || ""],
+                          lessonsWithQuizMap[mostRecentCourse.course.id || ""]
+                        )}
+                        className="h-2 flex-1"
+                      />
+                      <span className="text-sm text-muted-foreground">
+                        {Math.round(
+                          calculateCourseProgress(
+                            mostRecentCourse.course,
+                            mostRecentCourse.progress,
+                            courseSlideCounts[mostRecentCourse.course.id || ""],
+                            lessonsWithQuizMap[mostRecentCourse.course.id || ""]
+                          )
+                        )}%
+                      </span>
+                      <Button
+                        size="sm"
+                        className="bg-accent hover:bg-accent/90 text-accent-foreground"
+                        onClick={() => navigate(getLessonUrl(mostRecentCourse.course, true))}
+                      >
+                        <Play className="w-3 h-3 mr-1" />
+                        Continue
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
                 <div className="flex items-center gap-4 mb-4">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <FileText className="w-4 h-4" />
@@ -252,7 +387,8 @@ export function WebCurriculum() {
             return (
               <Card
                 key={course.id}
-                className="p-5 bg-card border-border shadow-md hover:shadow-lg transition-all"
+                className="p-5 bg-card border-border shadow-md hover:shadow-lg transition-all cursor-pointer"
+                onClick={() => navigate(`/courses/${course.id}`)}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-4 flex-1">
@@ -305,21 +441,9 @@ export function WebCurriculum() {
                   </div>
                   <div className="ml-4 flex gap-2">
                     <Button
-                      onClick={() => {
-                        const mapping = course.curriculumMapping;
-                        const firstModule = mapping?.modules?.[0];
-                        const firstChapter = firstModule?.chapters?.[0];
-                        const firstLesson = firstChapter?.lessons?.[0];
-                        if (mapping && firstModule && firstChapter && firstLesson?.lessonId) {
-                          const params = new URLSearchParams({
-                            curriculumId: mapping.curriculumId,
-                            moduleId: firstModule.moduleId,
-                            chapterId: firstChapter.chapterId,
-                          });
-                          navigate(`/learn/lesson/${firstLesson.lessonId}?${params.toString()}`);
-                        } else {
-                          navigate(`/courses/${course.id}`);
-                        }
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(getLessonUrl(course, progressValue > 0 && !completed));
                       }}
                       size="sm"
                       className={completed ? "bg-green-500 hover:bg-green-600" : "bg-accent hover:bg-accent/90 text-accent-foreground"}
@@ -342,7 +466,10 @@ export function WebCurriculum() {
                       )}
                     </Button>
                     <Button
-                      onClick={() => navigate(`/courses/${course.id}`)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/courses/${course.id}`);
+                      }}
                       size="sm"
                       variant="outline"
                     >

@@ -5,26 +5,51 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router";
-import { getSlides, getBlocks, getLesson, getLessonImages, type Slide, type Block, type Lesson, type LessonImage } from "../../lib/curriculum";
+import { getSlides, getBlocks, getLesson, getLessonImages, getLessonContent, getCourseSlideCounts, type Slide, type Block, type Lesson, type LessonImage, type LessonContentSlide, type LessonQuiz } from "../../lib/curriculum";
+import { getCourse, getCourseLessonQuiz, getLessonsWithQuiz } from "../../lib/courses";
+import { getCourseProgress, updateLessonSlideProgress, setLessonCompleted, recordLessonQuizAttempt, markCourseCompleted, calculateCourseProgress } from "../../lib/courseProgress";
+import { useAuth } from "../../components/auth/AuthProvider";
 import { SlideRenderer } from "../../components/curriculum/SlideRenderer";
+import { YouTubeBlock } from "../../components/curriculum/YouTubeBlock";
 import { Button } from "../../components/ui/button";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
-import { Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, LogOut, Loader2, X } from "lucide-react";
 
 export function LessonPlayer() {
   const { lessonId } = useParams<{ lessonId: string }>();
   const navigate = useNavigate();
-  
+  const { user } = useAuth();
+
   const [lesson, setLesson] = useState<Lesson | null>(null);
   const [slides, setSlides] = useState<Slide[]>([]);
   const [lessonImages, setLessonImages] = useState<LessonImage[]>([]);
+  const [lessonContent, setLessonContent] = useState<LessonContentSlide[]>([]);
   const [slideBlocks, setSlideBlocks] = useState<Record<string, Block[]>>({});
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [quiz, setQuiz] = useState<LessonQuiz | null>(null);
+  const [progress, setProgress] = useState<Awaited<ReturnType<typeof getCourseProgress>>>(null);
+  const [curriculumId, setCurriculumId] = useState<string | null>(null);
+  const [moduleId, setModuleId] = useState<string | null>(null);
+  const [chapterId, setChapterId] = useState<string | null>(null);
+  const [quizAnswers, setQuizAnswers] = useState<Record<number, "A" | "B" | "C" | "D">>({});
+  const [quizSubmitted, setQuizSubmitted] = useState(false);
+  const [quizPassed, setQuizPassed] = useState<boolean | null>(null);
+  const [quizScore, setQuizScore] = useState<{ correct: number; total: number } | null>(null);
+  const [isSubmittingQuiz, setIsSubmittingQuiz] = useState(false);
+  const [showQuizView, setShowQuizView] = useState(false);
 
+  const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
+  const courseId = params.get("courseId") || undefined;
+
+  const isMediaLesson = lesson?.content_type === "media";
   const isImageLesson = lesson?.content_type === "images";
-  const itemCount = isImageLesson ? lessonImages.length : slides.length;
+  const itemCount = isMediaLesson
+    ? lessonContent.length
+    : isImageLesson
+      ? lessonImages.length
+      : slides.length;
 
   // Extract IDs from lesson (assuming lessonId format includes all IDs or we need to pass them)
   // For now, we'll need to modify this to work with the actual route structure
@@ -39,22 +64,21 @@ export function LessonPlayer() {
 
     const loadLesson = async () => {
       try {
-        // Get lesson from route params - we need curriculumId, moduleId, chapterId
-        // For now, we'll get them from the URL or pass them as route params
-        // Update route to: /learn/lesson/:curriculumId/:moduleId/:chapterId/:lessonId
         const params = new URLSearchParams(window.location.search);
-        const curriculumId = params.get("curriculumId");
-        const moduleId = params.get("moduleId");
-        const chapterId = params.get("chapterId");
+        const curriculumIdParam = params.get("curriculumId");
+        const moduleIdParam = params.get("moduleId");
+        const chapterIdParam = params.get("chapterId");
 
-        if (!curriculumId || !moduleId || !chapterId) {
+        if (!curriculumIdParam || !moduleIdParam || !chapterIdParam) {
           setError("Missing required lesson parameters");
           setIsLoading(false);
           return;
         }
+        setCurriculumId(curriculumIdParam);
+        setModuleId(moduleIdParam);
+        setChapterId(chapterIdParam);
 
-        // Load lesson
-        const lessonData = await getLesson(curriculumId, moduleId, chapterId, lessonId);
+        const lessonData = await getLesson(curriculumIdParam, moduleIdParam, chapterIdParam, lessonId!);
         if (!lessonData || !lessonData.is_published) {
           setError("Lesson not found or not published");
           setIsLoading(false);
@@ -62,22 +86,49 @@ export function LessonPlayer() {
         }
         setLesson(lessonData);
 
-        if (lessonData.content_type === "images") {
-          const images = await getLessonImages(curriculumId, moduleId, chapterId, lessonId);
+        let itemCount = 0;
+        if (lessonData.content_type === "media") {
+          const content = await getLessonContent(curriculumIdParam, moduleIdParam, chapterIdParam, lessonId!);
+          setLessonContent(content);
+          itemCount = content.length;
+        } else if (lessonData.content_type === "images") {
+          const images = await getLessonImages(curriculumIdParam, moduleIdParam, chapterIdParam, lessonId!);
           setLessonImages(images);
+          itemCount = images.length;
         } else {
-          const slidesData = await getSlides(curriculumId, moduleId, chapterId, lessonId);
+          const slidesData = await getSlides(curriculumIdParam, moduleIdParam, chapterIdParam, lessonId!);
           setSlides(slidesData);
           const blocksMap: Record<string, Block[]> = {};
           for (const slide of slidesData) {
             if (slide.id) {
-              const blocks = await getBlocks(curriculumId, moduleId, chapterId, lessonId, slide.id);
+              const blocks = await getBlocks(curriculumIdParam, moduleIdParam, chapterIdParam, lessonId!, slide.id);
               blocksMap[slide.id] = blocks;
             }
           }
           setSlideBlocks(blocksMap);
+          itemCount = slidesData.length;
         }
 
+        const courseIdParam = params.get("courseId");
+        const [quizData, progressData] = await Promise.all([
+          courseIdParam
+            ? getCourseLessonQuiz(courseIdParam, lessonId!)
+            : Promise.resolve(null),
+          courseIdParam && user
+            ? getCourseProgress(user.uid, courseIdParam)
+            : Promise.resolve(null),
+        ]);
+        setQuiz(quizData?.enabled && (quizData.questions?.length ?? 0) > 0 ? quizData : null);
+        setProgress(progressData ?? null);
+
+        let initialIndex = 0;
+        const slideIndexParam = params.get("slideIndex");
+        if (slideIndexParam !== null && slideIndexParam !== "") {
+          initialIndex = Math.max(0, parseInt(slideIndexParam, 10) || 0);
+        } else if (user && courseIdParam && progressData?.pagesViewed?.[lessonId!]) {
+          initialIndex = Math.max(0, (progressData.pagesViewed[lessonId!] || 1) - 1);
+        }
+        setCurrentSlideIndex(Math.min(initialIndex, Math.max(0, itemCount - 1)));
         setIsLoading(false);
       } catch (err) {
         console.error("Error loading lesson:", err);
@@ -87,18 +138,12 @@ export function LessonPlayer() {
     };
 
     loadLesson();
-  }, [lessonId]);
+  }, [lessonId, user]);
 
   const currentSlide = slides[currentSlideIndex];
   const currentBlocks = currentSlide ? slideBlocks[currentSlide.id || ""] || [] : [];
   const currentImage = isImageLesson ? lessonImages[currentSlideIndex] : null;
-
-  const handleNext = () => {
-    if (currentSlideIndex < itemCount - 1) {
-      setCurrentSlideIndex(currentSlideIndex + 1);
-      window.scrollTo(0, 0);
-    }
-  };
+  const currentContentSlide = isMediaLesson ? lessonContent[currentSlideIndex] : null;
 
   const handlePrevious = () => {
     if (currentSlideIndex > 0) {
@@ -107,7 +152,93 @@ export function LessonPlayer() {
     }
   };
 
-  const progress = itemCount > 0 ? ((currentSlideIndex + 1) / itemCount) * 100 : 0;
+  const saveProgressAndExit = async () => {
+    if (!user || !courseId || !lessonId) {
+      navigate(courseId ? `/courses/${courseId}` : "/curriculum");
+      return;
+    }
+    setIsSaving(true);
+    try {
+      await updateLessonSlideProgress(user.uid, courseId, lessonId, currentSlideIndex, itemCount);
+      const hasQuiz = quiz != null && (quiz.questions?.length ?? 0) > 0;
+      const atEnd = itemCount > 0 && currentSlideIndex >= itemCount - 1;
+      if (!hasQuiz && atEnd) {
+        await setLessonCompleted(user.uid, courseId, lessonId);
+      }
+      const [progressAfter, course] = await Promise.all([
+        getCourseProgress(user.uid, courseId),
+        getCourse(courseId),
+      ]);
+      if (progressAfter && course) {
+        const totalSlidesPerLesson = await getCourseSlideCounts(course);
+        const lessonIds = Object.keys(totalSlidesPerLesson);
+        const lessonsWithQuiz = lessonIds.length > 0 ? await getLessonsWithQuiz(courseId, lessonIds) : {};
+        const pct = calculateCourseProgress(course, progressAfter, totalSlidesPerLesson, lessonsWithQuiz);
+        if (pct >= 100) {
+          await markCourseCompleted(user.uid, courseId);
+        }
+      }
+    } catch (e) {
+      console.error("Error saving progress:", e);
+    } finally {
+      setIsSaving(false);
+      navigate(`/courses/${courseId}`);
+    }
+  };
+
+  const progressPct = itemCount > 0 ? ((currentSlideIndex + 1) / itemCount) * 100 : 0;
+  const hasQuiz = quiz != null && (quiz.questions?.length ?? 0) > 0;
+  const userPassed = progress?.quizPassed?.[lessonId!] === true;
+  const attemptsUsed = progress?.quizAttempts?.[lessonId!] ?? 0;
+  const atEnd = itemCount > 0 && currentSlideIndex >= itemCount - 1;
+  const maxAttempts = quiz?.maxAttempts ?? 3;
+  const passPct = quiz?.passPercentage ?? 70;
+  const canTryAgain = hasQuiz && quizSubmitted && quizPassed === false && attemptsUsed < maxAttempts;
+
+  const handleNext = () => {
+    if (currentSlideIndex < itemCount - 1) {
+      setCurrentSlideIndex(currentSlideIndex + 1);
+      window.scrollTo(0, 0);
+    } else if (atEnd && hasQuiz && !userPassed) {
+      setShowQuizView(true);
+    }
+  };
+
+  const handleQuizSubmit = async () => {
+    if (!quiz?.questions?.length || !user || !courseId || !lessonId || !curriculumId || !moduleId || !chapterId) return;
+    const total = quiz.questions.length;
+    let correct = 0;
+    const sorted = [...quiz.questions].sort((a, b) => a.order - b.order);
+    for (let i = 0; i < sorted.length; i++) {
+      const q = sorted[i];
+      const chosen = quizAnswers[i];
+      if (chosen && chosen === q.correctAnswer) correct++;
+    }
+    const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
+    const passed = pct >= passPct;
+    setIsSubmittingQuiz(true);
+    try {
+      await recordLessonQuizAttempt(user.uid, courseId, lessonId, passed);
+      setQuizSubmitted(true);
+      setQuizPassed(passed);
+      setQuizScore({ correct, total });
+      setProgress((prev) => ({
+        ...prev!,
+        quizAttempts: { ...prev?.quizAttempts, [lessonId]: (prev?.quizAttempts?.[lessonId] ?? 0) + 1 },
+        quizPassed: { ...prev?.quizPassed, [lessonId]: passed },
+        lessonsCompleted: passed ? { ...prev?.lessonsCompleted, [lessonId]: true } : prev?.lessonsCompleted ?? {},
+      }));
+    } finally {
+      setIsSubmittingQuiz(false);
+    }
+  };
+
+  const handleTryAgain = () => {
+    setQuizAnswers({});
+    setQuizSubmitted(false);
+    setQuizPassed(null);
+    setQuizScore(null);
+  };
 
   if (isLoading) {
     return (
@@ -121,7 +252,7 @@ export function LessonPlayer() {
     return (
       <div className="flex flex-col items-center justify-center h-screen space-y-4">
         <p className="text-destructive">{error}</p>
-        <Button variant="outline" onClick={() => navigate(-1)}>
+        <Button variant="outline" onClick={() => navigate(courseId ? `/courses/${courseId}` : "/curriculum")}>
           Go Back
         </Button>
       </div>
@@ -134,7 +265,7 @@ export function LessonPlayer() {
         <p className="text-muted-foreground">
           {!lesson ? "Lesson not found or not published" : "Lesson has no content"}
         </p>
-        <Button variant="outline" onClick={() => navigate(-1)}>
+        <Button variant="outline" onClick={() => navigate(courseId ? `/courses/${courseId}` : "/curriculum")}>
           Go Back
         </Button>
       </div>
@@ -147,13 +278,26 @@ export function LessonPlayer() {
       <div className="sticky top-0 z-50 bg-black/80 backdrop-blur-sm border-b border-gray-800">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
-              <X className="w-5 h-5" />
-            </Button>
             <h1 className="text-lg font-semibold">{lesson.title}</h1>
           </div>
-          <div className="text-sm text-gray-400">
-            {currentSlideIndex + 1} of {itemCount}
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-400">
+              {currentSlideIndex + 1} of {itemCount}
+            </span>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={saveProgressAndExit}
+              disabled={isSaving}
+              className="text-foreground"
+            >
+              {isSaving ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : (
+                <LogOut className="w-4 h-4 mr-2" />
+              )}
+              Close
+            </Button>
           </div>
         </div>
         
@@ -161,37 +305,136 @@ export function LessonPlayer() {
         <div className="h-1 bg-gray-800">
           <div
             className="h-full bg-accent transition-all duration-300"
-            style={{ width: `${progress}%` }}
+            style={{ width: `${progressPct}%` }}
           />
         </div>
       </div>
 
       {/* Slide Content */}
       <div className="min-h-[calc(100vh-80px)]">
-        {isImageLesson && currentImage ? (
-          <div className="w-full h-full flex items-center justify-center p-8">
-            <img
-              src={currentImage.image_url}
-              alt={currentImage.alt_text || `Slide ${currentSlideIndex + 1}`}
-              className="max-w-full max-h-full object-contain"
-            />
+        {showQuizView && hasQuiz ? (
+          <div className="container mx-auto px-4 py-8 max-w-2xl">
+            <h2 className="text-xl font-semibold mb-6">Lesson Quiz</h2>
+            {!quizSubmitted ? (
+              <>
+                <p className="text-gray-400 text-sm mb-6">
+                  Answer all questions. You need {passPct}% to pass. Attempts: {attemptsUsed} of {maxAttempts}.
+                </p>
+                <div className="space-y-6">
+                  {[...quiz.questions]
+                    .sort((a, b) => a.order - b.order)
+                    .map((q, i) => (
+                      <div key={i} className="rounded-lg border border-gray-700 p-4 bg-gray-900/50">
+                        <p className="font-medium mb-3">{q.question}</p>
+                        <div className="space-y-2">
+                          {(["A", "B", "C", "D"] as const).map((opt) => (
+                            <label
+                              key={opt}
+                              className="flex items-center gap-3 cursor-pointer rounded p-2 hover:bg-gray-800"
+                            >
+                              <input
+                                type="radio"
+                                name={`q-${i}`}
+                                checked={quizAnswers[i] === opt}
+                                onChange={() =>
+                                  setQuizAnswers((prev) => ({ ...prev, [i]: opt }))
+                                }
+                                className="rounded-full border-gray-600"
+                              />
+                              <span>{opt}. {q[`option${opt}` as keyof typeof q] as string}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+                <Button
+                  className="mt-6"
+                  onClick={handleQuizSubmit}
+                  disabled={
+                    isSubmittingQuiz ||
+                    Object.keys(quizAnswers).length < quiz.questions.length
+                  }
+                >
+                  {isSubmittingQuiz ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : null}
+                  Submit Quiz
+                </Button>
+              </>
+            ) : (
+              <div className="space-y-4">
+                {quizScore && (
+                  <p className="text-lg">
+                    Score: {quizScore.correct} / {quizScore.total} (
+                    {quiz.questions.length > 0
+                      ? Math.round((quizScore.correct / quizScore.total) * 100)
+                      : 0}
+                    %)
+                  </p>
+                )}
+                {quizPassed ? (
+                  <p className="text-green-400 font-medium">You passed! You can close the lesson.</p>
+                ) : canTryAgain ? (
+                  <>
+                    <p className="text-amber-400">You need {passPct}% to pass. Try again.</p>
+                    <Button variant="outline" onClick={handleTryAgain}>
+                      Try Again
+                    </Button>
+                  </>
+                ) : (
+                  <p className="text-red-400">
+                    No attempts left. You can close and revisit the lesson content, but you must pass the quiz to complete this lesson.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
-        ) : currentSlide ? (
-          <SlideRenderer slide={currentSlide} blocks={currentBlocks} />
         ) : (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-gray-400">No content</p>
-          </div>
+          <>
+            {isMediaLesson && currentContentSlide ? (
+              currentContentSlide.type === "image" ? (
+                <div className="w-full min-h-[calc(100vh-80px)] bg-black flex items-center justify-center p-8">
+                  <img
+                    src={currentContentSlide.image_url}
+                    alt={currentContentSlide.alt_text ?? `Slide ${currentSlideIndex + 1}`}
+                    className="max-w-full max-h-full object-contain"
+                  />
+                </div>
+              ) : (
+                <YouTubeBlock
+                  videoId={currentContentSlide.video_id!}
+                  caption={currentContentSlide.caption}
+                />
+              )
+            ) : isImageLesson && currentImage ? (
+              <div className="w-full h-full flex items-center justify-center p-8">
+                <img
+                  src={currentImage.image_url}
+                  alt={currentImage.alt_text || `Slide ${currentSlideIndex + 1}`}
+                  className="max-w-full max-h-full object-contain"
+                />
+              </div>
+            ) : currentSlide ? (
+              <SlideRenderer slide={currentSlide} blocks={currentBlocks} />
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-gray-400">No content</p>
+              </div>
+            )}
+          </>
         )}
       </div>
 
       {/* Navigation */}
+      {!showQuizView && (
       <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 flex gap-4">
         <Button
           variant="secondary"
           size="lg"
           onClick={handlePrevious}
           disabled={currentSlideIndex === 0}
+          className="text-foreground"
         >
           <ChevronLeft className="w-5 h-5 mr-2" />
           Previous
@@ -200,12 +443,14 @@ export function LessonPlayer() {
           variant="secondary"
           size="lg"
           onClick={handleNext}
-          disabled={currentSlideIndex === itemCount - 1}
+          disabled={currentSlideIndex === itemCount - 1 && !(atEnd && hasQuiz && !userPassed)}
+          className="text-foreground"
         >
-          Next
+          {atEnd && hasQuiz && !userPassed ? "Start Quiz" : "Next"}
           <ChevronRight className="w-5 h-5 ml-2" />
         </Button>
       </div>
+      )}
     </div>
   );
 }

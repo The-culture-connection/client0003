@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { Avatar } from "../../components/ui/avatar";
 import { StartDiscussionDialog } from "../../components/discussions/StartDiscussionDialog";
+import { MortarDMWidget } from "../../components/dm/MortarDMWidget";
 import {
   getDiscussions,
   type Discussion,
@@ -210,7 +211,8 @@ export function WebCommunityHub() {
 
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <>
+      <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-foreground mb-1">
@@ -500,6 +502,8 @@ export function WebCommunityHub() {
         onOpenChange={setDialogOpen}
         onSuccess={loadDiscussions}
       />
-    </div>
+      </div>
+      <MortarDMWidget />
+    </>
   );
 }

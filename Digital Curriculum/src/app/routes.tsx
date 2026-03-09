@@ -132,6 +132,14 @@ export const router = createBrowserRouter([
         ),
       },
       {
+        path: "admin/courses/:courseId",
+        Component: () => (
+          <RoleGate allowedRoles={["superAdmin"]}>
+            <CourseBuilder />
+          </RoleGate>
+        ),
+      },
+      {
         path: "admin/curriculum/:curriculumId/module/:moduleId/chapter/:chapterId/lesson/:lessonId/builder",
         Component: () => (
           <RoleGate allowedRoles={["superAdmin"]}>

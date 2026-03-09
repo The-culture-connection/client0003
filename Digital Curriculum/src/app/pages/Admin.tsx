@@ -1348,13 +1348,22 @@ export function AdminPage() {
                           Module prices: {course.modules.map((m, i) => `$${m.price?.toFixed(2) || "0.00"}`).join(", ")}
                         </div>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => window.location.href = `/courses/${course.id}`}
-                      >
-                        View Details
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate(`/admin/courses/${course.id}`)}
+                        >
+                          Edit course
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.location.href = `/courses/${course.id}`}
+                        >
+                          View Details
+                        </Button>
+                      </div>
                     </div>
                   </Card>
                 ))}

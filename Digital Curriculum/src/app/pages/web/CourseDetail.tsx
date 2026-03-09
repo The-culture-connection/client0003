@@ -15,10 +15,11 @@ import {
   Calendar,
   User,
 } from "lucide-react";
-import { getCourse, type Course, type Module } from "../../lib/courses";
+import { getCourse, getLessonsWithQuiz, type Course, type Module } from "../../lib/courses";
 import { format } from "date-fns";
 import { useAuth } from "../../components/auth/AuthProvider";
 import { getCourseProgress, calculateCourseProgress, type CourseProgress } from "../../lib/courseProgress";
+import { getCourseSlideCounts } from "../../lib/curriculum";
 import { getCurrentUserWithRoles } from "../../lib/auth";
 import { Edit } from "lucide-react";
 
@@ -28,6 +29,8 @@ export function CourseDetail() {
   const { user } = useAuth();
   const [course, setCourse] = useState<Course | null>(null);
   const [courseProgress, setCourseProgress] = useState<CourseProgress | null>(null);
+  const [courseSlideCounts, setCourseSlideCounts] = useState<Record<string, number> | null>(null);
+  const [lessonsWithQuiz, setLessonsWithQuiz] = useState<Record<string, boolean> | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedModule, setExpandedModule] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -48,6 +51,24 @@ export function CourseDetail() {
         ]);
         setCourse(courseData);
         setCourseProgress(progressData);
+        if (courseData?.curriculumMapping) {
+          getCourseSlideCounts(courseData).then(async (counts) => {
+            setCourseSlideCounts(counts);
+            if (courseId && Object.keys(counts).length > 0) {
+              try {
+                const q = await getLessonsWithQuiz(courseId, Object.keys(counts));
+                setLessonsWithQuiz(q);
+              } catch {
+                setLessonsWithQuiz({});
+              }
+            } else {
+              setLessonsWithQuiz(null);
+            }
+          });
+        } else {
+          setCourseSlideCounts(null);
+          setLessonsWithQuiz(null);
+        }
         
         // Check if user is admin
         if (userWithRoles?.roles) {
@@ -93,9 +114,22 @@ export function CourseDetail() {
   }
 
   const totalPrice = course.totalPrice || course.modules.reduce((sum, m) => sum + (m.price || 0), 0);
-  const totalDuration = course.totalDuration || course.modules.reduce((sum, m) => sum + (m.durationMonths || 0), 0);
-  const courseProgressValue = courseProgress ? calculateCourseProgress(course, courseProgress) : 0;
+  const totalDurationMonths = course.totalDuration || course.modules.reduce((sum, m) => sum + (m.durationMonths || 0), 0);
+  const courseProgressValue = courseProgress
+    ? calculateCourseProgress(course, courseProgress, courseSlideCounts ?? undefined, lessonsWithQuiz ?? undefined)
+    : 0;
   const isCourseCompleted = courseProgress?.completed || courseProgressValue === 100;
+
+  // Countdown in days: only when user has started the course (startedAt set)
+  const startedAt = courseProgress?.startedAt;
+  const startedAtDate = startedAt && typeof (startedAt as { toDate?: () => Date }).toDate === "function"
+    ? (startedAt as { toDate: () => Date }).toDate()
+    : startedAt && typeof (startedAt as { seconds?: number }).seconds === "number"
+      ? new Date((startedAt as { seconds: number }).seconds * 1000)
+      : null;
+  const totalDurationDays = totalDurationMonths * 30;
+  const endDate = startedAtDate ? new Date(startedAtDate.getTime() + totalDurationDays * 24 * 60 * 60 * 1000) : null;
+  const daysLeft = endDate ? Math.max(0, Math.ceil((endDate.getTime() - Date.now()) / (24 * 60 * 60 * 1000))) : null;
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -116,6 +150,16 @@ export function CourseDetail() {
               <Badge variant="outline" className="border-accent text-accent">
                 {course.status || "published"}
               </Badge>
+              {isAdmin && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate(`/admin/courses/${course.id}`)}
+                >
+                  <Edit className="w-4 h-4 mr-2" />
+                  Edit course
+                </Button>
+              )}
               {isCourseCompleted && (
                 <Badge className="bg-green-500/10 text-green-500 border-green-500/20">
                   <CheckCircle2 className="w-3 h-3 mr-1" />
@@ -125,7 +169,7 @@ export function CourseDetail() {
               {course.currency && totalPrice > 0 && (
                 <Badge variant="secondary">
                   <DollarSign className="w-3 h-3 mr-1" />
-                  ${totalPrice.toFixed(2)}
+                  {totalPrice.toFixed(2)}
                 </Badge>
               )}
             </div>
@@ -142,10 +186,14 @@ export function CourseDetail() {
                 <BookOpen className="w-4 h-4" />
                 <span>{course.modules.length} Module{course.modules.length !== 1 ? "s" : ""}</span>
               </div>
-              {totalDuration > 0 && (
+              {totalDurationMonths > 0 && (
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4" />
-                  <span>{totalDuration} Month{totalDuration !== 1 ? "s" : ""}</span>
+                  {startedAtDate ? (
+                    <span>{totalDurationDays} days{daysLeft != null && <span className="text-foreground font-medium"> · {daysLeft} days left</span>}</span>
+                  ) : (
+                    <span>{totalDurationMonths} Month{totalDurationMonths !== 1 ? "s" : ""}</span>
+                  )}
                 </div>
               )}
               {course.createdAt && (
@@ -157,15 +205,15 @@ export function CourseDetail() {
                 </div>
               )}
             </div>
-            {courseProgressValue > 0 && (
+            {courseProgress && (
               <div className="mt-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-muted-foreground">Your Progress</span>
-                  <Badge className={isCourseCompleted ? "bg-green-500/10 text-green-500" : "bg-accent/10 text-accent"}>
+                <span className="text-sm text-muted-foreground">Your Progress</span>
+                <div className="mt-2 space-y-1">
+                  <Progress value={courseProgressValue} className="h-2 w-full" />
+                  <p className="text-sm font-medium text-foreground">
                     {Math.round(courseProgressValue)}%
-                  </Badge>
+                  </p>
                 </div>
-                <Progress value={courseProgressValue} className="h-2" />
               </div>
             )}
           </div>
@@ -189,7 +237,20 @@ export function CourseDetail() {
         ) : (
           course.modules
             .sort((a, b) => (a.order || 0) - (b.order || 0))
-            .map((module, moduleIndex) => (
+            .map((module, moduleIndex) => {
+              const moduleDurationMonths = module.durationMonths || 0;
+              const moduleDurationDays = moduleDurationMonths * 30;
+              let moduleEndDate: Date | null = null;
+              let moduleDaysLeft: number | null = null;
+              if (startedAtDate && moduleDurationDays > 0) {
+                const cumulativeMonths = course.modules
+                  .sort((a, b) => (a.order || 0) - (b.order || 0))
+                  .slice(0, moduleIndex + 1)
+                  .reduce((sum, m) => sum + (m.durationMonths || 0), 0);
+                moduleEndDate = new Date(startedAtDate.getTime() + cumulativeMonths * 30 * 24 * 60 * 60 * 1000);
+                moduleDaysLeft = Math.max(0, Math.ceil((moduleEndDate.getTime() - Date.now()) / (24 * 60 * 60 * 1000)));
+              }
+              return (
               <Card key={module.id || moduleIndex} className="p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
@@ -200,13 +261,15 @@ export function CourseDetail() {
                       {module.price > 0 && (
                         <Badge variant="secondary" className="text-xs">
                           <DollarSign className="w-3 h-3 mr-1" />
-                          ${module.price.toFixed(2)}
+                          {module.price.toFixed(2)}
                         </Badge>
                       )}
                       {module.durationMonths && module.durationMonths > 0 && (
                         <Badge variant="secondary" className="text-xs">
                           <Clock className="w-3 h-3 mr-1" />
-                          {module.durationMonths} Month{module.durationMonths !== 1 ? "s" : ""}
+                          {startedAtDate
+                            ? `${moduleDurationDays} days${moduleDaysLeft != null ? ` · ${moduleDaysLeft} days left` : ""}`
+                            : `${module.durationMonths} Month${module.durationMonths !== 1 ? "s" : ""}`}
                         </Badge>
                       )}
                     </div>
@@ -236,9 +299,26 @@ export function CourseDetail() {
 
                 {expandedModule === (module.id || module.title) && (
                   <div className="mt-4 pt-4 border-t border-border">
-                    <h4 className="text-sm font-semibold text-foreground mb-3">
-                      Lessons ({module.lessons.length})
-                    </h4>
+                    {(() => {
+                      const mappingModule = course.curriculumMapping?.modules?.[moduleIndex];
+                      const mappingLessons = mappingModule?.chapters?.[0]?.lessons ?? [];
+                      let completedInModule = 0;
+                      mappingLessons.forEach((l, idx) => {
+                        const lid = l.lessonId;
+                        const hasQuiz = lessonsWithQuiz?.[lid];
+                        const done = (courseProgress?.lessonsCompleted?.[lid] && (!hasQuiz || courseProgress?.quizPassed?.[lid])) || false;
+                        if (done) completedInModule++;
+                      });
+                      return (
+                        <>
+                          <h4 className="text-sm font-semibold text-foreground mb-3">
+                            Lessons ({module.lessons.length})
+                            {courseProgress && completedInModule > 0 && (
+                              <span className="text-muted-foreground font-normal ml-2">
+                                — {completedInModule} of {module.lessons.length} completed
+                              </span>
+                            )}
+                          </h4>
                     {module.lessons.length === 0 ? (
                       <p className="text-sm text-muted-foreground">
                         No lessons available yet.
@@ -252,7 +332,8 @@ export function CourseDetail() {
                             const curriculumLesson = curriculumModule?.chapters[0]?.lessons[lessonIndex];
                             const curriculumLessonId = curriculumLesson?.lessonId;
                             const lessonIdForProgress = curriculumLessonId || lesson.id || `module_${moduleIndex}_lesson_${lessonIndex}`;
-                            const isCompleted = courseProgress?.lessonsCompleted?.[lessonIdForProgress] || false;
+                            const hasQuizForLesson = lessonsWithQuiz?.[lessonIdForProgress];
+                            const isCompleted = (courseProgress?.lessonsCompleted?.[lessonIdForProgress] && (!hasQuizForLesson || courseProgress?.quizPassed?.[lessonIdForProgress])) || false;
                             const hasCurriculumContent = Boolean(course.curriculumMapping && curriculumLessonId);
 
                             return (
@@ -268,6 +349,13 @@ export function CourseDetail() {
                                   <p className="text-sm font-medium text-foreground">
                                     {lesson.title}
                                   </p>
+                                  {courseProgress?.pagesViewed?.[lessonIdForProgress] != null &&
+                                    (courseProgress?.totalPages?.[lessonIdForProgress] ?? 0) > 0 && (
+                                      <p className="text-xs text-muted-foreground mt-1">
+                                        Progress: {courseProgress.pagesViewed[lessonIdForProgress]} of{" "}
+                                        {courseProgress.totalPages?.[lessonIdForProgress]} slides
+                                      </p>
+                                    )}
                                   {lesson.slideFileName && (
                                     <p className="text-xs text-muted-foreground mt-1">
                                       {lesson.slideFileName}
@@ -311,14 +399,26 @@ export function CourseDetail() {
                                         curriculumId,
                                         moduleId,
                                         chapterId,
+                                        courseId: course.id || "",
                                       });
+                                      const progress = courseProgress;
+                                      const lastLessonId = progress?.lastViewedLessonId;
+                                      const lastSlideIndex = progress?.lastViewedSlideIndex ?? 0;
+                                      const isResume =
+                                        lastLessonId === curriculumLessonId &&
+                                        ((progress?.pagesViewed?.[curriculumLessonId] ?? 0) > 0 || lastSlideIndex > 0);
+                                      if (isResume && lastSlideIndex >= 0) {
+                                        params.set("slideIndex", String(lastSlideIndex));
+                                      }
                                       navigate(
                                         `/learn/lesson/${curriculumLessonId}?${params.toString()}`
                                       );
                                     }}
                                   >
                                     <Play className="w-3 h-3 mr-1" />
-                                    Start Lesson
+                                    {courseProgress?.pagesViewed?.[curriculumLessonId!]
+                                      ? `Continue (${courseProgress.pagesViewed[curriculumLessonId!]}/${courseProgress.totalPages?.[curriculumLessonId!] ?? "?"} slides)`
+                                      : "Start Lesson"}
                                   </Button>
                                 ) : (
                                   <Badge variant="secondary" className="text-xs">
@@ -331,10 +431,14 @@ export function CourseDetail() {
                           })}
                       </div>
                     )}
+                        </>
+                      );
+                    })()}
                   </div>
                 )}
               </Card>
-            ))
+            );
+          })
         )}
       </div>
     </div>

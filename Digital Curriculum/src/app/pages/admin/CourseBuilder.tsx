@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -27,6 +27,11 @@ import {
   Send,
   AlertCircle,
   X,
+  Video,
+  GripVertical,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardList,
 } from "lucide-react";
 import { useAuth } from "../../components/auth/AuthProvider";
 import {
@@ -40,17 +45,25 @@ import {
   getChapters,
   publishLesson,
   updateLesson,
-  uploadLessonImages,
-  deleteLessonImages,
   getLessonImages,
+  getLessonContent,
+  setLessonContentSlides,
+  uploadSingleImageForLesson,
+  extractYouTubeVideoId,
   type Lesson,
   type Slide,
   type Block,
   type LessonImage,
+  type LessonContentSlide,
+  type QuizQuestion,
 } from "../../lib/curriculum";
 import {
   createCourse,
   updateCourse,
+  setCourseLessonQuiz,
+  getCourse,
+  getCourseLessonQuiz,
+  deleteCourse,
   type Course,
 } from "../../lib/courses";
 import {
@@ -63,9 +76,33 @@ import {
 } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { SlideRenderer } from "../../components/curriculum/SlideRenderer";
+import { YouTubeBlock } from "../../components/curriculum/YouTubeBlock";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../components/ui/dialog";
 
 type ImageUploadStatus = "idle" | "uploading" | "success" | "error";
+
+/** One slide in the builder (before save). Image = file + preview URL; Video = YouTube id + caption. Existing = from Firestore (no file). */
+export interface DraftSlide {
+  type: "image" | "video";
+  file?: File;
+  imagePreviewUrl?: string;
+  /** When loading from existing content, keep so we don't re-upload */
+  existingImageUrl?: string;
+  existingStoragePath?: string;
+  videoId?: string;
+  videoUrl?: string;
+  caption?: string;
+}
+
+/** One multiple-choice question in the builder (before save) */
+export interface DraftQuizQuestion {
+  question: string;
+  optionA: string;
+  optionB: string;
+  optionC: string;
+  optionD: string;
+  correctAnswer: "A" | "B" | "C" | "D";
+}
 
 interface ModuleData {
   id?: string;
@@ -76,19 +113,31 @@ interface ModuleData {
   lessonCount: number;
   lessons: Array<{
     title: string;
-    imageFiles: File[];
+    /** Legacy: kept for backward compat; new flow uses slides */
+    imageFiles?: File[];
+    /** Ordered slides: image (upload) or video (YouTube link) */
+    slides: DraftSlide[];
     imageUploadStatus?: ImageUploadStatus;
     lessonId?: string;
+    /** Quiz at end of lesson */
+    quizEnabled?: boolean;
+    quizQuestions?: DraftQuizQuestion[];
+    quizMaxAttempts?: number;
+    quizPassPercentage?: number;
   }>;
 }
 
 export function CourseBuilder() {
   const navigate = useNavigate();
+  const { courseId: editingCourseId } = useParams<{ courseId: string }>();
   const { user } = useAuth();
 
   const [activeTab, setActiveTab] = useState("metadata");
   const [isSaving, setIsSaving] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isLoadingEdit, setIsLoadingEdit] = useState(!!editingCourseId);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Course Metadata
   const [courseTitle, setCourseTitle] = useState("");
@@ -103,7 +152,18 @@ export function CourseBuilder() {
       price: "",
       durationMonths: "",
       lessonCount: 1,
-      lessons: [{ title: "", imageFiles: [], imageUploadStatus: "idle" }],
+      lessons: [
+        {
+          title: "",
+          imageFiles: [],
+          slides: [],
+          imageUploadStatus: "idle",
+          quizEnabled: false,
+          quizQuestions: [],
+          quizMaxAttempts: 3,
+          quizPassPercentage: 70,
+        },
+      ],
     },
   ]);
 
@@ -119,12 +179,14 @@ export function CourseBuilder() {
   const [createdCourseId, setCreatedCourseId] = useState<string | null>(null);
   const [previewLessonId, setPreviewLessonId] = useState<string | null>(null);
   const [previewModuleId, setPreviewModuleId] = useState<string | null>(null);
+  const [previewLessonSlides, setPreviewLessonSlides] = useState<DraftSlide[] | null>(null);
+  const [previewLessonTitle, setPreviewLessonTitle] = useState<string>("");
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
-  // Initialize curriculum structure
+  // Initialize curriculum structure (create new only when not editing)
   useEffect(() => {
     const initializeCurriculum = async () => {
-      if (!user || curriculumId) return;
+      if (!user || curriculumId || editingCourseId) return;
 
       try {
         const newCurriculumId = await createCurriculum(
@@ -139,7 +201,137 @@ export function CourseBuilder() {
     };
 
     initializeCurriculum();
-  }, [user, courseTitle, curriculumId]);
+  }, [user, courseTitle, curriculumId, editingCourseId]);
+
+  // Load existing course when editing
+  useEffect(() => {
+    if (!editingCourseId || !user) {
+      setIsLoadingEdit(false);
+      return;
+    }
+
+    const loadCourseForEdit = async () => {
+      setIsLoadingEdit(true);
+      try {
+        const course = await getCourse(editingCourseId);
+        if (!course || !course.curriculumMapping) {
+          alert("Course not found or has no curriculum mapping.");
+          navigate("/admin");
+          return;
+        }
+
+        const cid = course.curriculumMapping.curriculumId;
+        setCourseTitle(course.title || "");
+        setCourseDescription(course.description || "");
+        setCreatedCourseId(editingCourseId);
+        setCurriculumId(cid);
+
+        if (course.assignedRoles?.length) {
+          setAssignmentType("role");
+          setSelectedRoles(course.assignedRoles);
+        } else if (course.assignedUserIds?.length) {
+          setAssignmentType("user");
+          setValidatedUserId(course.assignedUserIds[0]);
+        }
+
+        const loadedModules: ModuleData[] = [];
+        for (let mi = 0; mi < course.modules.length; mi++) {
+          const mod = course.modules[mi];
+          const mapMod = course.curriculumMapping!.modules[mi];
+          const moduleId = mapMod?.moduleId;
+          const chapterId = mapMod?.chapters?.[0]?.chapterId;
+          const mapLessons = mapMod?.chapters?.[0]?.lessons ?? [];
+
+          const lessons: ModuleData["lessons"] = [];
+          for (let li = 0; li < mod.lessons.length; li++) {
+            const lesson = mod.lessons[li];
+            const lessonId = mapLessons[li]?.lessonId;
+            const title = mapLessons[li]?.title ?? lesson.title ?? `Lesson ${li + 1}`;
+
+            let slides: DraftSlide[] = [];
+            let quizEnabled = false;
+            let quizQuestions: DraftQuizQuestion[] = [];
+            let quizMaxAttempts = 3;
+            let quizPassPercentage = 70;
+
+            if (lessonId && cid && moduleId && chapterId) {
+              try {
+                const [content, quiz] = await Promise.all([
+                  getLessonContent(cid, moduleId, chapterId, lessonId),
+                  getCourseLessonQuiz(editingCourseId, lessonId),
+                ]);
+                slides = content.map((s) => {
+                  if (s.type === "image") {
+                    return {
+                      type: "image" as const,
+                      imagePreviewUrl: s.image_url,
+                      existingImageUrl: s.image_url,
+                      existingStoragePath: s.storage_path,
+                    };
+                  }
+                  return {
+                    type: "video" as const,
+                    videoId: s.video_id,
+                    videoUrl: s.video_url,
+                    caption: s.caption,
+                  };
+                });
+                if (quiz?.enabled && quiz.questions?.length) {
+                  quizEnabled = true;
+                  quizMaxAttempts = quiz.maxAttempts ?? 3;
+                  quizPassPercentage = quiz.passPercentage ?? 70;
+                  quizQuestions = (quiz.questions ?? [])
+                    .sort((a, b) => a.order - b.order)
+                    .map((q) => ({
+                      question: q.question,
+                      optionA: q.optionA,
+                      optionB: q.optionB,
+                      optionC: q.optionC,
+                      optionD: q.optionD,
+                      correctAnswer: q.correctAnswer,
+                    }));
+                }
+              } catch (e) {
+                console.warn("Load lesson content/quiz failed:", e);
+              }
+            }
+
+            lessons.push({
+              title,
+              slides,
+              imageUploadStatus: slides.length > 0 ? "success" : "idle",
+              lessonId,
+              quizEnabled,
+              quizQuestions,
+              quizMaxAttempts,
+              quizPassPercentage,
+            });
+          }
+
+          loadedModules.push({
+            id: moduleId,
+            title: mod.title || `Module ${mi + 1}`,
+            description: mod.description ?? "",
+            price: String(mod.price ?? 0),
+            durationMonths: String(mod.durationMonths ?? 0),
+            lessonCount: lessons.length,
+            lessons,
+          });
+        }
+
+        setModules(loadedModules);
+        setModuleCount(loadedModules.length);
+      } catch (err) {
+        console.error("Error loading course for edit:", err);
+        alert("Failed to load course.");
+        navigate("/admin");
+      } finally {
+        setIsLoadingEdit(false);
+      }
+    };
+
+    loadCourseForEdit();
+  }, [editingCourseId, user, navigate]);
 
   const handleSetModuleCount = (count: number) => {
     if (count < 1) return;
@@ -155,7 +347,18 @@ export function CourseBuilder() {
           price: "",
           durationMonths: "",
           lessonCount: 1,
-          lessons: [{ title: "", imageFiles: [], imageUploadStatus: "idle" }],
+          lessons: [
+        {
+          title: "",
+          imageFiles: [],
+          slides: [],
+          imageUploadStatus: "idle",
+          quizEnabled: false,
+          quizQuestions: [],
+          quizMaxAttempts: 3,
+          quizPassPercentage: 70,
+        },
+      ],
         });
       }
     }
@@ -174,7 +377,16 @@ export function CourseBuilder() {
       if (currentLessons[i]) {
         newLessons.push(currentLessons[i]);
       } else {
-        newLessons.push({ title: "", imageFiles: [], imageUploadStatus: "idle" });
+        newLessons.push({
+        title: "",
+        imageFiles: [],
+        slides: [],
+        imageUploadStatus: "idle",
+        quizEnabled: false,
+        quizQuestions: [],
+        quizMaxAttempts: 3,
+        quizPassPercentage: 70,
+      });
       }
     }
 
@@ -196,22 +408,118 @@ export function CourseBuilder() {
       return;
     }
     const updated = [...modules];
-    updated[moduleIndex].lessons[lessonIndex].imageFiles = fileList;
-    if (!updated[moduleIndex].lessons[lessonIndex].title) {
-      updated[moduleIndex].lessons[lessonIndex].title = `Lesson ${lessonIndex + 1}`;
+    const lesson = updated[moduleIndex].lessons[lessonIndex];
+    if (!lesson.slides) lesson.slides = [];
+    for (const file of fileList) {
+      lesson.slides.push({
+        type: "image",
+        file,
+        imagePreviewUrl: URL.createObjectURL(file),
+      });
     }
+    if (!lesson.title) lesson.title = `Lesson ${lessonIndex + 1}`;
     setModules(updated);
     e.target.value = "";
   };
 
-  const handleClearImages = (moduleIndex: number, lessonIndex: number) => {
+  const handleAddSlideVideo = (
+    moduleIndex: number,
+    lessonIndex: number,
+    url: string,
+    caption: string
+  ) => {
+    const videoId = extractYouTubeVideoId(url);
+    if (!videoId) {
+      alert("Invalid YouTube link. Use https://www.youtube.com/watch?v=... or https://youtu.be/...");
+      return;
+    }
     const updated = [...modules];
-    updated[moduleIndex].lessons[lessonIndex].imageFiles = [];
+    const lesson = updated[moduleIndex].lessons[lessonIndex];
+    if (!lesson.slides) lesson.slides = [];
+    lesson.slides.push({
+      type: "video",
+      videoId,
+      videoUrl: url.trim(),
+      caption: caption.trim() || undefined,
+    });
     setModules(updated);
   };
 
-  const handleSaveCourse = async () => {
-    if (!curriculumId || !user) return;
+  const handleRemoveSlide = (moduleIndex: number, lessonIndex: number, slideIndex: number) => {
+    const updated = [...modules];
+    const lesson = updated[moduleIndex].lessons[lessonIndex];
+    if (lesson.slides?.[slideIndex]?.imagePreviewUrl) {
+      URL.revokeObjectURL(lesson.slides[slideIndex].imagePreviewUrl!);
+    }
+    lesson.slides = lesson.slides?.filter((_, i) => i !== slideIndex) ?? [];
+    setModules(updated);
+  };
+
+  const handleMoveSlide = (
+    moduleIndex: number,
+    lessonIndex: number,
+    slideIndex: number,
+    direction: -1 | 1
+  ) => {
+    const updated = [...modules];
+    const lesson = updated[moduleIndex].lessons[lessonIndex];
+    const slides = lesson.slides ?? [];
+    const newIndex = slideIndex + direction;
+    if (newIndex < 0 || newIndex >= slides.length) return;
+    [slides[slideIndex], slides[newIndex]] = [slides[newIndex], slides[slideIndex]];
+    lesson.slides = [...slides];
+    setModules(updated);
+  };
+
+  const setQuizEnabled = (moduleIndex: number, lessonIndex: number, enabled: boolean) => {
+    const updated = [...modules];
+    const lesson = updated[moduleIndex].lessons[lessonIndex];
+    lesson.quizEnabled = enabled;
+    if (enabled && !lesson.quizQuestions?.length) lesson.quizQuestions = [];
+    if (enabled && lesson.quizMaxAttempts == null) lesson.quizMaxAttempts = 3;
+    if (enabled && lesson.quizPassPercentage == null) lesson.quizPassPercentage = 70;
+    setModules(updated);
+  };
+
+  const addQuizQuestion = (moduleIndex: number, lessonIndex: number) => {
+    const updated = [...modules];
+    const lesson = updated[moduleIndex].lessons[lessonIndex];
+    if (!lesson.quizQuestions) lesson.quizQuestions = [];
+    lesson.quizQuestions.push({
+      question: "",
+      optionA: "",
+      optionB: "",
+      optionC: "",
+      optionD: "",
+      correctAnswer: "A",
+    });
+    setModules(updated);
+  };
+
+  const removeQuizQuestion = (moduleIndex: number, lessonIndex: number, qIndex: number) => {
+    const updated = [...modules];
+    const lesson = updated[moduleIndex].lessons[lessonIndex];
+    lesson.quizQuestions = lesson.quizQuestions?.filter((_, i) => i !== qIndex) ?? [];
+    setModules(updated);
+  };
+
+  const updateQuizQuestion = (
+    moduleIndex: number,
+    lessonIndex: number,
+    qIndex: number,
+    field: keyof DraftQuizQuestion,
+    value: string | number
+  ) => {
+    const updated = [...modules];
+    const lesson = updated[moduleIndex].lessons[lessonIndex];
+    const q = lesson.quizQuestions?.[qIndex];
+    if (!q) return;
+    (q as Record<string, unknown>)[field] = value;
+    setModules(updated);
+  };
+
+  const handleSaveCourse = async (): Promise<string | null> => {
+    if (!curriculumId || !user) return null;
 
     setIsSaving(true);
     try {
@@ -221,10 +529,10 @@ export function CourseBuilder() {
         curriculumId,
         modules: [],
       };
+      let accumulatedModules = [...modules];
 
       for (let moduleIndex = 0; moduleIndex < modules.length; moduleIndex++) {
-        const moduleData = modules[moduleIndex];
-        const updatedModules = [...modules];
+        const moduleData = accumulatedModules[moduleIndex];
 
         let moduleId = moduleData.id;
         if (!moduleId) {
@@ -233,7 +541,7 @@ export function CourseBuilder() {
             moduleData.title || `Module ${moduleIndex + 1}`,
             moduleIndex + 1
           );
-          updatedModules[moduleIndex].id = moduleId;
+          accumulatedModules[moduleIndex].id = moduleId;
         }
 
         let chapterId: string;
@@ -255,7 +563,8 @@ export function CourseBuilder() {
           const lessonData = moduleData.lessons[lessonIndex];
 
           let lessonId = lessonData.lessonId;
-          const hasImages = lessonData.imageFiles?.length > 0;
+          const slides = lessonData.slides ?? [];
+          const hasContent = slides.length > 0;
 
           if (!lessonId) {
             lessonId = await createLesson(
@@ -265,36 +574,73 @@ export function CourseBuilder() {
               lessonData.title || `Lesson ${lessonIndex + 1}`,
               lessonIndex + 1,
               user.uid,
-              hasImages ? { content_type: "images" } : undefined
+              hasContent ? { content_type: "media" } : undefined
             );
-            updatedModules[moduleIndex].lessons[lessonIndex].lessonId = lessonId;
+            accumulatedModules[moduleIndex].lessons[lessonIndex].lessonId = lessonId;
           }
 
-          if (hasImages && lessonId) {
+          if (hasContent && lessonId) {
             try {
-              updatedModules[moduleIndex].lessons[lessonIndex].imageUploadStatus = "uploading";
-              setModules(updatedModules);
+              accumulatedModules[moduleIndex].lessons[lessonIndex].imageUploadStatus = "uploading";
+              setModules(accumulatedModules);
               await updateLesson(
                 curriculumId,
                 moduleId,
                 chapterId,
                 lessonId,
-                { content_type: "images" }
+                { content_type: "media" }
               );
-              await deleteLessonImages(curriculumId, moduleId, chapterId, lessonId);
-              await uploadLessonImages(
+              const contentSlides: Omit<LessonContentSlide, "id" | "created_at" | "updated_at">[] = [];
+              for (let i = 0; i < slides.length; i++) {
+                const s = slides[i];
+                if (s.type === "image") {
+                  if (s.file) {
+                    const { storage_path, image_url } = await uploadSingleImageForLesson(
+                      s.file,
+                      curriculumId,
+                      moduleId,
+                      lessonId
+                    );
+                    contentSlides.push({
+                      order: i,
+                      type: "image",
+                      image_url,
+                      storage_path,
+                      alt_text: s.file.name,
+                    });
+                  } else if (s.existingImageUrl) {
+                    contentSlides.push({
+                      order: i,
+                      type: "image",
+                      image_url: s.existingImageUrl,
+                      storage_path: s.existingStoragePath ?? "",
+                      alt_text: "Slide",
+                    });
+                  }
+                } else {
+                  contentSlides.push({
+                    order: i,
+                    type: "video",
+                    video_provider: "youtube",
+                    video_id: s.videoId,
+                    video_url: s.videoUrl,
+                    caption: s.caption,
+                    background_color: "#000000",
+                  });
+                }
+              }
+              await setLessonContentSlides(
                 curriculumId,
                 moduleId,
                 chapterId,
                 lessonId,
-                lessonData.imageFiles
+                contentSlides
               );
-              updatedModules[moduleIndex].lessons[lessonIndex].imageUploadStatus = "success";
-              updatedModules[moduleIndex].lessons[lessonIndex].imageFiles = [];
+              accumulatedModules[moduleIndex].lessons[lessonIndex].imageUploadStatus = "success";
             } catch (imgErr) {
-              console.error("Error uploading lesson images:", imgErr);
-              updatedModules[moduleIndex].lessons[lessonIndex].imageUploadStatus = "error";
-              setModules(updatedModules);
+              console.error("Error saving lesson content:", imgErr);
+              accumulatedModules[moduleIndex].lessons[lessonIndex].imageUploadStatus = "error";
+              setModules(accumulatedModules);
               throw imgErr;
             }
           }
@@ -305,7 +651,7 @@ export function CourseBuilder() {
           });
         }
 
-        setModules(updatedModules);
+        setModules(accumulatedModules);
 
         const moduleObj: any = {
           title: moduleData.title || `Module ${moduleIndex + 1}`,
@@ -327,7 +673,7 @@ export function CourseBuilder() {
           chapters: [{
             chapterId,
             lessons: moduleLessons.map((l, i) => ({
-              lessonId: updatedModules[moduleIndex].lessons[i]?.lessonId || "",
+              lessonId: accumulatedModules[moduleIndex].lessons[i]?.lessonId || "",
               title: l.title || `Lesson ${i + 1}`,
             })),
           }],
@@ -340,7 +686,7 @@ export function CourseBuilder() {
         currency: "USD",
         modules: courseModules,
         createdBy: user.uid,
-        status: "draft",
+        status: createdCourseId ? undefined : "draft",
         curriculumMapping: mapping,
       };
 
@@ -364,17 +710,85 @@ export function CourseBuilder() {
       if (createdCourseId) {
         console.log("[SAVE] Updating existing course:", createdCourseId);
         await updateCourse(createdCourseId, cleanCourseData as Partial<Course>);
+        const courseIdToUse = createdCourseId;
+        for (const mod of accumulatedModules) {
+          for (const lesson of mod.lessons) {
+            if (!lesson.lessonId) continue;
+            const quizEnabled = lesson.quizEnabled ?? false;
+            const questions = lesson.quizQuestions ?? [];
+            const validQuestions: QuizQuestion[] = quizEnabled
+              ? questions
+                  .filter(
+                    (q) =>
+                      (q.question?.trim() ?? "") !== "" &&
+                      [q.optionA, q.optionB, q.optionC, q.optionD].every(
+                        (o) => (o?.trim() ?? "") !== ""
+                      )
+                  )
+                  .map((q, i) => ({
+                    order: i,
+                    question: q.question.trim(),
+                    optionA: q.optionA.trim(),
+                    optionB: q.optionB.trim(),
+                    optionC: q.optionC.trim(),
+                    optionD: q.optionD.trim(),
+                    correctAnswer: q.correctAnswer,
+                  }))
+              : [];
+            await setCourseLessonQuiz(courseIdToUse, lesson.lessonId, {
+              enabled: quizEnabled && validQuestions.length > 0,
+              maxAttempts: Math.max(1, lesson.quizMaxAttempts ?? 3),
+              passPercentage: Math.min(100, Math.max(0, lesson.quizPassPercentage ?? 70)),
+              questions: validQuestions,
+            });
+          }
+        }
         alert("Course updated!");
+        return createdCourseId;
       } else {
         console.log("[SAVE] Creating new course with data:", cleanCourseData);
         const courseId = await createCourse(cleanCourseData as Omit<Course, "id" | "createdAt" | "updatedAt">);
         console.log("[SAVE] Course created with ID:", courseId);
         setCreatedCourseId(courseId);
+        for (const mod of accumulatedModules) {
+          for (const lesson of mod.lessons) {
+            if (!lesson.lessonId) continue;
+            const quizEnabled = lesson.quizEnabled ?? false;
+            const questions = lesson.quizQuestions ?? [];
+            const validQuestions: QuizQuestion[] = quizEnabled
+              ? questions
+                  .filter(
+                    (q) =>
+                      (q.question?.trim() ?? "") !== "" &&
+                      [q.optionA, q.optionB, q.optionC, q.optionD].every(
+                        (o) => (o?.trim() ?? "") !== ""
+                      )
+                  )
+                  .map((q, i) => ({
+                    order: i,
+                    question: q.question.trim(),
+                    optionA: q.optionA.trim(),
+                    optionB: q.optionB.trim(),
+                    optionC: q.optionC.trim(),
+                    optionD: q.optionD.trim(),
+                    correctAnswer: q.correctAnswer,
+                  }))
+              : [];
+            await setCourseLessonQuiz(courseId, lesson.lessonId, {
+              enabled: quizEnabled && validQuestions.length > 0,
+              maxAttempts: Math.max(1, lesson.quizMaxAttempts ?? 3),
+              passPercentage: Math.min(100, Math.max(0, lesson.quizPassPercentage ?? 70)),
+              questions: validQuestions,
+            });
+          }
+        }
         alert("Course saved as draft!");
+        return courseId;
       }
     } catch (error) {
       console.error("Error saving course:", error);
       alert("Failed to save course. Please try again.");
+      return null;
     } finally {
       setIsSaving(false);
     }
@@ -382,117 +796,79 @@ export function CourseBuilder() {
 
   const handlePublishCourse = async () => {
     console.log("[PUBLISH] Starting publish process...");
-    console.log("[PUBLISH] createdCourseId:", createdCourseId);
-    console.log("[PUBLISH] curriculumId:", curriculumId);
-    console.log("[PUBLISH] modules:", modules);
 
-    if (!createdCourseId) {
-      console.log("[PUBLISH] No course ID, saving course first...");
-      await handleSaveCourse();
-      // Wait a bit for save to complete
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      console.log("[PUBLISH] Course saved, createdCourseId:", createdCourseId);
-    }
-
-    if (!createdCourseId) {
-      console.error("[PUBLISH] Still no course ID after save!");
+    // Always save first, then publish (save returns the course id to use)
+    const courseIdToPublish = await handleSaveCourse();
+    if (!courseIdToPublish) {
       alert("Failed to save course. Cannot publish.");
       return;
     }
 
-    // Publish all lessons
-    if (curriculumId) {
-      setIsPublishing(true);
-      try {
-        console.log("[PUBLISH] Publishing lessons...");
-        let publishedCount = 0;
-        let skippedCount = 0;
+    if (!curriculumId) {
+      alert("No curriculum ID available. Please save the course first.");
+      return;
+    }
 
-        for (const module of modules) {
-          console.log(`[PUBLISH] Processing module: ${module.title}, id: ${module.id}`);
-          if (!module.id) {
-            console.warn(`[PUBLISH] Module ${module.title} has no ID, skipping`);
-            skippedCount++;
-            continue;
-          }
-          
-          // Get chapters for this module
-          console.log(`[PUBLISH] Getting chapters for module ${module.id}...`);
-          const chapters = await getChapters(curriculumId, module.id);
-          console.log(`[PUBLISH] Found ${chapters.length} chapters:`, chapters);
-          const chapterId = chapters.length > 0 ? chapters[0].id || "" : "";
-          
-          if (!chapterId) {
-            console.warn(`[PUBLISH] No chapter found for module ${module.id}`);
-            skippedCount++;
-            continue;
-          }
+    setIsPublishing(true);
+    try {
+      console.log("[PUBLISH] Publishing lessons for course:", courseIdToPublish);
+      let publishedCount = 0;
+      let skippedCount = 0;
 
-          console.log(`[PUBLISH] Publishing lessons in module ${module.id}, chapter ${chapterId}...`);
-          for (const lesson of module.lessons) {
-            if (lesson.lessonId) {
-              console.log(`[PUBLISH] Publishing lesson ${lesson.lessonId}...`);
-              try {
-                await publishLesson(curriculumId, module.id, chapterId, lesson.lessonId);
-                publishedCount++;
-                console.log(`[PUBLISH] Successfully published lesson ${lesson.lessonId}`);
-              } catch (lessonError) {
-                console.error(`[PUBLISH] Error publishing lesson ${lesson.lessonId}:`, lessonError);
-              }
-            } else {
-              console.warn(`[PUBLISH] Lesson "${lesson.title}" has no lessonId, skipping`);
-              skippedCount++;
-            }
-          }
+      for (const module of modules) {
+        if (!module.id) {
+          skippedCount++;
+          continue;
         }
 
-        console.log(`[PUBLISH] Published ${publishedCount} lessons, skipped ${skippedCount}`);
+        const chapters = await getChapters(curriculumId, module.id);
+        const chapterId = chapters.length > 0 ? chapters[0].id || "" : "";
+        if (!chapterId) {
+          skippedCount++;
+          continue;
+        }
 
-        // Update course status to published
-        console.log(`[PUBLISH] Updating course ${createdCourseId} status to published...`);
-        await updateCourse(createdCourseId, {
-          status: "published",
-        });
-        console.log("[PUBLISH] Course status updated successfully!");
-
-        alert(`Course published successfully! Published ${publishedCount} lessons.`);
-        navigate("/admin");
-      } catch (error) {
-        console.error("[PUBLISH] Error publishing course:", error);
-        alert(`Failed to publish course: ${error instanceof Error ? error.message : "Unknown error"}`);
-      } finally {
-        setIsPublishing(false);
+        for (const lesson of module.lessons) {
+          if (lesson.lessonId) {
+            try {
+              await publishLesson(curriculumId, module.id, chapterId, lesson.lessonId);
+              publishedCount++;
+            } catch (lessonError) {
+              console.error("[PUBLISH] Error publishing lesson:", lessonError);
+            }
+          } else {
+            skippedCount++;
+          }
+        }
       }
-    } else {
-      console.error("[PUBLISH] No curriculumId available!");
-      alert("No curriculum ID available. Please save the course first.");
+
+      await updateCourse(courseIdToPublish, { status: "published" });
+
+      alert(`Course published successfully! Published ${publishedCount} lessons.`);
+      navigate("/admin");
+    } catch (error) {
+      console.error("[PUBLISH] Error publishing course:", error);
+      alert(`Failed to publish course: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setIsPublishing(false);
     }
   };
 
   const handlePreviewLesson = async (moduleIndex: number, lessonIndex: number) => {
-    console.log("[PREVIEW] Opening preview...");
-    console.log("[PREVIEW] moduleIndex:", moduleIndex, "lessonIndex:", lessonIndex);
     const lesson = modules[moduleIndex].lessons[lessonIndex];
     const module = modules[moduleIndex];
-    console.log("[PREVIEW] lesson:", lesson);
-    console.log("[PREVIEW] module:", module);
-    console.log("[PREVIEW] lesson.lessonId:", lesson.lessonId);
-    console.log("[PREVIEW] curriculumId:", curriculumId);
-    console.log("[PREVIEW] module.id:", module.id);
+    const slides = lesson.slides ?? [];
 
-    if (lesson.lessonId && curriculumId && module.id) {
-      setPreviewLessonId(lesson.lessonId);
-      setPreviewModuleId(module.id);
-      setIsPreviewOpen(true);
-      console.log("[PREVIEW] Preview dialog opened");
-    } else {
-      const missing = [];
-      if (!lesson.lessonId) missing.push("lesson ID");
-      if (!curriculumId) missing.push("curriculum ID");
-      if (!module.id) missing.push("module ID");
-      console.error("[PREVIEW] Missing required data:", missing);
-      alert(`Please add images and save the course first. Missing: ${missing.join(", ")}`);
+    if (slides.length === 0 && !lesson.lessonId) {
+      alert("Add at least one slide (image or video) to this lesson, then try preview.");
+      return;
     }
+
+    setPreviewLessonId(lesson.lessonId || null);
+    setPreviewModuleId(module.id || null);
+    setPreviewLessonSlides(slides.length > 0 ? slides : null);
+    setPreviewLessonTitle(lesson.title || `Lesson ${lessonIndex + 1}`);
+    setIsPreviewOpen(true);
   };
 
   const handleValidateEmail = async () => {
@@ -521,12 +897,42 @@ export function CourseBuilder() {
     }
   };
 
+  const handleDeleteCourse = async () => {
+    if (!editingCourseId) return;
+    setIsDeleting(true);
+    try {
+      await deleteCourse(editingCourseId);
+      setDeleteConfirmOpen(false);
+      navigate("/admin");
+    } catch (err) {
+      console.error("Error deleting course:", err);
+      alert("Failed to delete course.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  if (isLoadingEdit) {
+    return (
+      <div className="p-6 max-w-7xl mx-auto flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <Loader2 className="w-10 h-10 animate-spin text-accent mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading course...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">Course Builder</h1>
+        <h1 className="text-3xl font-bold mb-2">
+          {editingCourseId ? "Edit course" : "Course Builder"}
+        </h1>
         <p className="text-muted-foreground">
-          Create your course by adding metadata, modules, and uploading lesson content
+          {editingCourseId
+            ? "Update course info, content, quizzes, assignments, and publish changes."
+            : "Create your course by adding metadata, modules, and uploading lesson content"}
         </p>
       </div>
 
@@ -723,10 +1129,10 @@ export function CourseBuilder() {
                           <div className="space-y-2">
                             <Label className="flex items-center gap-2">
                               <ImageIcon className="w-4 h-4 text-accent" />
-                              Lesson images *
+                              Slides
                             </Label>
                             <p className="text-xs text-muted-foreground mb-2">
-                              Upload images in order; they will be shown one per screen with Previous/Next in the lesson player.
+                              Add slides in order. Choose Image (upload) or Video (YouTube link). Reorder in the Preview tab.
                             </p>
                             <div className="flex flex-wrap items-center gap-2">
                               <Input
@@ -739,26 +1145,56 @@ export function CourseBuilder() {
                                 disabled={lesson.imageUploadStatus === "uploading"}
                                 className="max-w-xs"
                               />
-                              {lesson.imageFiles.length > 0 && (
-                                <>
-                                  <span className="text-sm text-muted-foreground">
-                                    {lesson.imageFiles.length} image{lesson.imageFiles.length !== 1 ? "s" : ""} selected
-                                  </span>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleClearImages(moduleIndex, lessonIndex)}
-                                  >
-                                    Clear
-                                  </Button>
-                                </>
-                              )}
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  const url = window.prompt("Paste YouTube link (youtube.com/watch?v=... or youtu.be/...)");
+                                  if (!url) return;
+                                  const caption = window.prompt("Optional caption for this video:");
+                                  handleAddSlideVideo(moduleIndex, lessonIndex, url, caption ?? "");
+                                }}
+                                disabled={lesson.imageUploadStatus === "uploading"}
+                              >
+                                <Video className="w-4 h-4 mr-1" />
+                                Add video
+                              </Button>
                             </div>
-                            {lesson.imageFiles.length > 0 && (
-                              <ul className="text-xs text-muted-foreground list-disc list-inside">
-                                {lesson.imageFiles.map((f, i) => (
-                                  <li key={i}>{f.name}</li>
+                            {(lesson.slides?.length ?? 0) > 0 && (
+                              <ul className="space-y-1 mt-2">
+                                {lesson.slides!.map((slide, slideIdx) => (
+                                  <li
+                                    key={slideIdx}
+                                    className="flex items-center gap-2 text-sm p-2 rounded border border-border bg-muted/30"
+                                  >
+                                    <Badge variant="outline" className="text-xs">
+                                      {slide.type === "image"
+                                        ? "Image"
+                                        : "Video"}
+                                    </Badge>
+                                    {slide.type === "image" && (
+                                      <span className="truncate flex-1">
+                                        {slide.file?.name ?? "Image"}
+                                      </span>
+                                    )}
+                                    {slide.type === "video" && (
+                                      <span className="truncate flex-1">
+                                        {slide.videoId ?? slide.videoUrl}
+                                      </span>
+                                    )}
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 w-7 p-0"
+                                      onClick={() =>
+                                        handleRemoveSlide(moduleIndex, lessonIndex, slideIdx)
+                                      }
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </Button>
+                                  </li>
                                 ))}
                               </ul>
                             )}
@@ -767,7 +1203,179 @@ export function CourseBuilder() {
                           {lesson.imageUploadStatus === "uploading" && (
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
                               <Loader2 className="w-4 h-4 animate-spin" />
-                              <span>Uploading images...</span>
+                              <span>Uploading...</span>
+                            </div>
+                          )}
+
+                          {/* Quiz at end of lesson */}
+                          <div className="space-y-3 pt-2 border-t border-border">
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                id={`quiz-${moduleIndex}-${lessonIndex}`}
+                                checked={lesson.quizEnabled ?? false}
+                                onChange={(e) =>
+                                  setQuizEnabled(moduleIndex, lessonIndex, e.target.checked)
+                                }
+                                className="rounded border-border"
+                              />
+                              <Label
+                                htmlFor={`quiz-${moduleIndex}-${lessonIndex}`}
+                                className="flex items-center gap-1.5 cursor-pointer"
+                              >
+                                <ClipboardList className="w-4 h-4 text-accent" />
+                                Quiz at end of lesson (must pass to complete)
+                              </Label>
+                            </div>
+                            {lesson.quizEnabled && (
+                              <>
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div className="space-y-1">
+                                    <Label className="text-xs">Max attempts</Label>
+                                    <Input
+                                      type="number"
+                                      min={1}
+                                      value={lesson.quizMaxAttempts ?? 3}
+                                      onChange={(e) => {
+                                        const updated = [...modules];
+                                        updated[moduleIndex].lessons[lessonIndex].quizMaxAttempts =
+                                          parseInt(e.target.value, 10) || 1;
+                                        setModules(updated);
+                                      }}
+                                      className="h-8"
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <Label className="text-xs">Pass % (0–100)</Label>
+                                    <Input
+                                      type="number"
+                                      min={0}
+                                      max={100}
+                                      value={lesson.quizPassPercentage ?? 70}
+                                      onChange={(e) => {
+                                        const updated = [...modules];
+                                        updated[moduleIndex].lessons[lessonIndex].quizPassPercentage =
+                                          parseInt(e.target.value, 10) || 0;
+                                        setModules(updated);
+                                      }}
+                                      className="h-8"
+                                    />
+                                  </div>
+                                </div>
+                                <div className="space-y-2">
+                                  <Label className="text-xs">Questions (multiple choice A–D)</Label>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => addQuizQuestion(moduleIndex, lessonIndex)}
+                                  >
+                                    <Plus className="w-3 h-3 mr-1" />
+                                    Add question
+                                  </Button>
+                                  {(lesson.quizQuestions?.length ?? 0) > 0 && (
+                                    <ul className="space-y-3">
+                                      {lesson.quizQuestions!.map((q, qIdx) => (
+                                        <li
+                                          key={qIdx}
+                                          className="p-3 rounded border border-border bg-muted/20 space-y-2"
+                                        >
+                                          <div className="flex justify-between items-start gap-2">
+                                            <span className="text-xs font-medium text-muted-foreground">
+                                              Q{qIdx + 1}
+                                            </span>
+                                            <Button
+                                              type="button"
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-6 w-6 p-0"
+                                              onClick={() =>
+                                                removeQuizQuestion(moduleIndex, lessonIndex, qIdx)
+                                              }
+                                            >
+                                              <Trash2 className="w-3 h-3" />
+                                            </Button>
+                                          </div>
+                                          <Input
+                                            placeholder="Question text"
+                                            value={q.question}
+                                            onChange={(e) =>
+                                              updateQuizQuestion(
+                                                moduleIndex,
+                                                lessonIndex,
+                                                qIdx,
+                                                "question",
+                                                e.target.value
+                                              )
+                                            }
+                                            className="text-sm"
+                                          />
+                                          <div className="grid grid-cols-2 gap-2">
+                                            {(["A", "B", "C", "D"] as const).map((opt) => (
+                                              <div key={opt} className="flex items-center gap-1">
+                                                <span className="text-xs w-5">{opt}.</span>
+                                                <Input
+                                                  placeholder={`Option ${opt}`}
+                                                  value={
+                                                    q[`option${opt}` as keyof DraftQuizQuestion] as string
+                                                  }
+                                                  onChange={(e) =>
+                                                    updateQuizQuestion(
+                                                      moduleIndex,
+                                                      lessonIndex,
+                                                      qIdx,
+                                                      `option${opt}` as keyof DraftQuizQuestion,
+                                                      e.target.value
+                                                    )
+                                                  }
+                                                  className="text-sm h-8"
+                                                />
+                                              </div>
+                                            ))}
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            <Label className="text-xs">Correct:</Label>
+                                            <select
+                                              value={q.correctAnswer}
+                                              onChange={(e) =>
+                                                updateQuizQuestion(
+                                                  moduleIndex,
+                                                  lessonIndex,
+                                                  qIdx,
+                                                  "correctAnswer",
+                                                  e.target.value as "A" | "B" | "C" | "D"
+                                                )
+                                              }
+                                              className="text-sm border border-border rounded px-2 py-1 bg-background"
+                                            >
+                                              <option value="A">A</option>
+                                              <option value="B">B</option>
+                                              <option value="C">C</option>
+                                              <option value="D">D</option>
+                                            </select>
+                                          </div>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  )}
+                                </div>
+                              </>
+                            )}
+                          </div>
+
+                          {(lesson.slides?.length ?? 0) > 0 && lesson.imageUploadStatus === "idle" && (
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="text-xs">
+                                {lesson.slides!.length} slide(s) — Save course to upload
+                              </Badge>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handlePreviewLesson(moduleIndex, lessonIndex)}
+                              >
+                                <Eye className="w-3 h-3 mr-1" />
+                                Preview
+                              </Button>
                             </div>
                           )}
 
@@ -935,50 +1543,94 @@ export function CourseBuilder() {
                       {module.lessons.map((lesson, lessonIndex) => (
                         <div
                           key={lessonIndex}
-                          className="text-xs pl-2 flex items-center justify-between p-2 rounded border border-border"
+                          className="p-3 rounded border border-border space-y-2"
                         >
-                          <div className="flex items-center gap-2 flex-1">
-                            <span className="text-foreground">• {lesson.title || `Lesson ${lessonIndex + 1}`}</span>
-                            {lesson.imageUploadStatus === "uploading" && (
-                              <div className="flex items-center gap-2 text-muted-foreground">
-                                <Loader2 className="w-3 h-3 animate-spin" />
-                                <span>Uploading images...</span>
-                              </div>
-                            )}
-                            {lesson.imageUploadStatus === "success" && (
-                              <Badge variant="outline" className="text-xs bg-green-500/10 text-green-600 border-green-500/20">
-                                <CheckCircle2 className="w-3 h-3 mr-1" />
-                                Ready to Preview
-                              </Badge>
-                            )}
-                            {lesson.imageUploadStatus === "error" && (
-                              <Badge variant="destructive" className="text-xs">
-                                <XCircle className="w-3 h-3 mr-1" />
-                                Upload Failed
-                              </Badge>
-                            )}
-                            {lesson.imageUploadStatus === "idle" && lesson.imageFiles?.length > 0 && (
-                              <Badge variant="outline" className="text-xs">
-                                <ImageIcon className="w-3 h-3 mr-1" />
-                                {lesson.imageFiles.length} image(s) — Save course
-                              </Badge>
-                            )}
-                            {lesson.imageUploadStatus === "idle" && (!lesson.imageFiles?.length) && (
-                              <Badge variant="outline" className="text-xs text-muted-foreground">
-                                No images
-                              </Badge>
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium text-sm">
+                              {lesson.title || `Lesson ${lessonIndex + 1}`}
+                            </span>
+                            {(lesson.slides?.length ?? 0) > 0 && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handlePreviewLesson(index, lessonIndex)}
+                              >
+                                <Eye className="w-3 h-3 mr-1" />
+                                Preview
+                              </Button>
                             )}
                           </div>
+                          {(lesson.slides?.length ?? 0) > 0 ? (
+                            <p className="text-xs text-muted-foreground mb-1">
+                              Drag order: use arrows to reorder slides before preview.
+                            </p>
+                          ) : null}
+                          <ul className="space-y-1">
+                            {lesson.slides?.map((slide, slideIdx) => (
+                              <li
+                                key={slideIdx}
+                                className="flex items-center gap-2 text-sm p-2 rounded bg-muted/50 border border-border"
+                              >
+                                <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                                <Badge variant="outline" className="text-xs flex-shrink-0">
+                                  {slide.type === "image" ? "Image" : "Video"}
+                                </Badge>
+                                <span className="truncate flex-1">
+                                  {slide.type === "image"
+                                    ? slide.file?.name ?? "Image"
+                                    : slide.videoId ?? slide.videoUrl ?? "Video"}
+                                </span>
+                                <div className="flex items-center gap-0">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 w-7 p-0"
+                                    onClick={() =>
+                                      handleMoveSlide(index, lessonIndex, slideIdx, -1)
+                                    }
+                                    disabled={slideIdx === 0}
+                                  >
+                                    <ChevronLeft className="w-3 h-3" />
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 w-7 p-0"
+                                    onClick={() =>
+                                      handleMoveSlide(index, lessonIndex, slideIdx, 1)
+                                    }
+                                    disabled={slideIdx === (lesson.slides?.length ?? 0) - 1}
+                                  >
+                                    <ChevronRight className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+                          {(!lesson.slides?.length) && (
+                            <p className="text-xs text-muted-foreground">
+                              No slides. Add slides in Modules & Lessons tab.
+                            </p>
+                          )}
+                          {lesson.imageUploadStatus === "uploading" && (
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                              Uploading...
+                            </div>
+                          )}
                           {lesson.imageUploadStatus === "success" && lesson.lessonId && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handlePreviewLesson(index, lessonIndex)}
-                              className="ml-2"
-                            >
-                              <Eye className="w-3 h-3 mr-1" />
-                              Preview
-                            </Button>
+                            <Badge variant="outline" className="text-xs bg-green-500/10 text-green-600 border-green-500/20">
+                              <CheckCircle2 className="w-3 h-3 mr-1" />
+                              Saved
+                            </Badge>
+                          )}
+                          {lesson.imageUploadStatus === "error" && (
+                            <Badge variant="destructive" className="text-xs">
+                              <XCircle className="w-3 h-3 mr-1" />
+                              Upload Failed
+                            </Badge>
                           )}
                         </div>
                       ))}
@@ -993,9 +1645,23 @@ export function CourseBuilder() {
 
       {/* Action Buttons */}
       <div className="flex items-center justify-between mt-6 pt-6 border-t border-border">
-        <Button onClick={() => navigate("/admin")} variant="ghost">
-          Cancel
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={() => navigate("/admin")} variant="ghost">
+            Cancel
+          </Button>
+          {editingCourseId && (
+            <Button
+              type="button"
+              variant="outline"
+              className="text-destructive border-destructive hover:bg-destructive/10"
+              onClick={() => setDeleteConfirmOpen(true)}
+              disabled={isSaving || isPublishing}
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Delete course
+            </Button>
+          )}
+        </div>
 
         <div className="flex gap-2">
           <Button
@@ -1042,13 +1708,40 @@ export function CourseBuilder() {
           <DialogHeader>
             <DialogTitle>Lesson Preview</DialogTitle>
           </DialogHeader>
-          {previewLessonId && curriculumId && previewModuleId && (
+          {(curriculumId && previewModuleId && (previewLessonId || (previewLessonSlides?.length ?? 0) > 0)) && (
             <LessonPreview
               curriculumId={curriculumId}
               lessonId={previewLessonId}
               moduleId={previewModuleId}
+              lessonTitle={previewLessonTitle}
+              localSlides={previewLessonSlides ?? undefined}
             />
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete course confirmation */}
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete course?</DialogTitle>
+          </DialogHeader>
+          <p className="text-muted-foreground">
+            This will permanently delete the course. Progress and assignments will be lost. This cannot be undone.
+          </p>
+          <div className="flex justify-end gap-2 pt-4">
+            <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)} disabled={isDeleting}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteCourse}
+              disabled={isDeleting}
+            >
+              {isDeleting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Trash2 className="w-4 h-4 mr-2" />}
+              Delete
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
@@ -1059,31 +1752,46 @@ function LessonPreview({
   curriculumId,
   lessonId,
   moduleId,
+  lessonTitle,
+  localSlides,
 }: {
   curriculumId: string;
-  lessonId: string;
+  lessonId: string | null;
   moduleId: string;
+  lessonTitle: string;
+  localSlides?: DraftSlide[] | null;
 }) {
   const [lesson, setLesson] = useState<Lesson | null>(null);
   const [slides, setSlides] = useState<Slide[]>([]);
   const [lessonImages, setLessonImages] = useState<LessonImage[]>([]);
+  const [lessonContent, setLessonContent] = useState<LessonContentSlide[]>([]);
   const [allBlocks, setAllBlocks] = useState<Map<string, Block[]>>(new Map());
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!!lessonId);
 
+  const useLocalSlides = !lessonId && (localSlides?.length ?? 0) > 0;
+  const isMediaLesson = lesson?.content_type === "media";
   const isImageLesson = lesson?.content_type === "images";
-  const hasImageContent = isImageLesson && lessonImages.length > 0;
+
+  const itemCount = useLocalSlides
+    ? localSlides!.length
+    : isMediaLesson
+      ? lessonContent.length
+      : isImageLesson
+        ? lessonImages.length
+        : slides.length;
 
   useEffect(() => {
+    if (!lessonId || !curriculumId || !moduleId) {
+      setLoading(false);
+      return;
+    }
     const loadPreview = async () => {
       try {
         setLoading(true);
         const chapters = await getChapters(curriculumId, moduleId);
         const chapterId = chapters.length > 0 ? chapters[0].id || "" : "";
-
-        if (!chapterId) {
-          throw new Error("No chapter found");
-        }
+        if (!chapterId) throw new Error("No chapter found");
 
         const lessonData = await getLesson(
           curriculumId,
@@ -1091,10 +1799,17 @@ function LessonPreview({
           chapterId,
           lessonId
         );
-
         if (lessonData) {
           setLesson(lessonData);
-          if (lessonData.content_type === "images") {
+          if (lessonData.content_type === "media") {
+            const content = await getLessonContent(
+              curriculumId,
+              moduleId,
+              chapterId,
+              lessonId
+            );
+            setLessonContent(content);
+          } else if (lessonData.content_type === "images") {
             const images = await getLessonImages(
               curriculumId,
               moduleId,
@@ -1132,10 +1847,7 @@ function LessonPreview({
         setLoading(false);
       }
     };
-
-    if (curriculumId && lessonId && moduleId) {
-      loadPreview();
-    }
+    loadPreview();
   }, [curriculumId, lessonId, moduleId]);
 
   if (loading) {
@@ -1146,101 +1858,119 @@ function LessonPreview({
     );
   }
 
-  if (!lesson) {
+  if (!useLocalSlides && !lesson) {
     return <p className="text-muted-foreground">Lesson not found.</p>;
   }
 
-  if (isImageLesson && lessonImages.length === 0) {
-    return <p className="text-muted-foreground">No images in this lesson yet.</p>;
-  }
-
-  // Image-based lesson: show one image per "slide" with prev/next
-  if (hasImageContent) {
-    const currentImage = lessonImages[currentSlideIndex];
+  if (itemCount === 0) {
     return (
-      <div className="space-y-4">
-        <div className="border border-border rounded-lg overflow-hidden bg-black min-h-[400px] flex items-center justify-center">
-          {currentImage && (
-            <img
-              src={currentImage.image_url}
-              alt={currentImage.alt_text || `Slide ${currentSlideIndex + 1}`}
-              className="max-w-full max-h-[70vh] object-contain"
-            />
-          )}
-        </div>
-        <div className="flex items-center justify-between">
-          <Button
-            variant="outline"
-            onClick={() => setCurrentSlideIndex(Math.max(0, currentSlideIndex - 1))}
-            disabled={currentSlideIndex === 0}
-          >
-            Previous
-          </Button>
-          <span className="text-sm text-muted-foreground">
-            {currentSlideIndex + 1} of {lessonImages.length}
-          </span>
-          <Button
-            variant="outline"
-            onClick={() =>
-              setCurrentSlideIndex(
-                Math.min(lessonImages.length - 1, currentSlideIndex + 1)
-              )
-            }
-            disabled={currentSlideIndex === lessonImages.length - 1}
-          >
-            Next
-          </Button>
-        </div>
-      </div>
+      <p className="text-muted-foreground">
+        {useLocalSlides ? "No slides added yet." : "No content in this lesson yet."}
+      </p>
     );
   }
 
-  // Slide-based lesson
-  const currentSlide = slides[currentSlideIndex];
-  const slideBlocks = currentSlide?.id ? allBlocks.get(currentSlide.id) || [] : [];
+  const displayTitle = useLocalSlides ? lessonTitle : (lesson?.title ?? lessonTitle);
 
-  console.log("[PREVIEW] Rendering preview UI");
-  console.log("[PREVIEW] currentSlide:", currentSlide);
-  console.log("[PREVIEW] slideBlocks:", slideBlocks);
+  // Render current slide: local (draft), media (saved), or image/slides (saved)
+  const renderCurrentSlide = () => {
+    if (useLocalSlides && localSlides) {
+      const s = localSlides[currentSlideIndex];
+      if (!s) return null;
+      if (s.type === "image") {
+        const src = s.imagePreviewUrl;
+        return (
+          <div className="w-full min-h-[400px] bg-black flex items-center justify-center p-6">
+            {src ? (
+              <img
+                src={src}
+                alt={s.file?.name ?? "Slide"}
+                className="max-w-full max-h-[70vh] object-contain"
+              />
+            ) : (
+              <span className="text-gray-500">Image (preview after save)</span>
+            )}
+          </div>
+        );
+      }
+      return (
+        <YouTubeBlock
+          videoId={s.videoId!}
+          caption={s.caption}
+        />
+      );
+    }
+    if (isMediaLesson && lessonContent[currentSlideIndex]) {
+      const c = lessonContent[currentSlideIndex];
+      if (c.type === "image") {
+        return (
+          <div className="w-full min-h-[400px] bg-black flex items-center justify-center p-6">
+            <img
+              src={c.image_url}
+              alt={c.alt_text ?? "Slide"}
+              className="max-w-full max-h-[70vh] object-contain"
+            />
+          </div>
+        );
+      }
+      return (
+        <YouTubeBlock
+          videoId={c.video_id!}
+          caption={c.caption}
+        />
+      );
+    }
+    if (isImageLesson && lessonImages[currentSlideIndex]) {
+      const img = lessonImages[currentSlideIndex];
+      return (
+        <div className="w-full min-h-[400px] bg-black flex items-center justify-center p-6">
+          <img
+            src={img.image_url}
+            alt={img.alt_text ?? "Slide"}
+            className="max-w-full max-h-[70vh] object-contain"
+          />
+        </div>
+      );
+    }
+    const currentSlide = slides[currentSlideIndex];
+    const slideBlocks = currentSlide?.id ? allBlocks.get(currentSlide.id) || [] : [];
+    if (currentSlide) {
+      return (
+        <div className="border border-border rounded-lg p-6 bg-card min-h-[400px]">
+          <SlideRenderer slide={currentSlide} blocks={slideBlocks} />
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
     <div className="space-y-4">
-      {currentSlide ? (
-        <>
-          <div className="border border-border rounded-lg p-6 bg-card min-h-[400px]">
-            <SlideRenderer slide={currentSlide} blocks={slideBlocks} />
-          </div>
-          <div className="flex items-center justify-between">
-            <Button
-              variant="outline"
-              onClick={() => {
-                console.log("[PREVIEW] Previous button clicked");
-                setCurrentSlideIndex(Math.max(0, currentSlideIndex - 1));
-              }}
-              disabled={currentSlideIndex === 0}
-            >
-              Previous
-            </Button>
-            <span className="text-sm text-muted-foreground">
-              Slide {currentSlideIndex + 1} of {slides.length}
-            </span>
-            <Button
-              variant="outline"
-              onClick={() => {
-                console.log("[PREVIEW] Next button clicked");
-                setCurrentSlideIndex(Math.min(slides.length - 1, currentSlideIndex + 1));
-              }}
-              disabled={currentSlideIndex === slides.length - 1}
-            >
-              Next
-            </Button>
-          </div>
-        </>
-      ) : (
-        <div className="flex items-center justify-center h-64">
-          <p className="text-muted-foreground">No slide data available</p>
-        </div>
-      )}
+      <p className="text-sm font-medium text-foreground">{displayTitle}</p>
+      <div className="border border-border rounded-lg overflow-hidden bg-black min-h-[400px]">
+        {renderCurrentSlide()}
+      </div>
+      <div className="flex items-center justify-between">
+        <Button
+          variant="outline"
+          onClick={() => setCurrentSlideIndex(Math.max(0, currentSlideIndex - 1))}
+          disabled={currentSlideIndex === 0}
+        >
+          Previous
+        </Button>
+        <span className="text-sm text-muted-foreground">
+          {currentSlideIndex + 1} of {itemCount}
+        </span>
+        <Button
+          variant="outline"
+          onClick={() =>
+            setCurrentSlideIndex(Math.min(itemCount - 1, currentSlideIndex + 1))
+          }
+          disabled={currentSlideIndex >= itemCount - 1}
+        >
+          Next
+        </Button>
+      </div>
     </div>
   );
 }
