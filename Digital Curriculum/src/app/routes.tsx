@@ -102,7 +102,7 @@ export const router = createBrowserRouter([
       {
         path: "admin/auth",
         Component: () => (
-          <RoleGate allowedRoles={["superAdmin"]}>
+          <RoleGate allowedRoles={["superAdmin", "Admin"]}>
             <AdminAuthPage />
           </RoleGate>
         ),
@@ -110,7 +110,7 @@ export const router = createBrowserRouter([
       {
         path: "admin",
         Component: () => (
-          <RoleGate allowedRoles={["superAdmin"]}>
+          <RoleGate allowedRoles={["superAdmin", "Admin"]}>
             <AdminPage />
           </RoleGate>
         ),
@@ -118,7 +118,7 @@ export const router = createBrowserRouter([
       {
         path: "admin/courses/create",
         Component: () => (
-          <RoleGate allowedRoles={["superAdmin"]}>
+          <RoleGate allowedRoles={["superAdmin", "Admin"]}>
             <CourseCreationWizard />
           </RoleGate>
         ),
@@ -126,7 +126,7 @@ export const router = createBrowserRouter([
       {
         path: "admin/courses/builder",
         Component: () => (
-          <RoleGate allowedRoles={["superAdmin"]}>
+          <RoleGate allowedRoles={["superAdmin", "Admin"]}>
             <CourseBuilder />
           </RoleGate>
         ),
@@ -134,7 +134,7 @@ export const router = createBrowserRouter([
       {
         path: "admin/courses/:courseId",
         Component: () => (
-          <RoleGate allowedRoles={["superAdmin"]}>
+          <RoleGate allowedRoles={["superAdmin", "Admin"]}>
             <CourseBuilder />
           </RoleGate>
         ),
@@ -142,7 +142,7 @@ export const router = createBrowserRouter([
       {
         path: "admin/curriculum/:curriculumId/module/:moduleId/chapter/:chapterId/lesson/:lessonId/builder",
         Component: () => (
-          <RoleGate allowedRoles={["superAdmin"]}>
+          <RoleGate allowedRoles={["superAdmin", "Admin"]}>
             <LessonDeckBuilder />
           </RoleGate>
         ),

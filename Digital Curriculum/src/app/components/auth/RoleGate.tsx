@@ -41,9 +41,12 @@ export function RoleGate({
 
   const userRoles = user.roles || [];
 
+  const hasRole = (role: string) =>
+    userRoles.some((r) => String(r).trim().toLowerCase() === role.trim().toLowerCase());
+
   // Check denied roles first (most restrictive)
   if (deniedRoles && deniedRoles.length > 0) {
-    const hasDeniedRole = deniedRoles.some((role) => userRoles.includes(role));
+    const hasDeniedRole = deniedRoles.some((role) => hasRole(role));
     if (hasDeniedRole) {
       return <Navigate to={fallbackPath} replace />;
     }
@@ -51,7 +54,7 @@ export function RoleGate({
 
   // Check allowed roles
   if (allowedRoles && allowedRoles.length > 0) {
-    const hasAllowedRole = allowedRoles.some((role) => userRoles.includes(role));
+    const hasAllowedRole = allowedRoles.some((role) => hasRole(role));
     if (!hasAllowedRole) {
       return <Navigate to={fallbackPath} replace />;
     }

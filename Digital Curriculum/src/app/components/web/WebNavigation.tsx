@@ -37,7 +37,7 @@ const allNavItems: NavItem[] = [
     path: "/admin/auth",
     label: "Admin",
     icon: Shield,
-    allowedRoles: ["superAdmin"], // Only superAdmin can see
+    allowedRoles: ["superAdmin", "Admin"], // superAdmin or Admin can see
   },
 ];
 
@@ -72,22 +72,24 @@ export function WebNavigation() {
 
   // Filter navigation items based on user roles
   const userRoles = user?.roles || [];
+  const hasRole = (role: string) =>
+    userRoles.some((r) => r.trim().toLowerCase() === role.trim().toLowerCase());
   const navItems = allNavItems.filter((item) => {
     // If item has deniedRoles, check if user has any of them
     if (item.deniedRoles && item.deniedRoles.length > 0) {
-      const hasDeniedRole = item.deniedRoles.some((role) => userRoles.includes(role));
+      const hasDeniedRole = item.deniedRoles.some((role) => hasRole(role));
       if (hasDeniedRole) return false;
     }
     
     // If item has allowedRoles, check if user has at least one
     if (item.allowedRoles && item.allowedRoles.length > 0) {
-      const hasAllowedRole = item.allowedRoles.some((role) => userRoles.includes(role));
+      const hasAllowedRole = item.allowedRoles.some((role) => hasRole(role));
       if (!hasAllowedRole) return false;
     }
     
     // Legacy support: if item has roles (old prop name), treat as allowedRoles
     if (item.roles && item.roles.length > 0) {
-      const hasRequiredRole = item.roles.some((role) => userRoles.includes(role));
+      const hasRequiredRole = item.roles.some((role) => hasRole(role));
       if (!hasRequiredRole) return false;
     }
     

@@ -10,7 +10,8 @@ import {
   User,
   getIdTokenResult,
 } from "firebase/auth";
-import { auth } from "./firebase";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, db } from "./firebase";
 
 export interface UserWithRoles extends User {
   roles?: string[];
@@ -40,30 +41,48 @@ export async function signOutUser(): Promise<void> {
 }
 
 /**
- * Get current user with roles from custom claims
+ * Get current user with roles from custom claims, with Firestore users/{uid}.roles as source of truth when present
  */
 export async function getCurrentUserWithRoles(): Promise<UserWithRoles | null> {
   const user = auth.currentUser;
   if (!user) return null;
 
+  let roles: string[] = [];
+
   try {
-    const tokenResult = await getIdTokenResult(user, true);
-    const rolesClaim = (tokenResult.claims.roles ?? {}) as Record<string, boolean> | string[];
-
-    let roles: string[] = [];
-    if (Array.isArray(rolesClaim)) {
-      roles = rolesClaim;
-    } else if (typeof rolesClaim === "object") {
-      roles = Object.keys(rolesClaim).filter((k) => rolesClaim[k]);
+    // 1. Prefer Firestore (source of truth for roles stored in DB, e.g. Admin/superAdmin)
+    const userRef = doc(db, "users", user.uid);
+    const userSnap = await getDoc(userRef);
+    if (userSnap.exists()) {
+      const data = userSnap.data();
+      const firestoreRoles = data?.roles;
+      if (Array.isArray(firestoreRoles)) {
+        roles = firestoreRoles.filter((r) => typeof r === "string");
+      }
     }
-
-    return {
-      ...user,
-      roles,
-    };
-  } catch {
-    return { ...user, roles: [] };
+  } catch (_e) {
+    // Firestore read failed (e.g. rules); fall through to token
   }
+
+  // 2. If no roles from Firestore, use custom claims (ID token)
+  if (roles.length === 0) {
+    try {
+      const tokenResult = await getIdTokenResult(user, true);
+      const rolesClaim = (tokenResult.claims.roles ?? {}) as Record<string, boolean> | string[];
+      if (Array.isArray(rolesClaim)) {
+        roles = rolesClaim;
+      } else if (typeof rolesClaim === "object") {
+        roles = Object.keys(rolesClaim).filter((k) => rolesClaim[k]);
+      }
+    } catch {
+      // keep roles []
+    }
+  }
+
+  return {
+    ...user,
+    roles,
+  };
 }
 
 /**

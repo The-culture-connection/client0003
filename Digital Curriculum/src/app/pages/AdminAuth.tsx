@@ -43,12 +43,14 @@ export function AdminAuthPage() {
     }, 500);
   };
 
-  // Check if user has superAdmin role
-  const isSuperAdmin = user?.roles?.includes("superAdmin");
+  // Check if user has admin access (superAdmin or Admin)
+  const hasAdminAccess = user?.roles?.some(
+    (r) => String(r).trim().toLowerCase() === "superadmin" || String(r).trim().toLowerCase() === "admin"
+  );
 
   // Check if already authenticated and redirect
   useEffect(() => {
-    if (isSuperAdmin) {
+    if (hasAdminAccess) {
       const isAdminAuthenticated = sessionStorage.getItem("admin_authenticated");
       const authTime = sessionStorage.getItem("admin_auth_time");
       
@@ -66,9 +68,9 @@ export function AdminAuthPage() {
         }
       }
     }
-  }, [isSuperAdmin, navigate]);
+  }, [hasAdminAccess, navigate]);
 
-  if (!isSuperAdmin) {
+  if (!hasAdminAccess) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <Card className="w-full max-w-md p-8">
