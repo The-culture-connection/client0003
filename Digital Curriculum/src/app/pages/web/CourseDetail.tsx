@@ -15,7 +15,7 @@ import {
   Calendar,
   User,
 } from "lucide-react";
-import { getCourse, getLessonsWithQuiz, type Course, type Module } from "../../lib/courses";
+import { getCourse, getLessonsWithQuiz, getLessonsWithSurvey, type Course, type Module } from "../../lib/courses";
 import { format } from "date-fns";
 import { useAuth } from "../../components/auth/AuthProvider";
 import { getCourseProgress, calculateCourseProgress, type CourseProgress } from "../../lib/courseProgress";
@@ -31,6 +31,7 @@ export function CourseDetail() {
   const [courseProgress, setCourseProgress] = useState<CourseProgress | null>(null);
   const [courseSlideCounts, setCourseSlideCounts] = useState<Record<string, number> | null>(null);
   const [lessonsWithQuiz, setLessonsWithQuiz] = useState<Record<string, boolean> | null>(null);
+  const [lessonsWithSurvey, setLessonsWithSurvey] = useState<Record<string, boolean> | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedModule, setExpandedModule] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -56,13 +57,19 @@ export function CourseDetail() {
             setCourseSlideCounts(counts);
             if (courseId && Object.keys(counts).length > 0) {
               try {
-                const q = await getLessonsWithQuiz(courseId, Object.keys(counts));
+                const [q, s] = await Promise.all([
+                  getLessonsWithQuiz(courseId, Object.keys(counts)),
+                  getLessonsWithSurvey(courseId, Object.keys(counts)),
+                ]);
                 setLessonsWithQuiz(q);
+                setLessonsWithSurvey(s);
               } catch {
                 setLessonsWithQuiz({});
+                setLessonsWithSurvey({});
               }
             } else {
               setLessonsWithQuiz(null);
+              setLessonsWithSurvey(null);
             }
           });
         } else {
@@ -116,7 +123,7 @@ export function CourseDetail() {
   const totalPrice = course.totalPrice || course.modules.reduce((sum, m) => sum + (m.price || 0), 0);
   const totalDurationMonths = course.totalDuration || course.modules.reduce((sum, m) => sum + (m.durationMonths || 0), 0);
   const courseProgressValue = courseProgress
-    ? calculateCourseProgress(course, courseProgress, courseSlideCounts ?? undefined, lessonsWithQuiz ?? undefined)
+    ? calculateCourseProgress(course, courseProgress, courseSlideCounts ?? undefined, lessonsWithQuiz ?? undefined, lessonsWithSurvey ?? undefined)
     : 0;
   const isCourseCompleted = courseProgress?.completed || courseProgressValue === 100;
 
@@ -281,6 +288,16 @@ export function CourseDetail() {
                         {module.description}
                       </p>
                     )}
+                    {module.skills && module.skills.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        <span className="text-sm text-muted-foreground mr-1">Skills:</span>
+                        {module.skills.map((skill) => (
+                          <Badge key={skill} variant="secondary" className="text-xs font-normal">
+                            {skill}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <Button
                     variant="outline"
@@ -306,7 +323,8 @@ export function CourseDetail() {
                       mappingLessons.forEach((l, idx) => {
                         const lid = l.lessonId;
                         const hasQuiz = lessonsWithQuiz?.[lid];
-                        const done = (courseProgress?.lessonsCompleted?.[lid] && (!hasQuiz || courseProgress?.quizPassed?.[lid])) || false;
+                        const hasSurvey = lessonsWithSurvey?.[lid];
+                        const done = (courseProgress?.lessonsCompleted?.[lid] && (!hasQuiz || courseProgress?.quizPassed?.[lid]) && (!hasSurvey || courseProgress?.surveySubmitted?.[lid])) || false;
                         if (done) completedInModule++;
                       });
                       return (
@@ -333,7 +351,8 @@ export function CourseDetail() {
                             const curriculumLessonId = curriculumLesson?.lessonId;
                             const lessonIdForProgress = curriculumLessonId || lesson.id || `module_${moduleIndex}_lesson_${lessonIndex}`;
                             const hasQuizForLesson = lessonsWithQuiz?.[lessonIdForProgress];
-                            const isCompleted = (courseProgress?.lessonsCompleted?.[lessonIdForProgress] && (!hasQuizForLesson || courseProgress?.quizPassed?.[lessonIdForProgress])) || false;
+                            const hasSurveyForLesson = lessonsWithSurvey?.[lessonIdForProgress];
+                            const isCompleted = (courseProgress?.lessonsCompleted?.[lessonIdForProgress] && (!hasQuizForLesson || courseProgress?.quizPassed?.[lessonIdForProgress]) && (!hasSurveyForLesson || courseProgress?.surveySubmitted?.[lessonIdForProgress])) || false;
                             const hasCurriculumContent = Boolean(course.curriculumMapping && curriculumLessonId);
 
                             return (

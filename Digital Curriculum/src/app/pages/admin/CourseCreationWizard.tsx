@@ -40,6 +40,8 @@ import {
   getDocs,
 } from "firebase/firestore";
 import { db } from "../../lib/firebase";
+import { SKILL_CATEGORIES, ALL_SKILLS } from "../../lib/onboardingData";
+import { Checkbox } from "../../components/ui/checkbox";
 
 type Step = "metadata" | "modules" | "lessons" | "assignment" | "review";
 
@@ -49,6 +51,7 @@ interface ModuleData {
   description: string;
   price: string;
   durationMonths: string;
+  skills?: string[];
   lessonCount: number;
   lessons: Array<{ title: string }>;
 }
@@ -67,7 +70,7 @@ export function CourseCreationWizard() {
   // Step 2: Modules
   const [moduleCount, setModuleCount] = useState(1);
   const [modules, setModules] = useState<ModuleData[]>([
-    { title: "", description: "", price: "", durationMonths: "", lessonCount: 1, lessons: [{ title: "" }] },
+    { title: "", description: "", price: "", durationMonths: "", skills: [], lessonCount: 1, lessons: [{ title: "" }] },
   ]);
   
   // Step 3: Lessons (will be populated based on modules)
@@ -160,6 +163,7 @@ export function CourseCreationWizard() {
           description: "",
           price: "",
           durationMonths: "",
+          skills: [],
           lessonCount: 1,
           lessons: [{ title: "" }],
         });
@@ -264,6 +268,7 @@ export function CourseCreationWizard() {
         price: parseFloat(moduleData.price),
         durationMonths: parseFloat(moduleData.durationMonths),
         description: moduleData.description || undefined,
+        skills: moduleData.skills ?? [],
         lessons: moduleData.lessons.map((lesson, lessonIndex) => ({
           title: lesson.title,
           order: lessonIndex + 1,
@@ -522,6 +527,48 @@ export function CourseCreationWizard() {
                                 setModules(updated);
                               }}
                             />
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label className="text-muted-foreground">Skills (optional)</Label>
+                          <p className="text-xs text-muted-foreground">
+                            Select skills this module helps develop. None required.
+                          </p>
+                          <div className="rounded border border-border bg-muted/20 p-3 space-y-2 max-h-48 overflow-y-auto">
+                            {Object.entries(SKILL_CATEGORIES).map(([category]) => {
+                              const categorySkills = ALL_SKILLS.filter((s) => s.category === category);
+                              const selected = module.skills ?? [];
+                              return (
+                                <div key={category}>
+                                  <p className="text-xs font-medium text-foreground mb-1">{category}</p>
+                                  <div className="flex flex-wrap gap-x-3 gap-y-1 pl-2">
+                                    {categorySkills.map(({ skill }) => (
+                                      <div key={skill} className="flex items-center gap-2">
+                                        <Checkbox
+                                          id={`wizard-mod-${index}-${skill.replace(/\s+/g, "-")}`}
+                                          checked={selected.includes(skill)}
+                                          onCheckedChange={() => {
+                                            const updated = [...modules];
+                                            const current = updated[index].skills ?? [];
+                                            updated[index].skills = current.includes(skill)
+                                              ? current.filter((s) => s !== skill)
+                                              : [...current, skill];
+                                            setModules(updated);
+                                          }}
+                                        />
+                                        <label
+                                          htmlFor={`wizard-mod-${index}-${skill.replace(/\s+/g, "-")}`}
+                                          className="text-xs cursor-pointer"
+                                        >
+                                          {skill}
+                                        </label>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       </div>

@@ -28,7 +28,7 @@ import { useNavigate } from "react-router";
 import { GraduationApplicationDialog } from "../../components/graduation/GraduationApplicationDialog";
 import { getUserGraduationApplication, type GraduationApplication } from "../../lib/graduation";
 import { useAuth } from "../../components/auth/AuthProvider";
-import { getCoursesByUserId, getCoursesByRole, getLessonsWithQuiz, type Course } from "../../lib/courses";
+import { getCoursesByUserId, getCoursesByRole, getLessonsWithQuiz, getLessonsWithSurvey, type Course } from "../../lib/courses";
 import { getAllCourseProgress, calculateCourseProgress, type CourseProgress } from "../../lib/courseProgress";
 import { getCourseSlideCounts } from "../../lib/curriculum";
 import { getCurrentUserWithRoles } from "../../lib/auth";
@@ -40,6 +40,7 @@ export function WebCurriculum() {
   const [courseProgress, setCourseProgress] = useState<Record<string, CourseProgress>>({});
   const [courseSlideCounts, setCourseSlideCounts] = useState<Record<string, Record<string, number>>>({});
   const [lessonsWithQuizMap, setLessonsWithQuizMap] = useState<Record<string, Record<string, boolean>>>({});
+  const [lessonsWithSurveyMap, setLessonsWithSurveyMap] = useState<Record<string, Record<string, boolean>>>({});
   const [loading, setLoading] = useState(true);
   const [allCompleted, setAllCompleted] = useState(false);
   const [completedCount, setCompletedCount] = useState(0);
@@ -84,6 +85,7 @@ export function WebCurriculum() {
       // Load slide counts per course for accurate progress (all slides in course)
       const countsMap: Record<string, Record<string, number>> = {};
       const quizMap: Record<string, Record<string, boolean>> = {};
+      const surveyMap: Record<string, Record<string, boolean>> = {};
       await Promise.all(
         uniqueCourses.map(async (c) => {
           if (c.id && c.curriculumMapping) {
@@ -92,18 +94,22 @@ export function WebCurriculum() {
               const lessonIds = Object.keys(countsMap[c.id]);
               if (lessonIds.length > 0) {
                 quizMap[c.id] = await getLessonsWithQuiz(c.id, lessonIds);
+                surveyMap[c.id] = await getLessonsWithSurvey(c.id, lessonIds);
               } else {
                 quizMap[c.id] = {};
+                surveyMap[c.id] = {};
               }
             } catch {
               countsMap[c.id] = {};
               quizMap[c.id] = {};
+              surveyMap[c.id] = {};
             }
           }
         })
       );
       setCourseSlideCounts(countsMap);
       setLessonsWithQuizMap(quizMap);
+      setLessonsWithSurveyMap(surveyMap);
 
       // Calculate overall progress using full course slide counts
       let totalProgress = 0;
@@ -113,12 +119,14 @@ export function WebCurriculum() {
         const progressData = progress[course.id || ""];
         const slideCounts = countsMap[course.id ?? ""];
         const lessonsWithQuiz = quizMap[course.id ?? ""];
+        const lessonsWithSurvey = surveyMap[course.id ?? ""];
         if (progressData) {
           const courseProgressValue = calculateCourseProgress(
             course,
             progressData,
             slideCounts && Object.keys(slideCounts).length > 0 ? slideCounts : undefined,
-            lessonsWithQuiz && Object.keys(lessonsWithQuiz).length > 0 ? lessonsWithQuiz : undefined
+            lessonsWithQuiz && Object.keys(lessonsWithQuiz).length > 0 ? lessonsWithQuiz : undefined,
+            lessonsWithSurvey && Object.keys(lessonsWithSurvey).length > 0 ? lessonsWithSurvey : undefined
           );
           totalProgress += courseProgressValue;
           if (progressData.completed || courseProgressValue === 100) {
@@ -185,12 +193,14 @@ export function WebCurriculum() {
     const progressData = courseProgress[course.id || ""];
     const slideCounts = courseSlideCounts[course.id || ""];
     const lessonsWithQuiz = lessonsWithQuizMap[course.id || ""];
+    const lessonsWithSurvey = lessonsWithSurveyMap[course.id || ""];
     if (!progressData) return 0;
     return calculateCourseProgress(
       course,
       progressData,
       slideCounts && Object.keys(slideCounts).length > 0 ? slideCounts : undefined,
-      lessonsWithQuiz && Object.keys(lessonsWithQuiz).length > 0 ? lessonsWithQuiz : undefined
+      lessonsWithQuiz && Object.keys(lessonsWithQuiz).length > 0 ? lessonsWithQuiz : undefined,
+      lessonsWithSurvey && Object.keys(lessonsWithSurvey).length > 0 ? lessonsWithSurvey : undefined
     );
   };
 
@@ -296,7 +306,8 @@ export function WebCurriculum() {
                           mostRecentCourse.course,
                           mostRecentCourse.progress,
                           courseSlideCounts[mostRecentCourse.course.id || ""],
-                          lessonsWithQuizMap[mostRecentCourse.course.id || ""]
+                          lessonsWithQuizMap[mostRecentCourse.course.id || ""],
+                          lessonsWithSurveyMap[mostRecentCourse.course.id || ""]
                         )}
                         className="h-2 flex-1"
                       />
@@ -306,7 +317,8 @@ export function WebCurriculum() {
                             mostRecentCourse.course,
                             mostRecentCourse.progress,
                             courseSlideCounts[mostRecentCourse.course.id || ""],
-                            lessonsWithQuizMap[mostRecentCourse.course.id || ""]
+                            lessonsWithQuizMap[mostRecentCourse.course.id || ""],
+                            lessonsWithSurveyMap[mostRecentCourse.course.id || ""]
                           )
                         )}%
                       </span>

@@ -44,9 +44,26 @@ service cloud.firestore {
                       (!('roles' in request.resource.data) || request.resource.data.roles == resource.data.roles);
       // Delete must go through Functions
       allow delete: if false;
+
+      // User's skill certificates (data room) - created when they complete a course with assigned skills
+      match /certificates/{certId} {
+        allow read, create: if isOwner(userId);
+        allow update, delete: if false;
+      }
+      // User notifications (e.g. new certificate available)
+      match /notifications/{notifId} {
+        allow read, create: if isOwner(userId);
+        allow update: if isOwner(userId); // e.g. mark as read
+        allow delete: if false;
+      }
+      // Survey response PDFs (uploaded when user completes survey with generatePdfOnComplete)
+      match /surveyResponses/{docId} {
+        allow read, create: if isOwner(userId);
+        allow update, delete: if false;
+      }
     }
     
-    // Curriculum content (read-only for authenticated users)
+    // Curriculum content
     match /curricula/{curriculumId} {
       allow read: if isAuthenticated();
       allow write: if isAdmin();

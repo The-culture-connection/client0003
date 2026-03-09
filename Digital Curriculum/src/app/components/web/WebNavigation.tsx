@@ -1,7 +1,16 @@
 import { Link, useLocation, useNavigate } from "react-router";
-import { LayoutDashboard, BookOpen, FolderOpen, Award, Users, BarChart3, LogOut, Shield, ShoppingBag } from "lucide-react";
+import { LayoutDashboard, BookOpen, FolderOpen, Award, Users, BarChart3, LogOut, Shield, ShoppingBag, Bell } from "lucide-react";
 import { Button } from "../ui/button";
 import { useAuth } from "../auth/AuthProvider";
+import { useState, useEffect } from "react";
+import { listNotifications, markNotificationRead, getUnreadNotificationCount, type UserNotification } from "../../lib/dataroom";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
+import { formatDistanceToNow } from "date-fns";
 
 interface NavItem {
   path: string;
@@ -36,6 +45,25 @@ export function WebNavigation() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const [notifications, setNotifications] = useState<UserNotification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+
+  useEffect(() => {
+    if (!user?.uid) return;
+    getUnreadNotificationCount(user.uid).then(setUnreadCount);
+    listNotifications(user.uid).then(setNotifications);
+  }, [user?.uid]);
+
+  const handleNotificationClick = async (n: UserNotification) => {
+    if (n.certificateId && user?.uid) {
+      await markNotificationRead(user.uid, n.id);
+      setUnreadCount((c) => Math.max(0, c - 1));
+      setNotifications((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
+      setNotificationsOpen(false);
+      navigate("/data-room");
+    }
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -100,6 +128,46 @@ export function WebNavigation() {
           
           {user && (
             <div className="flex items-center gap-4">
+              <DropdownMenu open={notificationsOpen} onOpenChange={setNotificationsOpen}>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="relative">
+                    <Bell className="w-5 h-5 text-muted-foreground" />
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-[10px] font-medium text-accent-foreground">
+                        {unreadCount > 9 ? "9+" : unreadCount}
+                      </span>
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-80">
+                  {notifications.length === 0 ? (
+                    <div className="p-4 text-sm text-muted-foreground">No notifications</div>
+                  ) : (
+                    notifications.slice(0, 8).map((n) => (
+                      <DropdownMenuItem
+                        key={n.id}
+                        onClick={() => handleNotificationClick(n)}
+                        className={n.read ? "opacity-75" : ""}
+                      >
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-medium text-foreground">{n.title}</span>
+                          <span className="text-xs text-muted-foreground line-clamp-2">{n.body}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {n.createdAt && typeof (n.createdAt as { toDate?: () => Date }).toDate === "function"
+                              ? formatDistanceToNow((n.createdAt as { toDate: () => Date }).toDate(), { addSuffix: true })
+                              : ""}
+                          </span>
+                        </div>
+                      </DropdownMenuItem>
+                    ))
+                  )}
+                  {notifications.length > 0 && (
+                    <DropdownMenuItem onClick={() => { setNotificationsOpen(false); navigate("/data-room"); }}>
+                      View Data Room
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
               <div className="text-right">
                 <p className="text-sm font-medium text-foreground">
                   {user.displayName || user.email || "User"}

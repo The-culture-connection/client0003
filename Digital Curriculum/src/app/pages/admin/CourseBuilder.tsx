@@ -61,8 +61,10 @@ import {
   createCourse,
   updateCourse,
   setCourseLessonQuiz,
+  setCourseLessonSurvey,
   getCourse,
   getCourseLessonQuiz,
+  getCourseLessonSurvey,
   deleteCourse,
   type Course,
 } from "../../lib/courses";
@@ -78,6 +80,8 @@ import { db } from "../../lib/firebase";
 import { SlideRenderer } from "../../components/curriculum/SlideRenderer";
 import { YouTubeBlock } from "../../components/curriculum/YouTubeBlock";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../components/ui/dialog";
+import { SKILL_CATEGORIES, ALL_SKILLS, type SkillCategory } from "../../lib/onboardingData";
+import { Checkbox } from "../../components/ui/checkbox";
 
 type ImageUploadStatus = "idle" | "uploading" | "success" | "error";
 
@@ -110,6 +114,7 @@ interface ModuleData {
   description: string;
   price: string;
   durationMonths: string;
+  skills?: string[];
   lessonCount: number;
   lessons: Array<{
     title: string;
@@ -124,6 +129,10 @@ interface ModuleData {
     quizQuestions?: DraftQuizQuestion[];
     quizMaxAttempts?: number;
     quizPassPercentage?: number;
+    /** Survey at end of lesson (open-ended) */
+    surveyEnabled?: boolean;
+    surveyQuestions?: Array<{ question: string }>;
+    generatePdfOnComplete?: boolean;
   }>;
 }
 
@@ -151,6 +160,7 @@ export function CourseBuilder() {
       description: "",
       price: "",
       durationMonths: "",
+      skills: [],
       lessonCount: 1,
       lessons: [
         {
@@ -162,6 +172,9 @@ export function CourseBuilder() {
           quizQuestions: [],
           quizMaxAttempts: 3,
           quizPassPercentage: 70,
+          surveyEnabled: false,
+          surveyQuestions: [],
+          generatePdfOnComplete: false,
         },
       ],
     },
@@ -182,6 +195,7 @@ export function CourseBuilder() {
   const [previewLessonSlides, setPreviewLessonSlides] = useState<DraftSlide[] | null>(null);
   const [previewLessonTitle, setPreviewLessonTitle] = useState<string>("");
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [expandedSkillsModuleIndex, setExpandedSkillsModuleIndex] = useState<number | null>(null);
 
   // Initialize curriculum structure (create new only when not editing)
   useEffect(() => {
@@ -253,12 +267,16 @@ export function CourseBuilder() {
             let quizQuestions: DraftQuizQuestion[] = [];
             let quizMaxAttempts = 3;
             let quizPassPercentage = 70;
+            let surveyEnabled = false;
+            let surveyQuestions: Array<{ question: string }> = [];
+            let generatePdfOnComplete = false;
 
             if (lessonId && cid && moduleId && chapterId) {
               try {
-                const [content, quiz] = await Promise.all([
+                const [content, quiz, survey] = await Promise.all([
                   getLessonContent(cid, moduleId, chapterId, lessonId),
                   getCourseLessonQuiz(editingCourseId, lessonId),
+                  getCourseLessonSurvey(editingCourseId, lessonId),
                 ]);
                 slides = content.map((s) => {
                   if (s.type === "image") {
@@ -291,6 +309,11 @@ export function CourseBuilder() {
                       correctAnswer: q.correctAnswer,
                     }));
                 }
+                if (survey?.enabled && survey.questions?.length) {
+                  surveyEnabled = true;
+                  surveyQuestions = (survey.questions ?? []).sort((a, b) => a.order - b.order).map((q) => ({ question: q.question }));
+                  generatePdfOnComplete = survey.generatePdfOnComplete ?? false;
+                }
               } catch (e) {
                 console.warn("Load lesson content/quiz failed:", e);
               }
@@ -305,6 +328,9 @@ export function CourseBuilder() {
               quizQuestions,
               quizMaxAttempts,
               quizPassPercentage,
+              surveyEnabled,
+              surveyQuestions,
+              generatePdfOnComplete,
             });
           }
 
@@ -314,6 +340,7 @@ export function CourseBuilder() {
             description: mod.description ?? "",
             price: String(mod.price ?? 0),
             durationMonths: String(mod.durationMonths ?? 0),
+            skills: mod.skills ?? [],
             lessonCount: lessons.length,
             lessons,
           });
@@ -346,19 +373,23 @@ export function CourseBuilder() {
           description: "",
           price: "",
           durationMonths: "",
+          skills: [],
           lessonCount: 1,
           lessons: [
-        {
-          title: "",
-          imageFiles: [],
-          slides: [],
-          imageUploadStatus: "idle",
-          quizEnabled: false,
-          quizQuestions: [],
-          quizMaxAttempts: 3,
-          quizPassPercentage: 70,
-        },
-      ],
+            {
+              title: "",
+              imageFiles: [],
+              slides: [],
+              imageUploadStatus: "idle",
+              quizEnabled: false,
+              quizQuestions: [],
+              quizMaxAttempts: 3,
+              quizPassPercentage: 70,
+              surveyEnabled: false,
+              surveyQuestions: [],
+              generatePdfOnComplete: false,
+            },
+          ],
         });
       }
     }
@@ -518,6 +549,38 @@ export function CourseBuilder() {
     setModules(updated);
   };
 
+  const setSurveyEnabled = (moduleIndex: number, lessonIndex: number, enabled: boolean) => {
+    const updated = [...modules];
+    const lesson = updated[moduleIndex].lessons[lessonIndex];
+    lesson.surveyEnabled = enabled;
+    if (enabled && !lesson.surveyQuestions?.length) lesson.surveyQuestions = [];
+    setModules(updated);
+  };
+
+  const addSurveyQuestion = (moduleIndex: number, lessonIndex: number) => {
+    const updated = [...modules];
+    const lesson = updated[moduleIndex].lessons[lessonIndex];
+    if (!lesson.surveyQuestions) lesson.surveyQuestions = [];
+    lesson.surveyQuestions.push({ question: "" });
+    setModules(updated);
+  };
+
+  const removeSurveyQuestion = (moduleIndex: number, lessonIndex: number, qIndex: number) => {
+    const updated = [...modules];
+    const lesson = updated[moduleIndex].lessons[lessonIndex];
+    lesson.surveyQuestions = lesson.surveyQuestions?.filter((_, i) => i !== qIndex) ?? [];
+    setModules(updated);
+  };
+
+  const updateSurveyQuestion = (moduleIndex: number, lessonIndex: number, qIndex: number, value: string) => {
+    const updated = [...modules];
+    const lesson = updated[moduleIndex].lessons[lessonIndex];
+    const q = lesson.surveyQuestions?.[qIndex];
+    if (!q) return;
+    q.question = value;
+    setModules(updated);
+  };
+
   const handleSaveCourse = async (): Promise<string | null> => {
     if (!curriculumId || !user) return null;
 
@@ -658,6 +721,7 @@ export function CourseBuilder() {
           order: moduleIndex + 1,
           price: parseFloat(moduleData.price || "0"),
           durationMonths: parseFloat(moduleData.durationMonths || "0"),
+          skills: moduleData.skills ?? [],
           lessons: moduleLessons,
         };
         
@@ -741,6 +805,13 @@ export function CourseBuilder() {
               passPercentage: Math.min(100, Math.max(0, lesson.quizPassPercentage ?? 70)),
               questions: validQuestions,
             });
+            const surveyEnabled = lesson.surveyEnabled ?? false;
+            const surveyQuestions = (lesson.surveyQuestions ?? []).filter((q) => (q.question?.trim() ?? "") !== "").map((q, i) => ({ order: i, question: q.question.trim() }));
+            await setCourseLessonSurvey(courseIdToUse, lesson.lessonId, {
+              enabled: surveyEnabled && surveyQuestions.length > 0,
+              questions: surveyQuestions,
+              generatePdfOnComplete: lesson.generatePdfOnComplete ?? false,
+            });
           }
         }
         alert("Course updated!");
@@ -779,6 +850,13 @@ export function CourseBuilder() {
               maxAttempts: Math.max(1, lesson.quizMaxAttempts ?? 3),
               passPercentage: Math.min(100, Math.max(0, lesson.quizPassPercentage ?? 70)),
               questions: validQuestions,
+            });
+            const surveyEnabled = lesson.surveyEnabled ?? false;
+            const surveyQuestions = (lesson.surveyQuestions ?? []).filter((q) => (q.question?.trim() ?? "") !== "").map((q, i) => ({ order: i, question: q.question.trim() }));
+            await setCourseLessonSurvey(courseId, lesson.lessonId, {
+              enabled: surveyEnabled && surveyQuestions.length > 0,
+              questions: surveyQuestions,
+              generatePdfOnComplete: lesson.generatePdfOnComplete ?? false,
             });
           }
         }
@@ -1068,6 +1146,67 @@ export function CourseBuilder() {
                   </div>
                 </div>
 
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setExpandedSkillsModuleIndex(
+                        expandedSkillsModuleIndex === moduleIndex ? null : moduleIndex
+                      )
+                    }
+                    className="flex items-center justify-between w-full text-left rounded border border-border px-3 py-2 hover:bg-muted/50"
+                  >
+                    <Label className="cursor-pointer font-normal">
+                      Skills (optional)
+                    </Label>
+                    <span className="text-sm text-muted-foreground">
+                      {(module.skills?.length ?? 0) > 0
+                        ? `${module.skills!.length} selected`
+                        : "None required"}
+                    </span>
+                  </button>
+                  {expandedSkillsModuleIndex === moduleIndex && (
+                    <div className="rounded border border-border bg-muted/20 p-4 space-y-3 max-h-64 overflow-y-auto">
+                      <p className="text-xs text-muted-foreground">
+                        Select skills this module helps develop. None required.
+                      </p>
+                      {Object.entries(SKILL_CATEGORIES).map(([category]) => {
+                        const categorySkills = ALL_SKILLS.filter((s) => s.category === category);
+                        const selected = module.skills ?? [];
+                        return (
+                          <div key={category}>
+                            <p className="text-sm font-medium text-foreground mb-1">{category}</p>
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 pl-2">
+                              {categorySkills.map(({ skill }) => (
+                                <div key={skill} className="flex items-center gap-2">
+                                  <Checkbox
+                                    id={`module-${moduleIndex}-skill-${skill.replace(/\s+/g, "-")}`}
+                                    checked={selected.includes(skill)}
+                                    onCheckedChange={() => {
+                                      const updated = [...modules];
+                                      const current = updated[moduleIndex].skills ?? [];
+                                      updated[moduleIndex].skills = current.includes(skill)
+                                        ? current.filter((s) => s !== skill)
+                                        : [...current, skill];
+                                      setModules(updated);
+                                    }}
+                                  />
+                                  <label
+                                    htmlFor={`module-${moduleIndex}-skill-${skill.replace(/\s+/g, "-")}`}
+                                    className="text-sm cursor-pointer"
+                                  >
+                                    {skill}
+                                  </label>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
                 <Separator />
 
                 <div className="space-y-4">
@@ -1354,6 +1493,83 @@ export function CourseBuilder() {
                                               <option value="D">D</option>
                                             </select>
                                           </div>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  )}
+                                </div>
+                              </>
+                            )}
+                          </div>
+
+                          {/* Survey at end of lesson (open-ended) */}
+                          <div className="space-y-3 pt-2 border-t border-border">
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                id={`survey-${moduleIndex}-${lessonIndex}`}
+                                checked={lesson.surveyEnabled ?? false}
+                                onChange={(e) =>
+                                  setSurveyEnabled(moduleIndex, lessonIndex, e.target.checked)
+                                }
+                                className="rounded border-border"
+                              />
+                              <Label
+                                htmlFor={`survey-${moduleIndex}-${lessonIndex}`}
+                                className="cursor-pointer"
+                              >
+                                Survey at end of lesson (open-ended; submit to complete)
+                              </Label>
+                            </div>
+                            {lesson.surveyEnabled && (
+                              <>
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="checkbox"
+                                    id={`survey-pdf-${moduleIndex}-${lessonIndex}`}
+                                    checked={lesson.generatePdfOnComplete ?? false}
+                                    onChange={(e) => {
+                                      const updated = [...modules];
+                                      updated[moduleIndex].lessons[lessonIndex].generatePdfOnComplete = e.target.checked;
+                                      setModules(updated);
+                                    }}
+                                    className="rounded border-border"
+                                  />
+                                  <Label htmlFor={`survey-pdf-${moduleIndex}-${lessonIndex}`} className="cursor-pointer text-xs">
+                                    Generate PDF of answers when user completes (upload to Data Room)
+                                  </Label>
+                                </div>
+                                <div className="space-y-2">
+                                  <Label className="text-xs">Survey questions (open-ended)</Label>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => addSurveyQuestion(moduleIndex, lessonIndex)}
+                                  >
+                                    <Plus className="w-3 h-3 mr-1" />
+                                    Add question
+                                  </Button>
+                                  {(lesson.surveyQuestions?.length ?? 0) > 0 && (
+                                    <ul className="space-y-2">
+                                      {lesson.surveyQuestions!.map((q, qIdx) => (
+                                        <li key={qIdx} className="flex items-center gap-2 p-2 rounded border border-border bg-muted/20">
+                                          <span className="text-xs font-medium text-muted-foreground shrink-0">Q{qIdx + 1}</span>
+                                          <Input
+                                            placeholder="Question text"
+                                            value={q.question}
+                                            onChange={(e) => updateSurveyQuestion(moduleIndex, lessonIndex, qIdx, e.target.value)}
+                                            className="text-sm flex-1"
+                                          />
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-8 w-8 p-0 shrink-0"
+                                            onClick={() => removeSurveyQuestion(moduleIndex, lessonIndex, qIdx)}
+                                          >
+                                            <Trash2 className="w-3 h-3" />
+                                          </Button>
                                         </li>
                                       ))}
                                     </ul>

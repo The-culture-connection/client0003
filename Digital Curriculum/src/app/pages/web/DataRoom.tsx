@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -13,7 +13,18 @@ import {
   Image as ImageIcon,
   FileSpreadsheet,
   Archive,
+  Award,
+  Eye,
 } from "lucide-react";
+import { useAuth } from "../../components/auth/AuthProvider";
+import { listCertificates, listSurveyResponses, type SkillCertificate, type SurveyResponseDocument } from "../../lib/dataroom";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "../../components/ui/dialog";
+import { format } from "date-fns";
 
 interface FileNode {
   id: string;
@@ -107,8 +118,61 @@ const mockFileSystem: FileNode[] = [
 ];
 
 export function WebDataRoom() {
+  const { user } = useAuth();
   const [currentPath, setCurrentPath] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [certificates, setCertificates] = useState<SkillCertificate[]>([]);
+  const [certificatesLoading, setCertificatesLoading] = useState(true);
+  const [previewCertificate, setPreviewCertificate] = useState<SkillCertificate | null>(null);
+  const [surveyResponses, setSurveyResponses] = useState<SurveyResponseDocument[]>([]);
+  const [surveyResponsesLoading, setSurveyResponsesLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user?.uid) {
+      setCertificatesLoading(false);
+      setSurveyResponsesLoading(false);
+      return;
+    }
+    listCertificates(user.uid)
+      .then(setCertificates)
+      .catch(() => setCertificates([]))
+      .finally(() => setCertificatesLoading(false));
+    listSurveyResponses(user.uid)
+      .then(setSurveyResponses)
+      .catch(() => setSurveyResponses([]))
+      .finally(() => setSurveyResponsesLoading(false));
+  }, [user?.uid]);
+
+  const handleDownloadCertificate = (cert: SkillCertificate) => {
+    const win = window.open("", "_blank");
+    if (!win) return;
+    const createdAt = cert.createdAt && typeof (cert.createdAt as { toDate?: () => Date }).toDate === "function"
+      ? (cert.createdAt as { toDate: () => Date }).toDate()
+      : cert.createdAt && typeof (cert.createdAt as { seconds?: number }).seconds === "number"
+        ? new Date((cert.createdAt as { seconds: number }).seconds * 1000)
+        : new Date();
+    win.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head><title>Certificate - ${cert.skill}</title></head>
+        <body style="margin:0;padding:40px;font-family:Georgia,serif;text-align:center;background:#fafafa;">
+          <div style="max-width:600px;margin:0 auto;border:3px solid #1a1a1a;padding:48px;background:#fff;">
+            <h1 style="font-size:28px;margin-bottom:8px;">Certificate of Completion</h1>
+            <p style="color:#666;font-size:14px;margin-bottom:32px;">${cert.courseTitle}</p>
+            <p style="font-size:22px;margin:24px 0;">Congratulations on the new skill:</p>
+            <p style="font-size:28px;font-weight:bold;margin:16px 0;color:#1a1a1a;">${cert.skill}</p>
+            <p style="color:#888;font-size:12px;margin-top:48px;">Earned ${format(createdAt, "MMMM d, yyyy")}</p>
+          </div>
+        </body>
+      </html>
+    `);
+    win.document.close();
+    win.focus();
+    setTimeout(() => {
+      win.print();
+      win.close();
+    }, 250);
+  };
 
   const getFileIcon = (fileType?: string) => {
     switch (fileType) {
@@ -191,6 +255,161 @@ export function WebDataRoom() {
           Organize and manage your business documents and assets
         </p>
       </div>
+
+      {/* Certificates section */}
+      <Card className="p-6 bg-card border-border mb-6">
+        <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+          <Award className="w-5 h-5 text-accent" />
+          Skill Certificates
+        </h2>
+        {certificatesLoading ? (
+          <p className="text-sm text-muted-foreground py-4">Loading certificates...</p>
+        ) : certificates.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4">
+            No certificates yet. Complete courses with assigned skills to earn certificates.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {certificates.map((cert) => {
+              const createdAt = cert.createdAt && typeof (cert.createdAt as { toDate?: () => Date }).toDate === "function"
+                ? (cert.createdAt as { toDate: () => Date }).toDate()
+                : cert.createdAt && typeof (cert.createdAt as { seconds?: number }).seconds === "number"
+                  ? new Date((cert.createdAt as { seconds: number }).seconds * 1000)
+                  : new Date();
+              return (
+                <div
+                  key={cert.id}
+                  className="flex items-center justify-between p-4 rounded-lg border border-border bg-muted/20 hover:bg-muted/40"
+                >
+                  <div className="flex items-center gap-3">
+                    <Award className="w-8 h-8 text-accent" />
+                    <div>
+                      <p className="font-medium text-foreground">Congrats on the new skill: {cert.skill}</p>
+                      <p className="text-sm text-muted-foreground">{cert.courseTitle} · {format(createdAt, "MMM d, yyyy")}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPreviewCertificate(cert)}
+                      className="border-border text-foreground"
+                    >
+                      <Eye className="w-4 h-4 mr-1" />
+                      Preview
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDownloadCertificate(cert)}
+                      className="border-border text-foreground"
+                    >
+                      <Download className="w-4 h-4 mr-1" />
+                      Download
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Card>
+
+      {/* Survey responses (PDFs from completed surveys) */}
+      <Card className="p-6 bg-card border-border mb-6">
+        <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+          <FileText className="w-5 h-5 text-accent" />
+          Survey Responses
+        </h2>
+        {surveyResponsesLoading ? (
+          <p className="text-sm text-muted-foreground py-4">Loading...</p>
+        ) : surveyResponses.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4">
+            No survey response PDFs yet. Complete lessons with surveys (and PDF export enabled) to add documents here.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {surveyResponses.map((sr) => {
+              const createdAt = sr.createdAt && typeof (sr.createdAt as { toDate?: () => Date }).toDate === "function"
+                ? (sr.createdAt as { toDate: () => Date }).toDate()
+                : sr.createdAt && typeof (sr.createdAt as { seconds?: number }).seconds === "number"
+                  ? new Date((sr.createdAt as { seconds: number }).seconds * 1000)
+                  : new Date();
+              return (
+                <div
+                  key={sr.id}
+                  className="flex items-center justify-between p-4 rounded-lg border border-border bg-muted/20 hover:bg-muted/40"
+                >
+                  <div className="flex items-center gap-3">
+                    <FileText className="w-8 h-8 text-accent" />
+                    <div>
+                      <p className="font-medium text-foreground">{sr.lessonTitle}</p>
+                      <p className="text-sm text-muted-foreground">Survey responses · {format(createdAt, "MMM d, yyyy")}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open(sr.downloadUrl, "_blank")}
+                      className="border-border text-foreground"
+                    >
+                      <Eye className="w-4 h-4 mr-1" />
+                      Preview
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open(sr.downloadUrl, "_blank", "noopener")}
+                      className="border-border text-foreground"
+                    >
+                      <Download className="w-4 h-4 mr-1" />
+                      Download
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Card>
+
+      {/* Certificate preview modal */}
+      <Dialog open={!!previewCertificate} onOpenChange={(open) => !open && setPreviewCertificate(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Certificate</DialogTitle>
+          </DialogHeader>
+          {previewCertificate && (
+            <div className="border-2 border-border rounded-lg p-8 bg-card text-center">
+              <h3 className="text-xl font-semibold text-foreground mb-2">Certificate of Completion</h3>
+              <p className="text-sm text-muted-foreground mb-6">{previewCertificate.courseTitle}</p>
+              <p className="text-lg text-foreground mb-2">Congratulations on the new skill:</p>
+              <p className="text-2xl font-bold text-foreground mb-6">{previewCertificate.skill}</p>
+              {previewCertificate.createdAt && (
+                <p className="text-xs text-muted-foreground">
+                  Earned{" "}
+                  {typeof (previewCertificate.createdAt as { toDate?: () => Date }).toDate === "function"
+                    ? format((previewCertificate.createdAt as { toDate: () => Date }).toDate(), "MMMM d, yyyy")
+                    : "—"}
+                </p>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-6"
+                onClick={() => {
+                  handleDownloadCertificate(previewCertificate);
+                  setPreviewCertificate(null);
+                }}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Download / Print
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Card className="p-6 bg-card border-border">
         <div className="mb-6 flex items-center gap-4">

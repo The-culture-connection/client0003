@@ -12,6 +12,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { updatePageProgress, markCourseCompleted, calculateCourseProgress, getCourseProgress, type CourseProgress } from "../../lib/courseProgress";
+import { createSkillCertificatesForCompletedCourse } from "../../lib/dataroom";
 import { type Course, type Module, type Lesson } from "../../lib/courses";
 import { PDFViewer } from "./PDFViewer";
 
@@ -156,6 +157,10 @@ export function SlideViewer({
         const progressValue = calculateCourseProgress(course, updatedProgress);
         if (progressValue === 100) {
           await markCourseCompleted(userId, course.id!);
+          const { certificatesCreated } = await createSkillCertificatesForCompletedCourse(userId, course);
+          if (certificatesCreated) {
+            alert("Congratulations! You've earned new certificate(s). View them in your Data Room.");
+          }
           const finalProgress = await getCourseProgress(userId, course.id!);
           onProgressUpdate(finalProgress);
         }
@@ -189,6 +194,10 @@ export function SlideViewer({
         const progressValue = calculateCourseProgress(course, updatedProgress);
         if (progressValue === 100) {
           await markCourseCompleted(userId, course.id!);
+          const { certificatesCreated } = await createSkillCertificatesForCompletedCourse(userId, course);
+          if (certificatesCreated) {
+            alert("Congratulations! You've earned new certificate(s). View them in your Data Room.");
+          }
           const finalProgress = await getCourseProgress(userId, course.id!);
           onProgressUpdate(finalProgress);
         }
