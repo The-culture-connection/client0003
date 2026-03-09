@@ -1,0 +1,11 @@
+# Railway deployment config for Digital Curriculum (Vite + React SPA)
+# When linking this project, set Root Directory to "Digital Curriculum" in the service settings.
+
+[build]
+builder = "nixpacks"
+buildCommand = "npm run build"
+
+[deploy]
+startCommand = "npx serve -s dist -l $PORT"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10
