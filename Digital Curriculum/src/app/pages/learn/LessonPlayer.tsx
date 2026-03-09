@@ -216,10 +216,10 @@ export function LessonPlayer() {
     if (currentSlideIndex < itemCount - 1) {
       setCurrentSlideIndex(currentSlideIndex + 1);
       window.scrollTo(0, 0);
-    } else if (atEnd && hasSurvey && !surveySubmitted) {
-      setShowSurveyView(true);
     } else if (atEnd && hasQuiz && !userPassed) {
       setShowQuizView(true);
+    } else if (atEnd && hasSurvey && !surveySubmitted) {
+      setShowSurveyView(true);
     }
   };
 
@@ -385,7 +385,7 @@ export function LessonPlayer() {
       <div className="min-h-[calc(100vh-80px)]">
         {showSurveyView && hasSurvey ? (
           <div className="container mx-auto px-4 py-8 max-w-2xl">
-            <h2 className="text-xl font-semibold mb-6">Lesson Survey</h2>
+            <h2 className="text-xl font-semibold mb-6">{survey.title?.trim() || "Survey"}</h2>
             {!surveySubmitted ? (
               <>
                 <p className="text-gray-400 text-sm mb-6">
@@ -419,7 +419,7 @@ export function LessonPlayer() {
                   {isSubmittingSurvey ? (
                     <Loader2 className="w-4 h-4 animate-spin mr-2" />
                   ) : null}
-                  Submit Survey
+                  Submit
                 </Button>
               </>
             ) : (
@@ -560,7 +560,7 @@ export function LessonPlayer() {
           disabled={currentSlideIndex === itemCount - 1 && !(atEnd && hasSurvey && !surveySubmitted) && !(atEnd && hasQuiz && !userPassed)}
           className="text-foreground"
         >
-          {atEnd && hasSurvey && !surveySubmitted ? "Start Survey" : atEnd && hasQuiz && !userPassed ? "Start Quiz" : "Next"}
+          {atEnd && hasQuiz && !userPassed ? "Start Quiz" : atEnd && hasSurvey && !surveySubmitted ? (survey?.title?.trim() ? `Start: ${survey.title}` : "Start Survey") : "Next"}
           <ChevronRight className="w-5 h-5 ml-2" />
         </Button>
       </div>

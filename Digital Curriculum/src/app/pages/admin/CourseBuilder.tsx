@@ -131,6 +131,7 @@ interface ModuleData {
     quizPassPercentage?: number;
     /** Survey at end of lesson (open-ended) */
     surveyEnabled?: boolean;
+    surveyTitle?: string;
     surveyQuestions?: Array<{ question: string }>;
     generatePdfOnComplete?: boolean;
   }>;
@@ -173,6 +174,7 @@ export function CourseBuilder() {
           quizMaxAttempts: 3,
           quizPassPercentage: 70,
           surveyEnabled: false,
+          surveyTitle: "",
           surveyQuestions: [],
           generatePdfOnComplete: false,
         },
@@ -268,6 +270,7 @@ export function CourseBuilder() {
             let quizMaxAttempts = 3;
             let quizPassPercentage = 70;
             let surveyEnabled = false;
+            let surveyTitle = "";
             let surveyQuestions: Array<{ question: string }> = [];
             let generatePdfOnComplete = false;
 
@@ -311,6 +314,7 @@ export function CourseBuilder() {
                 }
                 if (survey?.enabled && survey.questions?.length) {
                   surveyEnabled = true;
+                  surveyTitle = survey.title ?? "";
                   surveyQuestions = (survey.questions ?? []).sort((a, b) => a.order - b.order).map((q) => ({ question: q.question }));
                   generatePdfOnComplete = survey.generatePdfOnComplete ?? false;
                 }
@@ -329,6 +333,7 @@ export function CourseBuilder() {
               quizMaxAttempts,
               quizPassPercentage,
               surveyEnabled,
+              surveyTitle,
               surveyQuestions,
               generatePdfOnComplete,
             });
@@ -385,9 +390,10 @@ export function CourseBuilder() {
               quizQuestions: [],
               quizMaxAttempts: 3,
               quizPassPercentage: 70,
-              surveyEnabled: false,
-              surveyQuestions: [],
-              generatePdfOnComplete: false,
+          surveyEnabled: false,
+          surveyTitle: "",
+          surveyQuestions: [],
+          generatePdfOnComplete: false,
             },
           ],
         });
@@ -809,6 +815,7 @@ export function CourseBuilder() {
             const surveyQuestions = (lesson.surveyQuestions ?? []).filter((q) => (q.question?.trim() ?? "") !== "").map((q, i) => ({ order: i, question: q.question.trim() }));
             await setCourseLessonSurvey(courseIdToUse, lesson.lessonId, {
               enabled: surveyEnabled && surveyQuestions.length > 0,
+              title: (lesson.surveyTitle ?? "").trim() || "Survey",
               questions: surveyQuestions,
               generatePdfOnComplete: lesson.generatePdfOnComplete ?? false,
             });
@@ -855,6 +862,7 @@ export function CourseBuilder() {
             const surveyQuestions = (lesson.surveyQuestions ?? []).filter((q) => (q.question?.trim() ?? "") !== "").map((q, i) => ({ order: i, question: q.question.trim() }));
             await setCourseLessonSurvey(courseId, lesson.lessonId, {
               enabled: surveyEnabled && surveyQuestions.length > 0,
+              title: (lesson.surveyTitle ?? "").trim() || "Survey",
               questions: surveyQuestions,
               generatePdfOnComplete: lesson.generatePdfOnComplete ?? false,
             });
@@ -1538,6 +1546,19 @@ export function CourseBuilder() {
                                   <Label htmlFor={`survey-pdf-${moduleIndex}-${lessonIndex}`} className="cursor-pointer text-xs">
                                     Generate PDF of answers when user completes (upload to Data Room)
                                   </Label>
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs">Survey name (shown to learners)</Label>
+                                  <Input
+                                    placeholder="e.g. Module 1 Reflection"
+                                    value={lesson.surveyTitle ?? ""}
+                                    onChange={(e) => {
+                                      const updated = [...modules];
+                                      updated[moduleIndex].lessons[lessonIndex].surveyTitle = e.target.value;
+                                      setModules(updated);
+                                    }}
+                                    className="text-sm"
+                                  />
                                 </div>
                                 <div className="space-y-2">
                                   <Label className="text-xs">Survey questions (open-ended)</Label>

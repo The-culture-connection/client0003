@@ -375,6 +375,37 @@ export function CourseDetail() {
                                         {courseProgress.totalPages?.[lessonIdForProgress]} slides
                                       </p>
                                     )}
+                                  {/* Per-lesson completion: Content, Quiz, Document generation */}
+                                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-muted-foreground">
+                                    <span className="flex items-center gap-1.5">
+                                      {((courseProgress?.pagesViewed?.[lessonIdForProgress] ?? 0) >= (courseProgress?.totalPages?.[lessonIdForProgress] ?? 0) && (courseProgress?.totalPages?.[lessonIdForProgress] ?? 0) > 0) || (courseProgress?.totalPages?.[lessonIdForProgress] ?? 0) === 0 ? (
+                                        <CheckCircle2 className="w-3.5 h-3.5 text-green-600 shrink-0" />
+                                      ) : (
+                                        <span className="w-3.5 h-3.5 rounded-full border border-muted-foreground/50 shrink-0" />
+                                      )}
+                                      Content
+                                    </span>
+                                    {hasQuizForLesson && (
+                                      <span className="flex items-center gap-1.5">
+                                        {courseProgress?.quizPassed?.[lessonIdForProgress] ? (
+                                          <CheckCircle2 className="w-3.5 h-3.5 text-green-600 shrink-0" />
+                                        ) : (
+                                          <span className="w-3.5 h-3.5 rounded-full border border-muted-foreground/50 shrink-0" />
+                                        )}
+                                        Quiz
+                                      </span>
+                                    )}
+                                    {hasSurveyForLesson && (
+                                      <span className="flex items-center gap-1.5">
+                                        {courseProgress?.surveySubmitted?.[lessonIdForProgress] ? (
+                                          <CheckCircle2 className="w-3.5 h-3.5 text-green-600 shrink-0" />
+                                        ) : (
+                                          <span className="w-3.5 h-3.5 rounded-full border border-muted-foreground/50 shrink-0" />
+                                        )}
+                                        Document generation
+                                      </span>
+                                    )}
+                                  </div>
                                   {lesson.slideFileName && (
                                     <p className="text-xs text-muted-foreground mt-1">
                                       {lesson.slideFileName}

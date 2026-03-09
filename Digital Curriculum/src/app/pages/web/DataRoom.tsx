@@ -319,7 +319,7 @@ export function WebDataRoom() {
       <Card className="p-6 bg-card border-border mb-6">
         <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
           <FileText className="w-5 h-5 text-accent" />
-          Survey Responses
+          Generated documents
         </h2>
         {surveyResponsesLoading ? (
           <p className="text-sm text-muted-foreground py-4">Loading...</p>
