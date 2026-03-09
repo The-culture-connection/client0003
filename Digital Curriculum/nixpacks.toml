@@ -1,0 +1,4 @@
+# Force Node 20 for Firebase and other deps that require >=20.
+# Nixpacks reads this; also ensure package.json "engines.node" and .nvmrc are set.
+[variables]
+NIXPACKS_NODE_VERSION = "20"

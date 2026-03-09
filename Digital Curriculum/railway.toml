@@ -1,9 +1,11 @@
 # Railway deployment config for Digital Curriculum (Vite + React SPA)
 # When linking this project, set Root Directory to "Digital Curriculum" in the service settings.
+# Watch Paths: from repo root, so this service only deploys when files under Digital Curriculum change.
 
 [build]
 builder = "nixpacks"
 buildCommand = "npm run build"
+watchPatterns = ["Digital Curriculum", "Digital Curriculum/**"]
 
 [deploy]
 startCommand = "npx serve -s dist -l $PORT"

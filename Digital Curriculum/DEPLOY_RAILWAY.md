@@ -15,7 +15,27 @@ This app is a Vite + React SPA that builds to static files and is served with `s
 4. When prompted for the **root directory**, set it to **`Digital Curriculum`** (the folder containing this `package.json` and `railway.toml`).  
    - If you don’t set this, set it later: select the service → **Settings** → **Root Directory** → `Digital Curriculum`.
 
-## 3. Build and start (automatic)
+## 3. Fix “No deployment needed – watched paths not modified”
+
+If pushes to `main` don’t trigger a build and you see **“No deployment needed - watched paths not modified”**, the service is only watching other paths (e.g. `web`, `functions`). Do one of the following:
+
+**Option A – Set Watch Paths in the dashboard (recommended)**
+
+1. Open your project on Railway → select the **mortar-web** (or this app’s) service.
+2. Go to **Settings** → **Build** (or **Triggers** / **Source**).
+3. Find **Watch Paths** (or **Watch Patterns**).
+4. Either:
+   - **Clear all watch paths** so every push triggers a deploy, or
+   - **Add** the path to this app (paths are from **repo root**):
+     - If the repo root is the `Technology` folder: add **`Digital Curriculum`** (and optionally **`Digital Curriculum/**`).
+     - If the repo root is the parent of `Technology`: add **`Technology/Digital Curriculum`** (and optionally **`Technology/Digital Curriculum/**`).
+5. Save. The next push that touches this folder should trigger a build.
+
+**Option B – Rely on config in code**
+
+`railway.toml` in this folder sets `watchPatterns = ["Digital Curriculum", "Digital Curriculum/**"]` (relative to repo root). Some Railway builders ignore watch patterns from config; if builds still don’t run, use Option A.
+
+## 4. Build and start (automatic)
 
 Railway will use `railway.toml` in this directory:
 
@@ -24,7 +44,7 @@ Railway will use `railway.toml` in this directory:
 
 No need to set build/start commands in the dashboard unless you want to override them.
 
-## 4. Environment variables (optional)
+## 5. Environment variables (optional)
 
 Set these in the Railway service: **Variables** (or **Settings** → **Variables**).
 
@@ -50,15 +70,15 @@ For **admin login** (optional):
 
 Do **not** set `VITE_USE_EMULATOR` to `true` in production.
 
-## 5. Deploy
+## 6. Deploy
 
-- **Automatic:** Every push to the branch you connected will trigger a new build and deploy.
+- **Automatic:** Every push to the branch you connected will trigger a new build and deploy (once Watch Paths are fixed as above).
 - **Manual:** In the Railway dashboard, open the latest deployment and use **Redeploy** if needed.
 
-## 6. Custom domain (optional)
+## 7. Custom domain (optional)
 
 In the Railway service: **Settings** → **Networking** → **Public Networking** → **Generate Domain** (or add a custom domain).
 
 ---
 
-**Summary:** Set **Root Directory** to `Digital Curriculum`, add any env vars you need, and Railway will build and serve the app on each push.
+**Summary:** Set **Root Directory** to `Digital Curriculum`, fix **Watch Paths** so changes under `Digital Curriculum` trigger builds, add any env vars you need, and Railway will build and serve the app on each push.
