@@ -77,6 +77,9 @@ emulator-data/
 # Build outputs
 lib/
 dist/
+# Exception: Digital Curriculum app source lib (auth, firebase, etc.) must be committed for deploy
+!Digital Curriculum/src/app/lib/
+!Digital Curriculum/src/app/lib/**
 build/
 .next/
 out/
