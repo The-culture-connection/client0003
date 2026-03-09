@@ -37,14 +37,18 @@ export function CourseDetail() {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    const loadCourse = async () => {
-      if (!courseId || !user) {
-        setLoading(false);
-        return;
-      }
+    if (!courseId || !user) {
+      setLoading(false);
+      return;
+    }
+    // Clear slide counts immediately so we never render with stale data from another course (prevents complete flash)
+    setCourseSlideCounts(null);
+    setLessonsWithQuiz(null);
+    setLessonsWithSurvey(null);
+    setLoading(true);
 
+    const loadCourse = async () => {
       try {
-        setLoading(true);
         const [courseData, progressData, userWithRoles] = await Promise.all([
           getCourse(courseId),
           getCourseProgress(user.uid, courseId),
@@ -52,26 +56,31 @@ export function CourseDetail() {
         ]);
         setCourse(courseData);
         setCourseProgress(progressData);
+        // #region agent log
+        fetch('http://127.0.0.1:7774/ingest/bfc46f72-c941-4ce4-b1bf-d233eb9d1511',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'696073'},body:JSON.stringify({sessionId:'696073',location:'CourseDetail.tsx:loadCourse',message:'progress set, slideCounts not loaded yet',data:{courseId,hasProgress:!!progressData,lessonsWithQuizNull:true,lessonsWithSurveyNull:true,courseSlideCountsNull:true},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
         if (courseData?.curriculumMapping) {
-          getCourseSlideCounts(courseData).then(async (counts) => {
-            setCourseSlideCounts(counts);
-            if (courseId && Object.keys(counts).length > 0) {
-              try {
-                const [q, s] = await Promise.all([
-                  getLessonsWithQuiz(courseId, Object.keys(counts)),
-                  getLessonsWithSurvey(courseId, Object.keys(counts)),
-                ]);
-                setLessonsWithQuiz(q);
-                setLessonsWithSurvey(s);
-              } catch {
-                setLessonsWithQuiz({});
-                setLessonsWithSurvey({});
-              }
-            } else {
-              setLessonsWithQuiz(null);
-              setLessonsWithSurvey(null);
+          const counts = await getCourseSlideCounts(courseData);
+          setCourseSlideCounts(counts);
+          if (courseId && Object.keys(counts).length > 0) {
+            try {
+              const [q, s] = await Promise.all([
+                getLessonsWithQuiz(courseId, Object.keys(counts)),
+                getLessonsWithSurvey(courseId, Object.keys(counts)),
+              ]);
+              setLessonsWithQuiz(q);
+              setLessonsWithSurvey(s);
+              // #region agent log
+              fetch('http://127.0.0.1:7774/ingest/bfc46f72-c941-4ce4-b1bf-d233eb9d1511',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'696073'},body:JSON.stringify({sessionId:'696073',location:'CourseDetail.tsx:then',message:'slideCounts and quiz/survey set',data:{courseId,countsKeys:Object.keys(counts).length},timestamp:Date.now(),hypothesisId:'C'})}).catch(()=>{});
+              // #endregion
+            } catch {
+              setLessonsWithQuiz({});
+              setLessonsWithSurvey({});
             }
-          });
+          } else {
+            setLessonsWithQuiz(null);
+            setLessonsWithSurvey(null);
+          }
         } else {
           setCourseSlideCounts(null);
           setLessonsWithQuiz(null);
@@ -125,7 +134,10 @@ export function CourseDetail() {
   const courseProgressValue = courseProgress
     ? calculateCourseProgress(course, courseProgress, courseSlideCounts ?? undefined, lessonsWithQuiz ?? undefined, lessonsWithSurvey ?? undefined)
     : 0;
-  const isCourseCompleted = courseProgress?.completed || courseProgressValue === 100;
+  // Don't show "Completed" or 100% until we have slide counts (avoids flash from fallback or stale progress.completed)
+  const hasProgressData = courseSlideCounts != null;
+  const isCourseCompleted = hasProgressData && (courseProgress?.completed || courseProgressValue === 100);
+  const displayProgressValue = hasProgressData ? courseProgressValue : Math.min(courseProgressValue, 99);
 
   // Countdown in days: only when user has started the course (startedAt set)
   const startedAt = courseProgress?.startedAt;
@@ -216,9 +228,9 @@ export function CourseDetail() {
               <div className="mt-4">
                 <span className="text-sm text-muted-foreground">Your Progress</span>
                 <div className="mt-2 space-y-1">
-                  <Progress value={courseProgressValue} className="h-2 w-full" />
+                  <Progress value={displayProgressValue} className="h-2 w-full" />
                   <p className="text-sm font-medium text-foreground">
-                    {Math.round(courseProgressValue)}%
+                    {Math.round(displayProgressValue)}%
                   </p>
                 </div>
               </div>
@@ -320,13 +332,15 @@ export function CourseDetail() {
                       const mappingModule = course.curriculumMapping?.modules?.[moduleIndex];
                       const mappingLessons = mappingModule?.chapters?.[0]?.lessons ?? [];
                       let completedInModule = 0;
-                      mappingLessons.forEach((l, idx) => {
-                        const lid = l.lessonId;
-                        const hasQuiz = lessonsWithQuiz?.[lid];
-                        const hasSurvey = lessonsWithSurvey?.[lid];
-                        const done = (courseProgress?.lessonsCompleted?.[lid] && (!hasQuiz || courseProgress?.quizPassed?.[lid]) && (!hasSurvey || courseProgress?.surveySubmitted?.[lid])) || false;
-                        if (done) completedInModule++;
-                      });
+                      if (hasProgressData) {
+                        mappingLessons.forEach((l, idx) => {
+                          const lid = l.lessonId;
+                          const hasQuiz = lessonsWithQuiz?.[lid];
+                          const hasSurvey = lessonsWithSurvey?.[lid];
+                          const done = (courseProgress?.lessonsCompleted?.[lid] && (!hasQuiz || courseProgress?.quizPassed?.[lid]) && (!hasSurvey || courseProgress?.surveySubmitted?.[lid])) || false;
+                          if (done) completedInModule++;
+                        });
+                      }
                       return (
                         <>
                           <h4 className="text-sm font-semibold text-foreground mb-3">
@@ -354,6 +368,17 @@ export function CourseDetail() {
                             const hasSurveyForLesson = lessonsWithSurvey?.[lessonIdForProgress];
                             const isCompleted = (courseProgress?.lessonsCompleted?.[lessonIdForProgress] && (!hasQuizForLesson || courseProgress?.quizPassed?.[lessonIdForProgress]) && (!hasSurveyForLesson || courseProgress?.surveySubmitted?.[lessonIdForProgress])) || false;
                             const hasCurriculumContent = Boolean(course.curriculumMapping && curriculumLessonId);
+                            const showAsCompleted = hasProgressData && isCompleted;
+                            const totalSlidesForLesson = hasProgressData ? (courseSlideCounts?.[lessonIdForProgress] ?? courseProgress?.totalPages?.[lessonIdForProgress] ?? 0) : 0;
+                            const viewedSlides = courseProgress?.pagesViewed?.[lessonIdForProgress] ?? 0;
+                            const contentComplete = hasProgressData && totalSlidesForLesson > 0 && viewedSlides >= totalSlidesForLesson;
+                            // #region agent log
+                            if (moduleIndex === 0 && lessonIndex === 0) {
+                              const totalPages = courseProgress?.totalPages?.[lessonIdForProgress] ?? 0;
+                              const contentShownComplete = ((courseProgress?.pagesViewed?.[lessonIdForProgress] ?? 0) >= totalPages && totalPages > 0) || totalPages === 0;
+                              fetch('http://127.0.0.1:7774/ingest/bfc46f72-c941-4ce4-b1bf-d233eb9d1511',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'696073'},body:JSON.stringify({sessionId:'696073',location:'CourseDetail.tsx:render',message:'first lesson completion state',data:{hasProgressData,lessonsWithQuizNull:lessonsWithQuiz==null,lessonsWithSurveyNull:lessonsWithSurvey==null,lessonIdForProgress,isCompleted,lessonsCompleted:!!courseProgress?.lessonsCompleted?.[lessonIdForProgress],hasQuizForLesson:!!hasQuizForLesson,hasSurveyForLesson:!!hasSurveyForLesson,quizPassed:!!courseProgress?.quizPassed?.[lessonIdForProgress],surveySubmitted:!!courseProgress?.surveySubmitted?.[lessonIdForProgress],totalPages,contentShownComplete},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+                            }
+                            // #endregion
 
                             return (
                             <div
@@ -378,7 +403,7 @@ export function CourseDetail() {
                                   {/* Per-lesson completion: Content, Quiz, Document generation */}
                                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-muted-foreground">
                                     <span className="flex items-center gap-1.5">
-                                      {((courseProgress?.pagesViewed?.[lessonIdForProgress] ?? 0) >= (courseProgress?.totalPages?.[lessonIdForProgress] ?? 0) && (courseProgress?.totalPages?.[lessonIdForProgress] ?? 0) > 0) || (courseProgress?.totalPages?.[lessonIdForProgress] ?? 0) === 0 ? (
+                                      {contentComplete ? (
                                         <CheckCircle2 className="w-3.5 h-3.5 text-green-600 shrink-0" />
                                       ) : (
                                         <span className="w-3.5 h-3.5 rounded-full border border-muted-foreground/50 shrink-0" />
@@ -432,7 +457,7 @@ export function CourseDetail() {
                                     Build Content
                                   </Button>
                                 )}
-                                {isCompleted ? (
+                                {showAsCompleted ? (
                                   <Badge variant="outline" className="text-green-600 border-green-600">
                                     <CheckCircle2 className="w-3 h-3 mr-1" />
                                     Completed

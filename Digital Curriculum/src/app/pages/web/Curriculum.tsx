@@ -32,6 +32,7 @@ import { getCoursesByUserId, getCoursesByRole, getLessonsWithQuiz, getLessonsWit
 import { getAllCourseProgress, calculateCourseProgress, type CourseProgress } from "../../lib/courseProgress";
 import { getCourseSlideCounts } from "../../lib/curriculum";
 import { getCurrentUserWithRoles } from "../../lib/auth";
+import { cached, TTL_SHORT, TTL_MEDIUM } from "../../lib/cache";
 
 export function WebCurriculum() {
   const navigate = useNavigate();
@@ -42,6 +43,7 @@ export function WebCurriculum() {
   const [lessonsWithQuizMap, setLessonsWithQuizMap] = useState<Record<string, Record<string, boolean>>>({});
   const [lessonsWithSurveyMap, setLessonsWithSurveyMap] = useState<Record<string, Record<string, boolean>>>({});
   const [loading, setLoading] = useState(true);
+  const [progressDataReady, setProgressDataReady] = useState(false);
   const [allCompleted, setAllCompleted] = useState(false);
   const [completedCount, setCompletedCount] = useState(0);
   const [totalCourses, setTotalCourses] = useState(0);
@@ -54,18 +56,20 @@ export function WebCurriculum() {
   // Load assigned courses and progress
   const loadCourses = useCallback(async () => {
     if (!user) return;
+    const uid = user.uid;
 
     setLoading(true);
     try {
+      setProgressDataReady(false);
       // Get user roles
-      const currentUser = await getCurrentUserWithRoles();
+      const currentUser = await cached(`roles:${uid}`, () => getCurrentUserWithRoles(), TTL_SHORT);
       const userRoles = currentUser?.roles || [];
 
       // Fetch courses assigned to user by ID
-      const coursesByUserId = await getCoursesByUserId(user.uid);
+      const coursesByUserId = await cached(`coursesByUser:${uid}`, () => getCoursesByUserId(uid), TTL_SHORT);
 
       // Fetch courses assigned to user by role
-      const coursesByRolePromises = userRoles.map((role) => getCoursesByRole(role));
+      const coursesByRolePromises = userRoles.map((role) => cached(`coursesByRole:${role}`, () => getCoursesByRole(role), TTL_SHORT));
       const coursesByRoleArrays = await Promise.all(coursesByRolePromises);
       const coursesByRole = coursesByRoleArrays.flat();
 
@@ -79,7 +83,7 @@ export function WebCurriculum() {
       setTotalCourses(uniqueCourses.length);
 
       // Load progress for all courses
-      const progress = await getAllCourseProgress(user.uid);
+      const progress = await cached(`progress:${uid}`, () => getAllCourseProgress(uid), TTL_SHORT);
       setCourseProgress(progress);
 
       // Load slide counts per course for accurate progress (all slides in course)
@@ -89,20 +93,21 @@ export function WebCurriculum() {
       await Promise.all(
         uniqueCourses.map(async (c) => {
           if (c.id && c.curriculumMapping) {
+            const courseId = c.id;
             try {
-              countsMap[c.id] = await getCourseSlideCounts(c);
-              const lessonIds = Object.keys(countsMap[c.id]);
+              countsMap[courseId] = await cached(`slideCounts:${courseId}`, () => getCourseSlideCounts(c), TTL_MEDIUM);
+              const lessonIds = Object.keys(countsMap[courseId]);
               if (lessonIds.length > 0) {
-                quizMap[c.id] = await getLessonsWithQuiz(c.id, lessonIds);
-                surveyMap[c.id] = await getLessonsWithSurvey(c.id, lessonIds);
+                quizMap[courseId] = await cached(`quiz:${courseId}`, () => getLessonsWithQuiz(courseId, lessonIds), TTL_MEDIUM);
+                surveyMap[courseId] = await cached(`survey:${courseId}`, () => getLessonsWithSurvey(courseId, lessonIds), TTL_MEDIUM);
               } else {
-                quizMap[c.id] = {};
-                surveyMap[c.id] = {};
+                quizMap[courseId] = {};
+                surveyMap[courseId] = {};
               }
             } catch {
-              countsMap[c.id] = {};
-              quizMap[c.id] = {};
-              surveyMap[c.id] = {};
+              countsMap[courseId] = {};
+              quizMap[courseId] = {};
+              surveyMap[courseId] = {};
             }
           }
         })
@@ -139,6 +144,7 @@ export function WebCurriculum() {
       setOverallProgress(avgProgress);
       setCompletedCount(completedCourses);
       setAllCompleted(completedCourses === uniqueCourses.length && uniqueCourses.length > 0);
+      setProgressDataReady(true);
     } catch (error) {
       console.error("Error loading courses:", error);
     } finally {
@@ -163,14 +169,14 @@ export function WebCurriculum() {
         // Only load application if user is not an alumni
         // (once graduated, we don't need to show application status)
         if (!userIsAlumni) {
-          const application = await getUserGraduationApplication(user.uid);
+          const application = await cached(`graduation:${user.uid}`, () => getUserGraduationApplication(user.uid), TTL_MEDIUM);
           setUserApplication(application);
         } else {
           setUserApplication(null);
         }
       } else {
         setIsAlumni(false);
-        const application = await getUserGraduationApplication(user.uid);
+        const application = await cached(`graduation:${user.uid}`, () => getUserGraduationApplication(user.uid), TTL_MEDIUM);
         setUserApplication(application);
       }
     } catch (error) {
@@ -205,8 +211,9 @@ export function WebCurriculum() {
   };
 
   const isCourseCompleted = (course: Course): boolean => {
+    if (!progressDataReady) return false;
     const progressData = courseProgress[course.id || ""];
-    return progressData?.completed || getCourseProgressValue(course) === 100;
+    return Boolean(progressData?.completed || getCourseProgressValue(course) === 100);
   };
 
   /** Course the user last progressed in (by updatedAt), for header Continue */
@@ -395,6 +402,7 @@ export function WebCurriculum() {
           {courses.map((course) => {
             const progressValue = getCourseProgressValue(course);
             const completed = isCourseCompleted(course);
+            const displayProgressValue = progressDataReady ? progressValue : Math.min(progressValue, 99);
             
             return (
               <Card
@@ -433,7 +441,7 @@ export function WebCurriculum() {
                           <FileText className="w-4 h-4" />
                           <span>{course.modules.length} module{course.modules.length !== 1 ? "s" : ""}</span>
                         </div>
-                        {course.totalDuration && course.totalDuration > 0 && (
+                        {((course.totalDuration ?? 0) > 0) && (
                           <div className="flex items-center gap-1.5">
                             <Clock className="w-4 h-4" />
                             <span>{course.totalDuration} month{course.totalDuration !== 1 ? "s" : ""}</span>
@@ -444,10 +452,10 @@ export function WebCurriculum() {
                         <div className="flex items-center justify-between mb-1.5">
                           <span className="text-xs text-muted-foreground">Progress</span>
                           <Badge className={`text-xs ${completed ? "bg-green-500/10 text-green-500" : "bg-accent/10 text-accent"}`}>
-                            {Math.round(progressValue)}%
+                            {Math.round(displayProgressValue)}%
                           </Badge>
                         </div>
-                        <Progress value={progressValue} className="h-2" />
+                        <Progress value={displayProgressValue} className="h-2" />
                       </div>
                     </div>
                   </div>
@@ -455,7 +463,7 @@ export function WebCurriculum() {
                     <Button
                       onClick={(e) => {
                         e.stopPropagation();
-                        navigate(getLessonUrl(course, progressValue > 0 && !completed));
+                        navigate(getLessonUrl(course, displayProgressValue > 0 && !completed));
                       }}
                       size="sm"
                       className={completed ? "bg-green-500 hover:bg-green-600" : "bg-accent hover:bg-accent/90 text-accent-foreground"}
@@ -468,7 +476,7 @@ export function WebCurriculum() {
                       ) : progressValue > 0 ? (
                         <>
                           <Play className="w-4 h-4 mr-2" />
-                          Continue ({Math.round(progressValue)}%)
+                          Continue ({Math.round(displayProgressValue)}%)
                         </>
                       ) : (
                         <>

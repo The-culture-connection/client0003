@@ -41,6 +41,7 @@ import { listCertificates, listSurveyResponses } from "../../lib/dataroom";
 import { getUpcomingEvents, type Event } from "../../lib/events";
 import { getGroupsForUser, getLastGroupMessage, getMemberCount, type Group } from "../../lib/groups";
 import { format, formatDistanceToNow } from "date-fns";
+import { cached, TTL_SHORT, TTL_MEDIUM } from "../../lib/cache";
 
 const MOCK_BORDER = "border-2 border-red-500";
 
@@ -71,12 +72,13 @@ export function WebDashboard() {
     if (!user?.uid) return;
     setLoading(true);
     try {
+      const uid = user.uid;
       const [userWithRoles, progress, certs, surveys, events] = await Promise.all([
-        getCurrentUserWithRoles(),
-        getAllCourseProgress(user.uid),
-        listCertificates(user.uid),
-        listSurveyResponses(user.uid),
-        getUpcomingEvents(),
+        cached(`roles:${uid}`, () => getCurrentUserWithRoles(), TTL_SHORT),
+        cached(`progress:${uid}`, () => getAllCourseProgress(uid), TTL_SHORT),
+        cached(`certs:${uid}`, () => listCertificates(uid), TTL_MEDIUM),
+        cached(`surveys:${uid}`, () => listSurveyResponses(uid), TTL_MEDIUM),
+        cached("events:upcoming", () => getUpcomingEvents(), TTL_MEDIUM),
       ]);
 
       setProgressMap(progress);
@@ -84,10 +86,10 @@ export function WebDashboard() {
       setSurveyDocs(surveys);
       setUpcomingEvents(events.slice(0, 3));
 
-      const userGroupsList = await getGroupsForUser(user.uid);
+      const userGroupsList = await cached(`groups:${uid}`, () => getGroupsForUser(uid), TTL_MEDIUM);
       const groupsWithDetails = await Promise.all(
         userGroupsList.map(async (group) => {
-          const lastMessage = await getLastGroupMessage(group.id);
+          const lastMessage = await cached(`groupMsg:${group.id}`, () => getLastGroupMessage(group.id), TTL_MEDIUM);
           const members = getMemberCount(group);
           return {
             ...group,
@@ -106,17 +108,16 @@ export function WebDashboard() {
       setUserGroups(groupsWithDetails);
 
       const userRef = doc(db, "users", user.uid);
-      const userSnap = await getDoc(userRef);
-      if (userSnap.exists()) {
-        setProfile(userSnap.data() as UserProfile);
-      } else {
-        setProfile(null);
-      }
+      const profileData = await cached(`profile:${uid}`, async () => {
+        const userSnap = await getDoc(userRef);
+        return userSnap.exists() ? (userSnap.data() as UserProfile) : null;
+      }, TTL_MEDIUM);
+      setProfile(profileData);
 
       const roles = userWithRoles?.roles ?? [];
       const [byId, byRole] = await Promise.all([
-        getCoursesByUserId(user.uid),
-        Promise.all(roles.map((r: string) => getCoursesByRole(r))).then((arr) => arr.flat()),
+        cached(`coursesByUser:${uid}`, () => getCoursesByUserId(uid), TTL_SHORT),
+        Promise.all(roles.map((r: string) => cached(`coursesByRole:${r}`, () => getCoursesByRole(r), TTL_SHORT))).then((arr) => arr.flat()),
       ]);
       const allCourses = [...byId, ...byRole];
       const unique = allCourses.filter((c, i, self) => self.findIndex((x) => x.id === c.id) === i);
@@ -129,11 +130,11 @@ export function WebDashboard() {
         unique.map(async (c) => {
           if (!c.id || !c.curriculumMapping) return;
           try {
-            counts[c.id] = await getCourseSlideCounts(c);
+            counts[c.id] = await cached(`slideCounts:${c.id}`, () => getCourseSlideCounts(c), TTL_MEDIUM);
             const lessonIds = Object.keys(counts[c.id]);
             if (lessonIds.length > 0) {
-              quizMap[c.id] = await getLessonsWithQuiz(c.id, lessonIds);
-              surveyMap[c.id] = await getLessonsWithSurvey(c.id, lessonIds);
+              quizMap[c.id] = await cached(`quiz:${c.id}`, () => getLessonsWithQuiz(c.id, lessonIds), TTL_MEDIUM);
+              surveyMap[c.id] = await cached(`survey:${c.id}`, () => getLessonsWithSurvey(c.id, lessonIds), TTL_MEDIUM);
             }
           } catch {
             counts[c.id] = {};

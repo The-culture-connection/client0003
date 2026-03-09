@@ -167,7 +167,10 @@ export function LessonPlayer() {
     }
     setIsSaving(true);
     try {
-      await updateLessonSlideProgress(user.uid, courseId, lessonId, currentSlideIndex, itemCount);
+      // Only save slide progress when we have a valid total (avoids writing 0/0 which breaks progress % on CourseDetail)
+      if (itemCount > 0) {
+        await updateLessonSlideProgress(user.uid, courseId, lessonId, currentSlideIndex, itemCount);
+      }
       const hasQuiz = quiz != null && (quiz.questions?.length ?? 0) > 0;
       const hasSurvey = survey != null && (survey.questions?.length ?? 0) > 0;
       const atEnd = itemCount > 0 && currentSlideIndex >= itemCount - 1;

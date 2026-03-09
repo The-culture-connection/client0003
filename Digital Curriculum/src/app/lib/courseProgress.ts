@@ -1,6 +1,7 @@
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "./firebase";
 import { Timestamp } from "firebase/firestore";
+import { invalidateCache } from "./cache";
 
 export interface CourseProgress {
   userId: string;
@@ -96,6 +97,7 @@ export async function initializeCourseProgress(
     };
 
     await setDoc(progressRef, progressData);
+    invalidateCache(`progress:${userId}`);
     return progressData;
   } catch (error) {
     console.error("Error initializing course progress:", error);
@@ -179,6 +181,7 @@ export async function updateLessonSlideProgress(
       lastViewedSlideIndex: slideIndex,
       updatedAt: serverTimestamp(),
     });
+    invalidateCache(`progress:${userId}`);
   } catch (error) {
     console.error("Error updating lesson slide progress:", error);
     throw error;
@@ -222,6 +225,7 @@ export async function updatePageProgress(
       totalPages: updatedTotalPages,
       updatedAt: serverTimestamp(),
     });
+    invalidateCache(`progress:${userId}`);
   } catch (error) {
     console.error("Error updating page progress:", error);
     throw error;
@@ -256,6 +260,7 @@ export async function setLessonCompleted(
       lessonsCompleted: updatedLessonsCompleted,
       updatedAt: serverTimestamp(),
     });
+    invalidateCache(`progress:${userId}`);
   } catch (error) {
     console.error("Error setting lesson completed:", error);
     throw error;
@@ -302,6 +307,7 @@ export async function recordLessonQuizAttempt(
       lessonsCompleted: updatedLessonsCompleted,
       updatedAt: serverTimestamp(),
     });
+    invalidateCache(`progress:${userId}`);
   } catch (error) {
     console.error("Error recording lesson quiz attempt:", error);
     throw error;
@@ -347,6 +353,7 @@ export async function recordLessonSurveySubmission(
       lessonsCompleted: updatedLessonsCompleted,
       updatedAt: serverTimestamp(),
     });
+    invalidateCache(`progress:${userId}`);
   } catch (error) {
     console.error("Error recording lesson survey submission:", error);
     throw error;
@@ -368,6 +375,7 @@ export async function markCourseCompleted(
       progress: 100,
       updatedAt: serverTimestamp(),
     });
+    invalidateCache(`progress:${userId}`);
   } catch (error) {
     console.error("Error marking course as completed:", error);
     throw error;
