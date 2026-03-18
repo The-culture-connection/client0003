@@ -70,6 +70,15 @@ service cloud.firestore {
       }
     }
     
+    // Shop items (admin-managed catalog)
+    // Authenticated users may update only stock fields (reserve/release on add-to-cart, 24h expiry)
+    match /shopItems/{itemId} {
+      allow read: if true;
+      allow create, delete: if isAdmin() || isAdminFromFirestore();
+      allow update: if isAdmin() || isAdminFromFirestore() ||
+        (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stockQuantity', 'sizeStocks', 'updatedAt']));
+    }
+    
     // Curriculum content
     match /curricula/{curriculumId} {
       allow read: if isAuthenticated();

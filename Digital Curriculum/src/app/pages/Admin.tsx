@@ -33,6 +33,8 @@ import {
   FileText,
   Award,
   Download,
+  ShoppingBag,
+  Pencil,
 } from "lucide-react";
 import { useAuth } from "../components/auth/AuthProvider";
 import {
@@ -57,6 +59,18 @@ import {
 import { db, storage } from "../lib/firebase";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { createEvent, getEvents, type Event, type EventType } from "../lib/events";
+import {
+  subscribeShopItems,
+  createShopItem,
+  updateShopItem,
+  deleteShopItem,
+  SHOP_CATEGORIES,
+  SHOP_SIZES,
+  isApparelCategory,
+  type ShopSize,
+  type ShopItem,
+  type ShopCategory,
+} from "../lib/shop";
 import {
   getGraduationApplications,
   acceptGraduationApplication,
@@ -159,6 +173,43 @@ export function AdminPage() {
   // Course state
   const [courses, setCourses] = useState<Course[]>([]);
   const [loadingCourses, setLoadingCourses] = useState(false);
+
+  // Shop state
+  const [shopItems, setShopItems] = useState<ShopItem[]>([]);
+  const [loadingShop, setLoadingShop] = useState(false);
+  const [shopItemName, setShopItemName] = useState("");
+  const [shopItemPrice, setShopItemPrice] = useState("");
+  const [shopItemPictureFile, setShopItemPictureFile] = useState<File | null>(null);
+  const [shopItemPictureUrl, setShopItemPictureUrl] = useState("");
+  const [shopItemCategory, setShopItemCategory] = useState<ShopCategory>("Tees");
+  const [shopItemStockQuantity, setShopItemStockQuantity] = useState("0");
+  const [shopItemLowStockThreshold, setShopItemLowStockThreshold] = useState("5");
+  const [shopItemSizeStocks, setShopItemSizeStocks] = useState<Record<ShopSize, string>>({
+    Small: "0",
+    Medium: "0",
+    Large: "0",
+    XL: "0",
+    "2XL": "0",
+  });
+  const [creatingShopItem, setCreatingShopItem] = useState(false);
+
+  // Edit shop item state
+  const [editShopItemId, setEditShopItemId] = useState<string | null>(null);
+  const [editShopItemName, setEditShopItemName] = useState("");
+  const [editShopItemPrice, setEditShopItemPrice] = useState("");
+  const [editShopItemCategory, setEditShopItemCategory] = useState<ShopCategory>("Tees");
+  const [editShopItemPictureFile, setEditShopItemPictureFile] = useState<File | null>(null);
+  const [editShopItemPictureUrl, setEditShopItemPictureUrl] = useState("");
+  const [editShopItemStockQuantity, setEditShopItemStockQuantity] = useState("0");
+  const [editShopItemLowStockThreshold, setEditShopItemLowStockThreshold] = useState("5");
+  const [editShopItemSizeStocks, setEditShopItemSizeStocks] = useState<Record<ShopSize, string>>({
+    Small: "0",
+    Medium: "0",
+    Large: "0",
+    XL: "0",
+    "2XL": "0",
+  });
+  const [savingShopItem, setSavingShopItem] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -455,6 +506,237 @@ export function AdminPage() {
     if (activeTab === "admins") loadCurrentAdmins();
   }, [activeTab]);
 
+  // Real-time shop items so admin sees stockQuantity updates from all users (add-to-cart, 24h release)
+  useEffect(() => {
+    if (activeTab !== "shop") return;
+    setLoadingShop(true);
+    const unsubscribe = subscribeShopItems((items) => {
+      setShopItems(items);
+      setLoadingShop(false);
+    });
+    return () => unsubscribe();
+  }, [activeTab]);
+
+  const handleAddShopItem = async () => {
+    const name = shopItemName.trim();
+    if (!name) {
+      alert("Enter an item name.");
+      return;
+    }
+    const price = parseFloat(shopItemPrice);
+    if (isNaN(price) || price < 0) {
+      alert("Enter a valid price.");
+      return;
+    }
+    const lowStockThreshold = parseInt(shopItemLowStockThreshold, 10);
+    if (isNaN(lowStockThreshold) || lowStockThreshold < 0) {
+      alert("Enter a valid low stock threshold (0 or greater).");
+      return;
+    }
+
+    const apparel = isApparelCategory(shopItemCategory);
+    let stockQuantity = 0;
+    let sizeStocks: Partial<Record<ShopSize, number>> | undefined = undefined;
+
+    if (apparel) {
+      const parsed: Partial<Record<ShopSize, number>> = {};
+      for (const size of SHOP_SIZES) {
+        const v = parseInt(shopItemSizeStocks[size] ?? "0", 10);
+        if (isNaN(v) || v < 0) {
+          alert(`Enter a valid stock quantity for ${size} (0 or greater).`);
+          return;
+        }
+        parsed[size] = v;
+        stockQuantity += v;
+      }
+      sizeStocks = parsed;
+    } else {
+      stockQuantity = parseInt(shopItemStockQuantity, 10);
+      if (isNaN(stockQuantity) || stockQuantity < 0) {
+        alert("Enter a valid stock quantity (0 or greater).");
+        return;
+      }
+    }
+    let pictureUrl = shopItemPictureUrl.trim();
+    if (shopItemPictureFile) {
+      try {
+        const path = `shop/${Date.now()}_${shopItemPictureFile.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
+        const storageRef = ref(storage, path);
+        await uploadBytes(storageRef, shopItemPictureFile, {
+          contentType: shopItemPictureFile.type || "image/jpeg",
+        });
+        pictureUrl = await getDownloadURL(storageRef);
+      } catch (e) {
+        console.error("Error uploading shop image:", e);
+        alert("Failed to upload image. Try again or use an image URL.");
+        return;
+      }
+    }
+    if (!pictureUrl) {
+      alert("Add a picture (upload or paste an image URL).");
+      return;
+    }
+    setCreatingShopItem(true);
+    try {
+      await createShopItem({
+        name,
+        price,
+        picture: pictureUrl,
+        category: shopItemCategory,
+        stockQuantity,
+        lowStockThreshold,
+        sizeStocks,
+      });
+      setShopItemName("");
+      setShopItemPrice("");
+      setShopItemPictureFile(null);
+      setShopItemPictureUrl("");
+      setShopItemCategory("Tees");
+      setShopItemStockQuantity("0");
+      setShopItemLowStockThreshold("5");
+      setShopItemSizeStocks({
+        Small: "0",
+        Medium: "0",
+        Large: "0",
+        XL: "0",
+        "2XL": "0",
+      });
+      // List updates via real-time subscribeShopItems
+    } catch (e) {
+      console.error("Error creating shop item:", e);
+      alert("Failed to add item. Please try again.");
+    } finally {
+      setCreatingShopItem(false);
+    }
+  };
+
+  const openEditShopItem = (item: ShopItem) => {
+    setEditShopItemId(item.id);
+    setEditShopItemName(item.name ?? "");
+    setEditShopItemPrice(String(item.price ?? 0));
+    setEditShopItemCategory(item.category ?? "Tees");
+    setEditShopItemPictureFile(null);
+    setEditShopItemPictureUrl(item.picture ?? "");
+    setEditShopItemStockQuantity(String(item.stockQuantity ?? 0));
+    setEditShopItemLowStockThreshold(String(item.lowStockThreshold ?? 5));
+    if (isApparelCategory(item.category)) {
+      const ss = item.sizeStocks ?? {};
+      setEditShopItemSizeStocks({
+        Small: String(ss.Small ?? 0),
+        Medium: String(ss.Medium ?? 0),
+        Large: String(ss.Large ?? 0),
+        XL: String(ss.XL ?? 0),
+        "2XL": String(ss["2XL"] ?? 0),
+      });
+    } else {
+      setEditShopItemSizeStocks({
+        Small: "0",
+        Medium: "0",
+        Large: "0",
+        XL: "0",
+        "2XL": "0",
+      });
+    }
+    setSavingShopItem(false);
+  };
+
+  const handleSaveEditedShopItem = async () => {
+    if (!editShopItemId) return;
+    const name = editShopItemName.trim();
+    if (!name) {
+      alert("Enter an item name.");
+      return;
+    }
+    const price = parseFloat(editShopItemPrice);
+    if (isNaN(price) || price < 0) {
+      alert("Enter a valid price.");
+      return;
+    }
+    const apparel = isApparelCategory(editShopItemCategory);
+    let stockQuantity = 0;
+    let sizeStocks: Partial<Record<ShopSize, number>> | undefined = undefined;
+
+    if (apparel) {
+      const parsed: Partial<Record<ShopSize, number>> = {};
+      for (const size of SHOP_SIZES) {
+        const v = parseInt(editShopItemSizeStocks[size] ?? "0", 10);
+        if (isNaN(v) || v < 0) {
+          alert(`Enter a valid stock quantity for ${size} (0 or greater).`);
+          return;
+        }
+        parsed[size] = v;
+        stockQuantity += v;
+      }
+      sizeStocks = parsed;
+    } else {
+      stockQuantity = parseInt(editShopItemStockQuantity, 10);
+      if (isNaN(stockQuantity) || stockQuantity < 0) {
+        alert("Enter a valid stock quantity (0 or greater).");
+        return;
+      }
+    }
+    const lowStockThreshold = parseInt(editShopItemLowStockThreshold, 10);
+    if (isNaN(lowStockThreshold) || lowStockThreshold < 0) {
+      alert("Enter a valid low stock threshold (0 or greater).");
+      return;
+    }
+
+    let pictureUrl = editShopItemPictureUrl.trim();
+    if (editShopItemPictureFile) {
+      try {
+        const path = `shop/${Date.now()}_${editShopItemPictureFile.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
+        const storageRef = ref(storage, path);
+        await uploadBytes(storageRef, editShopItemPictureFile, {
+          contentType: editShopItemPictureFile.type || "image/jpeg",
+        });
+        pictureUrl = await getDownloadURL(storageRef);
+      } catch (e) {
+        console.error("Error uploading edited shop image:", e);
+        alert("Failed to upload image. Try again or use an image URL.");
+        return;
+      }
+    }
+
+    if (!pictureUrl) {
+      alert("Provide a picture URL or upload an image.");
+      return;
+    }
+
+    setSavingShopItem(true);
+    try {
+      await updateShopItem(editShopItemId, {
+        name,
+        price,
+        picture: pictureUrl,
+        category: editShopItemCategory,
+        stockQuantity,
+        lowStockThreshold,
+        sizeStocks,
+      });
+      // List updates via real-time subscribeShopItems
+      setEditShopItemId(null);
+      setEditShopItemName("");
+      setEditShopItemPrice("");
+      setEditShopItemPictureFile(null);
+      setEditShopItemPictureUrl("");
+      setEditShopItemCategory("Tees");
+      setEditShopItemStockQuantity("0");
+      setEditShopItemLowStockThreshold("5");
+      setEditShopItemSizeStocks({
+        Small: "0",
+        Medium: "0",
+        Large: "0",
+        XL: "0",
+        "2XL": "0",
+      });
+    } catch (e) {
+      console.error("Error saving shop item:", e);
+      alert("Failed to save changes. Please try again.");
+    } finally {
+      setSavingShopItem(false);
+    }
+  };
+
   const handleAddAdmin = async () => {
     const email = adminEmail.trim();
     if (!email) {
@@ -694,6 +976,10 @@ export function AdminPage() {
           <TabsTrigger value="courses">
             <BookOpen className="w-4 h-4 mr-2" />
             Courses
+          </TabsTrigger>
+          <TabsTrigger value="shop">
+            <ShoppingBag className="w-4 h-4 mr-2" />
+            Shop
           </TabsTrigger>
         </TabsList>
 
@@ -1457,6 +1743,466 @@ export function AdminPage() {
               </div>
             )}
           </Card>
+        </TabsContent>
+
+        {/* Shop Tab */}
+        <TabsContent value="shop" className="space-y-6">
+          <Card className="p-6">
+            <h2 className="text-xl font-semibold text-foreground mb-4">Add Shop Item</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div className="space-y-2">
+                <Label htmlFor="shop-item-name" className="text-foreground">Item Name *</Label>
+                <Input
+                  id="shop-item-name"
+                  placeholder="e.g. Mortar Logo Tee"
+                  value={shopItemName}
+                  onChange={(e) => setShopItemName(e.target.value)}
+                  className="bg-background"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="shop-item-price" className="text-foreground">Price ($) *</Label>
+                <Input
+                  id="shop-item-price"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={shopItemPrice}
+                  onChange={(e) => setShopItemPrice(e.target.value)}
+                  className="bg-background"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div className="space-y-2">
+                <Label htmlFor="shop-item-category" className="text-foreground">Category *</Label>
+                <select
+                  id="shop-item-category"
+                  value={shopItemCategory}
+                  onChange={(e) => setShopItemCategory(e.target.value as ShopCategory)}
+                  className="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground"
+                >
+                  {SHOP_CATEGORIES.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-foreground">Picture *</Label>
+                <div className="flex flex-col gap-2">
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      setShopItemPictureFile(file || null);
+                      if (!file) setShopItemPictureUrl("");
+                      e.target.value = "";
+                    }}
+                    className="bg-background"
+                  />
+                  <p className="text-xs text-muted-foreground">Or paste image URL:</p>
+                  <Input
+                    placeholder="https://..."
+                    value={shopItemPictureUrl}
+                    onChange={(e) => {
+                      setShopItemPictureUrl(e.target.value);
+                      if (e.target.value.trim()) setShopItemPictureFile(null);
+                    }}
+                    className="bg-background"
+                  />
+                  {shopItemPictureFile && (
+                    <span className="text-xs text-accent">{shopItemPictureFile.name}</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {isApparelCategory(shopItemCategory) ? (
+              <div className="space-y-4 mb-4">
+                <div className="space-y-2">
+                  <Label htmlFor="shop-item-low-threshold" className="text-foreground">
+                    Low Stock Threshold *
+                  </Label>
+                  <Input
+                    id="shop-item-low-threshold"
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="5"
+                    value={shopItemLowStockThreshold}
+                    onChange={(e) => setShopItemLowStockThreshold(e.target.value)}
+                    className="bg-background"
+                  />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {SHOP_SIZES.map((size) => (
+                    <div key={size} className="space-y-2">
+                      <Label className="text-foreground">{size} Stock *</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="1"
+                        placeholder="0"
+                        value={shopItemSizeStocks[size]}
+                        onChange={(e) =>
+                          setShopItemSizeStocks((prev) => ({
+                            ...prev,
+                            [size]: e.target.value,
+                          }))
+                        }
+                        className="bg-background"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div className="space-y-2">
+                  <Label htmlFor="shop-item-stock" className="text-foreground">
+                    Stock Quantity *
+                  </Label>
+                  <Input
+                    id="shop-item-stock"
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="0"
+                    value={shopItemStockQuantity}
+                    onChange={(e) => setShopItemStockQuantity(e.target.value)}
+                    className="bg-background"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="shop-item-low-threshold" className="text-foreground">
+                    Low Stock Threshold *
+                  </Label>
+                  <Input
+                    id="shop-item-low-threshold"
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="5"
+                    value={shopItemLowStockThreshold}
+                    onChange={(e) => setShopItemLowStockThreshold(e.target.value)}
+                    className="bg-background"
+                  />
+                </div>
+              </div>
+            )}
+
+            <Button
+              onClick={handleAddShopItem}
+              disabled={
+                creatingShopItem ||
+                !shopItemName.trim() ||
+                shopItemPrice === "" ||
+                shopItemLowStockThreshold === "" ||
+                (!isApparelCategory(shopItemCategory) && shopItemStockQuantity === "")
+              }
+              className="bg-accent hover:bg-accent/90 text-accent-foreground"
+            >
+              {creatingShopItem ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Item
+                </>
+              )}
+            </Button>
+          </Card>
+
+          <Card className="p-6">
+            <h2 className="text-xl font-semibold text-foreground mb-4">Shop Items</h2>
+            {loadingShop ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : shopItems.length === 0 ? (
+              <p className="text-muted-foreground py-4">No shop items yet. Add your first item above.</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {shopItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="rounded-lg border border-border p-4 bg-muted/20 flex flex-col"
+                  >
+                    <div className="aspect-square rounded-md bg-muted overflow-hidden mb-3">
+                      {item.picture ? (
+                        <img
+                          src={item.picture}
+                          alt={item.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <ImageIcon className="w-12 h-12 text-muted-foreground" />
+                        </div>
+                      )}
+                    </div>
+                    <h3 className="font-semibold text-foreground truncate">{item.name}</h3>
+                    <p className="text-lg font-bold text-accent mt-1">${Number(item.price).toFixed(2)}</p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <Badge variant="outline" className="text-xs">{item.category}</Badge>
+                      {(() => {
+                        if (isApparelCategory(item.category)) {
+                          const sizeStocks = item.sizeStocks ?? {};
+                          const stocks = SHOP_SIZES.map((s) => Number((sizeStocks as any)[s] ?? 0));
+                          const out = stocks.every((q) => q <= 0);
+                          const low = !out && stocks.some((q) => q <= item.lowStockThreshold);
+                          const lowSizes = SHOP_SIZES.filter((s, idx) => {
+                            const q = stocks[idx];
+                            return q > 0 && q <= item.lowStockThreshold;
+                          });
+                          return (
+                            <Badge
+                              variant={out ? "destructive" : low ? "secondary" : "outline"}
+                              className="text-xs"
+                            >
+                              {out
+                                ? "Out of stock"
+                                : low
+                                  ? `Low stock (${lowSizes.join(", ") || "sizes"})`
+                                  : "In stock"}
+                            </Badge>
+                          );
+                        }
+                        const out = item.stockQuantity <= 0;
+                        const low = !out && item.stockQuantity <= item.lowStockThreshold;
+                        return (
+                          <Badge
+                            variant={out ? "destructive" : low ? "secondary" : "outline"}
+                            className="text-xs"
+                          >
+                            {out
+                              ? "Out of stock"
+                              : low
+                                ? `Low stock (${item.stockQuantity})`
+                                : `Stock: ${item.stockQuantity}`}
+                          </Badge>
+                        );
+                      })()}
+                    </div>
+                    <div className="mt-3 flex items-center gap-2 flex-wrap">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openEditShopItem(item)}
+                      >
+                        <Pencil className="w-3 h-3 mr-1" />
+                        Edit
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={async () => {
+                          if (!confirm(`Delete "${item.name}"?`)) return;
+                          try {
+                            await deleteShopItem(item.id);
+                            // List updates via real-time subscribeShopItems
+                          } catch (e) {
+                            console.error("Error deleting shop item:", e);
+                            alert("Failed to delete item.");
+                          }
+                        }}
+                      >
+                        <Trash2 className="w-3 h-3 mr-1" />
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        <Dialog
+          open={!!editShopItemId}
+          onOpenChange={(open) => {
+            if (!open) {
+              setEditShopItemId(null);
+            }
+          }}
+        >
+          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Shop Item</DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-shop-item-name" className="text-foreground">Item Name *</Label>
+                  <Input
+                    id="edit-shop-item-name"
+                    value={editShopItemName}
+                    onChange={(e) => setEditShopItemName(e.target.value)}
+                    className="bg-background"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-shop-item-price" className="text-foreground">Price ($) *</Label>
+                  <Input
+                    id="edit-shop-item-price"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={editShopItemPrice}
+                    onChange={(e) => setEditShopItemPrice(e.target.value)}
+                    className="bg-background"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-shop-item-category" className="text-foreground">Category *</Label>
+                  <select
+                    id="edit-shop-item-category"
+                    value={editShopItemCategory}
+                    onChange={(e) => setEditShopItemCategory(e.target.value as ShopCategory)}
+                    className="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground"
+                  >
+                    {SHOP_CATEGORIES.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-foreground">Picture *</Label>
+                  <div className="flex flex-col gap-2">
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        setEditShopItemPictureFile(file || null);
+                        if (!file) {
+                          // keep existing URL
+                        }
+                        e.target.value = "";
+                      }}
+                      className="bg-background"
+                    />
+                    <p className="text-xs text-muted-foreground">Or paste image URL:</p>
+                    <Input
+                      placeholder="https://..."
+                      value={editShopItemPictureUrl}
+                      onChange={(e) => {
+                        setEditShopItemPictureUrl(e.target.value);
+                        if (e.target.value.trim()) setEditShopItemPictureFile(null);
+                      }}
+                      className="bg-background"
+                    />
+                    {editShopItemPictureFile && (
+                      <span className="text-xs text-accent">{editShopItemPictureFile.name}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {isApparelCategory(editShopItemCategory) ? (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-shop-item-low-threshold" className="text-foreground">
+                      Low Stock Threshold *
+                    </Label>
+                    <Input
+                      id="edit-shop-item-low-threshold"
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={editShopItemLowStockThreshold}
+                      onChange={(e) => setEditShopItemLowStockThreshold(e.target.value)}
+                      className="bg-background"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {SHOP_SIZES.map((size) => (
+                      <div key={size} className="space-y-2">
+                        <Label className="text-foreground">{size} Stock *</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={editShopItemSizeStocks[size]}
+                          onChange={(e) =>
+                            setEditShopItemSizeStocks((prev) => ({
+                              ...prev,
+                              [size]: e.target.value,
+                            }))
+                          }
+                          className="bg-background"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-shop-item-stock" className="text-foreground">
+                      Stock Quantity *
+                    </Label>
+                    <Input
+                      id="edit-shop-item-stock"
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={editShopItemStockQuantity}
+                      onChange={(e) => setEditShopItemStockQuantity(e.target.value)}
+                      className="bg-background"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-shop-item-low-threshold" className="text-foreground">
+                      Low Stock Threshold *
+                    </Label>
+                    <Input
+                      id="edit-shop-item-low-threshold"
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={editShopItemLowStockThreshold}
+                      onChange={(e) => setEditShopItemLowStockThreshold(e.target.value)}
+                      className="bg-background"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 mt-6">
+              <Button
+                variant="outline"
+                onClick={() => setEditShopItemId(null)}
+                disabled={savingShopItem}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSaveEditedShopItem}
+                disabled={savingShopItem}
+                className="bg-accent hover:bg-accent/90 text-accent-foreground"
+              >
+                {savingShopItem ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save Changes"
+                )}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
         </TabsContent>
 
         {/* Direct Messages Tab */}

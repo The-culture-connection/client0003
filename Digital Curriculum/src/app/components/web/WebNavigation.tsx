@@ -1,9 +1,11 @@
 import { Link, useLocation, useNavigate } from "react-router";
-import { LayoutDashboard, BookOpen, FolderOpen, Award, Users, BarChart3, LogOut, Shield, ShoppingBag, Bell } from "lucide-react";
+import { LayoutDashboard, BookOpen, FolderOpen, Award, Users, BarChart3, LogOut, Shield, ShoppingBag, Bell, ShoppingCart, X } from "lucide-react";
 import { Button } from "../ui/button";
 import { useAuth } from "../auth/AuthProvider";
 import { useState, useEffect } from "react";
 import { listNotifications, markNotificationRead, getUnreadNotificationCount, type UserNotification } from "../../lib/dataroom";
+import { useCart } from "../../lib/cart";
+import { releaseStock } from "../../lib/shop";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,6 +50,9 @@ export function WebNavigation() {
   const [notifications, setNotifications] = useState<UserNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [cartOpen, setCartOpen] = useState(false);
+
+  const { cart, itemCount, api } = useCart(user?.uid ?? null);
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -167,6 +172,81 @@ export function WebNavigation() {
                     <DropdownMenuItem onClick={() => { setNotificationsOpen(false); navigate("/data-room"); }}>
                       View Data Room
                     </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <DropdownMenu open={cartOpen} onOpenChange={setCartOpen}>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="relative">
+                    <ShoppingCart className="w-5 h-5 text-muted-foreground" />
+                    {itemCount > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-[10px] font-medium text-accent-foreground">
+                        {itemCount > 9 ? "9+" : itemCount}
+                      </span>
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-96">
+                  {cart.length === 0 ? (
+                    <div className="p-4 text-sm text-muted-foreground">Cart is empty</div>
+                  ) : (
+                    <div className="p-4">
+                      <div className="space-y-3">
+                        {cart.map((line) => (
+                          <div
+                            key={`${line.itemId}__${line.size ?? ""}`}
+                            className="flex items-start justify-between gap-3"
+                          >
+                            <div className="min-w-0">
+                              <div className="text-sm font-medium text-foreground truncate">{line.name}</div>
+                              {line.size && <div className="text-xs text-muted-foreground">{line.size}</div>}
+                              <div className="text-xs text-muted-foreground">
+                                Qty {line.quantity} · ${Number(line.price).toFixed(2)}
+                              </div>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={async () => {
+                                if (!api) return;
+                                await releaseStock({
+                                  itemId: line.itemId,
+                                  size: line.size,
+                                  quantity: line.quantity,
+                                  category: line.category,
+                                }).catch(console.error);
+                                api.removeLine({ itemId: line.itemId, size: line.size });
+                              }}
+                              title="Remove"
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-4 pt-3 border-t border-border text-sm">
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">Total</span>
+                          <span className="font-semibold">
+                            $
+                            {cart
+                              .reduce((sum, l) => sum + l.quantity * l.price, 0)
+                              .toFixed(2)}
+                          </span>
+                        </div>
+                        <Button
+                          className="w-full mt-3 bg-accent hover:bg-accent/90 text-accent-foreground"
+                          onClick={() => {
+                            setCartOpen(false);
+                            navigate("/shop");
+                          }}
+                        >
+                          Continue Shopping
+                        </Button>
+                      </div>
+                    </div>
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
