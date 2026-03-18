@@ -192,7 +192,6 @@ export function AdminPage() {
     "2XL": "0",
   });
   const [creatingShopItem, setCreatingShopItem] = useState(false);
-
   // Edit shop item state
   const [editShopItemId, setEditShopItemId] = useState<string | null>(null);
   const [editShopItemName, setEditShopItemName] = useState("");
@@ -558,26 +557,26 @@ export function AdminPage() {
       }
     }
     let pictureUrl = shopItemPictureUrl.trim();
-    if (shopItemPictureFile) {
-      try {
+    if (!pictureUrl && !shopItemPictureFile) {
+      alert("Add a picture (upload or paste an image URL).");
+      return;
+    }
+
+    // Show loading spinner immediately (before any await)
+    setCreatingShopItem(true);
+    try {
+      if (shopItemPictureFile) {
         const path = `shop/${Date.now()}_${shopItemPictureFile.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
         const storageRef = ref(storage, path);
         await uploadBytes(storageRef, shopItemPictureFile, {
           contentType: shopItemPictureFile.type || "image/jpeg",
         });
         pictureUrl = await getDownloadURL(storageRef);
-      } catch (e) {
-        console.error("Error uploading shop image:", e);
-        alert("Failed to upload image. Try again or use an image URL.");
+      }
+      if (!pictureUrl) {
+        alert("Add a picture (upload or paste an image URL).");
         return;
       }
-    }
-    if (!pictureUrl) {
-      alert("Add a picture (upload or paste an image URL).");
-      return;
-    }
-    setCreatingShopItem(true);
-    try {
       await createShopItem({
         name,
         price,
@@ -601,7 +600,6 @@ export function AdminPage() {
         XL: "0",
         "2XL": "0",
       });
-      // List updates via real-time subscribeShopItems
     } catch (e) {
       console.error("Error creating shop item:", e);
       alert("Failed to add item. Please try again.");
