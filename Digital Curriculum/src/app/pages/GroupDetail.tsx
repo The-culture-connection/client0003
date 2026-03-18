@@ -5,6 +5,8 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Badge } from "../components/ui/badge";
 import { Avatar } from "../components/ui/avatar";
+import { Checkbox } from "../components/ui/checkbox";
+import { Label } from "../components/ui/label";
 import {
   ArrowLeft,
   Send,
@@ -25,7 +27,7 @@ import {
   type Group,
   type GroupMessage,
 } from "../lib/groups";
-import { onSnapshot, collection, query, orderBy, limit } from "firebase/firestore";
+import { onSnapshot, collection, query, orderBy, limit, doc, getDoc } from "firebase/firestore";
 import { db } from "../lib/firebase";
 
 export function GroupDetailPage() {
@@ -40,6 +42,9 @@ export function GroupDetailPage() {
   const [loading, setLoading] = useState(true);
   const [isMember, setIsMember] = useState(false);
   const [isPending, setIsPending] = useState(false);
+  const [sendAnonymous, setSendAnonymous] = useState(false);
+  const [myDisplayName, setMyDisplayName] = useState<string | null>(null);
+  const [senderNamesMap, setSenderNamesMap] = useState<Record<string, string>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -52,6 +57,95 @@ export function GroupDetailPage() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadMyProfile() {
+      if (!user?.uid) {
+        setMyDisplayName(null);
+        return;
+      }
+      try {
+        const userRef = doc(db, "users", user.uid);
+        const snap = await getDoc(userRef);
+        if (!snap.exists()) {
+          if (!cancelled) setMyDisplayName(user.displayName || user.email || "User");
+          return;
+        }
+        const data = snap.data() as any;
+        const name =
+          [data?.first_name, data?.last_name].filter(Boolean).join(" ") ||
+          data?.display_name ||
+          user.displayName ||
+          user.email ||
+          "User";
+        if (!cancelled) setMyDisplayName(name);
+      } catch {
+        if (!cancelled) setMyDisplayName(user.displayName || user.email || "User");
+      }
+    }
+    loadMyProfile();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.uid]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadSenderNames() {
+      const senderIds = Array.from(
+        new Set(
+          messages
+            .filter((m) => !m.IsAnonymous)
+            .map((m) => m.Senderid)
+            .filter(Boolean)
+        )
+      );
+
+      const toFetch = senderIds.filter((sid) => !senderNamesMap[sid]);
+      if (toFetch.length === 0) return;
+
+      try {
+        const results = await Promise.all(
+          toFetch.map(async (sid) => {
+            const userRef = doc(db, "users", sid);
+            const snap = await getDoc(userRef);
+            return { sid, snap };
+          })
+        );
+
+        const nextMap: Record<string, string> = {};
+        for (const r of results) {
+          const name =
+            r.snap.exists()
+              ? (() => {
+                  const data = r.snap.data() as any;
+                  return (
+                    [data?.first_name, data?.last_name].filter(Boolean).join(" ") ||
+                    data?.display_name ||
+                    "User"
+                  );
+                })()
+              : "User";
+          nextMap[r.sid] = name;
+        }
+
+        if (!cancelled) {
+          setSenderNamesMap((prev) => ({ ...prev, ...nextMap }));
+        }
+      } catch {
+        // Ignore lookup failures; messages will still render using initials.
+      }
+    }
+
+    if (messages.length > 0) {
+      loadSenderNames();
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [messages, senderNamesMap]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -120,8 +214,12 @@ export function GroupDetailPage() {
     if (!id || !user?.uid || !messageContent.trim()) return;
     setSending(true);
     try {
-      await sendGroupMessage(id, user.uid, messageContent.trim());
+      await sendGroupMessage(id, user.uid, messageContent.trim(), {
+        isAnonymous: sendAnonymous,
+        senderName: myDisplayName || "User",
+      });
       setMessageContent("");
+      setSendAnonymous(false);
     } catch (error) {
       console.error("Error sending message:", error);
       alert("Failed to send message. Please try again.");
@@ -305,6 +403,11 @@ export function GroupDetailPage() {
             <div className="space-y-4">
               {messages.map((message) => {
                 const myMessage = isMyMessage(message);
+                const isAnonymousMessage = Boolean(message.IsAnonymous);
+                const authorLabel = isAnonymousMessage
+                  ? "Anonymous"
+                  : (message.SenderName || senderNamesMap[message.Senderid] || "User");
+                const initials = authorLabel.trim().slice(0, 2).toUpperCase();
                 return (
                   <div
                     key={message.id}
@@ -312,7 +415,7 @@ export function GroupDetailPage() {
                   >
                     <Avatar className="w-8 h-8 bg-accent/10 text-accent flex items-center justify-center shrink-0">
                       <span className="text-xs font-bold">
-                        {message.Senderid.substring(0, 2).toUpperCase()}
+                        {initials}
                       </span>
                     </Avatar>
                     <div className={`flex flex-col ${myMessage ? "items-end" : "items-start"} max-w-[70%]`}>
@@ -323,6 +426,9 @@ export function GroupDetailPage() {
                             : "bg-muted text-foreground"
                         }`}
                       >
+                        <p className="text-xs font-medium mb-1 opacity-90">
+                          {authorLabel}
+                        </p>
                         <p className="text-sm whitespace-pre-wrap break-words">
                           {message.Content}
                         </p>
@@ -343,6 +449,16 @@ export function GroupDetailPage() {
       {/* Message Input */}
       <div className="border-t border-border bg-card">
         <div className="max-w-4xl mx-auto px-6 py-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Checkbox
+              id="group-message-anon"
+              checked={sendAnonymous}
+              onCheckedChange={(v) => setSendAnonymous(Boolean(v))}
+            />
+            <Label htmlFor="group-message-anon" className="cursor-pointer text-sm text-muted-foreground">
+              Send anonymously (hide your name)
+            </Label>
+          </div>
           <div className="flex gap-2">
             <Input
               placeholder="Type a message..."

@@ -156,6 +156,11 @@ export interface LessonSurvey {
   questions: SurveyQuestion[];
   /** When true, generate PDF of answers on completion and upload to user's Data Room */
   generatePdfOnComplete: boolean;
+  /**
+   * When `generatePdfOnComplete` is enabled, the admin must choose which top-level
+   * Data Room folder the generated PDF should be stored under.
+   */
+  dataroomFolderId?: string;
   updated_at?: Timestamp;
 }
 

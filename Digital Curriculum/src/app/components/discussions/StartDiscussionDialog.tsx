@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,9 +9,13 @@ import {
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
+import { Checkbox } from "../ui/checkbox";
 import { Textarea } from "../ui/textarea";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import { DISCUSSION_CATEGORIES, type DiscussionCategory } from "../../lib/discussions";
+import { useAuth } from "../auth/AuthProvider";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "../../lib/firebase";
 
 interface StartDiscussionDialogProps {
   open: boolean;
@@ -28,7 +32,42 @@ export function StartDiscussionDialog({
   const [category, setCategory] = useState<DiscussionCategory | undefined>();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [postAnonymous, setPostAnonymous] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { user } = useAuth();
+  const [displayName, setDisplayName] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadDisplayName() {
+      if (!user?.uid) {
+        setDisplayName(null);
+        return;
+      }
+      try {
+        const userRef = doc(db, "users", user.uid);
+        const snap = await getDoc(userRef);
+        if (!snap.exists()) {
+          if (!cancelled) setDisplayName(user.displayName || user.email || "User");
+          return;
+        }
+        const data = snap.data() as any;
+        const name =
+          [data?.first_name, data?.last_name].filter(Boolean).join(" ") ||
+          data?.display_name ||
+          user.displayName ||
+          user.email ||
+          "User";
+        if (!cancelled) setDisplayName(name);
+      } catch {
+        if (!cancelled) setDisplayName(user.displayName || user.email || "User");
+      }
+    }
+    loadDisplayName();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.uid]);
 
   const handleCategorySelect = (value: string) => {
     setCategory(value as DiscussionCategory);
@@ -48,12 +87,16 @@ export function StartDiscussionDialog({
     setLoading(true);
     try {
       const { createDiscussion } = await import("../../lib/discussions");
-      createDiscussion(title.trim(), category, content.trim());
+      createDiscussion(title.trim(), category, content.trim(), {
+        isAnonymous: postAnonymous,
+        authorName: displayName || "User",
+      });
       
       // Reset form
       setCategory(undefined);
       setTitle("");
       setContent("");
+      setPostAnonymous(false);
       setStep("category");
       onOpenChange(false);
       onSuccess();
@@ -168,6 +211,17 @@ export function StartDiscussionDialog({
                 rows={6}
                 required
               />
+            </div>
+
+            <div className="flex items-center gap-2 pt-1">
+              <Checkbox
+                id="post-anonymous"
+                checked={postAnonymous}
+                onCheckedChange={(v) => setPostAnonymous(Boolean(v))}
+              />
+              <Label htmlFor="post-anonymous" className="cursor-pointer">
+                Post anonymously (hide your name)
+              </Label>
             </div>
 
             <div className="flex justify-end gap-2 pt-4">

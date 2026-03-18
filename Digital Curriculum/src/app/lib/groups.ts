@@ -19,6 +19,8 @@ export interface GroupMessage {
   Content: string;
   Senderid: string;
   Sendtime: Timestamp;
+  IsAnonymous?: boolean;
+  SenderName?: string;
 }
 
 /**
@@ -99,15 +101,22 @@ export async function getGroupMessages(groupId: string, limitCount: number = 50)
 export async function sendGroupMessage(
   groupId: string,
   senderId: string,
-  content: string
+  content: string,
+  options?: { isAnonymous?: boolean; senderName?: string }
 ): Promise<void> {
   try {
     const messagesRef = collection(db, "Groups", groupId, "Messages");
-    await addDoc(messagesRef, {
+    const isAnonymous = Boolean(options?.isAnonymous);
+    const docData: Record<string, any> = {
       Content: content.trim(),
       Senderid: senderId,
       Sendtime: serverTimestamp(),
-    });
+      IsAnonymous: isAnonymous,
+    };
+    if (!isAnonymous) {
+      docData.SenderName = (options?.senderName || "").trim();
+    }
+    await addDoc(messagesRef, docData);
   } catch (error) {
     console.error("Error sending message:", error);
     throw error;

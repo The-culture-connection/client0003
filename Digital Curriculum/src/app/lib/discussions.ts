@@ -18,7 +18,9 @@ export interface Discussion {
   title: string;
   category: DiscussionCategory;
   content: string;
-  author: string; // Anonymous identifier
+  author: string; // Anonymous identifier, or display name when not anonymous
+  authorName?: string; // Display name when not anonymous
+  isAnonymous: boolean;
   createdAt: Date;
   updatedAt: Date;
   likes: number;
@@ -33,7 +35,9 @@ export interface DiscussionReply {
   id: string;
   discussionId: string;
   content: string;
-  author: string; // Anonymous identifier
+  author: string; // Anonymous identifier, or display name when not anonymous
+  authorName?: string; // Display name when not anonymous
+  isAnonymous: boolean;
   createdAt: Date;
   updatedAt: Date;
   likes: number;
@@ -72,21 +76,33 @@ export function getDiscussions(): Discussion[] {
     if (!stored) return [];
     const discussions = JSON.parse(stored);
     // Convert date strings back to Date objects
-    return discussions.map((d: any) => ({
-      ...d,
-      createdAt: new Date(d.createdAt),
-      updatedAt: new Date(d.updatedAt),
-      replies: d.replies?.map((r: any) => ({
+    return discussions.map((d: any) => {
+      const replies = d.replies?.map((r: any) => ({
         ...r,
         createdAt: new Date(r.createdAt),
         updatedAt: new Date(r.updatedAt),
+        // Back-compat: older replies always behaved as anonymous.
+        isAnonymous: typeof r.isAnonymous === "boolean" ? r.isAnonymous : true,
+        authorName: r.authorName,
         replies: r.replies?.map((rr: any) => ({
           ...rr,
           createdAt: new Date(rr.createdAt),
           updatedAt: new Date(rr.updatedAt),
+          isAnonymous: typeof rr.isAnonymous === "boolean" ? rr.isAnonymous : true,
+          authorName: rr.authorName,
         })),
-      })),
-    }));
+      }));
+
+      return {
+        ...d,
+        createdAt: new Date(d.createdAt),
+        updatedAt: new Date(d.updatedAt),
+        replies,
+        // Back-compat: older discussions always behaved as anonymous.
+        isAnonymous: typeof d.isAnonymous === "boolean" ? d.isAnonymous : true,
+        authorName: d.authorName,
+      };
+    });
   } catch (error) {
     console.error("Error loading discussions:", error);
     return [];
@@ -130,14 +146,21 @@ export function saveDiscussions(discussions: Discussion[]): void {
 export function createDiscussion(
   title: string,
   category: DiscussionCategory,
-  content: string
+  content: string,
+  options?: { isAnonymous?: boolean; authorName?: string }
 ): Discussion {
+  const isAnonymous = options?.isAnonymous ?? true;
+  const authorName = options?.authorName;
+
+  const author = isAnonymous ? getAnonymousId() : (authorName?.trim() || "User");
   const discussion: Discussion = {
     id: `disc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     title,
     category,
     content,
-    author: getAnonymousId(),
+    author,
+    authorName: isAnonymous ? undefined : authorName,
+    isAnonymous,
     createdAt: new Date(),
     updatedAt: new Date(),
     likes: 0,
@@ -161,13 +184,20 @@ export function createDiscussion(
 export function addReply(
   discussionId: string,
   content: string,
-  parentReplyId?: string
+  parentReplyId?: string,
+  options?: { isAnonymous?: boolean; authorName?: string }
 ): DiscussionReply {
+  const isAnonymous = options?.isAnonymous ?? true;
+  const authorName = options?.authorName;
+  const author = isAnonymous ? getAnonymousId() : (authorName?.trim() || "User");
+
   const reply: DiscussionReply = {
     id: `reply_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     discussionId,
     content,
-    author: getAnonymousId(),
+    author,
+    authorName: isAnonymous ? undefined : authorName,
+    isAnonymous,
     createdAt: new Date(),
     updatedAt: new Date(),
     likes: 0,

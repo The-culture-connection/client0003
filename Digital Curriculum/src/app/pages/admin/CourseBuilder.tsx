@@ -68,6 +68,7 @@ import {
   deleteCourse,
   type Course,
 } from "../../lib/courses";
+import { DATAROOM_FOLDER_OPTIONS } from "../../lib/dataroomFolders";
 import {
   collection,
   query,
@@ -134,6 +135,8 @@ interface ModuleData {
     surveyTitle?: string;
     surveyQuestions?: Array<{ question: string }>;
     generatePdfOnComplete?: boolean;
+    /** Required when generatePdfOnComplete is enabled */
+    dataroomFolderId?: string;
   }>;
 }
 
@@ -177,6 +180,7 @@ export function CourseBuilder() {
           surveyTitle: "",
           surveyQuestions: [],
           generatePdfOnComplete: false,
+          dataroomFolderId: undefined,
         },
       ],
     },
@@ -273,6 +277,7 @@ export function CourseBuilder() {
             let surveyTitle = "";
             let surveyQuestions: Array<{ question: string }> = [];
             let generatePdfOnComplete = false;
+            let dataroomFolderId: string | undefined = undefined;
 
             if (lessonId && cid && moduleId && chapterId) {
               try {
@@ -317,6 +322,7 @@ export function CourseBuilder() {
                   surveyTitle = survey.title ?? "";
                   surveyQuestions = (survey.questions ?? []).sort((a, b) => a.order - b.order).map((q) => ({ question: q.question }));
                   generatePdfOnComplete = survey.generatePdfOnComplete ?? false;
+                  dataroomFolderId = survey.dataroomFolderId ?? undefined;
                 }
               } catch (e) {
                 console.warn("Load lesson content/quiz failed:", e);
@@ -336,6 +342,7 @@ export function CourseBuilder() {
               surveyTitle,
               surveyQuestions,
               generatePdfOnComplete,
+              dataroomFolderId,
             });
           }
 
@@ -559,6 +566,11 @@ export function CourseBuilder() {
     const updated = [...modules];
     const lesson = updated[moduleIndex].lessons[lessonIndex];
     lesson.surveyEnabled = enabled;
+    if (!enabled) {
+      // If the survey is disabled, PDF export becomes irrelevant as well.
+      lesson.generatePdfOnComplete = false;
+      lesson.dataroomFolderId = undefined;
+    }
     if (enabled && !lesson.surveyQuestions?.length) lesson.surveyQuestions = [];
     setModules(updated);
   };
@@ -813,11 +825,18 @@ export function CourseBuilder() {
             });
             const surveyEnabled = lesson.surveyEnabled ?? false;
             const surveyQuestions = (lesson.surveyQuestions ?? []).filter((q) => (q.question?.trim() ?? "") !== "").map((q, i) => ({ order: i, question: q.question.trim() }));
+            const generatePdfOnComplete = lesson.generatePdfOnComplete ?? false;
+            const dataroomFolderId = lesson.dataroomFolderId;
+            if (generatePdfOnComplete && !dataroomFolderId) {
+              alert("Select a Data Room folder for this lesson's survey PDF export.");
+              return null;
+            }
             await setCourseLessonSurvey(courseIdToUse, lesson.lessonId, {
               enabled: surveyEnabled && surveyQuestions.length > 0,
               title: (lesson.surveyTitle ?? "").trim() || "Survey",
               questions: surveyQuestions,
-              generatePdfOnComplete: lesson.generatePdfOnComplete ?? false,
+              generatePdfOnComplete,
+              dataroomFolderId: dataroomFolderId || undefined,
             });
           }
         }
@@ -860,11 +879,18 @@ export function CourseBuilder() {
             });
             const surveyEnabled = lesson.surveyEnabled ?? false;
             const surveyQuestions = (lesson.surveyQuestions ?? []).filter((q) => (q.question?.trim() ?? "") !== "").map((q, i) => ({ order: i, question: q.question.trim() }));
+            const generatePdfOnComplete = lesson.generatePdfOnComplete ?? false;
+            const dataroomFolderId = lesson.dataroomFolderId;
+            if (generatePdfOnComplete && !dataroomFolderId) {
+              alert("Select a Data Room folder for this lesson's survey PDF export.");
+              return null;
+            }
             await setCourseLessonSurvey(courseId, lesson.lessonId, {
               enabled: surveyEnabled && surveyQuestions.length > 0,
               title: (lesson.surveyTitle ?? "").trim() || "Survey",
               questions: surveyQuestions,
-              generatePdfOnComplete: lesson.generatePdfOnComplete ?? false,
+              generatePdfOnComplete,
+              dataroomFolderId: dataroomFolderId || undefined,
             });
           }
         }
@@ -1537,8 +1563,12 @@ export function CourseBuilder() {
                                     id={`survey-pdf-${moduleIndex}-${lessonIndex}`}
                                     checked={lesson.generatePdfOnComplete ?? false}
                                     onChange={(e) => {
+                                      const checked = e.target.checked;
                                       const updated = [...modules];
-                                      updated[moduleIndex].lessons[lessonIndex].generatePdfOnComplete = e.target.checked;
+                                      updated[moduleIndex].lessons[lessonIndex].generatePdfOnComplete = checked;
+                                      if (!checked) {
+                                        updated[moduleIndex].lessons[lessonIndex].dataroomFolderId = undefined;
+                                      }
                                       setModules(updated);
                                     }}
                                     className="rounded border-border"
@@ -1547,6 +1577,29 @@ export function CourseBuilder() {
                                     Generate PDF of answers when user completes (upload to Data Room)
                                   </Label>
                                 </div>
+                                {lesson.generatePdfOnComplete && (
+                                  <div className="space-y-1">
+                                    <Label className="text-xs">Data Room folder for this PDF (required)</Label>
+                                    <select
+                                      value={lesson.dataroomFolderId ?? ""}
+                                      onChange={(e) => {
+                                        const updated = [...modules];
+                                        updated[moduleIndex].lessons[lessonIndex].dataroomFolderId = e.target.value;
+                                        setModules(updated);
+                                      }}
+                                      className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
+                                    >
+                                      <option value="" disabled>
+                                        Select a folder
+                                      </option>
+                                      {DATAROOM_FOLDER_OPTIONS.map((f) => (
+                                        <option key={f.id} value={f.id}>
+                                          {f.name}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                )}
                                 <div className="space-y-1">
                                   <Label className="text-xs">Survey name (shown to learners)</Label>
                                   <Input
@@ -1605,19 +1658,22 @@ export function CourseBuilder() {
                               <Badge variant="outline" className="text-xs">
                                 {lesson.slides!.length} slide(s) — Save course to upload
                               </Badge>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handlePreviewLesson(moduleIndex, lessonIndex)}
-                              >
-                                <Eye className="w-3 h-3 mr-1" />
-                                Preview
-                              </Button>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handlePreviewLesson(moduleIndex, lessonIndex)}
+                                >
+                                  <Eye className="w-3 h-3 mr-1" />
+                                  Preview
+                                </Button>
+                                <span className="text-xs text-muted-foreground">Save the course to preview.</span>
+                              </div>
                             </div>
                           )}
 
                           {lesson.imageUploadStatus === "success" && lesson.lessonId && (
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
                                 <CheckCircle2 className="w-3 h-3 mr-1" />
                                 Ready to preview
@@ -1632,6 +1688,7 @@ export function CourseBuilder() {
                                 <Eye className="w-3 h-3 mr-1" />
                                 Preview
                               </Button>
+                              <span className="text-xs text-muted-foreground">Save the course to preview.</span>
                             </div>
                           )}
 
@@ -1745,7 +1802,8 @@ export function CourseBuilder() {
         {/* Preview Tab */}
         <TabsContent value="preview" className="space-y-6">
           <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4">Course Preview</h3>
+            <h3 className="text-lg font-semibold mb-1">Course Preview</h3>
+            <p className="text-sm text-muted-foreground mb-4">Save the course to preview.</p>
             <div className="space-y-4">
               <div>
                 <h4 className="font-medium mb-2">Course: {courseTitle || "Untitled"}</h4>
@@ -1782,19 +1840,22 @@ export function CourseBuilder() {
                           key={lessonIndex}
                           className="p-3 rounded border border-border space-y-2"
                         >
-                          <div className="flex items-center justify-between">
+                          <div className="flex items-center justify-between flex-wrap gap-2">
                             <span className="font-medium text-sm">
                               {lesson.title || `Lesson ${lessonIndex + 1}`}
                             </span>
                             {(lesson.slides?.length ?? 0) > 0 && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handlePreviewLesson(index, lessonIndex)}
-                              >
-                                <Eye className="w-3 h-3 mr-1" />
-                                Preview
-                              </Button>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handlePreviewLesson(index, lessonIndex)}
+                                >
+                                  <Eye className="w-3 h-3 mr-1" />
+                                  Preview
+                                </Button>
+                                <span className="text-xs text-muted-foreground">Save the course to preview.</span>
+                              </div>
                             )}
                           </div>
                           {(lesson.slides?.length ?? 0) > 0 ? (

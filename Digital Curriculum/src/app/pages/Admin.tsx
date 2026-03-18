@@ -20,12 +20,19 @@ import {
   Loader2,
   Calendar,
   MapPin,
+  Monitor,
   GraduationCap,
+  Image as ImageIcon,
   Check,
   X,
   BookOpen,
   Upload,
   Trash2,
+  UserCog,
+  Eye,
+  FileText,
+  Award,
+  Download,
 } from "lucide-react";
 import { useAuth } from "../components/auth/AuthProvider";
 import {
@@ -37,6 +44,7 @@ import {
 import {
   collection,
   query,
+  where,
   getDocs,
   getDoc,
   orderBy,
@@ -46,15 +54,25 @@ import {
   serverTimestamp,
   Timestamp,
 } from "firebase/firestore";
-import { db } from "../lib/firebase";
-import { createEvent, getEvents, type Event } from "../lib/events";
+import { db, storage } from "../lib/firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { createEvent, getEvents, type Event, type EventType } from "../lib/events";
 import {
   getGraduationApplications,
   acceptGraduationApplication,
   rejectGraduationApplication,
   admitUserToAlumni,
+  setUserAdminRole,
   type GraduationApplication,
 } from "../lib/graduation";
+import { listCertificates, listSurveyResponses, type SkillCertificate, type SurveyResponseDocument } from "../lib/dataroom";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "../components/ui/dialog";
+import { format } from "date-fns";
 import {
   createCourse,
   getAllCourses,
@@ -105,7 +123,10 @@ export function AdminPage() {
   const [newEventStartTime, setNewEventStartTime] = useState("");
   const [newEventEndTime, setNewEventEndTime] = useState("");
   const [newEventLocation, setNewEventLocation] = useState("");
+  const [newEventType, setNewEventType] = useState<EventType>("In-person");
   const [newEventSpots, setNewEventSpots] = useState("");
+  const [newEventImageUrl, setNewEventImageUrl] = useState("");
+  const [newEventImageFile, setNewEventImageFile] = useState<File | null>(null);
   const [newEventDetails, setNewEventDetails] = useState("");
   const [creatingEvent, setCreatingEvent] = useState(false);
   const [events, setEvents] = useState<any[]>([]);
@@ -114,6 +135,21 @@ export function AdminPage() {
   const [loadingApplications, setLoadingApplications] = useState(false);
   const [admissionStatus, setAdmissionStatus] = useState<Record<string, boolean>>({});
   const [selectedTimes, setSelectedTimes] = useState<Record<string, string>>({});
+
+  // Add Admin state
+  const [adminEmail, setAdminEmail] = useState("");
+  const [adminRole, setAdminRole] = useState<"Admin" | "superAdmin">("Admin");
+  const [addingAdmin, setAddingAdmin] = useState(false);
+  const [addAdminError, setAddAdminError] = useState<string | null>(null);
+  const [currentAdmins, setCurrentAdmins] = useState<Array<{ userId: string; email: string; name: string; roles: string[] }>>([]);
+  const [loadingAdmins, setLoadingAdmins] = useState(false);
+
+  // View User Profile (Data Room) state
+  const [viewProfileUserId, setViewProfileUserId] = useState<string | null>(null);
+  const [viewProfileUser, setViewProfileUser] = useState<{ name: string; email: string; roles: string[] } | null>(null);
+  const [viewProfileCerts, setViewProfileCerts] = useState<SkillCertificate[]>([]);
+  const [viewProfileSurveys, setViewProfileSurveys] = useState<SurveyResponseDocument[]>([]);
+  const [viewProfileLoading, setViewProfileLoading] = useState(false);
 
   // Group creation state
   const [newGroupName, setNewGroupName] = useState("");
@@ -128,6 +164,44 @@ export function AdminPage() {
     loadData();
     loadCourses();
   }, []);
+
+  useEffect(() => {
+    if (!viewProfileUserId) {
+      setViewProfileUser(null);
+      setViewProfileCerts([]);
+      setViewProfileSurveys([]);
+      return;
+    }
+    let cancelled = false;
+    setViewProfileLoading(true);
+    (async () => {
+      try {
+        const [userSnap, certs, surveys] = await Promise.all([
+          getDoc(doc(db, "users", viewProfileUserId)),
+          listCertificates(viewProfileUserId),
+          listSurveyResponses(viewProfileUserId),
+        ]);
+        if (cancelled) return;
+        const userData = userSnap.exists() ? userSnap.data() : {};
+        setViewProfileUser({
+          name: `${userData.first_name || ""} ${userData.last_name || ""}`.trim() || userData.display_name || userData.email || "Unknown",
+          email: userData.email || "No email",
+          roles: Array.isArray(userData.roles) ? userData.roles : [],
+        });
+        setViewProfileCerts(certs);
+        setViewProfileSurveys(surveys);
+      } catch (e) {
+        if (!cancelled) {
+          setViewProfileUser(null);
+          setViewProfileCerts([]);
+          setViewProfileSurveys([]);
+        }
+      } finally {
+        if (!cancelled) setViewProfileLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [viewProfileUserId]);
 
   const loadCourses = async () => {
     setLoadingCourses(true);
@@ -320,8 +394,8 @@ export function AdminPage() {
     const usersRef = collection(db, "users");
     const usersSnapshot = await getDocs(usersRef);
     
-    const userDoc = usersSnapshot.docs.find((doc) => {
-      const data = doc.data();
+    const userDoc = usersSnapshot.docs.find((d) => {
+      const data = d.data();
       const userEmail = data.email || data.email_address || null;
       return userEmail && userEmail.toLowerCase() === email.toLowerCase();
     });
@@ -331,6 +405,75 @@ export function AdminPage() {
     }
 
     return userDoc.id;
+  };
+
+  const loadCurrentAdmins = async () => {
+    setLoadingAdmins(true);
+    try {
+      const usersRef = collection(db, "users");
+      const [adminSnap, superSnap] = await Promise.all([
+        getDocs(query(usersRef, where("roles", "array-contains", "Admin"))),
+        getDocs(query(usersRef, where("roles", "array-contains", "superAdmin"))),
+      ]);
+      const byId = new Map<string, { userId: string; email: string; name: string; roles: Set<string> }>();
+      const addFromDoc = (docId: string, data: Record<string, unknown> | undefined) => {
+        const safeData = data ?? {};
+        const roles = (safeData.roles as string[] | undefined) ?? [];
+        const adminRoles = roles.filter((r) => r === "Admin" || r === "superAdmin");
+        if (adminRoles.length === 0) return;
+        const name = `${(safeData.first_name || "")} ${(safeData.last_name || "")}`.trim() || (safeData.display_name as string) || (safeData.email as string) || "Unknown";
+        if (!byId.has(docId)) {
+          byId.set(docId, {
+            userId: docId,
+            email: (safeData.email as string) || "No email",
+            name,
+            roles: new Set(adminRoles),
+          });
+        } else {
+          adminRoles.forEach((r) => byId.get(docId)!.roles.add(r));
+        }
+      };
+      adminSnap.docs.forEach((d) => addFromDoc(d.id, d.data()));
+      superSnap.docs.forEach((d) => addFromDoc(d.id, d.data()));
+      setCurrentAdmins(
+        Array.from(byId.values()).map((a) => ({
+          userId: a.userId,
+          email: a.email,
+          name: a.name,
+          roles: Array.from(a.roles).sort(),
+        }))
+      );
+    } catch (e) {
+      console.error("Error loading admins:", e);
+      setCurrentAdmins([]);
+    } finally {
+      setLoadingAdmins(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "admins") loadCurrentAdmins();
+  }, [activeTab]);
+
+  const handleAddAdmin = async () => {
+    const email = adminEmail.trim();
+    if (!email) {
+      setAddAdminError("Enter an email address.");
+      return;
+    }
+    setAddAdminError(null);
+    setAddingAdmin(true);
+    try {
+      const userId = await validateAndGetUserId(email);
+      await setUserAdminRole(userId, adminRole);
+      alert(`${email} has been granted the ${adminRole} role.`);
+      setAdminEmail("");
+      loadCurrentAdmins();
+    } catch (err) {
+      setAddAdminError(err instanceof Error ? err.message : "Failed to add admin.");
+    } finally {
+      setAddingAdmin(false);
+    }
   };
 
   // Course creation is now handled in CourseBuilder component
@@ -444,47 +587,62 @@ export function AdminPage() {
   };
 
   const handleCreateEvent = async () => {
-    if (!newEventTitle.trim() || !newEventDate || !newEventStartTime || !newEventLocation || !newEventSpots) {
-      alert("Please fill in all required fields.");
+    if (!newEventTitle.trim() || !newEventDate || !newEventStartTime || !newEventLocation) {
+      alert("Please fill in all required fields (Title, Date, Start Time, Location).");
       return;
     }
 
-    const spots = parseInt(newEventSpots);
-    if (isNaN(spots) || spots <= 0) {
-      alert("Available spots must be a positive number.");
+    const spotsRaw = newEventSpots.trim();
+    const spots = spotsRaw ? parseInt(spotsRaw, 10) : undefined;
+    if (spotsRaw && (isNaN(spots!) || spots! <= 0)) {
+      alert("Available spots must be a positive number when provided.");
       return;
     }
 
     setCreatingEvent(true);
     try {
       const eventDate = new Date(newEventDate);
-      
-      // Format time string
       const startTimeFormatted = formatTimeForDisplay(newEventStartTime);
       const endTimeFormatted = newEventEndTime ? formatTimeForDisplay(newEventEndTime) : "";
-      const timeString = newEventEndTime 
+      const timeString = newEventEndTime
         ? `${startTimeFormatted} - ${endTimeFormatted}`
         : startTimeFormatted;
+
+      let imageUrl = newEventImageUrl.trim() || undefined;
+      if (newEventImageFile) {
+        const path = `events/images/${Date.now()}_${newEventImageFile.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
+        const storageRef = ref(storage, path);
+        await uploadBytes(storageRef, newEventImageFile, {
+          contentType: newEventImageFile.type || "image/jpeg",
+        });
+        imageUrl = await getDownloadURL(storageRef);
+      }
 
       await createEvent(
         newEventTitle,
         eventDate,
         timeString,
         newEventLocation,
-        spots,
-        newEventDetails
+        newEventDetails,
+        {
+          availableSpots: spots,
+          eventType: newEventType,
+          imageUrl,
+        }
       );
 
-      // Reset form
       setNewEventTitle("");
       setNewEventDate("");
       setNewEventStartTime("");
       setNewEventEndTime("");
       setNewEventLocation("");
+      setNewEventType("In-person");
       setNewEventSpots("");
+      setNewEventImageUrl("");
+      setNewEventImageFile(null);
       setNewEventDetails("");
       alert("Event created successfully!");
-      await loadEvents(); // Reload events list
+      await loadEvents();
     } catch (error) {
       console.error("Error creating event:", error);
       alert("Failed to create event. Please try again.");
@@ -523,7 +681,11 @@ export function AdminPage() {
           </TabsTrigger>
           <TabsTrigger value="graduation">
             <GraduationCap className="w-4 h-4 mr-2" />
-            Graduation Applications
+            Alumni Applications
+          </TabsTrigger>
+          <TabsTrigger value="admins">
+            <UserCog className="w-4 h-4 mr-2" />
+            Admins
           </TabsTrigger>
           <TabsTrigger value="messages">
             <MessageSquare className="w-4 h-4 mr-2" />
@@ -734,23 +896,94 @@ export function AdminPage() {
                   </Label>
                   <Input
                     id="event-location"
-                    placeholder="Enter location"
+                    placeholder="e.g. Virtual, Cincinnati Hub, or full address"
                     value={newEventLocation}
                     onChange={(e) => setNewEventLocation(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
+                  <Label className="text-foreground">Event type</Label>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setNewEventType("In-person")}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                        newEventType === "In-person"
+                          ? "border-accent bg-accent/10 text-accent"
+                          : "border-border bg-card text-muted-foreground hover:border-accent/50"
+                      }`}
+                    >
+                      <MapPin className="w-4 h-4" />
+                      In-person
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNewEventType("Online")}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                        newEventType === "Online"
+                          ? "border-accent bg-accent/10 text-accent"
+                          : "border-border bg-card text-muted-foreground hover:border-accent/50"
+                      }`}
+                    >
+                      <Monitor className="w-4 h-4" />
+                      Online
+                    </button>
+                  </div>
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="event-spots" className="text-foreground">
-                    Available Spots *
+                    Available Spots (Optional)
                   </Label>
                   <Input
                     id="event-spots"
                     type="number"
                     min="1"
-                    placeholder="Enter number of spots"
+                    placeholder="Leave empty for no limit"
                     value={newEventSpots}
                     onChange={(e) => setNewEventSpots(e.target.value)}
                   />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="event-image" className="text-foreground flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4" />
+                  Event image (optional)
+                </Label>
+                <div className="space-y-2">
+                  <Input
+                    id="event-image"
+                    type="url"
+                    placeholder="Image URL (e.g. https://...)"
+                    value={newEventImageUrl}
+                    onChange={(e) => {
+                      setNewEventImageUrl(e.target.value);
+                      setNewEventImageFile(null);
+                    }}
+                  />
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <span>or</span>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <Upload className="w-4 h-4" />
+                      <span>Upload image</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="sr-only"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setNewEventImageFile(file);
+                            setNewEventImageUrl("");
+                          }
+                        }}
+                      />
+                    </label>
+                    {newEventImageFile && (
+                      <span className="text-accent text-xs">
+                        {newEventImageFile.name}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="space-y-2">
@@ -767,7 +1000,7 @@ export function AdminPage() {
               </div>
               <Button
                 onClick={handleCreateEvent}
-                disabled={!newEventTitle.trim() || !newEventDate || !newEventStartTime || !newEventLocation || !newEventSpots || creatingEvent}
+                disabled={!newEventTitle.trim() || !newEventDate || !newEventStartTime || !newEventLocation || creatingEvent}
                 className="bg-accent hover:bg-accent/90 text-accent-foreground"
               >
                 {creatingEvent ? (
@@ -801,41 +1034,62 @@ export function AdminPage() {
             ) : (
               events.map((event) => {
                 const registeredCount = event.registered_users?.length || 0;
-                const spotsLeft = event.total_spots - registeredCount;
+                const totalSpots = event.total_spots ?? 0;
+                const spotsLeft = totalSpots > 0 ? totalSpots - registeredCount : null;
                 const eventDate = event.date.toDate ? event.date.toDate() : new Date(event.date);
-                
+                const eventType = event.event_type || "In-person";
+
                 return (
                   <Card key={event.id} className="p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1">
+                    <div className="flex items-start gap-4 mb-4">
+                      {event.image_url && (
+                        <img
+                          src={event.image_url}
+                          alt=""
+                          className="w-24 h-24 object-cover rounded-lg shrink-0"
+                        />
+                      )}
+                      <div className="flex-1 min-w-0">
                         <h3 className="text-lg font-semibold text-foreground mb-2">
                           {event.title}
                         </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm text-muted-foreground">
-                          <div className="flex items-center gap-2">
-                            <Calendar className="w-4 h-4" />
-                            <span>{eventDate.toLocaleDateString()}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Clock className="w-4 h-4" />
-                            <span>{event.time}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <MapPin className="w-4 h-4" />
-                            <span>{event.location}</span>
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                          <Badge variant="secondary" className="text-xs">
+                            {eventType}
+                          </Badge>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm text-muted-foreground">
+                            <div className="flex items-center gap-2">
+                              <Calendar className="w-4 h-4" />
+                              <span>{eventDate.toLocaleDateString()}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Clock className="w-4 h-4" />
+                              <span>{event.time}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <MapPin className="w-4 h-4" />
+                              <span>{event.location}</span>
+                            </div>
                           </div>
                         </div>
                         <div className="mt-3 flex items-center gap-4">
                           <Badge variant="outline">
-                            {registeredCount}/{event.total_spots} registered
+                            {registeredCount}
+                            {totalSpots > 0 ? `/${totalSpots}` : ""} registered
                           </Badge>
-                          {spotsLeft > 0 ? (
-                            <Badge className="bg-green-500/10 text-green-600">
-                              {spotsLeft} spots left
-                            </Badge>
+                          {totalSpots > 0 ? (
+                            spotsLeft !== null && spotsLeft > 0 ? (
+                              <Badge className="bg-green-500/10 text-green-600">
+                                {spotsLeft} spots left
+                              </Badge>
+                            ) : (
+                              <Badge className="bg-red-500/10 text-red-600">
+                                Full
+                              </Badge>
+                            )
                           ) : (
-                            <Badge className="bg-red-500/10 text-red-600">
-                              Full
+                            <Badge className="bg-muted text-muted-foreground">
+                              Unlimited spots
                             </Badge>
                           )}
                         </div>
@@ -858,11 +1112,11 @@ export function AdminPage() {
           </div>
         </TabsContent>
 
-        {/* Graduation Applications Tab */}
+        {/* Alumni Applications Tab */}
         <TabsContent value="graduation" className="space-y-6">
           <div>
             <h2 className="text-xl font-semibold text-foreground mb-4">
-              Graduation Applications
+              Alumni Applications
             </h2>
             {loadingApplications ? (
               <div className="text-center py-8">
@@ -872,7 +1126,7 @@ export function AdminPage() {
             ) : graduationApplications.length === 0 ? (
               <Card className="p-8 text-center">
                 <GraduationCap className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                <p className="text-muted-foreground">No graduation applications yet.</p>
+                <p className="text-muted-foreground">No alumni applications yet.</p>
               </Card>
             ) : (
               <div className="space-y-4">
@@ -947,8 +1201,18 @@ export function AdminPage() {
                           )}
                         </div>
                       </div>
+                      <div className="flex flex-col items-end gap-3 ml-4">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => application.userId && setViewProfileUserId(application.userId)}
+                          className="border-border text-foreground"
+                        >
+                          <Eye className="w-4 h-4 mr-2" />
+                          View User Profile
+                        </Button>
                       {!isAdmitted && application.status === "pending" && (
-                        <div className="flex flex-col items-end gap-3 ml-4">
+                        <>
                           {/* Time Selection */}
                           {application.availabilitySlots && application.availabilitySlots.length > 0 && (
                             <div className="w-full min-w-[200px] space-y-2">
@@ -1042,7 +1306,7 @@ export function AdminPage() {
                               Reject
                             </Button>
                           </div>
-                        </div>
+                        </>
                       )}
                       {!isAdmitted && application.status === "accepted" && (
                         <div className="flex items-center gap-2 ml-4">
@@ -1095,6 +1359,7 @@ export function AdminPage() {
                           </Button>
                         </div>
                       )}
+                      </div>
                     </div>
                   </Card>
                   );
@@ -1102,6 +1367,96 @@ export function AdminPage() {
               </div>
             )}
           </div>
+        </TabsContent>
+
+        {/* Admins Tab */}
+        <TabsContent value="admins" className="space-y-6">
+          <Card className="p-6">
+            <h2 className="text-xl font-semibold text-foreground mb-4">Add Admin</h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              Grant a user the Admin or superAdmin role. Enter their account email and choose the role.
+            </p>
+            <div className="flex flex-wrap items-end gap-4">
+              <div className="space-y-2 min-w-[200px]">
+                <Label htmlFor="admin-email" className="text-foreground">Email</Label>
+                <Input
+                  id="admin-email"
+                  type="email"
+                  placeholder="user@example.com"
+                  value={adminEmail}
+                  onChange={(e) => {
+                    setAdminEmail(e.target.value);
+                    setAddAdminError(null);
+                  }}
+                  className="bg-background"
+                />
+              </div>
+              <div className="space-y-2 min-w-[160px]">
+                <Label htmlFor="admin-role" className="text-foreground">Role</Label>
+                <select
+                  id="admin-role"
+                  value={adminRole}
+                  onChange={(e) => setAdminRole(e.target.value as "Admin" | "superAdmin")}
+                  className="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground"
+                >
+                  <option value="Admin">Admin</option>
+                  <option value="superAdmin">superAdmin</option>
+                </select>
+              </div>
+              <Button
+                onClick={handleAddAdmin}
+                disabled={addingAdmin || !adminEmail.trim()}
+                className="bg-accent hover:bg-accent/90 text-accent-foreground"
+              >
+                {addingAdmin ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Adding...
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    Add Admin
+                  </>
+                )}
+              </Button>
+            </div>
+            {addAdminError && (
+              <p className="text-sm text-destructive mt-2">{addAdminError}</p>
+            )}
+          </Card>
+
+          <Card className="p-6">
+            <h2 className="text-xl font-semibold text-foreground mb-4">Current Admins</h2>
+            {loadingAdmins ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : currentAdmins.length === 0 ? (
+              <p className="text-muted-foreground py-4">No admins or superAdmins found.</p>
+            ) : (
+              <div className="space-y-2">
+                {currentAdmins.map((admin) => (
+                  <div
+                    key={admin.userId}
+                    className="flex items-center justify-between gap-4 p-3 rounded-lg border border-border bg-muted/20"
+                  >
+                    <div>
+                      <p className="font-medium text-foreground">{admin.name || admin.email}</p>
+                      <p className="text-sm text-muted-foreground">{admin.email}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-1 shrink-0">
+                      {admin.roles.map((role) => (
+                        <Badge key={role} variant={role === "superAdmin" ? "default" : "secondary"}>
+                          {role}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
         </TabsContent>
 
         {/* Direct Messages Tab */}
@@ -1372,6 +1727,107 @@ export function AdminPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* View User Profile / Data Room Dialog */}
+      <Dialog open={!!viewProfileUserId} onOpenChange={(open) => !open && setViewProfileUserId(null)}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>User Profile & Data Room</DialogTitle>
+          </DialogHeader>
+          {viewProfileLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : viewProfileUser ? (
+            <div className="space-y-6">
+              <div className="rounded-lg border border-border p-4 bg-muted/30">
+                <h4 className="font-semibold text-foreground mb-2">Profile</h4>
+                <p className="text-sm text-muted-foreground"><strong className="text-foreground">Name:</strong> {viewProfileUser.name}</p>
+                <p className="text-sm text-muted-foreground"><strong className="text-foreground">Email:</strong> {viewProfileUser.email}</p>
+                <p className="text-sm text-muted-foreground">
+                  <strong className="text-foreground">Roles:</strong>{" "}
+                  {viewProfileUser.roles.length > 0 ? viewProfileUser.roles.join(", ") : "None"}
+                </p>
+              </div>
+
+              <div className="rounded-lg border border-border p-4 bg-muted/30">
+                <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2">
+                  <Award className="w-4 h-4 text-accent" />
+                  Skill Certificates
+                </h4>
+                {viewProfileCerts.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No certificates yet.</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {viewProfileCerts.map((cert) => {
+                      const createdAt = cert.createdAt && typeof (cert.createdAt as { toDate?: () => Date }).toDate === "function"
+                        ? (cert.createdAt as { toDate: () => Date }).toDate()
+                        : cert.createdAt && typeof (cert.createdAt as { seconds?: number }).seconds === "number"
+                          ? new Date((cert.createdAt as { seconds: number }).seconds * 1000)
+                          : new Date();
+                      return (
+                        <li key={cert.id} className="flex items-center justify-between text-sm p-2 rounded border border-border bg-background">
+                          <span className="text-foreground">{cert.skill} · {cert.courseTitle}</span>
+                          <span className="text-muted-foreground text-xs">{format(createdAt, "MMM d, yyyy")}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+
+              <div className="rounded-lg border border-border p-4 bg-muted/30">
+                <h4 className="font-semibold text-foreground mb-2 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-accent" />
+                  Survey Response PDFs (Data Room)
+                </h4>
+                {viewProfileSurveys.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No survey response documents yet.</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {viewProfileSurveys.map((sr) => {
+                      const createdAt = sr.createdAt && typeof (sr.createdAt as { toDate?: () => Date }).toDate === "function"
+                        ? (sr.createdAt as { toDate: () => Date }).toDate()
+                        : sr.createdAt && typeof (sr.createdAt as { seconds?: number }).seconds === "number"
+                          ? new Date((sr.createdAt as { seconds: number }).seconds * 1000)
+                          : new Date();
+                      const name = (sr.surveyTitle || sr.lessonTitle || "Survey").trim();
+                      return (
+                        <li key={sr.id} className="flex items-center justify-between gap-2 text-sm p-2 rounded border border-border bg-background">
+                          <span className="text-foreground truncate">{name}</span>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              onClick={() => window.open(sr.downloadUrl, "_blank")}
+                              title="Preview"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              onClick={() => window.open(sr.downloadUrl, "_blank", "noopener")}
+                              title="Download"
+                            >
+                              <Download className="w-4 h-4" />
+                            </Button>
+                          </div>
+                          <span className="text-muted-foreground text-xs shrink-0">{format(createdAt, "MMM d, yyyy")}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground py-4">Could not load user data.</p>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

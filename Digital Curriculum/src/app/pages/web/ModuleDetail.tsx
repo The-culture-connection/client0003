@@ -106,7 +106,7 @@ export function ModuleDetail() {
         </Button>
         <h1 className="text-3xl font-bold text-foreground mb-2">Test Curriculum</h1>
         <p className="text-muted-foreground">
-          Complete all courses to unlock the Alumni Network application
+          Complete all courses to unlock the Alumni Application
         </p>
       </div>
 

@@ -245,6 +245,31 @@ export async function admitUserToAlumni(
 }
 
 /**
+ * Add or ensure a user has an admin role (Admin or superAdmin).
+ * Used by existing admins to grant admin access to another user.
+ */
+export async function setUserAdminRole(
+  userId: string,
+  role: "Admin" | "superAdmin"
+): Promise<void> {
+  const userRef = doc(db, "users", userId);
+  const userSnap = await getDoc(userRef);
+  if (!userSnap.exists()) {
+    throw new Error("User not found");
+  }
+  const userData = userSnap.data();
+  const currentRoles: string[] = Array.isArray(userData.roles) ? userData.roles : [];
+  if (currentRoles.includes(role)) {
+    return; // already has role
+  }
+  const updatedRoles = [...currentRoles, role];
+  await updateDoc(userRef, {
+    roles: updatedRoles,
+    updated_at: Timestamp.now(),
+  });
+}
+
+/**
  * Reject a graduation application
  */
 export async function rejectGraduationApplication(

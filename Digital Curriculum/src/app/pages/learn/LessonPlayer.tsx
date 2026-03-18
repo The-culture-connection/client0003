@@ -9,6 +9,7 @@ import { getSlides, getBlocks, getLesson, getLessonImages, getLessonContent, get
 import { getCourse, getCourseLessonQuiz, getCourseLessonSurvey, getLessonsWithQuiz, getLessonsWithSurvey } from "../../lib/courses";
 import { getCourseProgress, updateLessonSlideProgress, setLessonCompleted, recordLessonQuizAttempt, recordLessonSurveySubmission, markCourseCompleted, calculateCourseProgress } from "../../lib/courseProgress";
 import { createSkillCertificatesForCompletedCourse, uploadSurveyResponsePdf } from "../../lib/dataroom";
+import { DEFAULT_DATAROOM_FOLDER_ID } from "../../lib/dataroomFolders";
 import { useAuth } from "../../components/auth/AuthProvider";
 import { SlideRenderer } from "../../components/curriculum/SlideRenderer";
 import { YouTubeBlock } from "../../components/curriculum/YouTubeBlock";
@@ -246,8 +247,10 @@ export function LessonPlayer() {
           courseId,
           lessonId,
           lesson?.title ?? "Lesson",
+          (survey.title?.trim() || lesson?.title) ?? "Survey",
           sorted.map((q) => ({ question: q.question })),
-          answers
+          answers,
+          survey.dataroomFolderId ?? DEFAULT_DATAROOM_FOLDER_ID
         );
         if (ok) {
           alert("Your survey responses have been saved as a PDF in your Data Room.");

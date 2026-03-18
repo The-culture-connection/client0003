@@ -120,6 +120,10 @@
   - Error shown if validation fails
   - "Continue" button disabled until valid
 
+### Community Anonymity (Discussions + Groups)
+- **Discussions**: When starting a thread or adding a reply, users can check **“Post/Reply anonymously”**; the UI stores `isAnonymous` and shows either their name or `Anonymous`.
+- **Groups**: When sending a group message, users can check **“Send anonymously”**; the message document stores `IsAnonymous`, and the group chat renders `Anonymous` instead of the sender’s real name.
+
 ## 📋 Next Steps
 
 ### Immediate

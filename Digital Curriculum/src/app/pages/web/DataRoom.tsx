@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../components/auth/AuthProvider";
 import { listCertificates, listSurveyResponses, type SkillCertificate, type SurveyResponseDocument } from "../../lib/dataroom";
+import { DATAROOM_FOLDER_OPTIONS } from "../../lib/dataroomFolders";
 import {
   Dialog,
   DialogContent,
@@ -34,88 +35,15 @@ interface FileNode {
   modified?: string;
   children?: FileNode[];
   fileType?: string;
+  downloadUrl?: string;
 }
 
-const mockFileSystem: FileNode[] = [
-  {
-    id: "1",
-    name: "Corporate Documents",
-    type: "folder",
-    children: [],
-  },
-  {
-    id: "2",
-    name: "Financial Review",
-    type: "folder",
-    children: [],
-  },
-  {
-    id: "3",
-    name: "Industry",
-    type: "folder",
-    children: [],
-  },
-  {
-    id: "4",
-    name: "Business Plans",
-    type: "folder",
-    children: [],
-  },
-  {
-    id: "5",
-    name: "Intangible Property",
-    type: "folder",
-    children: [],
-  },
-  {
-    id: "6",
-    name: "Financing Documents",
-    type: "folder",
-    children: [],
-  },
-  {
-    id: "7",
-    name: "Employee Relations",
-    type: "folder",
-    children: [],
-  },
-  {
-    id: "8",
-    name: "Insurance",
-    type: "folder",
-    children: [],
-  },
-  {
-    id: "9",
-    name: "User Agreements and Contracts",
-    type: "folder",
-    children: [],
-  },
-  {
-    id: "10",
-    name: "Property Agreements",
-    type: "folder",
-    children: [],
-  },
-  {
-    id: "11",
-    name: "Software Product Development",
-    type: "folder",
-    children: [],
-  },
-  {
-    id: "12",
-    name: "Miscellaneous",
-    type: "folder",
-    children: [],
-  },
-  {
-    id: "13",
-    name: "Apple Store Insights",
-    type: "folder",
-    children: [],
-  },
-];
+const mockFileSystem: FileNode[] = DATAROOM_FOLDER_OPTIONS.map((folder) => ({
+  id: folder.id,
+  name: folder.name,
+  type: "folder" as const,
+  children: [],
+}));
 
 export function WebDataRoom() {
   const { user } = useAuth();
@@ -123,23 +51,43 @@ export function WebDataRoom() {
   const [searchQuery, setSearchQuery] = useState("");
   const [certificates, setCertificates] = useState<SkillCertificate[]>([]);
   const [certificatesLoading, setCertificatesLoading] = useState(true);
+  const [certificatesError, setCertificatesError] = useState<string | null>(null);
   const [previewCertificate, setPreviewCertificate] = useState<SkillCertificate | null>(null);
   const [surveyResponses, setSurveyResponses] = useState<SurveyResponseDocument[]>([]);
   const [surveyResponsesLoading, setSurveyResponsesLoading] = useState(true);
+  const [surveyResponsesError, setSurveyResponsesError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user?.uid) {
       setCertificatesLoading(false);
       setSurveyResponsesLoading(false);
+      setCertificatesError(null);
+      setSurveyResponsesError(null);
       return;
     }
+    setCertificatesError(null);
+    setSurveyResponsesError(null);
     listCertificates(user.uid)
-      .then(setCertificates)
-      .catch(() => setCertificates([]))
+      .then((list) => {
+        setCertificates(list);
+        setCertificatesError(null);
+      })
+      .catch((err) => {
+        console.error("Data Room: failed to list certificates", err);
+        setCertificates([]);
+        setCertificatesError(err?.message ?? "Failed to load certificates");
+      })
       .finally(() => setCertificatesLoading(false));
     listSurveyResponses(user.uid)
-      .then(setSurveyResponses)
-      .catch(() => setSurveyResponses([]))
+      .then((list) => {
+        setSurveyResponses(list);
+        setSurveyResponsesError(null);
+      })
+      .catch((err) => {
+        console.error("Data Room: failed to list survey responses", err);
+        setSurveyResponses([]);
+        setSurveyResponsesError(err?.message ?? "Failed to load documents");
+      })
       .finally(() => setSurveyResponsesLoading(false));
   }, [user?.uid]);
 
@@ -174,6 +122,32 @@ export function WebDataRoom() {
     }, 250);
   };
 
+  const fileSystem: FileNode[] = mockFileSystem.map((folder) => {
+    const files: FileNode[] = surveyResponses
+      .filter((sr) => sr.dataroomFolderId === folder.id)
+      .map((sr) => {
+        const createdAt = sr.createdAt && typeof (sr.createdAt as { toDate?: () => Date }).toDate === "function"
+          ? (sr.createdAt as { toDate: () => Date }).toDate()
+          : sr.createdAt && typeof (sr.createdAt as { seconds?: number }).seconds === "number"
+            ? new Date((sr.createdAt as { seconds: number }).seconds * 1000)
+            : new Date();
+
+        return {
+          id: sr.id,
+          name: `${(sr.surveyTitle || sr.lessonTitle || "Survey").trim()}.pdf`,
+          type: "file" as const,
+          fileType: "pdf",
+          modified: format(createdAt, "MMM d, yyyy"),
+          downloadUrl: sr.downloadUrl,
+        };
+      });
+
+    return {
+      ...folder,
+      children: files,
+    };
+  });
+
   const getFileIcon = (fileType?: string) => {
     switch (fileType) {
       case "pdf":
@@ -196,9 +170,9 @@ export function WebDataRoom() {
   };
 
   const getCurrentFolder = (): FileNode[] => {
-    if (currentPath.length === 0) return mockFileSystem;
+    if (currentPath.length === 0) return fileSystem;
 
-    let current: FileNode[] = mockFileSystem;
+    let current: FileNode[] = fileSystem;
     for (const pathId of currentPath) {
       const folder = current.find((item) => item.id === pathId);
       if (folder && folder.children) {
@@ -226,7 +200,7 @@ export function WebDataRoom() {
 
   const getBreadcrumbs = (): { id: string; name: string }[] => {
     const breadcrumbs: { id: string; name: string }[] = [];
-    let current: FileNode[] = mockFileSystem;
+    let current: FileNode[] = fileSystem;
 
     for (const pathId of currentPath) {
       const folder = current.find((item) => item.id === pathId);
@@ -262,7 +236,32 @@ export function WebDataRoom() {
           <Award className="w-5 h-5 text-accent" />
           Skill Certificates
         </h2>
-        {certificatesLoading ? (
+        {certificatesError ? (
+          <div className="py-4 rounded-lg bg-destructive/10 border border-destructive/30 px-4">
+            <p className="text-sm text-destructive font-medium">Could not load certificates</p>
+            <p className="text-xs text-muted-foreground mt-1">{certificatesError}</p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              onClick={() => {
+                if (user?.uid) {
+                  setCertificatesError(null);
+                  setCertificatesLoading(true);
+                  listCertificates(user.uid)
+                    .then(setCertificates)
+                    .catch((err) => {
+                      console.error("Data Room: retry list certificates", err);
+                      setCertificatesError(err?.message ?? "Failed to load certificates");
+                    })
+                    .finally(() => setCertificatesLoading(false));
+                }
+              }}
+            >
+              Retry
+            </Button>
+          </div>
+        ) : certificatesLoading ? (
           <p className="text-sm text-muted-foreground py-4">Loading certificates...</p>
         ) : certificates.length === 0 ? (
           <p className="text-sm text-muted-foreground py-4">
@@ -302,65 +301,6 @@ export function WebDataRoom() {
                       variant="outline"
                       size="sm"
                       onClick={() => handleDownloadCertificate(cert)}
-                      className="border-border text-foreground"
-                    >
-                      <Download className="w-4 h-4 mr-1" />
-                      Download
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </Card>
-
-      {/* Survey responses (PDFs from completed surveys) */}
-      <Card className="p-6 bg-card border-border mb-6">
-        <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-          <FileText className="w-5 h-5 text-accent" />
-          Generated documents
-        </h2>
-        {surveyResponsesLoading ? (
-          <p className="text-sm text-muted-foreground py-4">Loading...</p>
-        ) : surveyResponses.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-4">
-            No survey response PDFs yet. Complete lessons with surveys (and PDF export enabled) to add documents here.
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {surveyResponses.map((sr) => {
-              const createdAt = sr.createdAt && typeof (sr.createdAt as { toDate?: () => Date }).toDate === "function"
-                ? (sr.createdAt as { toDate: () => Date }).toDate()
-                : sr.createdAt && typeof (sr.createdAt as { seconds?: number }).seconds === "number"
-                  ? new Date((sr.createdAt as { seconds: number }).seconds * 1000)
-                  : new Date();
-              return (
-                <div
-                  key={sr.id}
-                  className="flex items-center justify-between p-4 rounded-lg border border-border bg-muted/20 hover:bg-muted/40"
-                >
-                  <div className="flex items-center gap-3">
-                    <FileText className="w-8 h-8 text-accent" />
-                    <div>
-                      <p className="font-medium text-foreground">{sr.lessonTitle}</p>
-                      <p className="text-sm text-muted-foreground">Survey responses · {format(createdAt, "MMM d, yyyy")}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => window.open(sr.downloadUrl, "_blank")}
-                      className="border-border text-foreground"
-                    >
-                      <Eye className="w-4 h-4 mr-1" />
-                      Preview
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => window.open(sr.downloadUrl, "_blank", "noopener")}
                       className="border-border text-foreground"
                     >
                       <Download className="w-4 h-4 mr-1" />
@@ -510,6 +450,7 @@ export function WebDataRoom() {
                         variant="ghost"
                         size="sm"
                         className="text-accent hover:text-accent/90"
+                        onClick={() => item.downloadUrl && window.open(item.downloadUrl, "_blank", "noopener")}
                       >
                         <Download className="w-4 h-4" />
                       </Button>

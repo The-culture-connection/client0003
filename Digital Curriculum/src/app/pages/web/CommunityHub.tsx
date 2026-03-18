@@ -248,9 +248,21 @@ export function WebCommunityHub() {
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
-            <h2 className="text-2xl font-bold text-foreground mb-2">
-              {realEvents[0].title}
-            </h2>
+            {realEvents[0].image_url && (
+              <img
+                src={realEvents[0].image_url}
+                alt=""
+                className="w-full h-40 object-cover rounded-lg mb-4"
+              />
+            )}
+            <div className="flex items-center gap-2 mb-2">
+              <Badge variant="secondary">
+                {realEvents[0].event_type || "In-person"}
+              </Badge>
+              <h2 className="text-2xl font-bold text-foreground">
+                {realEvents[0].title}
+              </h2>
+            </div>
             {realEvents[0].details && (
               <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
                 {realEvents[0].details}
@@ -309,17 +321,27 @@ export function WebCommunityHub() {
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Users className="w-4 h-4" />
                 <span>
-                  {realEvents[0].registered_users?.length || 0}/
-                  {realEvents[0].total_spots} attending
+                  {realEvents[0].registered_users?.length || 0}
+                  {(realEvents[0].total_spots ?? 0) > 0
+                    ? `/${realEvents[0].total_spots} attending`
+                    : " attending"}
                 </span>
               </div>
             </div>
           </div>
 
           <div className="flex items-center justify-center">
-            <div className="p-8 rounded-full bg-accent/10">
-              <Calendar className="w-16 h-16 text-accent" />
-            </div>
+            {realEvents[0].image_url ? (
+              <img
+                src={realEvents[0].image_url}
+                alt=""
+                className="w-full h-48 object-cover rounded-lg"
+              />
+            ) : (
+              <div className="p-8 rounded-full bg-accent/10">
+                <Calendar className="w-16 h-16 text-accent" />
+              </div>
+            )}
           </div>
         </div>
       </Card>
@@ -356,63 +378,68 @@ export function WebCommunityHub() {
                   <p className="text-sm">No discussions yet. Start the first one!</p>
                 </div>
               ) : (
-                discussions.map((discussion) => (
-                  <div
-                    key={discussion.id}
-                    className="p-3 rounded-lg border border-border hover:border-accent transition-all cursor-pointer bg-card"
-                    onClick={() => navigate(`/discussions/${discussion.id}`)}
-                  >
-                    <div className="flex items-start gap-3">
-                      {/* Avatar */}
-                      <Avatar className="w-9 h-9 bg-accent/10 text-accent flex items-center justify-center shrink-0">
-                        <span className="text-xs font-bold">
-                          {discussion.author.substring(0, 2).toUpperCase()}
-                        </span>
-                      </Avatar>
+                discussions.map((discussion) => {
+                  const authorLabel = discussion.isAnonymous
+                    ? "Anonymous"
+                    : (discussion.authorName || discussion.author || "User");
+                  const initials = authorLabel.trim().slice(0, 2).toUpperCase();
 
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2 mb-1">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-1.5 mb-1">
-                              {discussion.isPinned && (
-                                <Pin className="w-3 h-3 text-accent" />
-                              )}
-                              {discussion.isHot && (
-                                <Flame className="w-3 h-3 text-orange-500" />
-                              )}
-                              <h3 className="text-sm font-medium text-foreground line-clamp-1">
-                                {discussion.title}
-                              </h3>
+                  return (
+                    <div
+                      key={discussion.id}
+                      className="p-3 rounded-lg border border-border hover:border-accent transition-all cursor-pointer bg-card"
+                      onClick={() => navigate(`/discussions/${discussion.id}`)}
+                    >
+                      <div className="flex items-start gap-3">
+                        {/* Avatar */}
+                        <Avatar className="w-9 h-9 bg-accent/10 text-accent flex items-center justify-center shrink-0">
+                          <span className="text-xs font-bold">{initials}</span>
+                        </Avatar>
+
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2 mb-1">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-1.5 mb-1">
+                                {discussion.isPinned && (
+                                  <Pin className="w-3 h-3 text-accent" />
+                                )}
+                                {discussion.isHot && (
+                                  <Flame className="w-3 h-3 text-orange-500" />
+                                )}
+                                <h3 className="text-sm font-medium text-foreground line-clamp-1">
+                                  {discussion.title}
+                                </h3>
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                {authorLabel} • {formatTimeAgo(discussion.createdAt)}
+                              </p>
                             </div>
-                            <p className="text-xs text-muted-foreground">
-                              Anonymous • {formatTimeAgo(discussion.createdAt)}
-                            </p>
+                            <Badge className="bg-accent/10 text-accent text-xs shrink-0">
+                              {discussion.category}
+                            </Badge>
                           </div>
-                          <Badge className="bg-accent/10 text-accent text-xs shrink-0">
-                            {discussion.category}
-                          </Badge>
-                        </div>
 
-                        {/* Stats */}
-                        <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2">
-                          <div className="flex items-center gap-1">
-                            <MessageCircle className="w-3 h-3" />
-                            <span>{getReplyCount(discussion)}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Eye className="w-3 h-3" />
-                            <span>{discussion.views}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <ThumbsUp className="w-3 h-3" />
-                            <span>{discussion.likes}</span>
+                          {/* Stats */}
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2">
+                            <div className="flex items-center gap-1">
+                              <MessageCircle className="w-3 h-3" />
+                              <span>{getReplyCount(discussion)}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Eye className="w-3 h-3" />
+                              <span>{discussion.views}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <ThumbsUp className="w-3 h-3" />
+                              <span>{discussion.likes}</span>
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
 

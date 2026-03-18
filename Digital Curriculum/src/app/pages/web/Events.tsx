@@ -139,25 +139,39 @@ export function WebEvents() {
         {filteredEvents.map((event) => {
           const isRegistered = registeredEvents.includes(event.id);
           const registeredCount = event.registered_users?.length || 0;
-          const spotsLeft = event.total_spots - registeredCount;
+          const totalSpots = event.total_spots ?? 0;
+          const spotsLeft = totalSpots > 0 ? totalSpots - registeredCount : null;
+          const eventType = event.event_type || "In-person";
 
           return (
             <Card
               key={event.id}
-              className="p-6 bg-card border-border hover:shadow-lg transition-shadow cursor-pointer"
+              className="p-6 bg-card border-border hover:shadow-lg transition-shadow cursor-pointer overflow-hidden"
               onClick={() => navigate(`/events/${event.id}`)}
             >
+              {event.image_url && (
+                <img
+                  src={event.image_url}
+                  alt=""
+                  className="w-full h-36 object-cover -mx-6 -mt-6 mb-4"
+                />
+              )}
               <div className="mb-4">
-                <div className="flex items-start justify-between mb-3">
+                <div className="flex items-start justify-between mb-3 gap-2">
                   <h3 className="text-xl text-foreground font-medium flex-1">
                     {event.title}
                   </h3>
-                  {isRegistered && (
-                    <Badge className="bg-accent text-accent-foreground shrink-0">
-                      <CheckCircle2 className="w-3 h-3 mr-1" />
-                      Registered
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Badge variant="secondary" className="text-xs">
+                      {eventType}
                     </Badge>
-                  )}
+                    {isRegistered && (
+                      <Badge className="bg-accent text-accent-foreground">
+                        <CheckCircle2 className="w-3 h-3 mr-1" />
+                        Registered
+                      </Badge>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-2 text-sm text-muted-foreground">
@@ -176,40 +190,41 @@ export function WebEvents() {
                   <div className="flex items-center gap-2">
                     <Users className="w-4 h-4" />
                     <span>
-                      {registeredCount}/{event.total_spots} attending
-                      {spotsLeft > 0 && ` • ${spotsLeft} spots left`}
+                      {registeredCount}
+                      {totalSpots > 0 ? `/${totalSpots} attending` : " attending"}
+                      {spotsLeft !== null && spotsLeft > 0 && ` • ${spotsLeft} spots left`}
                     </span>
                   </div>
                 </div>
               </div>
 
               <div className="pt-4 border-t border-border">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="text-sm text-muted-foreground mb-2">
-                      Spots Available
+                <div className="flex items-center justify-between gap-4">
+                  {totalSpots > 0 && (
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm text-muted-foreground mb-2">
+                        Spots Available
+                      </div>
+                      <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-accent"
+                          style={{
+                            width: `${Math.min(100, (registeredCount / totalSpots) * 100)}%`,
+                          }}
+                        />
+                      </div>
                     </div>
-                    <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-accent"
-                        style={{
-                          width: `${(registeredCount / event.total_spots) * 100}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                  <div className="ml-4">
-                    <Button
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/events/${event.id}`);
-                      }}
-                      className="bg-accent hover:bg-accent/90 text-accent-foreground"
-                    >
-                      {isRegistered ? "View Details" : "View & Register"}
-                    </Button>
-                  </div>
+                  )}
+                  <Button
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/events/${event.id}`);
+                    }}
+                    className="bg-accent hover:bg-accent/90 text-accent-foreground shrink-0"
+                  >
+                    {isRegistered ? "View Details" : "View & Register"}
+                  </Button>
                 </div>
               </div>
             </Card>

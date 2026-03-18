@@ -8,6 +8,7 @@ import {
   Calendar,
   Clock,
   MapPin,
+  Monitor,
   Users,
   CheckCircle2,
   Loader2,
@@ -139,9 +140,11 @@ export function EventDetailPage() {
   }
 
   const registeredCount = event.registered_users?.length || 0;
-  const spotsLeft = event.total_spots - registeredCount;
-  const isFull = spotsLeft === 0;
+  const totalSpots = event.total_spots ?? 0;
+  const spotsLeft = totalSpots > 0 ? totalSpots - registeredCount : null;
+  const isFull = totalSpots > 0 && spotsLeft !== null && spotsLeft <= 0;
   const upcoming = isUpcoming(event);
+  const eventType = event.event_type || "In-person";
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
@@ -152,14 +155,24 @@ export function EventDetailPage() {
 
       <Card className="p-8">
         <div className="mb-6">
-          <div className="flex items-start justify-between mb-4">
+          {event.image_url && (
+            <img
+              src={event.image_url}
+              alt=""
+              className="w-full h-48 object-cover rounded-lg mb-6"
+            />
+          )}
+          <div className="flex items-start justify-between mb-4 flex-wrap gap-2">
             <h1 className="text-3xl font-bold text-foreground">{event.title}</h1>
-            {isRegistered && (
-              <Badge className="bg-accent text-accent-foreground">
-                <CheckCircle2 className="w-4 h-4 mr-1" />
-                Registered
-              </Badge>
-            )}
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary">{eventType}</Badge>
+              {isRegistered && (
+                <Badge className="bg-accent text-accent-foreground">
+                  <CheckCircle2 className="w-4 h-4 mr-1" />
+                  Registered
+                </Badge>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -178,7 +191,11 @@ export function EventDetailPage() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <MapPin className="w-5 h-5 text-accent" />
+              {eventType === "Online" ? (
+                <Monitor className="w-5 h-5 text-accent" />
+              ) : (
+                <MapPin className="w-5 h-5 text-accent" />
+              )}
               <div>
                 <p className="text-sm text-muted-foreground">Location</p>
                 <p className="text-foreground font-medium">{event.location}</p>
@@ -189,8 +206,9 @@ export function EventDetailPage() {
               <div>
                 <p className="text-sm text-muted-foreground">Attendance</p>
                 <p className="text-foreground font-medium">
-                  {registeredCount}/{event.total_spots} registered
-                  {spotsLeft > 0 && ` • ${spotsLeft} spots left`}
+                  {registeredCount}
+                  {totalSpots > 0 ? `/${totalSpots} registered` : " registered"}
+                  {spotsLeft !== null && spotsLeft > 0 && ` • ${spotsLeft} spots left`}
                 </p>
               </div>
             </div>
@@ -205,17 +223,19 @@ export function EventDetailPage() {
 
           <div className="pt-6 border-t border-border">
             <div className="flex items-center justify-between">
-              <div className="flex-1 mr-4">
-                <div className="text-sm text-muted-foreground mb-2">Registration Progress</div>
-                <div className="w-full h-3 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-accent transition-all"
-                    style={{
-                      width: `${(registeredCount / event.total_spots) * 100}%`,
-                    }}
-                  />
+              {totalSpots > 0 && (
+                <div className="flex-1 mr-4">
+                  <div className="text-sm text-muted-foreground mb-2">Registration Progress</div>
+                  <div className="w-full h-3 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-accent transition-all"
+                      style={{
+                        width: `${Math.min(100, (registeredCount / totalSpots) * 100)}%`,
+                      }}
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
               {upcoming && (
                 <div className="flex gap-2">
                   {isRegistered ? (

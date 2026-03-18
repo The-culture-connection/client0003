@@ -19,14 +19,21 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 
+export type EventType = "Online" | "In-person";
+
 export interface Event {
   id: string;
   title: string;
   date: Timestamp;
   time: string; // e.g., "2:00 PM - 4:00 PM"
   location: string;
-  available_spots: number;
-  total_spots: number;
+  /** "Online" or "In-person" */
+  event_type?: EventType;
+  /** Optional image URL for the event */
+  image_url?: string;
+  /** Optional; when absent, no spot limit */
+  available_spots?: number;
+  total_spots?: number;
   details: string;
   created_at: Timestamp;
   updated_at: Timestamp;
@@ -95,29 +102,45 @@ export async function getEvent(eventId: string): Promise<Event | null> {
 
 /**
  * Create a new event (admin only)
+ * @param availableSpots - Optional; when omitted or 0, event has no spot limit
+ * @param eventType - "Online" or "In-person"
+ * @param imageUrl - Optional image URL for the event
  */
 export async function createEvent(
   title: string,
   date: Date,
   time: string,
   location: string,
-  availableSpots: number,
-  details: string
+  details: string,
+  options?: {
+    availableSpots?: number;
+    eventType?: EventType;
+    imageUrl?: string;
+  }
 ): Promise<Event> {
   try {
     const eventsRef = collection(db, "events");
-    const eventData = {
+    const spots = options?.availableSpots != null && options.availableSpots > 0
+      ? options.availableSpots
+      : undefined;
+    const eventData: Record<string, unknown> = {
       title: title.trim(),
       date: Timestamp.fromDate(date),
       time: time.trim(),
       location: location.trim(),
-      available_spots: availableSpots,
-      total_spots: availableSpots,
+      event_type: options?.eventType ?? "In-person",
       details: details.trim(),
       registered_users: [],
       created_at: serverTimestamp(),
       updated_at: serverTimestamp(),
     };
+    if (options?.imageUrl?.trim()) {
+      eventData.image_url = options.imageUrl.trim();
+    }
+    if (spots != null) {
+      eventData.available_spots = spots;
+      eventData.total_spots = spots;
+    }
 
     const docRef = await addDoc(eventsRef, eventData);
     return {
@@ -156,17 +179,20 @@ export async function registerForEvent(
       throw new Error("Already registered for this event");
     }
 
-    // Check if event is full
-    if (registeredUsers.length >= event.total_spots) {
+    const totalSpots = event.total_spots ?? 0;
+    // Check if event is full (only when spots are limited)
+    if (totalSpots > 0 && registeredUsers.length >= totalSpots) {
       throw new Error("Event is full");
     }
 
-    // Register user
-    await updateDoc(eventRef, {
+    const updateData: Record<string, unknown> = {
       registered_users: arrayUnion(userId),
-      available_spots: event.total_spots - (registeredUsers.length + 1),
       updated_at: serverTimestamp(),
-    });
+    };
+    if (totalSpots > 0) {
+      updateData.available_spots = totalSpots - (registeredUsers.length + 1);
+    }
+    await updateDoc(eventRef, updateData);
   } catch (error) {
     console.error("Error registering for event:", error);
     throw error;
@@ -196,12 +222,15 @@ export async function unregisterFromEvent(
       throw new Error("Not registered for this event");
     }
 
-    // Unregister user
-    await updateDoc(eventRef, {
+    const updateData: Record<string, unknown> = {
       registered_users: arrayRemove(userId),
-      available_spots: event.total_spots - (registeredUsers.length - 1),
       updated_at: serverTimestamp(),
-    });
+    };
+    const totalSpots = event.total_spots ?? 0;
+    if (totalSpots > 0) {
+      updateData.available_spots = totalSpots - (registeredUsers.length - 1);
+    }
+    await updateDoc(eventRef, updateData);
   } catch (error) {
     console.error("Error unregistering from event:", error);
     throw error;

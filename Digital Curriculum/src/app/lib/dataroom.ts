@@ -18,6 +18,7 @@ import {
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage } from "./firebase";
 import { jsPDF } from "jspdf";
+import { DEFAULT_DATAROOM_FOLDER_ID } from "./dataroomFolders";
 
 export interface SkillCertificate {
   id: string;
@@ -46,9 +47,13 @@ export interface SurveyResponseDocument {
   courseId: string;
   lessonId: string;
   lessonTitle: string;
+  /** Survey name (e.g. "Module 1 Reflection") – used as the document name in the Data Room */
+  surveyTitle?: string;
   type: "survey_response";
   storagePath: string;
   downloadUrl: string;
+  /** Top-level Data Room folder id where this PDF is stored */
+  dataroomFolderId: string;
   createdAt: Timestamp;
 }
 
@@ -154,21 +159,25 @@ export async function listCertificates(userId: string): Promise<SkillCertificate
 /**
  * Generate a PDF of survey answers and upload to user's Data Room.
  * Returns true if upload succeeded.
+ * documentName is the survey name shown in the Data Room (e.g. "Module 1 Reflection").
  */
 export async function uploadSurveyResponsePdf(
   userId: string,
   courseId: string,
   lessonId: string,
   lessonTitle: string,
+  documentName: string,
   questions: Array<{ question: string }>,
-  answers: string[]
+  answers: string[],
+  dataroomFolderId: string
 ): Promise<boolean> {
   try {
+    const displayTitle = String(documentName || lessonTitle || "Survey").trim();
     const doc = new jsPDF();
     doc.setFontSize(18);
     doc.text("Survey Responses", 20, 20);
     doc.setFontSize(12);
-    doc.text(lessonTitle, 20, 28);
+    doc.text(displayTitle, 20, 28);
     doc.setFontSize(10);
     doc.text(`Course lesson · ${new Date().toLocaleDateString()}`, 20, 34);
     let y = 44;
@@ -195,7 +204,8 @@ export async function uploadSurveyResponsePdf(
       }
     }
     const blob = doc.output("blob");
-    const storagePath = `users/${userId}/dataroom/survey-responses/${courseId}_${lessonId}_${Date.now()}.pdf`;
+    const safeFolderId = dataroomFolderId || DEFAULT_DATAROOM_FOLDER_ID;
+    const storagePath = `users/${userId}/dataroom/${safeFolderId}/survey-responses/${courseId}_${lessonId}_${Date.now()}.pdf`;
     const storageRef = ref(storage, storagePath);
     await uploadBytes(storageRef, blob, { contentType: "application/pdf" });
     const downloadUrl = await getDownloadURL(storageRef);
@@ -205,9 +215,11 @@ export async function uploadSurveyResponsePdf(
       courseId,
       lessonId,
       lessonTitle,
+      surveyTitle: displayTitle,
       type: "survey_response",
       storagePath,
       downloadUrl,
+      dataroomFolderId: safeFolderId,
       createdAt: serverTimestamp(),
     });
     return true;
@@ -227,6 +239,8 @@ export async function listSurveyResponses(userId: string): Promise<SurveyRespons
     id: d.id,
     ...d.data(),
     createdAt: (d.data().createdAt as Timestamp) || Timestamp.now(),
+    dataroomFolderId:
+      (d.data().dataroomFolderId as string | undefined) ?? DEFAULT_DATAROOM_FOLDER_ID,
   })) as SurveyResponseDocument[];
 }
 

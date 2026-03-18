@@ -301,7 +301,7 @@ export function WebCurriculum() {
                   Assigned Courses
                 </h1>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Complete all assigned courses to unlock the Alumni Network application
+                  Complete all assigned courses to unlock the Alumni Application
                 </p>
                 {mostRecentCourse ? (
                   <div className="mb-4 p-3 rounded-lg bg-muted/50 border border-border">
@@ -503,7 +503,7 @@ export function WebCurriculum() {
         </div>
       )}
 
-      {/* Alumni Network Widget */}
+      {/* Alumni Application Widget */}
       <Card
         className={`p-6 border transition-all ${
           allCompleted
@@ -529,7 +529,7 @@ export function WebCurriculum() {
                 allCompleted ? "text-foreground" : "text-muted-foreground"
               }`}
             >
-              Apply to Join Alumni Network
+              Alumni Application
             </h3>
             <p
               className={`text-sm mb-4 ${
@@ -537,14 +537,14 @@ export function WebCurriculum() {
               }`}
             >
               {allCompleted
-                ? "Congratulations! You've completed all courses. Apply now to join our exclusive alumni network."
+                ? "Congratulations! You've completed all courses. Apply now to become an alumnus and unlock the benefits below."
                 : `Complete all ${totalCourses} courses to unlock this feature.`}
             </p>
             {isAlumni ? (
               <div className="flex items-center gap-3">
                 <Badge className="bg-purple-500/10 text-purple-500 border-purple-500/20">
                   <GraduationCap className="w-3 h-3 mr-1" />
-                  Graduated
+                  Alumni
                 </Badge>
                 <p className="text-sm text-muted-foreground">
                   You are a Digital Curriculum Alumni!
@@ -655,6 +655,33 @@ export function WebCurriculum() {
                 <span>
                   {totalCourses - completedCount} course{totalCourses - completedCount !== 1 ? "s" : ""} remaining
                 </span>
+              </div>
+            )}
+
+            {userApplication && (
+              <div className="mt-6 pt-6 border-t border-border space-y-4">
+                <h4 className="text-base font-semibold text-foreground">What to Expect as an Alumni</h4>
+                <p className="text-sm text-muted-foreground">
+                  Becoming an alumni member is more than just completing your courses—it's your transition into a powerful, connected ecosystem designed to support your continued growth, visibility, and opportunity. Here's what you unlock:
+                </p>
+                <ol className="list-decimal list-inside space-y-3 text-sm text-muted-foreground">
+                  <li>
+                    <strong className="text-foreground">Exclusive Access to the Alumni Networking App</strong>
+                    <span className="block pl-6 mt-0.5">You'll gain entry to our dedicated mobile platform where alumni connect, collaborate, and build meaningful professional relationships. Whether you're looking for partnerships, mentorship, or community, this is your hub.</span>
+                  </li>
+                  <li>
+                    <strong className="text-foreground">Smart Skill-Sharing Matches</strong>
+                    <span className="block pl-6 mt-0.5">Our platform uses intelligent matching to connect you with other alumni based on your skills and growth goals. This means you'll be paired with people who can help you level up—and who you can support in return.</span>
+                  </li>
+                  <li>
+                    <strong className="text-foreground">Automatic Applications to Accelerators & Cohorts</strong>
+                    <span className="block pl-6 mt-0.5">No more searching or missing deadlines. As an alumni, you'll be automatically considered for accelerator programs and business readiness cohorts designed to take your ideas and ventures to the next level.</span>
+                  </li>
+                  <li>
+                    <strong className="text-foreground">Continued Access to Your Completed Curriculum</strong>
+                    <span className="block pl-6 mt-0.5">You'll always have access to the materials you've worked through—so you can revisit key concepts, refine your knowledge, and continue building on your foundation at any time.</span>
+                  </li>
+                </ol>
               </div>
             )}
           </div>

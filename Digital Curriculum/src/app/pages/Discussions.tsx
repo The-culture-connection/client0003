@@ -180,61 +180,68 @@ export function DiscussionsPage() {
             )}
           </Card>
         ) : (
-          filteredDiscussions.map((discussion) => (
-            <Card
-              key={discussion.id}
-              className="p-4 hover:border-accent transition-all cursor-pointer"
-              onClick={() => handleDiscussionClick(discussion)}
-            >
-              <div className="flex items-start gap-3">
-                <Avatar className="w-10 h-10 bg-accent/10 text-accent flex items-center justify-center shrink-0">
-                  <span className="text-xs font-bold">
-                    {discussion.author.substring(0, 2).toUpperCase()}
-                  </span>
-                </Avatar>
+          filteredDiscussions.map((discussion) => {
+            const authorLabel = discussion.isAnonymous
+              ? "Anonymous"
+              : (discussion.authorName || discussion.author || "User");
+            const initials = authorLabel.trim().slice(0, 2).toUpperCase();
 
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-2 mb-1">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-1.5 mb-1">
-                        {discussion.isPinned && (
-                          <Pin className="w-3 h-3 text-accent" />
-                        )}
-                        {discussion.isHot && (
-                          <Flame className="w-3 h-3 text-orange-500" />
-                        )}
-                        <h3 className="text-base font-semibold text-foreground">
-                          {discussion.title}
-                        </h3>
+            return (
+              <Card
+                key={discussion.id}
+                className="p-4 hover:border-accent transition-all cursor-pointer"
+                onClick={() => handleDiscussionClick(discussion)}
+              >
+                <div className="flex items-start gap-3">
+                  <Avatar className="w-10 h-10 bg-accent/10 text-accent flex items-center justify-center shrink-0">
+                    <span className="text-xs font-bold">{initials}</span>
+                  </Avatar>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          {discussion.isPinned && (
+                            <Pin className="w-3 h-3 text-accent" />
+                          )}
+                          {discussion.isHot && (
+                            <Flame className="w-3 h-3 text-orange-500" />
+                          )}
+                          <h3 className="text-base font-semibold text-foreground">
+                            {discussion.title}
+                          </h3>
+                        </div>
+                        <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+                          {discussion.content}
+                        </p>
                       </div>
-                      <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-                        {discussion.content}
-                      </p>
+                      <Badge className="bg-accent/10 text-accent text-xs shrink-0">
+                        {discussion.category}
+                      </Badge>
                     </div>
-                    <Badge className="bg-accent/10 text-accent text-xs shrink-0">
-                      {discussion.category}
-                    </Badge>
-                  </div>
 
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                    <span>Anonymous • {formatTimeAgo(discussion.createdAt)}</span>
-                    <div className="flex items-center gap-1">
-                      <MessageCircle className="w-3 h-3" />
-                      <span>{getReplyCount(discussion)}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Eye className="w-3 h-3" />
-                      <span>{discussion.views}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <ThumbsUp className="w-3 h-3" />
-                      <span>{discussion.likes}</span>
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      <span>
+                        {authorLabel} • {formatTimeAgo(discussion.createdAt)}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <MessageCircle className="w-3 h-3" />
+                        <span>{getReplyCount(discussion)}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Eye className="w-3 h-3" />
+                        <span>{discussion.views}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <ThumbsUp className="w-3 h-3" />
+                        <span>{discussion.likes}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </Card>
-          ))
+              </Card>
+            );
+          })
         )}
       </div>
 

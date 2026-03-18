@@ -98,12 +98,6 @@ const mockFileSystem: FileNode[] = [
     type: "folder",
     children: [],
   },
-  {
-    id: "13",
-    name: "Apple Store Insights",
-    type: "folder",
-    children: [],
-  },
 ];
 
 export function WebDataRoom() {

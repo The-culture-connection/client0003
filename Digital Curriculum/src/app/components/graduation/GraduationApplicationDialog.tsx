@@ -120,7 +120,7 @@ export function GraduationApplicationDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add Your Availability</DialogTitle>
+          <DialogTitle>Alumni Application — Add Your Availability</DialogTitle>
           <DialogDescription>
             Add up to 3 separate days with time ranges when you're available for your pitch. The admin will select a time from your availability windows.
           </DialogDescription>
