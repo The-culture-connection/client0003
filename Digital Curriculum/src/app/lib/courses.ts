@@ -371,7 +371,12 @@ export async function setCourseLessonSurvey(
   survey: Omit<LessonSurvey, "updated_at">
 ): Promise<void> {
   const ref = doc(db, getCourseLessonSurveyPath(courseId, lessonId));
-  await setDoc(ref, { ...survey, updated_at: serverTimestamp() });
+  const data = { ...survey, updated_at: serverTimestamp() };
+  // Firestore does not allow undefined; omit any undefined fields
+  const clean = Object.fromEntries(
+    Object.entries(data).filter(([, v]) => v !== undefined)
+  ) as Record<string, unknown>;
+  await setDoc(ref, clean);
 }
 
 /**
