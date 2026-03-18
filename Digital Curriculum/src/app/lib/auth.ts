@@ -5,10 +5,12 @@
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
   signOut,
   onAuthStateChanged,
   User,
   getIdTokenResult,
+  FirebaseError,
 } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "./firebase";
@@ -17,20 +19,73 @@ export interface UserWithRoles extends User {
   roles?: string[];
 }
 
+/** Map Firebase Auth error codes to user-friendly messages */
+function getAuthErrorMessage(code: string): string {
+  const messages: Record<string, string> = {
+    "auth/invalid-credential": "Email and password do not match.",
+    "auth/invalid-email": "Please enter a valid email address.",
+    "auth/user-disabled": "This account has been disabled. Contact support.",
+    "auth/user-not-found": "No account found with this email.",
+    "auth/wrong-password": "Email and password do not match.",
+    "auth/too-many-requests": "Too many failed attempts. Please try again later or reset your password.",
+    "auth/weak-password": "Password should be at least 6 characters.",
+    "auth/email-already-in-use": "An account with this email already exists. Sign in instead.",
+    "auth/operation-not-allowed": "This sign-in method is not enabled. Contact support.",
+    "auth/requires-recent-login": "Please sign in again to complete this action.",
+    "auth/network-request-failed": "Network error. Check your connection and try again.",
+  };
+  return messages[code] || "Something went wrong. Please try again.";
+}
+
+function wrapAuthError(err: unknown): never {
+  if (err && typeof err === "object" && "code" in err && typeof (err as FirebaseError).code === "string") {
+    throw new Error(getAuthErrorMessage((err as FirebaseError).code));
+  }
+  if (err instanceof Error) throw err;
+  throw new Error("Authentication failed.");
+}
+
 /**
  * Sign in with email and password
  */
 export async function signIn(email: string, password: string): Promise<User> {
-  const userCredential = await signInWithEmailAndPassword(auth, email, password);
-  return userCredential.user;
+  try {
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    return userCredential.user;
+  } catch (err) {
+    wrapAuthError(err);
+  }
 }
 
 /**
  * Sign up with email and password
  */
 export async function signUp(email: string, password: string): Promise<User> {
-  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-  return userCredential.user;
+  try {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    return userCredential.user;
+  } catch (err) {
+    wrapAuthError(err);
+  }
+}
+
+/**
+ * Send a password reset email to the given address
+ */
+export async function sendPasswordReset(email: string): Promise<void> {
+  try {
+    await sendPasswordResetEmail(auth, email);
+  } catch (err) {
+    if (err && typeof err === "object" && "code" in err && typeof (err as FirebaseError).code === "string") {
+      const code = (err as FirebaseError).code;
+      if (code === "auth/user-not-found") {
+        // Don't reveal that the user doesn't exist; same message as success for security
+        return;
+      }
+      throw new Error(getAuthErrorMessage(code));
+    }
+    throw err;
+  }
 }
 
 /**
