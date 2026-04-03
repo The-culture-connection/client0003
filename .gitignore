@@ -80,6 +80,9 @@ dist/
 # Exception: Digital Curriculum app source lib (auth, firebase, etc.) must be committed for deploy
 !Digital Curriculum/src/app/lib/
 !Digital Curriculum/src/app/lib/**
+# Exception: Expansion Network Flutter app Dart sources
+!ExpansionNetworkApp/expansion_network/lib/
+!ExpansionNetworkApp/expansion_network/lib/**
 build/
 .next/
 out/

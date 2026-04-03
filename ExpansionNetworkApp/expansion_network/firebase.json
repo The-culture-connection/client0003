@@ -1,0 +1,1 @@
+{"flutter":{"platforms":{"android":{"default":{"projectId":"mortar-dev","appId":"1:260497170681:android:1aef05688db81f66990228","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"mortar-dev","configurations":{"android":"1:260497170681:android:1aef05688db81f66990228","ios":"1:260497170681:ios:6bf558c02e05d9da990228"}}}}}}
