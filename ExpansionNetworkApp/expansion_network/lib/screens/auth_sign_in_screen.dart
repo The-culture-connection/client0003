@@ -102,8 +102,8 @@ class _AuthSignInScreenState extends State<AuthSignInScreen> {
                       : const Text('Sign in'),
                 ),
                 TextButton(
-                  onPressed: () => context.push('/auth/sign-up'),
-                  child: const Text('Need an account? Sign up'),
+                  onPressed: () => context.push('/auth/claim'),
+                  child: const Text('Have an invite? Claim account'),
                 ),
               ],
             ),

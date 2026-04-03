@@ -147,7 +147,7 @@ export function InPersonCohortCsvImport() {
     try {
       const n = await runImport(emails, cohortId);
       setMessage(
-        `Imported ${n} email(s) into ${EXPANSION_COHORT_EMAILS_COLLECTION} with cohort_id “${cohortId}”. They can open the Expansion Network app, sign in (or create a password if new), and complete onboarding.`,
+        `Imported ${n} email(s) into ${EXPANSION_COHORT_EMAILS_COLLECTION} with cohort_id “${cohortId}”. Alumni network access still requires an eligibleUsers record and (for first-time users) an invite code from the Expansion invites tab.`,
       );
       setPreviewCount(n);
       form.reset();
@@ -174,7 +174,10 @@ export function InPersonCohortCsvImport() {
         . Alumni authenticate in the app (already signed in, or email + password), then continue to
         onboarding. Anyone whose email is <strong>not</strong> on this list cannot use the app and
         sees the standard “not part of the alumni network” message — including curriculum-only
-        accounts that were never added here.
+        accounts that were never added here. If someone must use a new Firebase account with the
+        same email, delete the field{" "}
+        <code className="text-xs bg-muted px-1 rounded">expansion_linked_firebase_uid</code> on
+        their roster document in Firestore first.
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-4">

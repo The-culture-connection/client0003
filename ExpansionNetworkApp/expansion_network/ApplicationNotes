@@ -8,13 +8,21 @@
 
 ## Authentication
 
-- **Provider:** Firebase Auth — email / password.
-- **Landing:** `/` — Create account → `/auth/sign-up`, Sign in → `/auth/sign-in`.
+- **Provider:** Firebase Auth — email / password. **First-time alumni access** uses a **one-time invite code** (Cloud Function `claimInviteAndCreateAccount`) then `signInWithCustomToken`; **returning users** sign in with email/password only.
+- **Landing:** `/` — **Claim with invite** → `/auth/claim`, Sign in → `/auth/sign-in`.
+- **Server gate:** After every sign-in, `AuthController` calls Cloud Function **`initializeUserSession`** (region `us-central1`). Access requires `eligibleUsers/{normalizedEmail}` with `networkAccess == true`. Auth alone or `users/{uid}` alone does **not** grant access.
 - **Routing:** `AuthController` + `GoRouter` redirect:
   - Signed out users are limited to `/` and `/auth/*`. `/onboarding` requires sign-in.
-  - **New sign-up** navigates to `/onboarding` (not `/home`).
+  - After a successful claim or login, users who still need profile data go to `/onboarding` (not `/home`).
   - Signed-in users without completed onboarding are sent to `/onboarding` when opening shell routes.
-  - **Profile gate:** `needsExpansionOnboarding` is `false` if `expansionOnboardingComplete == true` **or** `onboarding_status == 'complete'` (curriculum web completion).
+  - **Profile gate:** `needsExpansionOnboarding` is `false` if `profileCreated == true` **and** `onboardingComplete == true`, or (legacy) `expansionOnboardingComplete == true`, or `onboarding_status == 'complete'` (curriculum web completion).
+
+### How the feature works (invite + session)
+
+- **Eligible roster:** Admins maintain `eligibleUsers/{normalizedEmail}` (and optional `cohortId`) via Mortar web **Admin → Expansion invites** (callable `createOrUpdateEligibleUser`, `generateInviteCode`, `bulkUploadEligibleUsers`, `promoteToDigitalCurriculumAlumni`). Invite documents live in `inviteCodes/{inviteId}`; `eligibleUsers.latestInviteCodeId` points at the **current** code. Generating a new code **revokes** the previous invite doc (`revoked: true`).
+- **Claim flow (`/auth/claim`):** User submits email, invite code, password. The callable validates eligibility, network access, expiry, used/revoked state, and code match; creates Firebase Auth if the email has no account; otherwise returns **duplicate account** so the client directs them to sign-in. On success, Firestore updates invite (`used`), eligible (`linkedUid`, `accountClaimed`, `claimedAt`), and `users/{uid}`; client signs in with the returned custom token.
+- **Login flow:** Email/password sign-in → `initializeUserSession` syncs `role`, `networkAccess`, `normalizedEmail`, `lastLoginAt` into `users/{uid}` and returns `READY_FOR_HOME` vs `REQUIRES_ONBOARDING` vs `UNAUTHORIZED` (wrong or no eligible row, or student without network access).
+- **Legacy cohort CSV:** `expansion_cohort_emails` import still sets cohort hints; it does **not** replace `eligibleUsers` for network authorization. See repo root `EXPANSION_INVITE_AUTH.md`.
 
 ### How onboarding works (7 steps, mirrors Digital Curriculum)
 
@@ -53,6 +61,8 @@ On **first create** (`set`), the app also writes default nested structures so do
 | `profile_completed` | bool | `true` |
 | `expansionOnboardingComplete` | bool | `true` (Expansion app gate) |
 | `expansionOnboardingCompletedAt` | timestamp | |
+| `profileCreated` | bool | `true` when onboarding finished (aligned with session callable) |
+| `onboardingComplete` | bool | `true` when onboarding finished |
 | `updated_at` | timestamp | Server |
 | `display_name` | null | On create |
 | `photo_url` | null | On create |
@@ -78,7 +88,9 @@ On **first create** (`set`), the app also writes default nested structures so do
 
 ## Security rules note
 
-See repo root `firestore.rules` — `users/{userId}` **read** is allowed for any **authenticated** user so the profile modal can load other members’ `users/{uid}` docs (subcollections like certificates stay owner-only). Create/update still require owner match where applicable. Feed rules: `feed_posts` (author-owned post updates; anyone signed in can create likes/replies on subcollections); `events` updates for registration allow only `registered_users`, `updated_at`, and `available_spots` when not admin.
+See repo root `firestore.rules` — currently **development-wide** open rules on a date predicate for the shared project. **`eligibleUsers` and `inviteCodes` must not be writable from the client** in production; use Admin SDK in Cloud Functions only. Merging production rules must account for the digital curriculum web app in the same database. Details: `EXPANSION_INVITE_AUTH.md`.
+
+Intended direction: `users/{userId}` **read** for any **authenticated** user (profile modal); owner write; feed/events rules as before.
 
 ## Development: Hot Restart vs Firebase (Android)
 

@@ -3,8 +3,8 @@ import 'package:go_router/go_router.dart';
 
 import '../auth/auth_controller.dart';
 import '../screens/admin_events_screen.dart';
+import '../screens/auth_claim_screen.dart';
 import '../screens/auth_sign_in_screen.dart';
-import '../screens/auth_sign_up_screen.dart';
 import '../screens/chat_room_screen.dart';
 import '../screens/direct_chat_screen.dart';
 import '../screens/create_post_screen.dart';
@@ -68,8 +68,8 @@ GoRouter createAppRouter(AuthController auth) {
         builder: (context, state) => const AuthSignInScreen(),
       ),
       GoRoute(
-        path: '/auth/sign-up',
-        builder: (context, state) => const AuthSignUpScreen(),
+        path: '/auth/claim',
+        builder: (context, state) => const AuthClaimScreen(),
       ),
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,

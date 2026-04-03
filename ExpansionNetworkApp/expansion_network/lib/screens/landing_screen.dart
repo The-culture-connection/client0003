@@ -82,8 +82,8 @@ class _LandingScreenState extends State<LandingScreen> {
                   backgroundColor: AppColors.primary,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                onPressed: () => context.push('/auth/sign-up'),
-                child: const Text('Create account'),
+                onPressed: () => context.push('/auth/claim'),
+                child: const Text('Claim with invite'),
               ),
               const SizedBox(height: 12),
               OutlinedButton(

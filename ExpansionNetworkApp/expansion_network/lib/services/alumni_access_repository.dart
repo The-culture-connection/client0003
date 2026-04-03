@@ -103,4 +103,38 @@ class AlumniAccessRepository {
       provisionedCohortId: cohortId,
     );
   }
+
+  /// Reserves [emailLower] for [uid] on `expansion_cohort_emails/{email}`.
+  ///
+  /// Returns `false` if another uid already claimed this email (duplicate mobile profile).
+  /// Admins can clear [kCohortEmailFieldLinkedFirebaseUid] in Firestore if a user must re-link after Auth reset.
+  Future<bool> claimExpansionCohortEmailForUid({
+    required String emailLower,
+    required String uid,
+  }) async {
+    final ref =
+        _db.collection(kExpansionCohortEmailsCollection).doc(emailLower);
+    try {
+      return await _db.runTransaction<bool>((transaction) async {
+        final snap = await transaction.get(ref);
+        if (!snap.exists) return false;
+        final linked =
+            snap.data()?[kCohortEmailFieldLinkedFirebaseUid] as String?;
+        if (linked != null && linked.isNotEmpty && linked != uid) {
+          return false;
+        }
+        transaction.set(
+          ref,
+          {
+            kCohortEmailFieldLinkedFirebaseUid: uid,
+            'expansion_linked_at': FieldValue.serverTimestamp(),
+          },
+          SetOptions(merge: true),
+        );
+        return true;
+      });
+    } catch (_) {
+      return false;
+    }
+  }
 }

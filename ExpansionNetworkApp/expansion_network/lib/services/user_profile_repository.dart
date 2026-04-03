@@ -19,6 +19,34 @@ class UserProfileRepository {
   CollectionReference<Map<String, dynamic>> get _users =>
       _db.collection('users');
 
+  /// Records the first time this Firebase user passes the Expansion app gate (mobile app “account exists”).
+  ///
+  /// Idempotent: [kUserFieldExpansionMobileAppAccountCreatedAt] is only set when the flag was previously unset.
+  Future<void> recordExpansionMobileAppGatePassed({
+    required String uid,
+    String? email,
+  }) async {
+    final ref = _users.doc(uid);
+    await _db.runTransaction((transaction) async {
+      final snap = await transaction.get(ref);
+      final alreadyCreated =
+          snap.data()?[kUserFieldExpansionMobileAppAccountCreated] == true;
+      final payload = <String, dynamic>{
+        'uid': uid,
+        kUserFieldExpansionMobileAppAccountCreated: true,
+        'updated_at': FieldValue.serverTimestamp(),
+      };
+      if (email != null && email.trim().isNotEmpty) {
+        payload['email'] = email.trim();
+      }
+      if (!alreadyCreated) {
+        payload[kUserFieldExpansionMobileAppAccountCreatedAt] =
+            FieldValue.serverTimestamp();
+      }
+      transaction.set(ref, payload, SetOptions(merge: true));
+    });
+  }
+
   Future<Map<String, dynamic>?> getUserDoc(String uid) async {
     final snap = await _users.doc(uid).get();
     return snap.data();
@@ -39,6 +67,9 @@ class UserProfileRepository {
   Future<bool> needsExpansionOnboarding(String uid) async {
     final data = await getUserDoc(uid);
     if (data == null) return true;
+    if (data['onboardingComplete'] == true && data['profileCreated'] == true) {
+      return false;
+    }
     if (data['expansionOnboardingComplete'] == true) return false;
     if (data['onboarding_status'] == 'complete') return false;
     return true;
@@ -122,6 +153,8 @@ class UserProfileRepository {
       'profile_completed': true,
       'expansionOnboardingComplete': true,
       'expansionOnboardingCompletedAt': FieldValue.serverTimestamp(),
+      'profileCreated': true,
+      'onboardingComplete': true,
       'updated_at': FieldValue.serverTimestamp(),
       'expansion_app_registered': true,
       if (!alreadyAppRegistered)

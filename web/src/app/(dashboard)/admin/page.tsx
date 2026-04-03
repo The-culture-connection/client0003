@@ -11,11 +11,13 @@ import {
   Calendar,
   Award,
   UserPlus,
+  KeyRound,
 } from "lucide-react";
 import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { InPersonCohortCsvImport } from "@/components/admin/InPersonCohortCsvImport";
+import { EligibleUsersAdminPanel } from "@/components/admin/EligibleUsersAdminPanel";
 
 function isAdminUser(roles: string[] | undefined) {
   const r = roles ?? [];
@@ -59,6 +61,10 @@ export default function AdminDashboard() {
           <TabsTrigger value="in-person-cohort" className="gap-1">
             <UserPlus className="w-3.5 h-3.5" />
             In-person cohort
+          </TabsTrigger>
+          <TabsTrigger value="expansion-eligible" className="gap-1">
+            <KeyRound className="w-3.5 h-3.5" />
+            Expansion invites
           </TabsTrigger>
         </TabsList>
 
@@ -167,6 +173,10 @@ export default function AdminDashboard() {
 
         <TabsContent value="in-person-cohort" className="mt-4">
           <InPersonCohortCsvImport />
+        </TabsContent>
+
+        <TabsContent value="expansion-eligible" className="mt-4">
+          <EligibleUsersAdminPanel />
         </TabsContent>
       </Tabs>
     </div>

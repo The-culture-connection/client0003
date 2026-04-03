@@ -4,27 +4,25 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
 import '../constants/alumni_network_constants.dart';
-import '../services/alumni_access_repository.dart';
+import '../services/expansion_session_service.dart';
 import '../services/user_profile_repository.dart';
 
-/// Listens to Firebase Auth, enforces in-person cohort access, and loads Expansion onboarding state.
+/// Firebase Auth + Cloud Function [initializeUserSession] drive routing.
 ///
-/// **Account routes:** (1) User already has a Firebase session (e.g. signed in on device) — no password
-/// step in this app; [AuthController] runs and sends them to onboarding when needed. (2) User is
-/// signed out — they use Create account / Sign in, then the same gate and onboarding apply.
+/// Routes: existing session → session init; new users → invite claim (callable) then custom token sign-in.
 class AuthController extends ChangeNotifier {
   AuthController({
     UserProfileRepository? profileRepository,
-    AlumniAccessRepository? alumniAccessRepository,
+    ExpansionSessionService? sessionService,
     FirebaseAuth? auth,
   })  : _profileRepository = profileRepository ?? UserProfileRepository(),
-        _alumniAccessRepository = alumniAccessRepository ?? AlumniAccessRepository(),
+        _sessionService = sessionService ?? ExpansionSessionService(),
         _auth = auth ?? FirebaseAuth.instance {
     _sub = _auth.authStateChanges().listen(_onAuthChanged);
   }
 
   final UserProfileRepository _profileRepository;
-  final AlumniAccessRepository _alumniAccessRepository;
+  final ExpansionSessionService _sessionService;
   final FirebaseAuth _auth;
   StreamSubscription<User?>? _sub;
 
@@ -33,24 +31,18 @@ class AuthController extends ChangeNotifier {
   bool? _needsExpansionOnboarding;
   String? _accessDeniedMessage;
 
-  /// Roles to write when creating `users/{uid}` in onboarding.
   List<String>? _expansionOnboardingRoles;
-
-  /// From `expansion_cohort_emails` when the user joined via in-person cohort CSV.
   String? _provisionedCohortId;
 
   User? get user => _user;
   bool get loading => _loading;
   bool? get needsExpansionOnboarding => _needsExpansionOnboarding;
 
-  /// Non-empty after access check passed; use when saving onboarding.
   List<String> get expansionOnboardingRoles =>
       List<String>.unmodifiable(_expansionOnboardingRoles ?? const <String>[]);
 
-  /// Cohort ID (admin cohort title) prefilled for onboarding; null for admin bypass.
   String? get provisionedCohortId => _provisionedCohortId;
 
-  /// One-shot message for UI after sign-in/sign-up was rejected.
   String? takeAccessDeniedMessage() {
     final m = _accessDeniedMessage;
     _accessDeniedMessage = null;
@@ -73,70 +65,82 @@ class AuthController extends ChangeNotifier {
     _provisionedCohortId = null;
     notifyListeners();
 
-    AlumniAccessResult access;
-    try {
-      access = await _alumniAccessRepository.evaluate(
-        uid: user.uid,
-        email: user.email,
-      );
-    } catch (e, st) {
-      debugPrint('AuthController: alumni access check failed: $e\n$st');
-      _accessDeniedMessage =
-          'Could not verify alumni access. Check your connection and try again.';
-      try {
-        await _auth.signOut();
-      } catch (_) {}
-      _user = null;
-      _needsExpansionOnboarding = null;
-      _expansionOnboardingRoles = null;
-      _provisionedCohortId = null;
-      _loading = false;
-      notifyListeners();
-      return;
-    }
-
-    if (!access.granted) {
-      _accessDeniedMessage = kAlumniNetworkAccessDeniedMessage;
-      _expansionOnboardingRoles = null;
-      _provisionedCohortId = null;
-      final existingProfile = await _profileRepository.getUserDoc(user.uid);
-      try {
-        if (existingProfile == null) {
-          try {
-            await user.delete();
-          } catch (_) {
-            await _auth.signOut();
-          }
-        } else {
-          await _auth.signOut();
-        }
-      } catch (e, st) {
-        debugPrint('AuthController: could not revoke session after access denial: $e\n$st');
-        await _auth.signOut();
-      }
-      _user = null;
-      _needsExpansionOnboarding = null;
-      _loading = false;
-      notifyListeners();
-      return;
-    }
-
-    _expansionOnboardingRoles = List<String>.from(access.rolesForUserProfile);
-    _provisionedCohortId = access.provisionedCohortId;
-
-    try {
-      _needsExpansionOnboarding =
-          await _profileRepository.needsExpansionOnboarding(user.uid);
-    } catch (e, st) {
-      debugPrint('AuthController: profile load failed: $e\n$st');
-      _needsExpansionOnboarding = true;
-    }
-
+    await _applySessionForUser(user);
     _loading = false;
     notifyListeners();
   }
 
-  /// Call after saving onboarding so router redirects without waiting on auth stream.
+  Future<void> _applySessionForUser(User user) async {
+    try {
+      final data = await _sessionService.initializeUserSession();
+      final state = data['state'] as String?;
+      final reason = data['reason'] as String?;
+
+      if (state == 'UNAUTHORIZED') {
+        _accessDeniedMessage = reason == 'no_network_access'
+            ? kSessionNoNetworkAccessMessage
+            : kSessionNotAuthorizedMessage;
+        await _revokeAfterDenial(user);
+        return;
+      }
+
+      final role = data['role'] as String?;
+      if (role != null && kExpansionNetworkAllowedRoles.contains(role)) {
+        _expansionOnboardingRoles = [role];
+      } else if (role != null) {
+        _expansionOnboardingRoles = [role];
+      }
+
+      final cohort = data['cohortId'];
+      _provisionedCohortId =
+          cohort is String && cohort.isNotEmpty ? cohort : null;
+
+      if (state == 'READY_FOR_HOME') {
+        _needsExpansionOnboarding = false;
+      } else if (state == 'REQUIRES_ONBOARDING') {
+        _needsExpansionOnboarding = true;
+      } else {
+        _needsExpansionOnboarding = true;
+      }
+
+      if (_needsExpansionOnboarding == false) {
+        final stillNeeds = await _profileRepository.needsExpansionOnboarding(
+          user.uid,
+        );
+        if (stillNeeds) {
+          _needsExpansionOnboarding = true;
+        }
+      }
+    } catch (e, st) {
+      debugPrint('AuthController: initializeUserSession failed: $e\n$st');
+      _accessDeniedMessage =
+          'Could not verify alumni network access. Check your connection, or ensure Cloud Functions are deployed (initializeUserSession).';
+      await _revokeAfterDenial(user);
+    }
+  }
+
+  Future<void> _revokeAfterDenial(User user) async {
+    _expansionOnboardingRoles = null;
+    _provisionedCohortId = null;
+    _needsExpansionOnboarding = null;
+    try {
+      final existingProfile = await _profileRepository.getUserDoc(user.uid);
+      if (existingProfile == null) {
+        try {
+          await user.delete();
+        } catch (_) {
+          await _auth.signOut();
+        }
+      } else {
+        await _auth.signOut();
+      }
+    } catch (e, st) {
+      debugPrint('AuthController: revoke after denial: $e\n$st');
+      await _auth.signOut();
+    }
+    _user = null;
+  }
+
   void markExpansionOnboardingComplete() {
     _needsExpansionOnboarding = false;
     notifyListeners();
@@ -148,8 +152,7 @@ class AuthController extends ChangeNotifier {
     _loading = true;
     notifyListeners();
     try {
-      _needsExpansionOnboarding =
-          await _profileRepository.needsExpansionOnboarding(u.uid);
+      await _applySessionForUser(u);
     } finally {
       _loading = false;
       notifyListeners();
