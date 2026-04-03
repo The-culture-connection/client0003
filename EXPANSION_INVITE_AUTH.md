@@ -55,7 +55,9 @@ First-time signup: **`/auth/claim`** → `claimInviteAndCreateAccount` → `sign
 
 ## Web admin
 
-Dashboard → **Expansion invites** tab (`EligibleUsersAdminPanel`) calls the admin callables. Ensure `web/src/lib/firebase.ts` uses `getFunctions(app, "us-central1")`.
+**Digital Curriculum (Mortar Admin Panel):** **Admin → App Access Hub** tab (`Digital Curriculum/src/app/components/admin/AppAccessHubPanel.tsx`) lists `eligibleUsers` + invite status from Firestore and calls the same admin callables. Uses `functions` from `Digital Curriculum/src/app/lib/firebase.ts` (`us-central1`).
+
+**Next.js (`web/`):** Dashboard → **Expansion invites** tab (`EligibleUsersAdminPanel`) calls the admin callables. Ensure `web/src/lib/firebase.ts` uses `getFunctions(app, "us-central1")`.
 
 ## Firestore rules and migration
 

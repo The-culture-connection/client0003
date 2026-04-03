@@ -35,6 +35,7 @@ import {
   Download,
   ShoppingBag,
   Pencil,
+  KeyRound,
 } from "lucide-react";
 import { useAuth } from "../components/auth/AuthProvider";
 import {
@@ -103,6 +104,7 @@ import {
   createLesson,
   type Curriculum,
 } from "../lib/curriculum";
+import { AppAccessHubPanel } from "../components/admin/AppAccessHubPanel";
 
 interface DirectMessage {
   id: string;
@@ -950,7 +952,7 @@ export function AdminPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList>
+        <TabsList className="flex flex-wrap h-auto gap-1">
           <TabsTrigger value="groups">
             <Users className="w-4 h-4 mr-2" />
             Groups
@@ -966,6 +968,10 @@ export function AdminPage() {
           <TabsTrigger value="admins">
             <UserCog className="w-4 h-4 mr-2" />
             Admins
+          </TabsTrigger>
+          <TabsTrigger value="app-access-hub">
+            <KeyRound className="w-4 h-4 mr-2" />
+            App Access Hub
           </TabsTrigger>
           <TabsTrigger value="messages">
             <MessageSquare className="w-4 h-4 mr-2" />
@@ -1741,6 +1747,11 @@ export function AdminPage() {
               </div>
             )}
           </Card>
+        </TabsContent>
+
+        {/* Expansion Network — eligible users & invite codes */}
+        <TabsContent value="app-access-hub" className="space-y-6">
+          <AppAccessHubPanel />
         </TabsContent>
 
         {/* Shop Tab */}
