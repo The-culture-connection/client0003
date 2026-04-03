@@ -1,9 +1,11 @@
 {
   "projects": {
-    "default": "mortar-9d29d",
+    "default": "mortar-dev",
+    "dev": "mortar-dev",
+    "expansion-dev": "mortar-dev",
     "stage": "mortar-stage",
     "production": "mortar-9d29d",
-    "expansion-dev": "mortar-dev"
+    "prod": "mortar-9d29d"
   },
   "targets": {},
   "etags": {}

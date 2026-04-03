@@ -34,12 +34,13 @@ App profile and synced gate fields: `uid`, `email`, `normalizedEmail`, `role`, `
 |----------|--------|---------|
 | `initializeUserSession` | Authenticated | Enforce eligibility; merge `users/{uid}`; return `READY_FOR_HOME` or `REQUIRES_ONBOARDING` or `UNAUTHORIZED`. |
 | `claimInviteAndCreateAccount` | Public | Validate latest invite; create Auth user if missing; mark invite used; return `customToken` or structured errors (`ALREADY_EXISTS`, etc.). |
+| `finalizeInviteClaim` | Authenticated | After `signInWithEmailAndPassword`, consumes the invite and links `eligibleUsers` / `users/{uid}` (for people who already had Firebase Auth). Idempotent if this user already consumed the invite. |
 | `createOrUpdateEligibleUser` | Admin | Upsert eligible user; optionally generate invite (not for Students by default). |
 | `generateInviteCode` | Admin | New code; revokes prior invite via `revoked: true` on old doc. |
 | `revokeInviteCode` | Admin | Mark invite revoked. |
 | `bulkUploadEligibleUsers` | Admin | Upsert many eligible rows (no auto-invite per row). |
 | `promoteToDigitalCurriculumAlumni` | Admin | Promote Student → Alumni; optional invite; sync `users/{linkedUid}` if present. |
-| `validateInviteCode` | Public | Read-only validation. |
+| `validateInviteCode` | Public | Read-only validation; when the invite is valid and unused, also returns **`authAccountExists`** so the app can show either “create password + confirm” or a **single** “sign in” password step. |
 
 Admin authorization: caller must have `Admin` or `superAdmin` on `users/{uid}` **or** on matching `eligibleUsers` by email.
 
@@ -55,9 +56,25 @@ First-time signup: **`/auth/claim`** → `claimInviteAndCreateAccount` → `sign
 
 ## Web admin
 
-**Digital Curriculum (Mortar Admin Panel):** **Admin → App Access Hub** tab (`Digital Curriculum/src/app/components/admin/AppAccessHubPanel.tsx`) lists `eligibleUsers` + invite status from Firestore and calls the same admin callables. Uses `functions` from `Digital Curriculum/src/app/lib/firebase.ts` (`us-central1`).
+**Digital Curriculum (Mortar Admin Panel):** **Admin → App Access Hub** tab (`Digital Curriculum/src/app/components/admin/AppAccessHubPanel.tsx`) lists `eligibleUsers` + invite status from Firestore and calls the same admin callables (no bulk JSON or promote-only forms; student rows can trigger **Alumni app invite** via `createOrUpdateEligibleUser` with role `Digital Curriculum Alumni` and `generateInvite: true`). **Graduation → Alumni Applications:** **Admit** on an accepted application runs curriculum admit, then the same eligible-user path and shows the plain invite code in a dismissible banner. Uses `functions` from `Digital Curriculum/src/app/lib/firebase.ts` (`us-central1`).
 
-**Next.js (`web/`):** Dashboard → **Expansion invites** tab (`EligibleUsersAdminPanel`) calls the admin callables. Ensure `web/src/lib/firebase.ts` uses `getFunctions(app, "us-central1")`.
+**Next.js (`web/`):** Dashboard → **Expansion invites** tab (`EligibleUsersAdminPanel`) provides **Eligible user + invite** only (save eligible user, regenerate invite). Bulk JSON and promote cards were removed for parity with the Digital Curriculum hub; use **Save eligible user** with role `Digital Curriculum Alumni` when needed. Ensure `web/src/lib/firebase.ts` uses `getFunctions(app, "us-central1")`.
+
+**Important:** These are **`onCall` (callable)** functions. The web clients must use **`httpsCallable(functions, "functionName")`** from `firebase/functions`. Do **not** invoke them with **`fetch("https://...cloudfunctions.net/functionName")`** — raw REST calls use the wrong wire format, confuse CORS/preflight, and omit the callable protocol. If you ever need a plain HTTP endpoint, deploy a separate `onRequest` handler and add explicit CORS there.
+
+## CORS and custom web hosts (e.g. Railway)
+
+Callable functions are invoked from the browser. **Gen 2** runs on **Cloud Run**. Two things matter:
+
+1. **`invoker: "public"`** on each `onCall` (see `defaultCallableOptions` in `functions/src/index.ts`). The **OPTIONS** preflight has **no** Google IAM identity; if Cloud Run only allows authenticated invokers, the edge returns **403** with **no CORS headers** → DevTools shows “No `Access-Control-Allow-Origin`”. Public invoker opens only the HTTP URL; your code still enforces **Firebase Auth** (`request.auth`) or admin checks.
+
+2. **`cors`** — explicit origins (full `https://…` URLs) plus a RegExp for `*.up.railway.app`. Add more hosts if you use a custom domain.
+
+**Redeploy after changing options:** `firebase deploy --only functions`.
+
+Also add your web origin under **Firebase Console → Authentication → Settings → Authorized domains**.
+
+**Manual IAM check (if it still fails after deploy):** Google Cloud Console → Cloud Run → select the service named like `createorupdateeligibleuser` → **Permissions** → ensure **allUsers** (or unauthenticated) has role **Cloud Run Invoker** (Firebase CLI normally sets this when `invoker: "public"` is in the deployed manifest).
 
 ## Firestore rules and migration
 

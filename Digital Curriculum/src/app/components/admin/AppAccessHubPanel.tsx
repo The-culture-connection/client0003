@@ -12,10 +12,13 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Badge } from "../ui/badge";
-import { Textarea } from "../ui/textarea";
 import { Checkbox } from "../ui/checkbox";
 import { Loader2, RefreshCw, KeyRound, Ban, UserPlus } from "lucide-react";
 import { db, functions } from "../../lib/firebase";
+import {
+  DIGITAL_CURRICULUM_ALUMNI_ROLE,
+  registerDigitalCurriculumAlumniEligible,
+} from "../../lib/expansionEligible";
 
 const ELIGIBLE = "eligibleUsers";
 const INVITES = "inviteCodes";
@@ -94,7 +97,6 @@ export function AppAccessHubPanel() {
   const [listError, setListError] = useState<string | null>(null);
   const [busyRow, setBusyRow] = useState<string | null>(null);
   const [formBusy, setFormBusy] = useState(false);
-  const [promoteBusy, setPromoteBusy] = useState<string | null>(null);
 
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<ExpansionCanonicalRole>("Alumni");
@@ -103,14 +105,6 @@ export function AppAccessHubPanel() {
   const [genInvite, setGenInvite] = useState(true);
   const [formMessage, setFormMessage] = useState<string | null>(null);
   const [lastPlainCode, setLastPlainCode] = useState<string | null>(null);
-
-  const [bulkJson, setBulkJson] = useState(
-    '[{"email":"user@example.com","role":"Alumni"}]',
-  );
-  const [bulkBusy, setBulkBusy] = useState(false);
-
-  const [promoteEmail, setPromoteEmail] = useState("");
-  const [promoteGenInvite, setPromoteGenInvite] = useState(false);
 
   const loadRows = useCallback(async () => {
     setLoadingList(true);
@@ -254,51 +248,29 @@ export function AppAccessHubPanel() {
     }
   };
 
-  const runPromoteStudent = async (emRaw: string, generateInviteAfter: boolean) => {
-    const em = emRaw.trim();
-    if (!em) {
-      alert("Enter an email to promote.");
-      return;
-    }
-    setPromoteBusy(em);
+  const handleStudentExpansionAlumniAccess = async (rowEmail: string) => {
+    setBusyRow(rowEmail);
+    setFormMessage(null);
+    setLastPlainCode(null);
     try {
-      const res = await callFn<{ code?: string }>("promoteToDigitalCurriculumAlumni", {
-        email: em,
-        generateInvite: generateInviteAfter,
+      const out = await registerDigitalCurriculumAlumniEligible(rowEmail, {
         expirationDays: Number(expDays) || 14,
+        source: "app_access_hub_student_row",
       });
-      if (res.data?.code) setLastPlainCode(res.data.code);
-      setFormMessage(`Promoted ${em} to Digital Curriculum Alumni.`);
-      setPromoteEmail("");
+      if (out.ok) {
+        if (out.code) setLastPlainCode(out.code);
+        setFormMessage(
+          `Saved as ${DIGITAL_CURRICULUM_ALUMNI_ROLE}: ${out.normalizedEmail ?? rowEmail.trim()}`,
+        );
+      } else {
+        alert(out.errorMessage ?? "Could not update eligible user.");
+      }
       await loadRows();
     } catch (e: unknown) {
       const err = e as { message?: string };
       alert(err.message ?? String(e));
     } finally {
-      setPromoteBusy(null);
-    }
-  };
-
-  const handlePromoteFromForm = () => void runPromoteStudent(promoteEmail, promoteGenInvite);
-
-  const handleBulk = async () => {
-    let users: { email: string; role: string; cohortId?: string }[];
-    try {
-      users = JSON.parse(bulkJson) as typeof users;
-    } catch {
-      alert("Invalid JSON.");
-      return;
-    }
-    setBulkBusy(true);
-    try {
-      const res = await callFn<{ written?: number }>("bulkUploadEligibleUsers", { users });
-      setFormMessage(`Bulk upsert: ${res.data?.written ?? 0} row(s).`);
-      await loadRows();
-    } catch (e: unknown) {
-      const err = e as { message?: string };
-      alert(err.message ?? String(e));
-    } finally {
-      setBulkBusy(false);
+      setBusyRow(null);
     }
   };
 
@@ -329,7 +301,8 @@ export function AppAccessHubPanel() {
         <h3 className="text-lg font-semibold text-foreground mb-1">Assign email &amp; role</h3>
         <p className="text-sm text-muted-foreground mb-4">
           Creates or updates <strong>eligibleUsers</strong>. Roles must match exactly. Invites are not generated for{" "}
-          <strong>Digital Curriculum Students</strong> unless you use bulk flow and generate separately.
+          <strong>Digital Curriculum Students</strong> by default; use the table action <strong>Alumni app invite</strong>{" "}
+          on a student row to grant Expansion access with an invite.
         </p>
         <div className="flex flex-wrap items-end gap-4">
           <div className="space-y-2 min-w-[220px] flex-1">
@@ -419,61 +392,6 @@ export function AppAccessHubPanel() {
           </Button>
         </div>
         {formMessage && <p className="text-sm mt-3 text-muted-foreground">{formMessage}</p>}
-      </Card>
-
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold text-foreground mb-2">Promote to Digital Curriculum Alumni</h3>
-        <p className="text-sm text-muted-foreground mb-4">
-          Updates roster role and network access. Existing Firebase accounts keep the same login.
-        </p>
-        <div className="flex flex-wrap items-end gap-4">
-          <div className="space-y-2 min-w-[220px] flex-1">
-            <Label htmlFor="hub-promote-email" className="text-foreground">
-              Email
-            </Label>
-            <Input
-              id="hub-promote-email"
-              type="email"
-              value={promoteEmail}
-              onChange={(e) => setPromoteEmail(e.target.value)}
-              className="bg-background"
-            />
-          </div>
-          <div className="flex items-center gap-2 pb-2">
-            <Checkbox
-              id="hub-promote-gen"
-              checked={promoteGenInvite}
-              onCheckedChange={(v) => setPromoteGenInvite(v === true)}
-            />
-            <Label htmlFor="hub-promote-gen" className="text-foreground font-normal cursor-pointer">
-              Generate invite after promotion
-            </Label>
-          </div>
-          <Button
-            onClick={handlePromoteFromForm}
-            disabled={!!promoteBusy || !promoteEmail.trim()}
-            variant="secondary"
-          >
-            {promoteBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Promote"}
-          </Button>
-        </div>
-      </Card>
-
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold text-foreground mb-2">Bulk JSON</h3>
-        <p className="text-sm text-muted-foreground mb-2">
-          Array of <code className="text-xs bg-muted px-1 rounded">{"{ email, role, cohortId? }"}</code> (max 500 per
-          call). Does not auto-generate invites.
-        </p>
-        <Textarea
-          value={bulkJson}
-          onChange={(e) => setBulkJson(e.target.value)}
-          rows={5}
-          className="font-mono text-sm bg-background"
-        />
-        <Button className="mt-2" variant="secondary" disabled={bulkBusy} onClick={() => void handleBulk()}>
-          {bulkBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Bulk upload"}
-        </Button>
       </Card>
 
       <Card className="p-6">
@@ -577,10 +495,10 @@ export function AppAccessHubPanel() {
                             size="sm"
                             variant="outline"
                             className="h-8"
-                            disabled={promoteBusy === r.email}
-                            onClick={() => void runPromoteStudent(r.email, false)}
+                            disabled={busyRow === r.email}
+                            onClick={() => void handleStudentExpansionAlumniAccess(r.email)}
                           >
-                            Promote
+                            Alumni app invite
                           </Button>
                         )}
                       </div>

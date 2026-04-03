@@ -105,6 +105,7 @@ import {
   type Curriculum,
 } from "../lib/curriculum";
 import { AppAccessHubPanel } from "../components/admin/AppAccessHubPanel";
+import { registerDigitalCurriculumAlumniEligible } from "../lib/expansionEligible";
 
 interface DirectMessage {
   id: string;
@@ -151,6 +152,11 @@ export function AdminPage() {
   const [loadingApplications, setLoadingApplications] = useState(false);
   const [admissionStatus, setAdmissionStatus] = useState<Record<string, boolean>>({});
   const [selectedTimes, setSelectedTimes] = useState<Record<string, string>>({});
+  /** Plain invite code after Admit → Expansion eligible user (copy from banner). */
+  const [alumniExpansionInvite, setAlumniExpansionInvite] = useState<{
+    email: string;
+    code: string;
+  } | null>(null);
 
   // Add Admin state
   const [adminEmail, setAdminEmail] = useState("");
@@ -1404,6 +1410,31 @@ export function AdminPage() {
 
         {/* Alumni Applications Tab */}
         <TabsContent value="graduation" className="space-y-6">
+          {alumniExpansionInvite && (
+            <Card className="p-4 border-amber-500/40 bg-amber-500/5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    Expansion Network invite for {alumniExpansionInvite.email}
+                  </p>
+                  <p className="text-lg font-mono tracking-widest mt-1 break-all">
+                    {alumniExpansionInvite.code}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Copy now — the code is also stored in Firestore. Dismiss when done.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setAlumniExpansionInvite(null)}
+                >
+                  Dismiss
+                </Button>
+              </div>
+            </Card>
+          )}
           <div>
             <h2 className="text-xl font-semibold text-foreground mb-4">
               Alumni Applications
@@ -1603,14 +1634,25 @@ export function AdminPage() {
                           <Button
                             size="sm"
                             onClick={async () => {
-                              if (!application.userId) return;
+                              if (!application.userId || !application.userEmail?.trim()) return;
                               try {
                                 await admitUserToAlumni(application.userId);
-                                alert("User has been admitted and upgraded to Digital Curriculum Alumni!");
-                                // Reload applications and check admission status
+                                const eligible = await registerDigitalCurriculumAlumniEligible(
+                                  application.userEmail.trim(),
+                                  { source: "alumni_application_admit", expirationDays: 14 },
+                                );
+                                if (eligible.ok && eligible.code) {
+                                  setAlumniExpansionInvite({
+                                    email: application.userEmail.trim(),
+                                    code: eligible.code,
+                                  });
+                                } else if (!eligible.ok) {
+                                  alert(
+                                    `User upgraded to alumni in the curriculum, but Expansion roster failed: ${eligible.errorMessage ?? "Unknown error"}. Add them in App Access Hub if needed.`,
+                                  );
+                                }
                                 const updated = await getGraduationApplications();
                                 setGraduationApplications(updated);
-                                // Refresh admission status
                                 const userInfo = await getUserInfo(application.userId);
                                 setAdmissionStatus((prev) => ({
                                   ...prev,

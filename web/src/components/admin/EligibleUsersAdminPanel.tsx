@@ -15,7 +15,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Textarea } from "@/components/ui/textarea";
 
 const ROLES = [
   "superAdmin",
@@ -34,13 +33,6 @@ export function EligibleUsersAdminPanel() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [lastCode, setLastCode] = useState<string | null>(null);
-
-  const [bulkJson, setBulkJson] = useState(
-    '[{"email":"user@example.com","role":"Alumni"}]',
-  );
-
-  const [promoteEmail, setPromoteEmail] = useState("");
-  const [promoteGenInvite, setPromoteGenInvite] = useState(false);
 
   const run = async (fn: string, data: Record<string, unknown>) => {
     setBusy(true);
@@ -84,32 +76,6 @@ export function EligibleUsersAdminPanel() {
     }
   };
 
-  const handleBulk = async () => {
-    let users: { email: string; role: string; cohortId?: string }[];
-    try {
-      users = JSON.parse(bulkJson) as typeof users;
-    } catch {
-      setMsg("Invalid JSON");
-      return;
-    }
-    const out = await run("bulkUploadEligibleUsers", { users });
-    if (out?.written != null) {
-      setMsg(`Bulk upsert: ${out.written as number} row(s).`);
-    }
-  };
-
-  const handlePromote = async () => {
-    const out = await run("promoteToDigitalCurriculumAlumni", {
-      email: promoteEmail.trim(),
-      generateInvite: promoteGenInvite,
-      expirationDays: Number(expDays) || 14,
-    });
-    if (out?.ok) {
-      setMsg("Promoted to Digital Curriculum Alumni.");
-      if (out.code) setLastCode(out.code as string);
-    }
-  };
-
   return (
     <div className="space-y-6 max-w-3xl">
       <Card className="p-6 border-border bg-card">
@@ -117,7 +83,9 @@ export function EligibleUsersAdminPanel() {
         <p className="text-sm text-muted-foreground mb-4">
           Upserts <code className="text-xs bg-muted px-1">eligibleUsers/&lt;email&gt;</code>.
           Roles must match exactly (case-sensitive). Invites are not generated for{" "}
-          <strong>Digital Curriculum Students</strong> by default.
+          <strong>Digital Curriculum Students</strong> by default. Curriculum graduation
+          admits use the Digital Curriculum admin flow with role{" "}
+          <strong>Digital Curriculum Alumni</strong> + generated code.
         </p>
         <div className="space-y-3">
           <div>
@@ -185,45 +153,6 @@ export function EligibleUsersAdminPanel() {
             </Button>
           </div>
         </div>
-      </Card>
-
-      <Card className="p-6 border-border bg-card">
-        <h2 className="text-lg font-semibold mb-2">Bulk JSON</h2>
-        <p className="text-sm text-muted-foreground mb-2">
-          Array of <code className="text-xs">{"{ email, role, cohortId? }"}</code> (max 500).
-        </p>
-        <Textarea
-          value={bulkJson}
-          onChange={(e) => setBulkJson(e.target.value)}
-          rows={6}
-          className="font-mono text-sm"
-        />
-        <Button className="mt-2" disabled={busy} onClick={() => void handleBulk()}>
-          Bulk upload
-        </Button>
-      </Card>
-
-      <Card className="p-6 border-border bg-card">
-        <h2 className="text-lg font-semibold mb-2">
-          Promote Digital Curriculum Students → Digital Curriculum Alumni
-        </h2>
-        <Input
-          value={promoteEmail}
-          onChange={(e) => setPromoteEmail(e.target.value)}
-          placeholder="Email"
-          className="mb-2"
-        />
-        <div className="flex items-center gap-2 mb-2">
-          <Checkbox
-            id="pg"
-            checked={promoteGenInvite}
-            onCheckedChange={(v) => setPromoteGenInvite(v === true)}
-          />
-          <Label htmlFor="pg">Generate invite after promotion</Label>
-        </div>
-        <Button disabled={busy} onClick={() => void handlePromote()}>
-          Promote
-        </Button>
       </Card>
 
       {msg && <p className="text-sm text-foreground">{msg}</p>}

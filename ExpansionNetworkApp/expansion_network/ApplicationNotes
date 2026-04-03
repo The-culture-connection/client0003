@@ -19,8 +19,8 @@
 
 ### How the feature works (invite + session)
 
-- **Eligible roster:** Admins maintain `eligibleUsers/{normalizedEmail}` (and optional `cohortId`) via Mortar web **Admin → Expansion invites** (callable `createOrUpdateEligibleUser`, `generateInviteCode`, `bulkUploadEligibleUsers`, `promoteToDigitalCurriculumAlumni`). Invite documents live in `inviteCodes/{inviteId}`; `eligibleUsers.latestInviteCodeId` points at the **current** code. Generating a new code **revokes** the previous invite doc (`revoked: true`).
-- **Claim flow (`/auth/claim`):** User submits email, invite code, password. The callable validates eligibility, network access, expiry, used/revoked state, and code match; creates Firebase Auth if the email has no account; otherwise returns **duplicate account** so the client directs them to sign-in. On success, Firestore updates invite (`used`), eligible (`linkedUid`, `accountClaimed`, `claimedAt`), and `users/{uid}`; client signs in with the returned custom token.
+- **Eligible roster:** Admins maintain `eligibleUsers/{normalizedEmail}` (and optional `cohortId`) via Mortar web **Admin → Expansion invites** (Next.js: `createOrUpdateEligibleUser`, `generateInviteCode`) and Digital Curriculum **Admin → App Access Hub** (same callables; per-student **Alumni app invite** uses role `Digital Curriculum Alumni` with a generated code). **Alumni Applications → Admit** also calls `createOrUpdateEligibleUser` with that role after curriculum admit. Server still exposes `bulkUploadEligibleUsers` and `promoteToDigitalCurriculumAlumni` for scripts or future tooling; the listed web UIs no longer surface bulk JSON or promote-only forms. Invite documents live in `inviteCodes/{inviteId}`; `eligibleUsers.latestInviteCodeId` points at the **current** code. Generating a new code **revokes** the previous invite doc (`revoked: true`).
+- **Claim flow (`/auth/claim`):** Two steps: (1) **Email + invite code** → `validateInviteCode` (returns `authAccountExists`). (2a) **No Auth account yet:** password + confirm → `claimInviteAndCreateAccount` → `signInWithCustomToken`. (2b) **Auth account already exists:** **one** password field → `signInWithEmailAndPassword` → `finalizeInviteClaim` to consume the invite and link Firestore. **Edit email or code** returns to step 1. Race: if step 2a hits `ALREADY_EXISTS`, the UI switches to the single-password path.
 - **Login flow:** Email/password sign-in → `initializeUserSession` syncs `role`, `networkAccess`, `normalizedEmail`, `lastLoginAt` into `users/{uid}` and returns `READY_FOR_HOME` vs `REQUIRES_ONBOARDING` vs `UNAUTHORIZED` (wrong or no eligible row, or student without network access).
 - **Legacy cohort CSV:** `expansion_cohort_emails` import still sets cohort hints; it does **not** replace `eligibleUsers` for network authorization. See repo root `EXPANSION_INVITE_AUTH.md`.
 
@@ -99,5 +99,17 @@ If you see:
 `PlatformException(channel-error, Unable to establish connection on channel: ... FirebaseCoreHostApi.initializeCore ...)`
 
 that usually happens after **Hot Restart**. Stop the app completely, then **Run** again (cold start). Prefer **Hot Reload** for UI work.
+
+The same **Pigeon channel** break can appear when calling **Cloud Functions** (e.g. `validateInviteCode`, `initializeUserSession`):
+
+`Unable to establish connection on channel: '...CloudFunctionsHostApi.call'`
+
+That is **not** a bad invite or “stranger” flow logic — the Dart ↔ Android **MethodChannel** for `cloud_functions` is broken. Typical causes:
+
+1. **Hot Restart (`R`)** on Android after Firebase/plugins loaded — use **Hot Reload (`r`)** only, or fully **stop** the app and **Run** again.
+2. **APK never rebuilt** after adding `cloud_functions` — run **`flutter clean`**, **`flutter pub get`**, uninstall the app from the device/emulator, then **Run** so native `cloud_functions` code is packaged.
+3. Rare emulator glitches — cold-boot the AVD or use a physical device.
+
+Claim/sign-in screens map this to a short message via `userMessageForFirebaseCallableError` in `expansion_session_service.dart` (detection includes `cloud_functions_platform_interface` / `unknown` callable errors).
 
 `lib/main.dart` skips `Firebase.initializeApp` when `Firebase.apps` is already populated, and logs a hint if init fails.

@@ -113,8 +113,9 @@ class AuthController extends ChangeNotifier {
       }
     } catch (e, st) {
       debugPrint('AuthController: initializeUserSession failed: $e\n$st');
-      _accessDeniedMessage =
-          'Could not verify alumni network access. Check your connection, or ensure Cloud Functions are deployed (initializeUserSession).';
+      _accessDeniedMessage = firebaseNativeBridgeLostUserMessage(e) ??
+          'Could not verify alumni network access. Check your connection, or '
+          'ensure Cloud Functions are deployed (initializeUserSession).';
       await _revokeAfterDenial(user);
     }
   }
