@@ -57,6 +57,22 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   static const _pageCount = 7;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final auth = context.read<AuthController>();
+      final cid = auth.provisionedCohortId;
+      if (cid != null && cid.isNotEmpty) {
+        setState(() {
+          _cohortId.text = cid;
+          _notInCohort = false;
+        });
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _pageController.dispose();
     _firstName.dispose();
@@ -190,7 +206,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       _error = null;
     });
     try {
+      final roles = context.read<AuthController>().expansionOnboardingRoles;
+      if (roles.isEmpty) {
+        setState(() => _error =
+            'Your alumni roles could not be loaded. Sign out and sign in again, or contact support.');
+        return;
+      }
       await UserProfileRepository().saveExpansionProfile(
+        roles: roles,
         firstName: _firstName.text.trim(),
         lastName: _lastName.text.trim(),
         notInCohort: _notInCohort,

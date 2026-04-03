@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import '../constants/alumni_network_constants.dart';
 import '../profile/profile_utils.dart';
+import 'alumni_access_repository.dart';
 
 /// Persists `users/{uid}` using the **digital curriculum** profile shape (snake_case fields).
 class UserProfileRepository {
@@ -44,9 +46,10 @@ class UserProfileRepository {
 
   /// Full save after onboarding — matches curriculum `users/{uid}` schema.
   ///
-  /// **New document:** sets `roles: ['Alumni']`, default `badges`, `membership`, `points`, `permissions`.
+  /// **New document:** sets [roles] (from alumni allowlist), default `badges`, `membership`, `points`, `permissions`.
   /// **Existing document:** updates without `roles` or `created_at`.
   Future<void> saveExpansionProfile({
+    required List<String> roles,
     required String firstName,
     required String lastName,
     required bool notInCohort,
@@ -72,8 +75,17 @@ class UserProfileRepository {
     if (user == null) throw StateError('Not signed in');
     final uid = user.uid;
     final email = user.email ?? '';
+    final sanitizedRoles = AlumniAccessRepository.filterAllowedRoles(roles);
+    if (sanitizedRoles.isEmpty) {
+      throw StateError(
+        'No allowed Expansion Network roles. Expected one of: '
+        '${kExpansionNetworkAllowedRoles.join(", ")}.',
+      );
+    }
     final ref = _users.doc(uid);
     final existing = await ref.get();
+    final alreadyAppRegistered =
+        existing.exists && existing.data()?['expansion_app_registered'] == true;
 
     final profileLinks = <String, dynamic>{
       'linkedin': linkedin.trim(),
@@ -111,6 +123,9 @@ class UserProfileRepository {
       'expansionOnboardingComplete': true,
       'expansionOnboardingCompletedAt': FieldValue.serverTimestamp(),
       'updated_at': FieldValue.serverTimestamp(),
+      'expansion_app_registered': true,
+      if (!alreadyAppRegistered)
+        'expansion_app_registered_at': FieldValue.serverTimestamp(),
     };
 
     if (!notInCohort) {
@@ -137,13 +152,16 @@ class UserProfileRepository {
         'permissions': <String, dynamic>{
           'hidden_videos': <String>[],
         },
-        'roles': <String>['Alumni'],
+        'roles': sanitizedRoles,
         'created_at': FieldValue.serverTimestamp(),
       });
     } else {
       final updatePayload = Map<String, dynamic>.from(payload);
       if (notInCohort) {
         updatePayload['cohort_id'] = FieldValue.delete();
+      }
+      if (alreadyAppRegistered) {
+        updatePayload.remove('expansion_app_registered_at');
       }
       await ref.update(updatePayload);
     }

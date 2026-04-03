@@ -1,10 +1,54 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
+import '../auth/auth_controller.dart';
 import '../theme/app_theme.dart';
 
-class LandingScreen extends StatelessWidget {
+class LandingScreen extends StatefulWidget {
   const LandingScreen({super.key});
+
+  @override
+  State<LandingScreen> createState() => _LandingScreenState();
+}
+
+class _LandingScreenState extends State<LandingScreen> {
+  AuthController? _auth;
+
+  @override
+  void initState() {
+    super.initState();
+    _auth = context.read<AuthController>();
+    _auth!.addListener(_onAuthChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _showAccessDeniedIfNeeded());
+  }
+
+  @override
+  void dispose() {
+    _auth?.removeListener(_onAuthChanged);
+    super.dispose();
+  }
+
+  void _onAuthChanged() => _showAccessDeniedIfNeeded();
+
+  void _showAccessDeniedIfNeeded() {
+    final auth = context.read<AuthController>();
+    final msg = auth.takeAccessDeniedMessage();
+    if (!mounted || msg == null) return;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Sign-in unavailable'),
+        content: Text(msg),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
