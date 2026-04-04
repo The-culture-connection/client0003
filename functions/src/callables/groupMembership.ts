@@ -2,6 +2,7 @@
  * joinGroup / leaveGroup — only server-side updates to GroupMembers / PendingMembers.
  */
 import {initializeApp, getApps} from "firebase-admin/app";
+import {getAuth} from "firebase-admin/auth";
 import {getFirestore, FieldValue} from "firebase-admin/firestore";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
 import {z} from "zod";
@@ -11,6 +12,41 @@ if (getApps().length === 0) {
 }
 
 const db = getFirestore();
+const auth = getAuth();
+
+const MOBILE_GROUPS = "groups_mobile";
+
+async function isStaffUid(uid: string): Promise<boolean> {
+  try {
+    const u = await auth.getUser(uid);
+    const roles = (u.customClaims?.roles as string[]) || [];
+    return roles.includes("Admin") || roles.includes("superAdmin");
+  } catch {
+    return false;
+  }
+}
+
+async function deleteVotesUnder(parent: FirebaseFirestore.DocumentReference): Promise<void> {
+  const snap = await parent.collection("votes").get();
+  for (const d of snap.docs) {
+    await d.ref.delete();
+  }
+}
+
+async function deleteMobileGroupDeep(groupId: string): Promise<void> {
+  const groupRef = db.collection(MOBILE_GROUPS).doc(groupId);
+  const threads = await groupRef.collection("threads").get();
+  for (const t of threads.docs) {
+    const comments = await t.ref.collection("comments").get();
+    for (const c of comments.docs) {
+      await deleteVotesUnder(c.ref);
+      await c.ref.delete();
+    }
+    await deleteVotesUnder(t.ref);
+    await t.ref.delete();
+  }
+  await groupRef.delete();
+}
 
 const callableCors = [
   /^https:\/\/[\w-]+\.up\.railway\.app$/,
@@ -100,6 +136,41 @@ export const leaveGroup = onCall(
       PendingMembers: FieldValue.arrayRemove(uid),
     });
 
+    return {success: true};
+  }
+);
+
+const deleteMobileGroupSchema = z.object({
+  groupId: z.string().min(1),
+});
+
+/** Creator or staff (token claims): deletes `groups_mobile` doc and all `threads` / `comments` / `votes`. */
+export const deleteMobileGroup = onCall(
+  {region: "us-central1", invoker: "public", cors: callableCors},
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) {
+      throw new HttpsError("unauthenticated", "Sign in required");
+    }
+    const parsed = deleteMobileGroupSchema.safeParse(request.data);
+    if (!parsed.success) {
+      throw new HttpsError("invalid-argument", "groupId required");
+    }
+    const {groupId} = parsed.data;
+    const ref = db.collection(MOBILE_GROUPS).doc(groupId);
+    const snap = await ref.get();
+    if (!snap.exists) {
+      throw new HttpsError("not-found", "Group not found");
+    }
+    const createdBy = snap.data()?.createdBy as string | undefined;
+    const staff = await isStaffUid(uid);
+    if (createdBy !== uid && !staff) {
+      throw new HttpsError(
+        "permission-denied",
+        "Only the community creator or staff can delete this group"
+      );
+    }
+    await deleteMobileGroupDeep(groupId);
     return {success: true};
   }
 );

@@ -1,6 +1,10 @@
 /// Port of [UI Basis/src/app/data/mockData.ts]
 library;
 
+import 'mock_group.dart';
+
+export 'mock_group.dart';
+
 class MockUser {
   const MockUser({
     required this.id,
@@ -55,22 +59,6 @@ class MockPost {
   final String timestamp;
   final int likes;
   final int comments;
-}
-
-class MockGroup {
-  const MockGroup({
-    required this.id,
-    required this.name,
-    required this.description,
-    required this.members,
-    required this.image,
-  });
-
-  final String id;
-  final String name;
-  final String description;
-  final int members;
-  final String image;
 }
 
 class MockEvent {
@@ -180,30 +168,48 @@ final mockPosts = [
 final mockGroups = [
   MockGroup(
     id: '1',
-    name: 'Tech Innovators',
+    name: 'Tech Entrepreneurs',
     description:
-        'A community for alumni working in tech and innovation. Share ideas, collaborate, and grow.',
-    members: 1247,
+        'A community for tech entrepreneurs to connect, collaborate, and share insights on building successful startups.',
+    members: 156,
+    category: 'Industry',
+    messagesToday: 45,
+    joined: true,
     image:
         'https://images.unsplash.com/photo-1582005450386-52b25f82d9bb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080',
   ),
   MockGroup(
     id: '2',
-    name: 'Product Leaders',
-    description:
-        'For product managers and leaders to share best practices and insights.',
-    members: 856,
+    name: 'Class of 2024',
+    description: 'Stay connected with your cohort — events, jobs, and wins.',
+    members: 89,
+    category: 'Cohort',
+    messagesToday: 23,
+    joined: true,
     image:
         'https://images.unsplash.com/photo-1764726354739-1222d1ea5b63?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080',
   ),
   MockGroup(
     id: '3',
-    name: 'Design Thinking',
-    description:
-        'Exploring design, UX, and creative problem solving together.',
-    members: 643,
+    name: 'Marketing Professionals',
+    description: 'Growth, brand, and GTM for alumni in marketing.',
+    members: 134,
+    category: 'Industry',
+    messagesToday: 67,
+    joined: false,
     image:
         'https://images.unsplash.com/photo-1758691736975-9f7f643d178e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080',
+  ),
+  MockGroup(
+    id: '4',
+    name: 'Bay Area Alumni',
+    description: 'Local meetups and opportunities in the Bay.',
+    members: 78,
+    category: 'Location',
+    messagesToday: 34,
+    joined: false,
+    image:
+        'https://images.unsplash.com/photo-1531058020387-3be344556be6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080',
   ),
 ];
 

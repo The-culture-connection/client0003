@@ -164,6 +164,21 @@ class _ProfileBody extends StatelessWidget {
                           runSpacing: 8,
                           children: profileRoleAndBadgeChips(data),
                         ),
+                        if (_featuredBadgeLine(data) != null) ...[
+                          const SizedBox(height: 10),
+                          Text(
+                            _featuredBadgeLine(data)!,
+                            style: const TextStyle(fontSize: 12, color: AppColors.mutedForeground),
+                          ),
+                        ],
+                        const SizedBox(height: 8),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton(
+                            onPressed: () => context.push('/profile/achievements'),
+                            child: const Text('View achievements'),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -298,4 +313,14 @@ class _ProfileBody extends StatelessWidget {
       ),
     );
   }
+}
+
+String? _featuredBadgeLine(Map<String, dynamic> data) {
+  final b = data['badges'];
+  if (b is! Map) return null;
+  final id = b['featured_badge_id'];
+  if (id is String && id.isNotEmpty) {
+    return 'Featured badge: $id';
+  }
+  return null;
 }

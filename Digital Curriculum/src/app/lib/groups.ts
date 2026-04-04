@@ -3,7 +3,8 @@
  */
 
 import { collection, doc, getDoc, getDocs, addDoc, updateDoc, query, where, orderBy, limit, serverTimestamp, Timestamp } from "firebase/firestore";
-import { db } from "./firebase";
+import { httpsCallable } from "firebase/functions";
+import { db, functions } from "./firebase";
 
 export interface Group {
   id: string;
@@ -138,44 +139,14 @@ export function isUserPending(group: Group, userId: string): boolean {
 }
 
 /**
- * Join a group (automatically if Open, request if Closed)
+ * Join a group (Open → member; Closed → pending). Uses Cloud Function `joinGroup` (auth uid).
+ * @param _userId Ignored; kept for call-site compatibility. Must match signed-in user.
  */
-export async function joinGroup(groupId: string, userId: string): Promise<{ success: boolean; pending: boolean }> {
+export async function joinGroup(groupId: string, _userId: string): Promise<{ success: boolean; pending: boolean }> {
   try {
-    const groupRef = doc(db, "Groups", groupId);
-    const groupDoc = await getDoc(groupRef);
-    
-    if (!groupDoc.exists()) {
-      throw new Error("Group not found");
-    }
-
-    const group = { id: groupDoc.id, ...groupDoc.data() } as Group;
-
-    // Check if already a member
-    if (isUserMember(group, userId)) {
-      return { success: true, pending: false };
-    }
-
-    // Check if already pending
-    if (isUserPending(group, userId)) {
-      return { success: false, pending: true };
-    }
-
-    if (group.Status === "Open") {
-      // Automatically add to members
-      const currentMembers = group.GroupMembers || [];
-      await updateDoc(groupRef, {
-        GroupMembers: [...currentMembers, userId],
-      });
-      return { success: true, pending: false };
-    } else {
-      // Add to pending members
-      const currentPending = group.PendingMembers || [];
-      await updateDoc(groupRef, {
-        PendingMembers: [...currentPending, userId],
-      });
-      return { success: false, pending: true };
-    }
+    const callable = httpsCallable(functions, "joinGroup");
+    const res = await callable({ groupId });
+    return res.data as { success: boolean; pending: boolean };
   } catch (error) {
     console.error("Error joining group:", error);
     throw error;

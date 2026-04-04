@@ -14,13 +14,16 @@ import '../screens/events_screen.dart';
 import '../screens/explore_screen.dart';
 import '../screens/feed_screen.dart';
 import '../screens/post_detail_screen.dart';
+import '../screens/group_create_screen.dart';
 import '../screens/group_detail_screen.dart';
+import '../screens/group_edit_screen.dart';
 import '../screens/groups_screen.dart';
 import '../screens/home_screen.dart';
 import '../screens/landing_screen.dart';
 import '../screens/matching_screen.dart';
 import '../screens/messages_screen.dart';
 import '../screens/onboarding_screen.dart';
+import '../screens/achievements_screen.dart';
 import '../screens/profile_edit_screen.dart';
 import '../screens/profile_screen.dart';
 import '../widgets/expansion_shell.dart';
@@ -151,6 +154,19 @@ GoRouter createAppRouter(AuthController auth) {
       ),
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,
+        path: '/groups/create',
+        builder: (context, state) => const GroupCreateScreen(),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/groups/:groupId/edit',
+        builder: (context, state) {
+          final id = state.pathParameters['groupId']!;
+          return GroupEditScreen(groupId: id);
+        },
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
         path: '/groups/:groupId',
         builder: (context, state) {
           final id = state.pathParameters['groupId']!;
@@ -200,6 +216,11 @@ GoRouter createAppRouter(AuthController auth) {
         parentNavigatorKey: _rootNavigatorKey,
         path: '/profile/edit',
         builder: (context, state) => const ProfileEditScreen(),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/profile/achievements',
+        builder: (context, state) => const AchievementsScreen(),
       ),
     ],
   );

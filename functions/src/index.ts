@@ -29,7 +29,7 @@ export { completeOnboarding } from "./callables/completeOnboarding";
 export { buildInitialMatches } from "./callables/buildInitialMatches";
 export { getCourseFile } from "./callables/getCourseFile";
 export { importPptxDeck } from "./callables/importPptxDeck";
-export { joinGroup, leaveGroup } from "./callables/groupMembership";
+export { joinGroup, leaveGroup, deleteMobileGroup } from "./callables/groupMembership";
 
 export {
   onGroupThreadVoteWrite,

@@ -67,13 +67,22 @@ service cloud.firestore {
     }
 
     // --- User profiles ---
+    /** Owner cannot self-grant staff, tamper with server counters, or forge earned badges. */
+    function userBadgesEarnedUnchanged() {
+      let beforeEarned = resource.data.get('badges', {}).get('earned', []);
+      let afterEarned = request.resource.data.get('badges', {}).get('earned', []);
+      return beforeEarned == afterEarned;
+    }
+
     match /users/{userId} {
       allow read: if isSignedIn();
       allow create: if isOwner(userId)
         && !dataHasStaffRole(request.resource.data)
         || hasStaffClaim();
-      allow update: if isOwner(userId) && !gainedPrivilegedUserFields()
-        || hasStaffClaim();
+      allow update: if hasStaffClaim()
+        || (isOwner(userId) && !gainedPrivilegedUserFields()
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['gamification'])
+          && userBadgesEarnedUnchanged());
       allow delete: if hasStaffClaim();
     }
 
@@ -86,6 +95,10 @@ service cloud.firestore {
     }
 
     match /users/{userId}/surveyResponses/{docId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    match /users/{userId}/saved_group_threads/{docId} {
       allow read, write: if isOwner(userId);
     }
 
@@ -156,14 +169,11 @@ service cloud.firestore {
         && resource.data.userId == request.auth.uid;
     }
 
-    // --- Groups ---
+    // --- Groups (member changes via joinGroup / leaveGroup callables only) ---
     match /Groups/{groupId} {
       allow read: if isSignedIn();
       allow create: if hasStaffClaim();
-      allow update: if hasStaffClaim()
-        || (isSignedIn()
-          && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['GroupMembers', 'PendingMembers']));
+      allow update: if hasStaffClaim();
       allow delete: if hasStaffClaim();
     }
 
@@ -184,6 +194,183 @@ service cloud.firestore {
         && request.resource.data.Senderid == request.auth.uid
         && (hasStaffClaim() || isGroupMember(groupId));
       allow update, delete: if hasStaffClaim();
+    }
+
+    function groupThreadAuthorUpdateKeys() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly(['body', 'title', 'updated_at']);
+    }
+
+    match /Groups/{groupId}/threads/{threadId} {
+      allow read: if isSignedIn() && (hasStaffClaim() || isGroupMember(groupId));
+      allow create: if isSignedIn() && isGroupMember(groupId)
+        && request.resource.data.author_id == request.auth.uid
+        && request.resource.data.body is string
+        && request.resource.data.body.size() > 0
+        && request.resource.data.body.size() <= 20000
+        && request.resource.data.author_name is string;
+      allow update: if hasStaffClaim()
+        || (isSignedIn() && isGroupMember(groupId)
+          && resource.data.author_id == request.auth.uid
+          && groupThreadAuthorUpdateKeys());
+      allow delete: if hasStaffClaim()
+        || (isSignedIn() && isGroupMember(groupId)
+          && resource.data.author_id == request.auth.uid);
+    }
+
+    match /Groups/{groupId}/threads/{threadId}/comments/{commentId} {
+      allow read: if isSignedIn() && (hasStaffClaim() || isGroupMember(groupId));
+      allow create: if isSignedIn() && isGroupMember(groupId)
+        && request.resource.data.author_id == request.auth.uid
+        && request.resource.data.body is string
+        && request.resource.data.body.size() > 0
+        && request.resource.data.body.size() <= 10000
+        && request.resource.data.author_name is string;
+      allow update: if hasStaffClaim()
+        || (isSignedIn() && isGroupMember(groupId)
+          && resource.data.author_id == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['body', 'updated_at']));
+      allow delete: if hasStaffClaim()
+        || (isSignedIn() && isGroupMember(groupId)
+          && resource.data.author_id == request.auth.uid);
+    }
+
+    function voteValueOk() {
+      return request.resource.data.keys().hasOnly(['value', 'updated_at'])
+        && request.resource.data.value is int
+        && (request.resource.data.value == 1 || request.resource.data.value == -1);
+    }
+
+    match /Groups/{groupId}/threads/{threadId}/votes/{voterId} {
+      allow read: if isSignedIn() && (hasStaffClaim() || isGroupMember(groupId));
+      allow create, update: if isSignedIn() && isGroupMember(groupId)
+        && request.auth.uid == voterId
+        && voteValueOk();
+      allow delete: if isSignedIn() && isGroupMember(groupId) && request.auth.uid == voterId;
+    }
+
+    match /Groups/{groupId}/threads/{threadId}/comments/{commentId}/votes/{voterId} {
+      allow read: if isSignedIn() && (hasStaffClaim() || isGroupMember(groupId));
+      allow create, update: if isSignedIn() && isGroupMember(groupId)
+        && request.auth.uid == voterId
+        && voteValueOk();
+      allow delete: if isSignedIn() && isGroupMember(groupId) && request.auth.uid == voterId;
+    }
+
+    // --- Mobile-only groups (Expansion app); threads mirror `Groups` ---
+    function mobileGroupDoc(groupId) {
+      return get(/databases/$(database)/documents/groups_mobile/$(groupId));
+    }
+
+    function isMobileGroupMember(groupId) {
+      return mobileGroupDoc(groupId).exists
+        && mobileGroupDoc(groupId).data.keys().hasAll(['GroupMembers'])
+        && mobileGroupDoc(groupId).data.GroupMembers is list
+        && request.auth.uid in mobileGroupDoc(groupId).data.GroupMembers;
+    }
+
+    /** Optional `category` on `groups_mobile` — must match app allowlist when present. */
+    function mobileGroupCategoryOk() {
+      return !request.resource.data.keys().hasAny(['category'])
+        || (request.resource.data.category is string
+          && (request.resource.data.category == ''
+            || request.resource.data.category in [
+              'Business & Entrepreneurship',
+              'Marketing & Brand Growth',
+              'Money, Funding & Resources',
+              'Operations & Logistics',
+              'Community & Networking',
+              'Events & Opportunities',
+              'Industry-Specific',
+              'Wins, Lessons & Advice'
+            ]));
+    }
+
+    match /groups_mobile/{groupId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.Name is string
+        && request.resource.data.Name.size() > 0
+        && request.resource.data.Name.size() <= 120
+        && request.resource.data.Status in ['Open', 'Closed']
+        && request.resource.data.GroupMembers is list
+        && request.auth.uid in request.resource.data.GroupMembers
+        && request.resource.data.PendingMembers is list
+        && request.resource.data.createdBy == request.auth.uid
+        && !request.resource.data.keys().hasAny(['isFeatured', 'featuredRank'])
+        && (!('memberCount' in request.resource.data) || request.resource.data.memberCount == 1)
+        && (!('threadCount' in request.resource.data) || request.resource.data.threadCount == 0)
+        && mobileGroupCategoryOk();
+      allow update: if mobileGroupCategoryOk()
+        && (hasStaffClaim()
+        || (isSignedIn() && resource.data.get('createdBy', '') == request.auth.uid
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+            'GroupMembers', 'PendingMembers', 'memberCount', 'threadCount', 'isFeatured', 'featuredRank'
+          ])));
+      allow delete: if hasStaffClaim()
+        || (isSignedIn() && resource.data.get('createdBy', '') == request.auth.uid);
+    }
+
+    match /groups_mobile/{groupId}/threads/{threadId} {
+      allow read: if isSignedIn() && (hasStaffClaim() || isMobileGroupMember(groupId));
+      allow create: if isSignedIn() && isMobileGroupMember(groupId)
+        && request.resource.data.author_id == request.auth.uid
+        && request.resource.data.body is string
+        && request.resource.data.body.size() > 0
+        && request.resource.data.body.size() <= 20000
+        && request.resource.data.author_name is string;
+      allow update: if hasStaffClaim()
+        || (isSignedIn() && isMobileGroupMember(groupId)
+          && resource.data.author_id == request.auth.uid
+          && groupThreadAuthorUpdateKeys());
+      allow delete: if hasStaffClaim()
+        || (isSignedIn() && isMobileGroupMember(groupId)
+          && resource.data.author_id == request.auth.uid);
+    }
+
+    match /groups_mobile/{groupId}/threads/{threadId}/comments/{commentId} {
+      allow read: if isSignedIn() && (hasStaffClaim() || isMobileGroupMember(groupId));
+      allow create: if isSignedIn() && isMobileGroupMember(groupId)
+        && request.resource.data.author_id == request.auth.uid
+        && request.resource.data.body is string
+        && request.resource.data.body.size() > 0
+        && request.resource.data.body.size() <= 10000
+        && request.resource.data.author_name is string;
+      allow update: if hasStaffClaim()
+        || (isSignedIn() && isMobileGroupMember(groupId)
+          && resource.data.author_id == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['body', 'updated_at']));
+      allow delete: if hasStaffClaim()
+        || (isSignedIn() && isMobileGroupMember(groupId)
+          && resource.data.author_id == request.auth.uid);
+    }
+
+    match /groups_mobile/{groupId}/threads/{threadId}/votes/{voterId} {
+      allow read: if isSignedIn() && (hasStaffClaim() || isMobileGroupMember(groupId));
+      allow create, update: if isSignedIn() && isMobileGroupMember(groupId)
+        && request.auth.uid == voterId
+        && voteValueOk();
+      allow delete: if isSignedIn() && isMobileGroupMember(groupId) && request.auth.uid == voterId;
+    }
+
+    match /groups_mobile/{groupId}/threads/{threadId}/comments/{commentId}/votes/{voterId} {
+      allow read: if isSignedIn() && (hasStaffClaim() || isMobileGroupMember(groupId));
+      allow create, update: if isSignedIn() && isMobileGroupMember(groupId)
+        && request.auth.uid == voterId
+        && voteValueOk();
+      allow delete: if isSignedIn() && isMobileGroupMember(groupId) && request.auth.uid == voterId;
+    }
+
+    match /badge_definitions/{badgeId} {
+      allow read: if isSignedIn();
+      allow write: if hasStaffClaim();
+    }
+
+    match /achievement_events/{eventId} {
+      allow read: if hasStaffClaim();
+      allow write: if false;
     }
 
     // --- DMs (student thread + admin replies). Collection id contains spaces — URL-encode in rules paths. ---
