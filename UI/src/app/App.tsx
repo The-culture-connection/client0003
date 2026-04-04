@@ -1,11 +1,6 @@
-import { RouterProvider } from "react-router";
-import { router } from "./routes";
-import { PasswordGate } from "./components/PasswordGate";
+import { RouterProvider } from 'react-router';
+import { router } from './routes';
 
 export default function App() {
-  return (
-    <PasswordGate>
-      <RouterProvider router={router} />
-    </PasswordGate>
-  );
+  return <RouterProvider router={router} />;
 }
