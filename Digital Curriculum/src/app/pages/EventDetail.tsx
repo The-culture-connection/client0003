@@ -110,7 +110,8 @@ export function EventDetailPage() {
   };
 
   const isUpcoming = (event: Event): boolean => {
-    const eventDate = event.date.toDate ? event.date.toDate() : new Date(event.date);
+    if (!event.date) return true;
+    const eventDate = event.date.toDate ? event.date.toDate() : new Date(event.date as unknown as string);
     return eventDate >= new Date();
   };
 

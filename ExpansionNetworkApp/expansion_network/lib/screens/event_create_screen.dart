@@ -1,5 +1,8 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../services/events_repository.dart';
 import '../theme/app_theme.dart';
@@ -17,9 +20,12 @@ class _EventCreateScreenState extends State<EventCreateScreen> {
   final _description = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   final _eventsRepo = EventsRepository();
+  final _imagePicker = ImagePicker();
   bool _submitting = false;
   DateTime? _eventDate;
   TimeOfDay? _eventTime;
+  XFile? _pickedFlyer;
+  static const int _maxFlyerBytes = 10 * 1024 * 1024;
 
   @override
   void dispose() {
@@ -70,6 +76,61 @@ class _EventCreateScreenState extends State<EventCreateScreen> {
     if (t != null) setState(() => _eventTime = t);
   }
 
+  Future<void> _pickFlyer() async {
+    try {
+      final x = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1920,
+        imageQuality: 85,
+      );
+      if (x == null) return;
+      final len = await x.length();
+      if (len > _maxFlyerBytes) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Image must be 10MB or smaller.')),
+          );
+        }
+        return;
+      }
+      setState(() => _pickedFlyer = x);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open photo library: $e')),
+        );
+      }
+    }
+  }
+
+  Future<String?> _uploadFlyerToStorage() async {
+    final x = _pickedFlyer;
+    if (x == null) return null;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) throw StateError('Not signed in');
+
+    final safeName = x.name.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+    final objectName = '${DateTime.now().millisecondsSinceEpoch}_$safeName';
+    final ref = FirebaseStorage.instance.ref().child('events/member_uploads/$uid/$objectName');
+
+    final bytes = await x.readAsBytes();
+    if (bytes.length > _maxFlyerBytes) {
+      throw StateError('Image must be 10MB or smaller.');
+    }
+
+    final contentType = _guessImageContentType(safeName);
+    await ref.putData(bytes, SettableMetadata(contentType: contentType));
+    return ref.getDownloadURL();
+  }
+
+  static String _guessImageContentType(String name) {
+    final lower = name.toLowerCase();
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.webp')) return 'image/webp';
+    if (lower.endsWith('.gif')) return 'image/gif';
+    return 'image/jpeg';
+  }
+
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     final time = _eventTime;
@@ -81,12 +142,17 @@ class _EventCreateScreenState extends State<EventCreateScreen> {
 
     setState(() => _submitting = true);
     try {
+      String? imageUrl;
+      if (_pickedFlyer != null) {
+        imageUrl = await _uploadFlyerToStorage();
+      }
       await _eventsRepo.submitUserEventForApproval(
         title: _title.text.trim(),
         date: _eventDate,
         time: timeStr,
         location: _location.text.trim(),
         details: _description.text.trim(),
+        imageUrl: imageUrl,
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -195,19 +261,37 @@ class _EventCreateScreenState extends State<EventCreateScreen> {
                     validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
                   ),
                   const SizedBox(height: 24),
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: AppColors.border, style: BorderStyle.solid),
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: _submitting ? null : _pickFlyer,
                       borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      children: [
-                        Icon(Icons.cloud_upload_outlined, size: 36, color: AppColors.mutedForeground),
-                        const SizedBox(height: 8),
-                        const Text('Click to upload flyer', style: TextStyle(color: AppColors.mutedForeground, fontSize: 13)),
-                        const Text('PNG, JPG up to 10MB', style: TextStyle(color: AppColors.mutedForeground, fontSize: 11)),
-                      ],
+                      child: Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: AppColors.border, style: BorderStyle.solid),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          children: [
+                            Icon(Icons.cloud_upload_outlined, size: 36, color: AppColors.mutedForeground),
+                            const SizedBox(height: 8),
+                            Text(
+                              _pickedFlyer == null ? 'Tap to add flyer (optional)' : _pickedFlyer!.name,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(color: AppColors.foreground, fontSize: 13),
+                            ),
+                            const Text('PNG, JPG up to 10MB', style: TextStyle(color: AppColors.mutedForeground, fontSize: 11)),
+                            if (_pickedFlyer != null) ...[
+                              const SizedBox(height: 12),
+                              TextButton(
+                                onPressed: _submitting ? null : () => setState(() => _pickedFlyer = null),
+                                child: const Text('Remove image'),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),

@@ -49,7 +49,8 @@ export function WebEvents() {
       return registeredEvents.includes(event.id);
     }
     if (filter === "upcoming") {
-      const eventDate = event.date.toDate ? event.date.toDate() : new Date(event.date);
+      if (!event.date) return false;
+      const eventDate = event.date.toDate ? event.date.toDate() : new Date(event.date as unknown as string);
       return eventDate >= new Date();
     }
     return true;
@@ -67,7 +68,8 @@ export function WebEvents() {
   };
 
   const isUpcoming = (event: Event): boolean => {
-    const eventDate = event.date.toDate ? event.date.toDate() : new Date(event.date);
+    if (!event.date) return false;
+    const eventDate = event.date.toDate ? event.date.toDate() : new Date(event.date as unknown as string);
     return eventDate >= new Date();
   };
 

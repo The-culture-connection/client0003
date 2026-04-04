@@ -155,13 +155,14 @@ export function WebCommunityHub() {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const upcoming = allEvents.filter((event) => {
-        const eventDate = event.date.toDate ? event.date.toDate() : new Date(event.date);
+        if (!event.date) return false;
+        const eventDate = event.date.toDate ? event.date.toDate() : new Date(event.date as unknown as string);
         return eventDate >= today;
       });
       // Sort by date (earliest first) and get first 4
       upcoming.sort((a, b) => {
-        const dateA = a.date.toDate ? a.date.toDate() : new Date(a.date);
-        const dateB = b.date.toDate ? b.date.toDate() : new Date(b.date);
+        const dateA = a.date!.toDate ? a.date!.toDate() : new Date(a.date as unknown as string);
+        const dateB = b.date!.toDate ? b.date!.toDate() : new Date(b.date as unknown as string);
         return dateA.getTime() - dateB.getTime();
       });
       setRealEvents(upcoming.slice(0, 4));

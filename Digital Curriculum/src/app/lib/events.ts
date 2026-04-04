@@ -16,15 +16,19 @@ import {
   Timestamp,
   arrayUnion,
   arrayRemove,
+  deleteField,
 } from "firebase/firestore";
 import { db } from "./firebase";
 
 export type EventType = "Online" | "In-person";
 
+export type EventApprovalStatus = "pending" | "approved" | "rejected";
+
 export interface Event {
   id: string;
   title: string;
-  date: Timestamp;
+  /** Omitted for some member-submitted drafts until staff sets a date */
+  date?: Timestamp;
   time: string; // e.g., "2:00 PM - 4:00 PM"
   location: string;
   /** "Online" or "In-person" */
@@ -35,27 +39,111 @@ export interface Event {
   available_spots?: number;
   total_spots?: number;
   details: string;
-  created_at: Timestamp;
-  updated_at: Timestamp;
+  created_at?: Timestamp;
+  updated_at?: Timestamp;
   registered_users?: string[]; // Array of user UIDs
+  approval_status?: EventApprovalStatus;
+  created_by?: string;
+  rejection_reason?: string;
+}
+
+/** Published on member-facing surfaces (Feed / web Events). */
+export function isEventPublished(data: {
+  approval_status?: EventApprovalStatus;
+}): boolean {
+  const s = data.approval_status;
+  if (s === undefined || s === null) return true;
+  return s === "approved";
+}
+
+function eventDateMillis(e: Event): number | null {
+  const d = e.date;
+  if (!d) return null;
+  if (typeof (d as Timestamp).toMillis === "function") {
+    return (d as Timestamp).toMillis();
+  }
+  return null;
+}
+
+/** Ascending by calendar date; events with no date sort last. */
+export function sortEventsByDateAsc(a: Event, b: Event): number {
+  const ma = eventDateMillis(a);
+  const mb = eventDateMillis(b);
+  if (ma === null && mb === null) return 0;
+  if (ma === null) return 1;
+  if (mb === null) return -1;
+  return ma - mb;
+}
+
+/** Admin list: pending first, then newest created first. */
+export function sortEventsForAdmin(a: Event, b: Event): number {
+  const pa = a.approval_status === "pending" ? 0 : 1;
+  const pb = b.approval_status === "pending" ? 0 : 1;
+  if (pa !== pb) return pa - pb;
+  const ca = a.created_at?.toMillis?.() ?? 0;
+  const cb = b.created_at?.toMillis?.() ?? 0;
+  return cb - ca;
+}
+
+async function fetchAllEventsRaw(): Promise<Event[]> {
+  const eventsRef = collection(db, "events");
+  const snapshot = await getDocs(eventsRef);
+  return snapshot.docs.map((d) => ({
+    id: d.id,
+    ...d.data(),
+  })) as Event[];
 }
 
 /**
- * Get all events
+ * Published events only (excludes pending / rejected member submissions).
+ * Fetches the full `events` collection and filters client-side so documents
+ * without a `date` field are not dropped (Firestore `orderBy('date')` omits them).
  */
 export async function getEvents(): Promise<Event[]> {
   try {
-    const eventsRef = collection(db, "events");
-    const q = query(eventsRef, orderBy("date", "asc"));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    })) as Event[];
+    const all = await fetchAllEventsRaw();
+    const published = all.filter(isEventPublished);
+    published.sort(sortEventsByDateAsc);
+    return published;
   } catch (error) {
     console.error("Error fetching events:", error);
     return [];
   }
+}
+
+/**
+ * All events for staff admin (includes pending approval queue).
+ */
+export async function getAllEventsForAdmin(): Promise<Event[]> {
+  try {
+    const all = await fetchAllEventsRaw();
+    all.sort(sortEventsForAdmin);
+    return all;
+  } catch (error) {
+    console.error("Error fetching events for admin:", error);
+    return [];
+  }
+}
+
+/**
+ * Approve or reject a member-submitted event (staff).
+ */
+export async function setMemberEventApproval(
+  eventId: string,
+  approve: boolean,
+  rejectionReason?: string
+): Promise<void> {
+  const eventRef = doc(db, "events", eventId);
+  const payload: Record<string, unknown> = {
+    approval_status: approve ? "approved" : "rejected",
+    updated_at: serverTimestamp(),
+  };
+  if (approve) {
+    payload.rejection_reason = deleteField();
+  } else if (rejectionReason?.trim()) {
+    payload.rejection_reason = rejectionReason.trim().slice(0, 2000);
+  }
+  await updateDoc(eventRef, payload);
 }
 
 /**
@@ -72,10 +160,11 @@ export async function getUpcomingEvents(): Promise<Event[]> {
       orderBy("date", "asc")
     );
     const snapshot = await getDocs(q);
-    return snapshot.docs.map((doc) => ({
+    const list = snapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
     })) as Event[];
+    return list.filter(isEventPublished);
   } catch (error) {
     console.error("Error fetching upcoming events:", error);
     return [];
@@ -120,9 +209,10 @@ export async function createEvent(
 ): Promise<Event> {
   try {
     const eventsRef = collection(db, "events");
-    const spots = options?.availableSpots != null && options.availableSpots > 0
-      ? options.availableSpots
-      : undefined;
+    const spots =
+      options?.availableSpots != null && options.availableSpots > 0
+        ? options.availableSpots
+        : undefined;
     const eventData: Record<string, unknown> = {
       title: title.trim(),
       date: Timestamp.fromDate(date),
@@ -245,21 +335,18 @@ export function isUserRegistered(event: Event, userId: string): boolean {
 }
 
 /**
- * Get registered events for a user
+ * Get registered events for a user (published only).
  */
 export async function getRegisteredEvents(userId: string): Promise<Event[]> {
   try {
-    const eventsRef = collection(db, "events");
-    const q = query(eventsRef, orderBy("date", "asc"));
-    const snapshot = await getDocs(q);
-    const allEvents = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    })) as Event[];
-
-    return allEvents.filter((event) =>
-      event.registered_users?.includes(userId)
+    const all = await fetchAllEventsRaw();
+    const mine = all.filter(
+      (event) =>
+        isEventPublished(event) &&
+        event.registered_users?.includes(userId)
     );
+    mine.sort(sortEventsByDateAsc);
+    return mine;
   } catch (error) {
     console.error("Error fetching registered events:", error);
     return [];

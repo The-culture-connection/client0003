@@ -59,7 +59,13 @@ import {
 } from "firebase/firestore";
 import { db, storage } from "../lib/firebase";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { createEvent, getEvents, type Event, type EventType } from "../lib/events";
+import {
+  createEvent,
+  getAllEventsForAdmin,
+  setMemberEventApproval,
+  type Event,
+  type EventType,
+} from "../lib/events";
 import {
   subscribeShopItems,
   createShopItem,
@@ -84,6 +90,7 @@ import { listCertificates, listSurveyResponses, type SkillCertificate, type Surv
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "../components/ui/dialog";
@@ -146,8 +153,11 @@ export function AdminPage() {
   const [newEventImageFile, setNewEventImageFile] = useState<File | null>(null);
   const [newEventDetails, setNewEventDetails] = useState("");
   const [creatingEvent, setCreatingEvent] = useState(false);
-  const [events, setEvents] = useState<any[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(false);
+  const [rejectDialogEvent, setRejectDialogEvent] = useState<Event | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [eventApprovalBusyId, setEventApprovalBusyId] = useState<string | null>(null);
   const [graduationApplications, setGraduationApplications] = useState<GraduationApplication[]>([]);
   const [loadingApplications, setLoadingApplications] = useState(false);
   const [admissionStatus, setAdmissionStatus] = useState<Record<string, boolean>>({});
@@ -279,7 +289,7 @@ export function AdminPage() {
       const [groupsData, dmsData, eventsData, applicationsData] = await Promise.all([
         getGroups(),
         loadDirectMessages(),
-        getEvents(),
+        getAllEventsForAdmin(),
         getGraduationApplications(),
       ]);
       setGroups(groupsData);
@@ -308,12 +318,41 @@ export function AdminPage() {
   const loadEvents = async () => {
     setLoadingEvents(true);
     try {
-      const eventsData = await getEvents();
+      const eventsData = await getAllEventsForAdmin();
       setEvents(eventsData);
     } catch (error) {
       console.error("Error loading events:", error);
     } finally {
       setLoadingEvents(false);
+    }
+  };
+
+  const handleApproveMemberEvent = async (eventId: string) => {
+    setEventApprovalBusyId(eventId);
+    try {
+      await setMemberEventApproval(eventId, true);
+      await loadEvents();
+    } catch (e) {
+      console.error(e);
+      alert("Could not approve this event. Check Firestore rules and your admin role.");
+    } finally {
+      setEventApprovalBusyId(null);
+    }
+  };
+
+  const handleConfirmRejectMemberEvent = async () => {
+    if (!rejectDialogEvent) return;
+    setEventApprovalBusyId(rejectDialogEvent.id);
+    try {
+      await setMemberEventApproval(rejectDialogEvent.id, false, rejectReason);
+      setRejectDialogEvent(null);
+      setRejectReason("");
+      await loadEvents();
+    } catch (e) {
+      console.error(e);
+      alert("Could not decline this event. Check Firestore rules and your admin role.");
+    } finally {
+      setEventApprovalBusyId(null);
     }
   };
 
@@ -1317,6 +1356,9 @@ export function AdminPage() {
           {/* Events List */}
           <div className="space-y-4 mt-6">
             <h2 className="text-xl font-semibold text-foreground">All Events</h2>
+            <p className="text-sm text-muted-foreground">
+              Member submissions from the Expansion app appear as <strong>Pending approval</strong>. Approve to publish on the feed and web Events hub.
+            </p>
             {loadingEvents ? (
               <Card className="p-8 text-center">
                 <div className="w-8 h-8 border-4 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
@@ -1332,8 +1374,17 @@ export function AdminPage() {
                 const registeredCount = event.registered_users?.length || 0;
                 const totalSpots = event.total_spots ?? 0;
                 const spotsLeft = totalSpots > 0 ? totalSpots - registeredCount : null;
-                const eventDate = event.date.toDate ? event.date.toDate() : new Date(event.date);
+                const eventDate =
+                  event.date != null
+                    ? event.date.toDate
+                      ? event.date.toDate()
+                      : new Date(event.date as unknown as string)
+                    : null;
                 const eventType = event.event_type || "In-person";
+                const approval = event.approval_status;
+                const isPending = approval === "pending";
+                const isRejected = approval === "rejected";
+                const busy = eventApprovalBusyId === event.id;
 
                 return (
                   <Card key={event.id} className="p-6">
@@ -1346,9 +1397,24 @@ export function AdminPage() {
                         />
                       )}
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-lg font-semibold text-foreground mb-2">
-                          {event.title}
-                        </h3>
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                          <h3 className="text-lg font-semibold text-foreground">
+                            {event.title}
+                          </h3>
+                          {isPending && (
+                            <Badge className="bg-amber-500/15 text-amber-800 border-amber-500/30">
+                              Pending approval
+                            </Badge>
+                          )}
+                          {isRejected && (
+                            <Badge variant="destructive">Declined</Badge>
+                          )}
+                          {!isPending && !isRejected && event.created_by && (
+                            <Badge variant="outline" className="text-xs">
+                              Published
+                            </Badge>
+                          )}
+                        </div>
                         <div className="flex flex-wrap items-center gap-2 mb-2">
                           <Badge variant="secondary" className="text-xs">
                             {eventType}
@@ -1356,7 +1422,9 @@ export function AdminPage() {
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm text-muted-foreground">
                             <div className="flex items-center gap-2">
                               <Calendar className="w-4 h-4" />
-                              <span>{eventDate.toLocaleDateString()}</span>
+                              <span>
+                                {eventDate ? eventDate.toLocaleDateString() : "Date TBD"}
+                              </span>
                             </div>
                             <div className="flex items-center gap-2">
                               <Clock className="w-4 h-4" />
@@ -1368,6 +1436,55 @@ export function AdminPage() {
                             </div>
                           </div>
                         </div>
+                        {event.created_by && (
+                          <p className="text-xs text-muted-foreground mb-2">
+                            Submitted by UID:{" "}
+                            <span className="font-mono break-all">{event.created_by}</span>
+                          </p>
+                        )}
+                        {event.details ? (
+                          <p className="text-sm text-foreground/90 whitespace-pre-wrap mb-3 border-l-2 border-border pl-3">
+                            {event.details}
+                          </p>
+                        ) : null}
+                        {isRejected && event.rejection_reason ? (
+                          <p className="text-sm text-destructive mb-3">
+                            Reason: {event.rejection_reason}
+                          </p>
+                        ) : null}
+                        {isPending && (
+                          <div className="flex flex-wrap gap-2 mb-3">
+                            <Button
+                              type="button"
+                              size="sm"
+                              className="bg-green-600 hover:bg-green-600/90 text-white"
+                              disabled={busy}
+                              onClick={() => handleApproveMemberEvent(event.id)}
+                            >
+                              {busy ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <>
+                                  <Check className="w-4 h-4 mr-1" />
+                                  Approve
+                                </>
+                              )}
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              disabled={busy}
+                              onClick={() => {
+                                setRejectReason("");
+                                setRejectDialogEvent(event);
+                              }}
+                            >
+                              <X className="w-4 h-4 mr-1" />
+                              Decline
+                            </Button>
+                          </div>
+                        )}
                         <div className="mt-3 flex items-center gap-4">
                           <Badge variant="outline">
                             {registeredCount}
@@ -1405,6 +1522,55 @@ export function AdminPage() {
                 );
               })
             )}
+
+            <Dialog
+              open={rejectDialogEvent != null}
+              onOpenChange={(open) => {
+                if (!open) {
+                  setRejectDialogEvent(null);
+                  setRejectReason("");
+                }
+              }}
+            >
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Decline event</DialogTitle>
+                </DialogHeader>
+                <p className="text-sm text-muted-foreground">
+                  Optional note for your records (submitter may not see this in-app).
+                </p>
+                <Textarea
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  placeholder="Reason (optional)"
+                  rows={3}
+                />
+                <DialogFooter className="gap-2 sm:gap-0">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setRejectDialogEvent(null);
+                      setRejectReason("");
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    disabled={eventApprovalBusyId != null}
+                    onClick={handleConfirmRejectMemberEvent}
+                  >
+                    {eventApprovalBusyId ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      "Decline event"
+                    )}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </TabsContent>
 

@@ -50,6 +50,15 @@ service firebase.storage {
       allow write: if hasStaffClaim();
     }
 
+    // Member-submitted event flyers (Expansion app); path scoped by uid
+    match /events/member_uploads/{userId}/{fileName} {
+      allow read: if true;
+      allow write: if isSignedIn()
+        && request.auth.uid == userId
+        && request.resource.size < 11 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
     // Course builder uploads (lesson images, etc.)
     match /curriculum_content/{allPaths=**} {
       allow read: if isSignedIn();
