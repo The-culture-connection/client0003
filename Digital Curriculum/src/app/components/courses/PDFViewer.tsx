@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import { Loader2 } from "lucide-react";
+import { firebaseProjectId } from "../../lib/firebase";
 // Note: CSS files for react-pdf v10+ are optional and may be bundled automatically
 
 // Set up PDF.js worker - use local worker file to avoid CDN issues
@@ -74,7 +75,8 @@ export function PDFViewer({
             
             // Use Firebase Function to proxy the file (handles CORS automatically)
             // Get the functions URL from environment or construct from project ID
-            const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID || 'mortar-dev';
+            const projectId =
+              import.meta.env.VITE_FIREBASE_PROJECT_ID || firebaseProjectId;
             const functionsUrl = import.meta.env.VITE_FUNCTIONS_URL || 
               `https://us-central1-${projectId}.cloudfunctions.net`;
             const proxyUrl = `${functionsUrl}/getCourseFile?path=${encodeURIComponent(filePath)}`;

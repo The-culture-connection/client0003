@@ -1,15 +1,25 @@
 /**
- * Firebase configuration and initialization
+ * Firebase configuration and initialization.
+ *
+ * Railway / CI: set either
+ * - `VITE_FIREBASE_ENV=stage` (or `staging`) to use the embedded stage preset, or
+ * - full `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID`, …
+ *   to override (env-only config; ignores preset project).
+ *
+ * If `VITE_FIREBASE_ENV` is unset, the preset defaults to **dev** (local DX).
+ * Set `VITE_FIREBASE_DEBUG=true` to log resolved project at build/runtime in the browser console.
  */
 
+import type { FirebaseOptions } from "firebase/app";
 import { initializeApp, getApps, FirebaseApp } from "firebase/app";
 import { getAuth, connectAuthEmulator, Auth } from "firebase/auth";
 import { getFirestore, connectFirestoreEmulator, Firestore } from "firebase/firestore";
 import { getFunctions, connectFunctionsEmulator, Functions } from "firebase/functions";
 import { getStorage, connectStorageEmulator, FirebaseStorage } from "firebase/storage";
 
-// Firebase configs for different environments
-const firebaseConfigs = {
+type FirebaseEnvPreset = "dev" | "stage" | "prod";
+
+const presetConfigs: Record<FirebaseEnvPreset, FirebaseOptions> = {
   dev: {
     apiKey: "AIzaSyD1cDEF3bATeBq5F4O5t5F1VD5fvf2unz8",
     authDomain: "mortar-dev.firebaseapp.com",
@@ -38,19 +48,106 @@ const firebaseConfigs = {
   },
 };
 
-// Determine environment (use VITE_ prefix for Vite projects)
-const env = (import.meta.env.VITE_FIREBASE_ENV || "dev") as keyof typeof firebaseConfigs;
+function readEnvOverrides(): Partial<FirebaseOptions> {
+  const mid = import.meta.env.VITE_FIREBASE_MEASUREMENT_ID;
+  return {
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID,
+    ...(mid ? { measurementId: mid } : {}),
+  };
+}
+
+function nonEmpty(s: string | undefined): s is string {
+  return typeof s === "string" && s.trim().length > 0;
+}
+
+/** True when Railway should drive the whole web config from variables (Firebase-style). */
+function hasFullExplicitEnvConfig(o: Partial<FirebaseOptions>): boolean {
+  return nonEmpty(o.apiKey) && nonEmpty(o.projectId) && nonEmpty(o.appId);
+}
+
+function mergeOntoPreset(base: FirebaseOptions, overrides: Partial<FirebaseOptions>): FirebaseOptions {
+  const out: FirebaseOptions = { ...base };
+  (Object.keys(overrides) as (keyof FirebaseOptions)[]).forEach((k) => {
+    const v = overrides[k];
+    if (typeof v === "string" && v.trim() !== "") {
+      (out as Record<string, string>)[k] = v;
+    }
+  });
+  return out;
+}
+
+function resolvePresetName(): FirebaseEnvPreset {
+  const raw = (import.meta.env.VITE_FIREBASE_ENV || "dev").toLowerCase().trim();
+  if (raw === "stage" || raw === "staging") return "stage";
+  if (raw === "prod" || raw === "production") return "prod";
+  if (raw === "dev" || raw === "development" || raw === "") return "dev";
+  console.warn(
+    `[Firebase] Unknown VITE_FIREBASE_ENV="${import.meta.env.VITE_FIREBASE_ENV}" — using dev preset.`,
+  );
+  return "dev";
+}
+
+/**
+ * Resolved once at module load (Vite inlines import.meta.env at build time).
+ * Use `firebaseProjectId` anywhere you previously defaulted to mortar-dev.
+ */
+export function resolveFirebaseWebConfig(): FirebaseOptions {
+  const overrides = readEnvOverrides();
+
+  if (hasFullExplicitEnvConfig(overrides)) {
+    const pid = overrides.projectId!.trim();
+    return {
+      apiKey: overrides.apiKey!.trim(),
+      authDomain: nonEmpty(overrides.authDomain)
+        ? overrides.authDomain!.trim()
+        : `${pid}.firebaseapp.com`,
+      projectId: pid,
+      storageBucket: nonEmpty(overrides.storageBucket)
+        ? overrides.storageBucket!.trim()
+        : `${pid}.firebasestorage.app`,
+      messagingSenderId: nonEmpty(overrides.messagingSenderId)
+        ? overrides.messagingSenderId!.trim()
+        : "",
+      appId: overrides.appId!.trim(),
+      ...(nonEmpty(overrides.measurementId as string | undefined)
+        ? { measurementId: (overrides.measurementId as string).trim() }
+        : {}),
+    };
+  }
+
+  const preset = resolvePresetName();
+  return mergeOntoPreset(presetConfigs[preset], overrides);
+}
+
+const firebaseWebConfig = resolveFirebaseWebConfig();
+export const firebaseProjectId = firebaseWebConfig.projectId ?? "";
+
+const firebaseDebug =
+  import.meta.env.DEV || import.meta.env.VITE_FIREBASE_DEBUG === "true";
+
+if (firebaseDebug && typeof window !== "undefined") {
+  console.info("[Firebase] Resolved web config", {
+    projectId: firebaseProjectId,
+    authDomain: firebaseWebConfig.authDomain,
+    presetEnv: import.meta.env.VITE_FIREBASE_ENV ?? "(unset → dev preset)",
+    source: hasFullExplicitEnvConfig(readEnvOverrides()) ? "VITE_FIREBASE_* env only" : "preset + optional overrides",
+  });
+}
+
 // Use emulators ONLY if explicitly enabled via environment variable
 const useEmulator = import.meta.env.VITE_USE_EMULATOR === "true";
 
-// Initialize Firebase (client-side only to avoid SSR hydration issues)
 let app: FirebaseApp | null = null;
 let auth: Auth;
 let db: Firestore;
 let functions: Functions;
 let storage: FirebaseStorage;
 
-// Lazy initialization function (only called on client)
 function initializeFirebase() {
   if (typeof window === "undefined") {
     return;
@@ -58,25 +155,22 @@ function initializeFirebase() {
 
   if (!app) {
     if (getApps().length === 0) {
-      app = initializeApp(firebaseConfigs[env]);
+      app = initializeApp(firebaseWebConfig);
     } else {
       app = getApps()[0];
     }
 
-    // Initialize services
     auth = getAuth(app);
     db = getFirestore(app);
     functions = getFunctions(app, "us-central1");
     storage = getStorage(app);
 
-    // Connect to emulators ONLY if explicitly enabled
     if (useEmulator) {
       try {
-        // Use type assertion to access internal properties for emulator check
-        const authAny = auth as any;
-        const dbAny = db as any;
-        const functionsAny = functions as any;
-        const storageAny = storage as any;
+        const authAny = auth as unknown as { _delegate?: { _config?: { emulator?: unknown } } };
+        const dbAny = db as unknown as { _delegate?: { _settings?: { host?: string } } };
+        const functionsAny = functions as unknown as { _delegate?: { _url?: string } };
+        const storageAny = storage as unknown as { _delegate?: { _host?: string } };
 
         if (!authAny._delegate?._config?.emulator) {
           connectAuthEmulator(auth, "http://localhost:9099", { disableWarnings: true });
@@ -92,20 +186,17 @@ function initializeFirebase() {
         }
         console.log("🔥 Firebase Emulators enabled");
       } catch (error) {
-        // Emulators already connected, ignore error
         console.warn("Emulator connection warning:", error);
       }
     } else {
-      console.log(`🔥 Using real Firebase services (${env} environment)`);
+      console.log(`🔥 Using real Firebase (project: ${firebaseProjectId})`);
     }
   }
 }
 
-// Initialize on client side
 if (typeof window !== "undefined") {
   initializeFirebase();
 } else {
-  // Server-side: create dummy objects to avoid import errors
   auth = {} as Auth;
   db = {} as Firestore;
   functions = {} as Functions;

@@ -10,6 +10,9 @@ declare module "vite/client" {
     readonly VITE_FIREBASE_STORAGE_BUCKET?: string;
     readonly VITE_FIREBASE_MESSAGING_SENDER_ID?: string;
     readonly VITE_FIREBASE_APP_ID?: string;
+    readonly VITE_FIREBASE_MEASUREMENT_ID?: string;
+    /** Set to "true" on Railway/stage to log resolved Firebase project in the browser console */
+    readonly VITE_FIREBASE_DEBUG?: string;
   }
 
   interface ImportMeta {
