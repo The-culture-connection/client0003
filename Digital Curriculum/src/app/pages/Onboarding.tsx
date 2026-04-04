@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "../components/auth/AuthProvider";
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { arrayUnion, doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { Step1Identity } from "../components/onboarding/Step1Identity";
 import { Step2Goals } from "../components/onboarding/Step2Goals";
@@ -87,11 +87,16 @@ export function OnboardingPage() {
       const status = partial ? "partial" : "complete";
 
       // Prepare data for saving, ensuring all fields are properly formatted
-      const dataToSave: any = {
+      const dataToSave: Record<string, unknown> = {
         ...onboardingData,
         onboarding_status: status,
         updated_at: serverTimestamp(),
       };
+
+      // Canonical curriculum learner role (matches `functions` CANONICAL_ROLES / Firestore `users.roles` array)
+      if (!partial) {
+        dataToSave.roles = arrayUnion("Digital Curriculum Students");
+      }
 
       // Remove undefined values to avoid Firestore issues
       Object.keys(dataToSave).forEach((key) => {
