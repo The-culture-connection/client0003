@@ -44,6 +44,8 @@ Railway will use `railway.toml` in this directory:
 
 No need to set build/start commands in the dashboard unless you want to override them.
 
+During **build**, Vite prints a banner like `FIREBASE WEB (Vite build)` with the **Firebase `projectId` that will be baked into the JS bundle** and how it was resolved (env vs preset). Open the deployment’s **Build Logs** in Railway to verify `mortar-stage` (or your explicit `VITE_FIREBASE_*` project) before the app goes live.
+
 ## 5. Environment variables (optional)
 
 Set these in the Railway service: **Variables** (or **Settings** → **Variables**).
