@@ -29,3 +29,17 @@ export { completeOnboarding } from "./callables/completeOnboarding";
 export { buildInitialMatches } from "./callables/buildInitialMatches";
 export { getCourseFile } from "./callables/getCourseFile";
 export { importPptxDeck } from "./callables/importPptxDeck";
+export { joinGroup, leaveGroup } from "./callables/groupMembership";
+
+export {
+  onGroupThreadVoteWrite,
+  onGroupCommentVoteWrite,
+  onGroupThreadCreated,
+  onGroupCommentCreated,
+  onGroupMemberListChange,
+  onMobileGroupThreadVoteWrite,
+  onMobileGroupCommentVoteWrite,
+  onMobileGroupThreadCreated,
+  onMobileGroupCommentCreated,
+  onMobileGroupMemberListChange,
+} from "./groups/groupThreadTriggers";
