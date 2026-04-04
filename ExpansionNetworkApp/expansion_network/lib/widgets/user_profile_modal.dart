@@ -3,9 +3,15 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../models/community_event.dart';
+import '../models/explore_job.dart';
+import '../models/explore_skill_listing.dart';
 import '../profile/profile_utils.dart';
+import '../services/events_repository.dart';
+import '../services/explore_listings_repository.dart';
 import '../services/user_profile_repository.dart';
 import '../theme/app_theme.dart';
+import '../utils/relative_time.dart';
 import 'profile_section_card.dart';
 import 'profile_user_blocks.dart';
 
@@ -262,6 +268,8 @@ class _UserProfileModalBody extends StatelessWidget {
                     child: ProfileLinksSection(data: data),
                   ),
                   const SizedBox(height: 16),
+                  _ProfileModalListings(userId: userId),
+                  const SizedBox(height: 16),
                   ProfileAchievementsCard(data: data),
                   const SizedBox(height: 16),
                   const ProfileCertificatesPlaceholderCard(),
@@ -273,6 +281,147 @@ class _UserProfileModalBody extends StatelessWidget {
           },
         );
       },
+    );
+  }
+}
+
+class _ProfileModalListings extends StatelessWidget {
+  const _ProfileModalListings({required this.userId});
+
+  final String userId;
+
+  @override
+  Widget build(BuildContext context) {
+    final listings = ExploreListingsRepository();
+    final eventsRepo = EventsRepository();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        StreamBuilder<List<ExploreJob>>(
+          stream: listings.watchJobsByAuthor(userId),
+          builder: (context, snap) {
+            final jobs = snap.data ?? [];
+            return _listingCard(
+              title: 'Posted jobs',
+              child: jobs.isEmpty
+                  ? const Text('No job posts yet.', style: TextStyle(fontSize: 13, color: AppColors.mutedForeground))
+                  : Column(
+                      children: [
+                        for (final j in jobs.take(8))
+                          ListTile(
+                            dense: true,
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(j.title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                            subtitle: Text(
+                              j.createdAt != null ? formatRelativeTime(j.createdAt!) : '',
+                              style: const TextStyle(fontSize: 11, color: AppColors.mutedForeground),
+                            ),
+                            trailing: const Icon(Icons.chevron_right, size: 18),
+                            onTap: () {
+                              Navigator.pop(context);
+                              context.push('/explore');
+                            },
+                          ),
+                      ],
+                    ),
+            );
+          },
+        ),
+        const SizedBox(height: 12),
+        StreamBuilder<List<ExploreSkillListing>>(
+          stream: listings.watchSkillListingsByAuthor(userId),
+          builder: (context, snap) {
+            final skills = snap.data ?? [];
+            return _listingCard(
+              title: 'Skill listings',
+              child: skills.isEmpty
+                  ? const Text('No skill listings yet.', style: TextStyle(fontSize: 13, color: AppColors.mutedForeground))
+                  : Column(
+                      children: [
+                        for (final s in skills.take(8))
+                          ListTile(
+                            dense: true,
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(s.title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                            subtitle: Text(
+                              s.createdAt != null ? formatRelativeTime(s.createdAt!) : '',
+                              style: const TextStyle(fontSize: 11, color: AppColors.mutedForeground),
+                            ),
+                            trailing: const Icon(Icons.chevron_right, size: 18),
+                            onTap: () {
+                              Navigator.pop(context);
+                              context.push('/explore/skills');
+                            },
+                          ),
+                      ],
+                    ),
+            );
+          },
+        ),
+        const SizedBox(height: 12),
+        StreamBuilder<User?>(
+          stream: FirebaseAuth.instance.authStateChanges(),
+          initialData: FirebaseAuth.instance.currentUser,
+          builder: (context, authSnap) {
+            final me = authSnap.data?.uid;
+            return StreamBuilder<List<CommunityEvent>>(
+              stream: eventsRepo.watchEventsCreatedBy(userId),
+              builder: (context, evSnap) {
+                final all = evSnap.data ?? [];
+                final visible = all.where((e) => me == userId || e.isPublished).toList();
+                return _listingCard(
+                  title: 'Events',
+                  child: visible.isEmpty
+                      ? const Text('No events created.', style: TextStyle(fontSize: 13, color: AppColors.mutedForeground))
+                      : Column(
+                          children: [
+                            for (final e in visible.take(8))
+                              ListTile(
+                                dense: true,
+                                contentPadding: EdgeInsets.zero,
+                                title: Text(e.title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                                subtitle: Text(
+                                  [
+                                    if (e.approvalStatus == 'pending') 'Pending approval',
+                                    if (e.approvalStatus == 'rejected') 'Declined',
+                                    if (e.isPublished) formatEventDate(e.date),
+                                  ].where((s) => s.isNotEmpty).join(' · '),
+                                  style: const TextStyle(fontSize: 11, color: AppColors.mutedForeground),
+                                ),
+                                trailing: const Icon(Icons.chevron_right, size: 18),
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  context.push('/events/${e.id}');
+                                },
+                              ),
+                          ],
+                        ),
+                );
+              },
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _listingCard({required String title, required Widget child}) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+          const SizedBox(height: 8),
+          child,
+        ],
+      ),
     );
   }
 }

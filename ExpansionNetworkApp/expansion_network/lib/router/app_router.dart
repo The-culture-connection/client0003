@@ -9,6 +9,9 @@ import '../screens/chat_room_screen.dart';
 import '../screens/direct_chat_screen.dart';
 import '../screens/create_post_screen.dart';
 import '../screens/event_create_screen.dart';
+import '../screens/explore_skills_screen.dart';
+import '../screens/job_create_screen.dart';
+import '../screens/skill_create_screen.dart';
 import '../screens/event_detail_screen.dart';
 import '../screens/events_screen.dart';
 import '../screens/explore_screen.dart';
@@ -149,8 +152,29 @@ GoRouter createAppRouter(AuthController auth) {
         path: '/messages/direct/:userId',
         builder: (context, state) {
           final userId = state.pathParameters['userId']!;
-          return DirectChatScreen(userId: userId);
+          final attach = state.uri.queryParameters['attach'];
+          final attachId = state.uri.queryParameters['id'];
+          return DirectChatScreen(
+            userId: userId,
+            initialAttachmentType: attach,
+            initialAttachmentId: attachId,
+          );
         },
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/explore/jobs/create',
+        builder: (context, state) => const JobCreateScreen(),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/explore/skills',
+        builder: (context, state) => const ExploreSkillsScreen(),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/explore/skills/create',
+        builder: (context, state) => const SkillCreateScreen(),
       ),
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,

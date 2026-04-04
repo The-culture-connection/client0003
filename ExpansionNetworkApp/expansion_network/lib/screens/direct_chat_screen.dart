@@ -1,52 +1,42 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../models/dm_message.dart';
+import '../services/dm_repository.dart';
+import '../services/user_profile_repository.dart';
 import '../theme/app_theme.dart';
+import '../widgets/messaging_attachment_preview.dart';
 
-/// Port of [UI Basis/src/app/pages/DirectChat.tsx]
 class DirectChatScreen extends StatefulWidget {
-  const DirectChatScreen({required this.userId, super.key});
+  const DirectChatScreen({
+    super.key,
+    required this.userId,
+    this.initialAttachmentType,
+    this.initialAttachmentId,
+  });
 
   final String userId;
+  final String? initialAttachmentType;
+  final String? initialAttachmentId;
 
   @override
   State<DirectChatScreen> createState() => _DirectChatScreenState();
 }
 
-class _DirectUser {
-  const _DirectUser({required this.name, required this.avatar, required this.role, required this.online});
-
-  final String name;
-  final String avatar;
-  final String role;
-  final bool online;
-}
-
 class _DirectChatScreenState extends State<DirectChatScreen> {
   final _controller = TextEditingController();
-
-  static const _users = {
-    'maria-garcia': _DirectUser(
-      name: 'Maria Garcia',
-      avatar: 'MG',
-      role: 'Marketing Director • Class of 2022',
-      online: true,
-    ),
-    'james-wilson': _DirectUser(
-      name: 'James Wilson',
-      avatar: 'JW',
-      role: 'Tech Entrepreneur • Class of 2021',
-      online: true,
-    ),
-  };
-
-  late final _DirectUser _user;
+  final _dm = DmRepository();
+  final _users = UserProfileRepository();
+  String? _pendingAttachType;
+  String? _pendingAttachId;
+  bool _sending = false;
 
   @override
   void initState() {
     super.initState();
-    _user = _users[widget.userId] ??
-        const _DirectUser(name: 'User', avatar: 'U', role: 'Alumni', online: false);
+    _pendingAttachType = widget.initialAttachmentType;
+    _pendingAttachId = widget.initialAttachmentId;
   }
 
   @override
@@ -55,15 +45,42 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
     super.dispose();
   }
 
+  Future<void> _send() async {
+    final me = FirebaseAuth.instance.currentUser?.uid;
+    if (me == null) return;
+    final text = _controller.text.trim();
+    if (text.isEmpty) return;
+    setState(() => _sending = true);
+    try {
+      await _dm.sendMessage(
+        partnerUid: widget.userId,
+        text: text,
+        attachmentType: _pendingAttachType,
+        attachmentId: _pendingAttachId,
+      );
+      _controller.clear();
+      if (mounted) {
+        setState(() {
+          _pendingAttachType = null;
+          _pendingAttachId = null;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      }
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final messages = [
-      _Dm(1, 'Hey! Thanks for connecting. I saw your profile and would love to chat about potential opportunities.', false, '10:30 AM'),
-      _Dm(2, "Hi! Absolutely, I'd be happy to discuss. What did you have in mind?", true, '10:32 AM'),
-      _Dm(3, "We're looking for someone with your skillset for a new project. Are you open to new opportunities?", false, '10:35 AM'),
-      _Dm(4, 'That sounds interesting! I\'m definitely open to hearing more about it.', true, '10:37 AM'),
-      _Dm(5, 'Great! Let me share some details. Would you be available for a quick call tomorrow?', false, '10:40 AM'),
-    ];
+    final me = FirebaseAuth.instance.currentUser?.uid;
+    if (me == null) {
+      return const Scaffold(body: Center(child: Text('Sign in to chat.')));
+    }
+    final threadId = dmThreadIdForUsers(me, widget.userId);
 
     return Scaffold(
       body: Column(
@@ -78,109 +95,128 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
                   children: [
                     IconButton(
                       icon: const Icon(Icons.arrow_back, color: AppColors.mutedForeground),
-                      onPressed: () => context.go('/explore'),
+                      onPressed: () => context.pop(),
                     ),
-                    Stack(
-                      children: [
-                        CircleAvatar(
-                          radius: 20,
-                          backgroundColor: AppColors.primary,
-                          child: Text(
-                            _user.avatar,
-                            style: const TextStyle(color: AppColors.onPrimary, fontWeight: FontWeight.w600),
+                    FutureBuilder<String>(
+                      future: _users.getDisplayNameForUser(widget.userId),
+                      builder: (context, snap) {
+                        final name = snap.data ?? 'Member';
+                        return Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                              const Text('Direct message', style: TextStyle(fontSize: 11, color: AppColors.mutedForeground)),
+                            ],
                           ),
-                        ),
-                        if (_user.online)
-                          Positioned(
-                            right: 0,
-                            bottom: 0,
-                            child: Container(
-                              width: 12,
-                              height: 12,
-                              decoration: BoxDecoration(
-                                color: Colors.green.shade500,
-                                shape: BoxShape.circle,
-                                border: Border.all(color: AppColors.card, width: 2),
-                              ),
-                            ),
-                          ),
-                      ],
+                        );
+                      },
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(_user.name, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
-                          Text(_user.role, style: const TextStyle(fontSize: 11, color: AppColors.mutedForeground)),
-                        ],
-                      ),
-                    ),
-                    IconButton(onPressed: () {}, icon: const Icon(Icons.phone_outlined, color: AppColors.mutedForeground)),
-                    IconButton(onPressed: () {}, icon: const Icon(Icons.videocam_outlined, color: AppColors.mutedForeground)),
-                    IconButton(onPressed: () {}, icon: const Icon(Icons.calendar_today_outlined, color: AppColors.mutedForeground)),
-                    IconButton(onPressed: () {}, icon: const Icon(Icons.more_vert, color: AppColors.mutedForeground)),
                   ],
                 ),
               ),
             ),
           ),
           const Divider(height: 1, color: AppColors.border),
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: messages.length,
-              itemBuilder: (context, index) {
-                final m = messages[index];
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Row(
-                    mainAxisAlignment: m.isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (!m.isMine) ...[
-                        CircleAvatar(
-                          radius: 16,
-                          backgroundColor: AppColors.primary,
+          if (_pendingAttachType != null &&
+              _pendingAttachId != null &&
+              ['job', 'skill', 'event'].contains(_pendingAttachType))
+            Material(
+              color: AppColors.secondary,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Expanded(
                           child: Text(
-                            _user.avatar,
-                            style: const TextStyle(fontSize: 10, color: AppColors.onPrimary, fontWeight: FontWeight.w600),
+                            'This message will include the card below.',
+                            style: TextStyle(fontSize: 12, color: AppColors.mutedForeground),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                      ],
-                      Flexible(
-                        child: Column(
-                          crossAxisAlignment: m.isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: m.isMine ? AppColors.primary : AppColors.card,
-                                borderRadius: BorderRadius.circular(16).copyWith(
-                                  bottomRight: m.isMine ? const Radius.circular(4) : null,
-                                  bottomLeft: !m.isMine ? const Radius.circular(4) : null,
-                                ),
-                                border: m.isMine ? null : Border.all(color: AppColors.border),
-                              ),
-                              child: Text(
-                                m.text,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: m.isMine ? AppColors.onPrimary : AppColors.foreground,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              m.time,
-                              style: const TextStyle(fontSize: 11, color: AppColors.mutedForeground),
-                            ),
-                          ],
+                        TextButton(
+                          onPressed: () => setState(() {
+                            _pendingAttachType = null;
+                            _pendingAttachId = null;
+                          }),
+                          child: const Text('Remove'),
                         ),
+                      ],
+                    ),
+                    MessagingAttachmentPreview(
+                      attachmentType: _pendingAttachType!,
+                      attachmentId: _pendingAttachId!,
+                      compact: true,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          Expanded(
+            child: StreamBuilder<List<DmMessage>>(
+              stream: _dm.watchMessages(threadId),
+              builder: (context, snap) {
+                if (snap.hasError) {
+                  return Center(child: Text('${snap.error}', textAlign: TextAlign.center));
+                }
+                final list = snap.data ?? [];
+                if (list.isEmpty && snap.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+                }
+                return ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: list.length,
+                  itemBuilder: (context, index) {
+                    final m = list[index];
+                    final mine = m.senderId == me;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Row(
+                        mainAxisAlignment: mine ? MainAxisAlignment.end : MainAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Flexible(
+                            child: Column(
+                              crossAxisAlignment: mine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                              children: [
+                                if (m.attachmentType != null &&
+                                    m.attachmentId != null &&
+                                    ['job', 'skill', 'event'].contains(m.attachmentType))
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 8),
+                                    child: MessagingAttachmentPreview(
+                                      attachmentType: m.attachmentType!,
+                                      attachmentId: m.attachmentId!,
+                                      compact: true,
+                                    ),
+                                  ),
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: mine ? AppColors.primary : AppColors.card,
+                                    borderRadius: BorderRadius.circular(16).copyWith(
+                                      bottomRight: mine ? const Radius.circular(4) : null,
+                                      bottomLeft: !mine ? const Radius.circular(4) : null,
+                                    ),
+                                    border: mine ? null : Border.all(color: AppColors.border),
+                                  ),
+                                  child: Text(
+                                    m.text,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: mine ? AppColors.onPrimary : AppColors.foreground,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    );
+                  },
                 );
               },
             ),
@@ -197,11 +233,18 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
                       child: TextField(
                         controller: _controller,
                         decoration: InputDecoration(
-                          hintText: 'Type a message...',
+                          hintText: 'Type a message…',
                           filled: true,
                           fillColor: AppColors.background,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: const BorderSide(color: AppColors.border)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(24),
+                            borderSide: const BorderSide(color: AppColors.border),
+                          ),
                         ),
+                        minLines: 1,
+                        maxLines: 4,
+                        textInputAction: TextInputAction.send,
+                        onSubmitted: (_) => _send(),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -211,8 +254,14 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
                         padding: const EdgeInsets.all(12),
                         backgroundColor: AppColors.primary,
                       ),
-                      onPressed: () => _controller.clear(),
-                      child: const Icon(Icons.send, color: AppColors.onPrimary),
+                      onPressed: _sending ? null : _send,
+                      child: _sending
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.onPrimary),
+                            )
+                          : const Icon(Icons.send, color: AppColors.onPrimary),
                     ),
                   ],
                 ),
@@ -223,13 +272,4 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
       ),
     );
   }
-}
-
-class _Dm {
-  const _Dm(this.id, this.text, this.isMine, this.time);
-
-  final int id;
-  final String text;
-  final bool isMine;
-  final String time;
 }

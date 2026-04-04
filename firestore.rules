@@ -139,15 +139,142 @@ service cloud.firestore {
       allow write: if isSignedIn() && request.auth.uid == likerId;
     }
 
-    // --- Events (RSVP from mobile + curriculum admin) ---
+    // --- Events (RSVP from mobile + curriculum admin + user-submitted pending) ---
+    function eventReadableByMember() {
+      return isSignedIn() && (
+        hasStaffClaim()
+        || !(resource.data.keys().hasAll(['approval_status']))
+        || resource.data.get('approval_status', 'approved') == 'approved'
+        || (resource.data.keys().hasAll(['created_by'])
+            && resource.data.created_by == request.auth.uid)
+      );
+    }
+
+    function eventPublishedForRsvp() {
+      return !(resource.data.keys().hasAll(['approval_status']))
+        || resource.data.get('approval_status', 'approved') == 'approved';
+    }
+
+    function memberSubmittedEventCreate() {
+      return request.resource.data.approval_status == 'pending'
+        && request.resource.data.created_by == request.auth.uid
+        && request.resource.data.registered_users is list
+        && request.resource.data.registered_users.size() == 0
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 500
+        && request.resource.data.time is string
+        && request.resource.data.location is string
+        && request.resource.data.details is string
+        && request.resource.data.details.size() <= 20000
+        && request.resource.data.keys().hasOnly([
+          'title', 'date', 'time', 'location', 'details', 'event_type', 'image_url',
+          'registered_users', 'approval_status', 'created_by', 'created_at', 'updated_at',
+          'total_spots', 'available_spots'
+        ]);
+    }
+
     match /events/{eventId} {
-      allow read: if isSignedIn();
-      allow create, delete: if hasStaffClaim();
-      // Admins edit full documents; members may only touch RSVP-related fields.
+      allow read: if eventReadableByMember();
+      allow create: if isSignedIn() && (hasStaffClaim() || memberSubmittedEventCreate());
+      allow delete: if hasStaffClaim();
       allow update: if hasStaffClaim()
         || (isSignedIn()
+          && eventPublishedForRsvp()
           && request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['registered_users', 'updated_at', 'available_spots']));
+    }
+
+    // --- Expansion app: jobs & skills listings (Explore) ---
+    match /expansion_jobs/{jobId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.author_id == request.auth.uid
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 300
+        && request.resource.data.keys().hasOnly([
+          'title', 'company', 'location', 'description', 'author_id', 'author_name',
+          'created_at', 'updated_at'
+        ]);
+      allow update, delete: if hasStaffClaim()
+        || (isSignedIn()
+          && resource.data.author_id == request.auth.uid
+          && request.resource.data.author_id == resource.data.author_id);
+    }
+
+    match /expansion_skills/{skillId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.author_id == request.auth.uid
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 300
+        && request.resource.data.keys().hasOnly([
+          'title', 'summary', 'author_id', 'author_name', 'created_at', 'updated_at'
+        ]);
+      allow update, delete: if hasStaffClaim()
+        || (isSignedIn()
+          && resource.data.author_id == request.auth.uid
+          && request.resource.data.author_id == resource.data.author_id);
+    }
+
+    // --- Direct messages (1:1 threads) ---
+    function dmThreadDoc(threadId) {
+      return get(/databases/$(database)/documents/dm_threads/$(threadId));
+    }
+
+    function dmParticipantIds(threadId) {
+      return dmThreadDoc(threadId).data.participant_ids;
+    }
+
+    match /dm_threads/{threadId} {
+      allow read: if isSignedIn()
+        && resource.data.participant_ids is list
+        && request.auth.uid in resource.data.participant_ids;
+      allow create: if isSignedIn()
+        && request.resource.data.participant_ids is list
+        && request.resource.data.participant_ids.size() == 2
+        && request.auth.uid in request.resource.data.participant_ids
+        && request.resource.data.participant_ids[0] is string
+        && request.resource.data.participant_ids[1] is string
+        && request.resource.data.participant_ids[0]
+          < request.resource.data.participant_ids[1]
+        && threadId == request.resource.data.participant_ids[0] + '_'
+          + request.resource.data.participant_ids[1]
+        && request.resource.data.keys().hasOnly([
+          'participant_ids', 'created_at', 'updated_at', 'last_preview', 'last_sender_id'
+        ]);
+      allow update: if isSignedIn()
+        && resource.data.participant_ids is list
+        && request.auth.uid in resource.data.participant_ids
+        && request.resource.data.participant_ids == resource.data.participant_ids
+        && request.resource.data.created_at == resource.data.created_at
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['updated_at', 'last_preview', 'last_sender_id']);
+      allow delete: if false;
+    }
+
+    match /dm_threads/{threadId}/messages/{msgId} {
+      allow read: if isSignedIn()
+        && dmThreadDoc(threadId).exists
+        && request.auth.uid in dmParticipantIds(threadId);
+      allow create: if isSignedIn()
+        && dmThreadDoc(threadId).exists
+        && request.auth.uid in dmParticipantIds(threadId)
+        && request.resource.data.sender_id == request.auth.uid
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 10000
+        && request.resource.data.keys().hasOnly([
+          'sender_id', 'text', 'created_at', 'attachment_type', 'attachment_id'
+        ])
+        && (!request.resource.data.keys().hasAll(['attachment_type'])
+          || (request.resource.data.attachment_type in ['job', 'skill', 'event']
+            && request.resource.data.keys().hasAll(['attachment_id'])
+            && request.resource.data.attachment_id is string
+            && request.resource.data.attachment_id.size() > 0));
+      allow update, delete: if false;
     }
 
     // --- Curriculum structure ---

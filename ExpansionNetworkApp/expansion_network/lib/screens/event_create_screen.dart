@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../services/events_repository.dart';
 import '../theme/app_theme.dart';
 
 /// Port of [UI Basis/src/app/pages/EventCreate.tsx]
@@ -18,6 +19,8 @@ class _EventCreateScreenState extends State<EventCreateScreen> {
   final _location = TextEditingController();
   final _description = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  final _eventsRepo = EventsRepository();
+  bool _submitting = false;
 
   @override
   void dispose() {
@@ -29,9 +32,42 @@ class _EventCreateScreenState extends State<EventCreateScreen> {
     super.dispose();
   }
 
-  void _submit() {
-    if (_formKey.currentState?.validate() ?? false) {
-      context.go('/events');
+  Future<void> _submit() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    final rawDate = _date.text.trim();
+    DateTime? eventDate;
+    if (rawDate.isNotEmpty) {
+      eventDate = DateTime.tryParse(rawDate);
+      if (eventDate == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Use an ISO date like 2026-04-15, or leave blank.')),
+          );
+        }
+        return;
+      }
+    }
+    setState(() => _submitting = true);
+    try {
+      await _eventsRepo.submitUserEventForApproval(
+        title: _title.text.trim(),
+        date: eventDate,
+        time: _time.text.trim(),
+        location: _location.text.trim(),
+        details: _description.text.trim(),
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Submitted for approval. You’ll see it on the feed once staff approves.')),
+        );
+        context.go('/feed');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      }
+    } finally {
+      if (mounted) setState(() => _submitting = false);
     }
   }
 
@@ -77,11 +113,13 @@ class _EventCreateScreenState extends State<EventCreateScreen> {
                   Row(
                     children: [
                       Expanded(
-                        child: TextFormField(
-                          controller: _date,
-                          decoration: const InputDecoration(labelText: 'Date'),
-                          validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
-                        ),
+                        child:                   TextFormField(
+                    controller: _date,
+                    decoration: const InputDecoration(
+                      labelText: 'Date',
+                      hintText: 'YYYY-MM-DD (optional)',
+                    ),
+                  ),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
@@ -141,8 +179,14 @@ class _EventCreateScreenState extends State<EventCreateScreen> {
                       backgroundColor: AppColors.primary,
                       minimumSize: const Size.fromHeight(48),
                     ),
-                    onPressed: _submit,
-                    child: const Text('Submit for Approval'),
+                    onPressed: _submitting ? null : _submit,
+                    child: _submitting
+                        ? const SizedBox(
+                            height: 22,
+                            width: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.onPrimary),
+                          )
+                        : const Text('Submit for Approval'),
                   ),
                 ],
               ),

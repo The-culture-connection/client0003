@@ -77,6 +77,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   Widget build(BuildContext context) {
     final e = _event;
     final uid = FirebaseAuth.instance.currentUser?.uid;
+    final u = uid;
     return Scaffold(
       body: Column(
         children: [
@@ -114,6 +115,26 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         : ListView(
                             padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
                             children: [
+                              if (!e.isPublished) ...[
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.secondary,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: AppColors.border),
+                                  ),
+                                  child: Text(
+                                    e.approvalStatus == 'pending'
+                                        ? 'This event is pending approval and is not visible on the public feed yet.'
+                                        : e.approvalStatus == 'rejected'
+                                            ? 'This event was not approved.${e.rejectionReason != null && e.rejectionReason!.isNotEmpty ? ' ${e.rejectionReason}' : ''}'
+                                            : 'This event is not published.',
+                                    style: const TextStyle(fontSize: 13, color: AppColors.mutedForeground),
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                              ],
                               if (e.imageUrl != null && e.imageUrl!.isNotEmpty)
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(12),
@@ -174,7 +195,10 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                               SizedBox(
                                 width: double.infinity,
                                 child: ElevatedButton(
-                                  onPressed: (_busy || uid == null || (e.isFull && !e.isRegistered(uid)))
+                                  onPressed: (!e.isPublished ||
+                                          _busy ||
+                                          u == null ||
+                                          (e.isFull && !e.isRegistered(u)))
                                       ? null
                                       : () => _toggleRegister(e),
                                   style: ElevatedButton.styleFrom(
@@ -189,7 +213,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                           child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.onPrimary),
                                         )
                                       : Text(
-                                          uid != null && e.isRegistered(uid)
+                                          u != null && e.isRegistered(u)
                                               ? 'Unregister'
                                               : e.isFull
                                                   ? 'Event full'

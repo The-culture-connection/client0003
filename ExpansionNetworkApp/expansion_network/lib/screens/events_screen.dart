@@ -38,7 +38,7 @@ class EventsScreen extends StatelessWidget {
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
               sliver: StreamBuilder<List<CommunityEvent>>(
-                stream: repo.watchEvents(),
+                stream: repo.watchPublishedEvents(),
                 builder: (context, snap) {
                   if (snap.hasError) {
                     return SliverToBoxAdapter(

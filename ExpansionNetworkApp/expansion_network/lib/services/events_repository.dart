@@ -33,6 +33,29 @@ class EventsRepository {
     });
   }
 
+  /// Feed and member lists: approved or legacy events only.
+  Stream<List<CommunityEvent>> watchPublishedEvents() {
+    return watchEvents().map((list) => list.where((e) => e.isPublished).toList());
+  }
+
+  /// Admin queue: user-submitted events awaiting review.
+  Stream<List<CommunityEvent>> watchPendingUserEvents() {
+    return _events.where('approval_status', isEqualTo: 'pending').snapshots().map(
+          (snap) => snap.docs.map((d) => CommunityEvent.fromDoc(d.id, d.data())).toList(),
+        );
+  }
+
+  /// Events this user created (any approval status); filter [CommunityEvent.isPublished] in UI when needed.
+  Stream<List<CommunityEvent>> watchEventsCreatedBy(String uid) {
+    return _events
+        .where('created_by', isEqualTo: uid)
+        .orderBy('created_at', descending: true)
+        .snapshots()
+        .map(
+          (snap) => snap.docs.map((d) => CommunityEvent.fromDoc(d.id, d.data())).toList(),
+        );
+  }
+
   /// Alias for [watchEvents].
   Stream<List<CommunityEvent>> watchAllEvents() => watchEvents();
 
@@ -40,6 +63,52 @@ class EventsRepository {
     final doc = await _events.doc(eventId).get();
     if (!doc.exists) return null;
     return CommunityEvent.fromDoc(doc.id, doc.data()!);
+  }
+
+  /// Member-submitted event; appears after staff sets [approval_status] to `approved`.
+  Future<String> submitUserEventForApproval({
+    required String title,
+    DateTime? date,
+    required String time,
+    required String location,
+    required String details,
+    String eventType = 'In-person',
+    String? imageUrl,
+  }) async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) throw StateError('Not signed in');
+
+    final ref = _events.doc();
+    await ref.set({
+      'title': title,
+      if (date != null) 'date': Timestamp.fromDate(date),
+      'time': time,
+      'location': location,
+      'details': details,
+      'event_type': eventType,
+      if (imageUrl != null && imageUrl.isNotEmpty) 'image_url': imageUrl,
+      'registered_users': <String>[],
+      'approval_status': 'pending',
+      'created_by': uid,
+      'created_at': FieldValue.serverTimestamp(),
+      'updated_at': FieldValue.serverTimestamp(),
+    });
+    return ref.id;
+  }
+
+  /// Staff: publish or reject a pending user event.
+  Future<void> setEventApproval({
+    required String eventId,
+    required bool approve,
+    String? rejectionReason,
+  }) async {
+    final ref = _events.doc(eventId);
+    await ref.update({
+      'approval_status': approve ? 'approved' : 'rejected',
+      if (!approve && rejectionReason != null && rejectionReason.isNotEmpty) 'rejection_reason': rejectionReason,
+      if (approve) 'rejection_reason': FieldValue.delete(),
+      'updated_at': FieldValue.serverTimestamp(),
+    });
   }
 
   /// Register current user using `registered_users` array + optional [available_spots].

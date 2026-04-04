@@ -7,6 +7,7 @@ import '../profile/profile_edit_sections.dart';
 import '../profile/profile_utils.dart';
 import '../services/user_profile_repository.dart';
 import '../theme/app_theme.dart';
+import '../utils/staff_claims.dart';
 import '../widgets/profile_section_card.dart';
 import '../widgets/profile_user_blocks.dart';
 
@@ -111,6 +112,16 @@ class _ProfileBody extends StatelessWidget {
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
                   ),
                   const Spacer(),
+                  FutureBuilder<bool>(
+                    future: currentUserHasStaffClaim(),
+                    builder: (context, staffSnap) {
+                      if (staffSnap.data != true) return const SizedBox.shrink();
+                      return TextButton(
+                        onPressed: () => context.push('/admin/events'),
+                        child: const Text('Event approvals'),
+                      );
+                    },
+                  ),
                   TextButton(
                     onPressed: () async {
                       await FirebaseAuth.instance.signOut();

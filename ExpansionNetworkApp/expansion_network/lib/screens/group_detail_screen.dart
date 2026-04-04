@@ -9,6 +9,7 @@ import '../services/user_profile_repository.dart';
 import '../theme/app_theme.dart';
 import '../utils/staff_claims.dart';
 import '../widgets/group_thread/firestore_thread_tile.dart';
+import '../widgets/user_profile_modal.dart';
 
 /// Community hub (`groups_mobile`): each item in the list is a **thread** (like a Reddit post).
 class GroupDetailScreen extends StatefulWidget {
@@ -38,7 +39,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
   final _newTitle = TextEditingController();
   final _newBody = TextEditingController();
   bool _busyJoin = false;
-  bool _headerAboutExpanded = false;
+  bool _communityAboutExpanded = false;
 
   @override
   void initState() {
@@ -252,72 +253,25 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
   }
 
   Widget _header(FsGroup g, bool joined, bool canManage) {
-    final about = (g.description ?? '').trim();
-    final aboutLines = _headerAboutExpanded ? null : 4;
     return Material(
       color: AppColors.background,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(8, 8, 8, 12),
+            padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 IconButton(
                   icon: const Icon(Icons.arrow_back, color: AppColors.foreground),
                   onPressed: () => context.pop(),
                 ),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        g.name,
-                        style: const TextStyle(color: AppColors.foreground, fontSize: 20, fontWeight: FontWeight.w600),
-                      ),
-                      if (g.category != null && g.category!.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            g.category!,
-                            style: const TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w500),
-                          ),
-                        ),
-                      ],
-                      if (about.isNotEmpty) ...[
-                        const SizedBox(height: 10),
-                        Text(
-                          about,
-                          maxLines: aboutLines,
-                          overflow: aboutLines != null ? TextOverflow.ellipsis : null,
-                          style: const TextStyle(color: AppColors.mutedForeground, fontSize: 13, height: 1.4),
-                        ),
-                        if (about.length > 140 || about.split('\n').length > 3)
-                          TextButton(
-                            style: TextButton.styleFrom(
-                              padding: EdgeInsets.zero,
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              foregroundColor: AppColors.primary,
-                            ),
-                            onPressed: () => setState(() => _headerAboutExpanded = !_headerAboutExpanded),
-                            child: Text(_headerAboutExpanded ? 'Show less' : 'Show full about'),
-                          ),
-                      ] else
-                        const Padding(
-                          padding: EdgeInsets.only(top: 6),
-                          child: Text(
-                            'No about text yet.',
-                            style: TextStyle(color: AppColors.mutedForeground, fontSize: 12),
-                          ),
-                        ),
-                    ],
+                  child: Text(
+                    g.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: AppColors.foreground, fontSize: 18, fontWeight: FontWeight.w600),
                   ),
                 ),
                 if (canManage)
@@ -342,6 +296,116 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
             ),
           ),
           const Divider(height: 1, color: AppColors.border),
+        ],
+      ),
+    );
+  }
+
+  /// Group metadata (not a thread). Shown above thread cards on the Threads tab.
+  Widget _communityMetadataCard(FsGroup g) {
+    final about = (g.description ?? '').trim();
+    final aboutLines = _communityAboutExpanded ? null : 4;
+    final threads = g.threadCount;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.secondary,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.groups_rounded, size: 18, color: AppColors.primary),
+                const SizedBox(width: 8),
+                Text(
+                  'Community',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.6,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (g.category != null && g.category!.isNotEmpty) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.card,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Text(
+                  g.category!,
+                  style: const TextStyle(color: AppColors.foreground, fontSize: 12, fontWeight: FontWeight.w500),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+            if (about.isNotEmpty) ...[
+              Text(
+                about,
+                maxLines: aboutLines,
+                overflow: aboutLines != null ? TextOverflow.ellipsis : null,
+                style: const TextStyle(color: AppColors.foreground, fontSize: 14, height: 1.45),
+              ),
+              if (about.length > 140 || about.split('\n').length > 3)
+                TextButton(
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    foregroundColor: AppColors.primary,
+                  ),
+                  onPressed: () => setState(() => _communityAboutExpanded = !_communityAboutExpanded),
+                  child: Text(_communityAboutExpanded ? 'Show less' : 'Show full about'),
+                ),
+            ] else
+              Text(
+                'No about text yet.',
+                style: TextStyle(color: AppColors.mutedForeground, fontSize: 13),
+              ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              children: [
+                _metaChip(Icons.people_outline, '${g.memberCount} members'),
+                _metaChip(Icons.forum_outlined, threads != null ? '$threads threads' : 'Threads'),
+                _metaChip(
+                  g.status == 'Open' ? Icons.lock_open : Icons.lock_outline,
+                  g.status == 'Open' ? 'Open' : 'Closed',
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _metaChip(IconData icon, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: AppColors.mutedForeground),
+          const SizedBox(width: 6),
+          Text(label, style: const TextStyle(fontSize: 12, color: AppColors.foreground)),
         ],
       ),
     );
@@ -431,16 +495,32 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
     return CustomScrollView(
       controller: _scroll,
       slivers: [
+        SliverToBoxAdapter(child: _communityMetadataCard(g)),
         SliverToBoxAdapter(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Row(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _sortChip('New', _sort == GroupThreadSort.newest, () => _onSort(GroupThreadSort.newest)),
-                const SizedBox(width: 8),
-                _sortChip('Top', _sort == GroupThreadSort.top, () => _onSort(GroupThreadSort.top)),
-                const SizedBox(width: 8),
-                _sortChip('Helpful', _sort == GroupThreadSort.helpful, () => _onSort(GroupThreadSort.helpful)),
+                Text(
+                  'Threads',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                    color: AppColors.mutedForeground,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    _sortChip('New', _sort == GroupThreadSort.newest, () => _onSort(GroupThreadSort.newest)),
+                    const SizedBox(width: 8),
+                    _sortChip('Top', _sort == GroupThreadSort.top, () => _onSort(GroupThreadSort.top)),
+                    const SizedBox(width: 8),
+                    _sortChip('Helpful', _sort == GroupThreadSort.helpful, () => _onSort(GroupThreadSort.helpful)),
+                  ],
+                ),
               ],
             ),
           ),
@@ -522,39 +602,47 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
         final memberUid = ids[i - 1];
         return Padding(
           padding: const EdgeInsets.only(bottom: 10),
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.card,
+          child: Material(
+            color: AppColors.card,
+            shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.border),
+              side: const BorderSide(color: AppColors.border),
             ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  backgroundColor: AppColors.primary,
-                  child: Text(
-                    memberUid.length >= 2 ? memberUid.substring(0, 2).toUpperCase() : '?',
-                    style: const TextStyle(fontSize: 11, color: AppColors.onPrimary),
-                  ),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: () => showUserProfileModal(context, userId: memberUid),
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      backgroundColor: AppColors.primary,
+                      child: Text(
+                        memberUid.length >= 2 ? memberUid.substring(0, 2).toUpperCase() : '?',
+                        style: const TextStyle(fontSize: 11, color: AppColors.onPrimary),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FutureBuilder<String>(
+                        future: _users.getDisplayNameForUser(memberUid),
+                        builder: (context, snap) {
+                          final name = snap.data ?? 'Member';
+                          return Text(name, style: const TextStyle(fontWeight: FontWeight.w500));
+                        },
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: memberUid == FirebaseAuth.instance.currentUser?.uid
+                          ? null
+                          : () => context.push('/messages/direct/$memberUid'),
+                      child: const Text('Message'),
+                    ),
+                    const Icon(Icons.chevron_right, color: AppColors.mutedForeground, size: 20),
+                  ],
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FutureBuilder<String>(
-                    future: _users.getDisplayNameForUser(memberUid),
-                    builder: (context, snap) {
-                      final name = snap.data ?? 'Member';
-                      return Text(name, style: const TextStyle(fontWeight: FontWeight.w500));
-                    },
-                  ),
-                ),
-                TextButton(
-                  onPressed: memberUid == FirebaseAuth.instance.currentUser?.uid
-                      ? null
-                      : () => context.push('/messages/direct/$memberUid'),
-                  child: const Text('Message'),
-                ),
-              ],
+              ),
             ),
           ),
         );

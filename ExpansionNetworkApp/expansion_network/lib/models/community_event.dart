@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// `events/{eventId}` — matches digital curriculum / admin event shape.
+/// [approvalStatus] null or missing in Firestore means published (legacy curriculum events).
 class CommunityEvent {
   const CommunityEvent({
     required this.id,
@@ -16,6 +17,9 @@ class CommunityEvent {
     this.availableSpots,
     this.createdAt,
     this.updatedAt,
+    this.approvalStatus,
+    this.createdBy,
+    this.rejectionReason,
   });
 
   final String id;
@@ -31,6 +35,13 @@ class CommunityEvent {
   final int? availableSpots;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  /// `pending` | `approved` | `rejected`, or null for legacy published events.
+  final String? approvalStatus;
+  final String? createdBy;
+  final String? rejectionReason;
+
+  bool get isPublished =>
+      approvalStatus == null || approvalStatus == 'approved';
 
   bool isRegistered(String uid) => registeredUsers.contains(uid);
 
@@ -62,6 +73,9 @@ class CommunityEvent {
       availableSpots: _i(data['available_spots']),
       createdAt: _ts(data['created_at']),
       updatedAt: _ts(data['updated_at']),
+      approvalStatus: _s(data['approval_status']),
+      createdBy: _s(data['created_by']),
+      rejectionReason: _s(data['rejection_reason']),
     );
   }
 

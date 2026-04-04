@@ -1,18 +1,17 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../models/group_thread_firestore.dart';
+import '../services/group_thread_repository.dart';
 import '../theme/app_theme.dart';
 
-/// Port of [UI Basis/src/app/pages/Home.tsx]
+/// Port of [UI Basis/src/app/pages/Home.tsx] — group activity from `groups_mobile`, no feed posts.
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final recentPosts = [
-      _MiniPost(1, 'Sarah Johnson', 'SJ', 'Just landed my dream job at a tech startup! 🚀', 24, '2h ago'),
-      _MiniPost(2, 'Michael Chen', 'MC', 'Anyone attending the networking workshop tomorrow?', 12, '5h ago'),
-    ];
     final upcomingEvents = [
       _MiniEvent(1, 'Networking Workshop', 'Feb 28', '2:00 PM', true),
       _MiniEvent(2, 'Guest Speaker Series', 'Mar 2', '6:00 PM', false),
@@ -65,15 +64,12 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  _RecentActivityCard(
-                    posts: recentPosts,
-                    onViewAll: () => context.go('/feed'),
-                  ),
-                  const SizedBox(height: 12),
                   _TopMatchesCard(
                     matches: topMatches,
                     onViewAll: () => context.go('/explore'),
                   ),
+                  const SizedBox(height: 12),
+                  const _MyCommunitiesMessagesCard(),
                 ],
               ),
             ),
@@ -84,14 +80,112 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-class _MiniPost {
-  const _MiniPost(this.id, this.author, this.avatar, this.content, this.likes, this.time);
-  final int id;
-  final String author;
-  final String avatar;
-  final String content;
-  final int likes;
-  final String time;
+class _MyCommunitiesMessagesCard extends StatelessWidget {
+  const _MyCommunitiesMessagesCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final repo = GroupThreadRepository();
+
+    return StreamBuilder<List<FsGroup>>(
+      stream: repo.watchGroups(),
+      builder: (context, snap) {
+        if (snap.hasError) {
+          return _CardShell(
+            title: 'Your communities',
+            child: Text(
+              'Could not load groups.\n${snap.error}',
+              style: const TextStyle(fontSize: 12, color: AppColors.mutedForeground),
+            ),
+          );
+        }
+        final all = snap.data ?? [];
+        if (uid == null) {
+          return const _CardShell(
+            title: 'Your communities',
+            child: Text(
+              'Sign in to see communities you belong to.',
+              style: TextStyle(fontSize: 12, color: AppColors.mutedForeground),
+            ),
+          );
+        }
+        final mine = all.where((g) => g.isMember(uid)).toList();
+        mine.sort((a, b) {
+          final ta = a.lastActivityAt;
+          final tb = b.lastActivityAt;
+          if (ta != null && tb != null) return tb.compareTo(ta);
+          if (ta != null) return -1;
+          if (tb != null) return 1;
+          return b.memberCount.compareTo(a.memberCount);
+        });
+        final preview = mine.take(6).toList();
+
+        return _CardShell(
+          title: 'Your communities',
+          actionLabel: 'Groups',
+          onAction: () => context.go('/groups'),
+          child: mine.isEmpty
+              ? const Text(
+                  'Join a community on the Groups tab to see updates here.',
+                  style: TextStyle(fontSize: 12, color: AppColors.mutedForeground),
+                )
+              : Column(
+                  children: [
+                    for (final g in preview)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: InkWell(
+                          onTap: () => context.push('/groups/${g.id}'),
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: AppColors.background,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: AppColors.border),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(Icons.forum_outlined, size: 14, color: AppColors.primary),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        g.name,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  (g.lastActivitySnippet != null && g.lastActivitySnippet!.isNotEmpty)
+                                      ? g.lastActivitySnippet!
+                                      : '${g.threadCount ?? 0} threads · ${g.memberCount} members',
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 11, color: AppColors.mutedForeground),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+        );
+      },
+    );
+  }
 }
 
 class _MiniEvent {
@@ -306,89 +400,6 @@ class _EventsCard extends StatelessWidget {
                     ),
                   ],
                 ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _RecentActivityCard extends StatelessWidget {
-  const _RecentActivityCard({required this.posts, required this.onViewAll});
-
-  final List<_MiniPost> posts;
-  final VoidCallback onViewAll;
-
-  @override
-  Widget build(BuildContext context) {
-    return _CardShell(
-      title: 'Recent Activity',
-      actionLabel: 'View All',
-      onAction: onViewAll,
-      child: Column(
-        children: [
-          for (final p in posts)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      CircleAvatar(
-                        radius: 14,
-                        backgroundColor: AppColors.primary,
-                        child: Text(
-                          p.avatar,
-                          style: const TextStyle(fontSize: 10, color: AppColors.onPrimary, fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              p.author,
-                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                            ),
-                            Text(
-                              p.time,
-                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                    color: AppColors.mutedForeground,
-                                  ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    p.content,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelSmall,
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Icon(Icons.favorite_border, size: 12, color: AppColors.mutedForeground),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${p.likes}',
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: AppColors.mutedForeground,
-                            ),
-                      ),
-                    ],
-                  ),
-                  if (p != posts.last) const Divider(height: 16),
-                ],
               ),
             ),
         ],
