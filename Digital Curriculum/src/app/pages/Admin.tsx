@@ -36,6 +36,7 @@ import {
   ShoppingBag,
   Pencil,
   KeyRound,
+  Smartphone,
 } from "lucide-react";
 import { useAuth } from "../components/auth/AuthProvider";
 import {
@@ -63,7 +64,9 @@ import {
   createEvent,
   getAllEventsForAdmin,
   setMemberEventApproval,
+  type AdminListedEvent,
   type Event,
+  type EventDistribution,
   type EventType,
 } from "../lib/events";
 import {
@@ -148,12 +151,14 @@ export function AdminPage() {
   const [newEventEndTime, setNewEventEndTime] = useState("");
   const [newEventLocation, setNewEventLocation] = useState("");
   const [newEventType, setNewEventType] = useState<EventType>("In-person");
+  const [newEventDistribution, setNewEventDistribution] =
+    useState<EventDistribution>("curriculum");
   const [newEventSpots, setNewEventSpots] = useState("");
   const [newEventImageUrl, setNewEventImageUrl] = useState("");
   const [newEventImageFile, setNewEventImageFile] = useState<File | null>(null);
   const [newEventDetails, setNewEventDetails] = useState("");
   const [creatingEvent, setCreatingEvent] = useState(false);
-  const [events, setEvents] = useState<Event[]>([]);
+  const [events, setEvents] = useState<AdminListedEvent[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(false);
   const [rejectDialogEvent, setRejectDialogEvent] = useState<Event | null>(null);
   const [rejectReason, setRejectReason] = useState("");
@@ -955,6 +960,7 @@ export function AdminPage() {
           availableSpots: spots,
           eventType: newEventType,
           imageUrl,
+          distribution: newEventDistribution,
         }
       );
 
@@ -964,6 +970,7 @@ export function AdminPage() {
       setNewEventEndTime("");
       setNewEventLocation("");
       setNewEventType("In-person");
+      setNewEventDistribution("curriculum");
       setNewEventSpots("");
       setNewEventImageUrl("");
       setNewEventImageFile(null);
@@ -1265,6 +1272,50 @@ export function AdminPage() {
                     </button>
                   </div>
                 </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label className="text-foreground">Where to publish</Label>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Curriculum = web Events hub only. Mobile = Expansion app only. Both = same event id in both Firestore collections (RSVPs stay in sync).
+                  </p>
+                  <div className="flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setNewEventDistribution("curriculum")}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                        newEventDistribution === "curriculum"
+                          ? "border-accent bg-accent/10 text-accent"
+                          : "border-border bg-card text-muted-foreground hover:border-accent/50"
+                      }`}
+                    >
+                      <BookOpen className="w-4 h-4" />
+                      Digital Curriculum only
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNewEventDistribution("mobile")}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                        newEventDistribution === "mobile"
+                          ? "border-accent bg-accent/10 text-accent"
+                          : "border-border bg-card text-muted-foreground hover:border-accent/50"
+                      }`}
+                    >
+                      <Smartphone className="w-4 h-4" />
+                      Expansion (mobile) only
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNewEventDistribution("both")}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                        newEventDistribution === "both"
+                          ? "border-accent bg-accent/10 text-accent"
+                          : "border-border bg-card text-muted-foreground hover:border-accent/50"
+                      }`}
+                    >
+                      <Calendar className="w-4 h-4" />
+                      Both
+                    </button>
+                  </div>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="event-spots" className="text-foreground">
                     Available Spots (Optional)
@@ -1357,7 +1408,7 @@ export function AdminPage() {
           <div className="space-y-4 mt-6">
             <h2 className="text-xl font-semibold text-foreground">All Events</h2>
             <p className="text-sm text-muted-foreground">
-              Member submissions from the Expansion app appear as <strong>Pending approval</strong>. Approve to publish on the feed and web Events hub.
+              Lists <strong>events</strong> (curriculum web) and <strong>events_mobile</strong> (Expansion app), merged by id. Member submissions from the app are <strong>Pending approval</strong> in <code className="text-xs bg-muted px-1 rounded">events_mobile</code>. Approve to publish on the mobile feed; use <strong>Where to publish</strong> above when creating from admin.
             </p>
             {loadingEvents ? (
               <Card className="p-8 text-center">
@@ -1385,6 +1436,12 @@ export function AdminPage() {
                 const isPending = approval === "pending";
                 const isRejected = approval === "rejected";
                 const busy = eventApprovalBusyId === event.id;
+                const platformLabel =
+                  event.adminPlatforms.length === 2
+                    ? "Curriculum + Mobile"
+                    : event.adminPlatforms.includes("mobile")
+                      ? "Mobile app"
+                      : "Curriculum web";
 
                 return (
                   <Card key={event.id} className="p-6">
@@ -1401,6 +1458,9 @@ export function AdminPage() {
                           <h3 className="text-lg font-semibold text-foreground">
                             {event.title}
                           </h3>
+                          <Badge variant="outline" className="text-xs font-normal">
+                            {platformLabel}
+                          </Badge>
                           {isPending && (
                             <Badge className="bg-amber-500/15 text-amber-800 border-amber-500/30">
                               Pending approval

@@ -139,7 +139,7 @@ service cloud.firestore {
       allow write: if isSignedIn() && request.auth.uid == likerId;
     }
 
-    // --- Events (RSVP from mobile + curriculum admin + user-submitted pending) ---
+    // --- Events: Digital Curriculum (`events`) + Expansion mobile (`events_mobile`) ---
     function eventReadableByMember() {
       return isSignedIn() && (
         hasStaffClaim()
@@ -155,7 +155,49 @@ service cloud.firestore {
         || resource.data.get('approval_status', 'approved') == 'approved';
     }
 
-    function memberSubmittedEventCreate() {
+    function staffCurriculumEventKeys() {
+      return [
+        'title', 'date', 'time', 'location', 'details', 'event_type', 'image_url',
+        'registered_users', 'created_at', 'updated_at', 'total_spots', 'available_spots', 'distribution'
+      ];
+    }
+
+    function staffCurriculumEventCreate() {
+      return request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 500
+        && request.resource.data.time is string
+        && request.resource.data.location is string
+        && request.resource.data.details is string
+        && request.resource.data.details.size() <= 20000
+        && request.resource.data.registered_users is list
+        && request.resource.data.registered_users.size() == 0
+        && (!request.resource.data.keys().hasAny(['event_type'])
+            || request.resource.data.event_type in ['Online', 'In-person'])
+        && (!request.resource.data.keys().hasAny(['distribution'])
+            || request.resource.data.distribution in ['curriculum', 'both'])
+        && request.resource.data.keys().hasOnly(staffCurriculumEventKeys());
+    }
+
+    function staffMobilePublishedEventCreate() {
+      return request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 500
+        && request.resource.data.time is string
+        && request.resource.data.location is string
+        && request.resource.data.details is string
+        && request.resource.data.details.size() <= 20000
+        && request.resource.data.registered_users is list
+        && request.resource.data.registered_users.size() == 0
+        && (!request.resource.data.keys().hasAny(['event_type'])
+            || request.resource.data.event_type in ['Online', 'In-person'])
+        && (!request.resource.data.keys().hasAny(['distribution'])
+            || request.resource.data.distribution in ['mobile', 'both'])
+        && (!request.resource.data.keys().hasAny(['approval_status']))
+        && request.resource.data.keys().hasOnly(staffCurriculumEventKeys());
+    }
+
+    function memberSubmittedMobileEventCreate() {
       return request.resource.data.approval_status == 'pending'
         && request.resource.data.created_by == request.auth.uid
         && request.resource.data.registered_users is list
@@ -167,6 +209,8 @@ service cloud.firestore {
         && request.resource.data.location is string
         && request.resource.data.details is string
         && request.resource.data.details.size() <= 20000
+        && (!request.resource.data.keys().hasAny(['event_type'])
+            || request.resource.data.event_type in ['Online', 'In-person'])
         && request.resource.data.keys().hasOnly([
           'title', 'date', 'time', 'location', 'details', 'event_type', 'image_url',
           'registered_users', 'approval_status', 'created_by', 'created_at', 'updated_at',
@@ -176,7 +220,20 @@ service cloud.firestore {
 
     match /events/{eventId} {
       allow read: if eventReadableByMember();
-      allow create: if isSignedIn() && (hasStaffClaim() || memberSubmittedEventCreate());
+      allow create: if isSignedIn() && hasStaffClaim() && staffCurriculumEventCreate();
+      allow delete: if hasStaffClaim();
+      allow update: if hasStaffClaim()
+        || (isSignedIn()
+          && eventPublishedForRsvp()
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['registered_users', 'updated_at', 'available_spots']));
+    }
+
+    match /events_mobile/{eventId} {
+      allow read: if eventReadableByMember();
+      allow create: if isSignedIn()
+        && (memberSubmittedMobileEventCreate()
+          || (hasStaffClaim() && staffMobilePublishedEventCreate()));
       allow delete: if hasStaffClaim();
       allow update: if hasStaffClaim()
         || (isSignedIn()

@@ -3,7 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../models/community_event.dart';
 
-/// Reads and updates `events` (digital curriculum schema).
+/// Expansion app uses Firestore `events_mobile`. Curriculum web uses `events`.
+/// Admin "both" writes the same [eventId] to both; RSVP updates both when [distribution] == `both`.
 class EventsRepository {
   EventsRepository({
     FirebaseFirestore? firestore,
@@ -14,12 +15,15 @@ class EventsRepository {
   final FirebaseFirestore _db;
   final FirebaseAuth _auth;
 
-  CollectionReference<Map<String, dynamic>> get _events =>
+  CollectionReference<Map<String, dynamic>> get _eventsMobile =>
+      _db.collection('events_mobile');
+
+  CollectionReference<Map<String, dynamic>> get _eventsCurriculum =>
       _db.collection('events');
 
-  /// All documents in `events` (including those without a `date` field — `orderBy` would omit them).
+  /// All documents in `events_mobile`.
   Stream<List<CommunityEvent>> watchEvents() {
-    return _events.snapshots().map((snap) {
+    return _eventsMobile.snapshots().map((snap) {
       final list = snap.docs.map((d) => CommunityEvent.fromDoc(d.id, d.data())).toList();
       list.sort((a, b) {
         final da = a.date;
@@ -38,16 +42,16 @@ class EventsRepository {
     return watchEvents().map((list) => list.where((e) => e.isPublished).toList());
   }
 
-  /// Admin queue: user-submitted events awaiting review.
+  /// Admin queue: user-submitted events awaiting review (`events_mobile` only).
   Stream<List<CommunityEvent>> watchPendingUserEvents() {
-    return _events.where('approval_status', isEqualTo: 'pending').snapshots().map(
+    return _eventsMobile.where('approval_status', isEqualTo: 'pending').snapshots().map(
           (snap) => snap.docs.map((d) => CommunityEvent.fromDoc(d.id, d.data())).toList(),
         );
   }
 
-  /// Events this user created (any approval status); filter [CommunityEvent.isPublished] in UI when needed.
+  /// Events this user created in `events_mobile` (any approval status).
   Stream<List<CommunityEvent>> watchEventsCreatedBy(String uid) {
-    return _events.where('created_by', isEqualTo: uid).snapshots().map(
+    return _eventsMobile.where('created_by', isEqualTo: uid).snapshots().map(
           (snap) {
             final list = snap.docs.map((d) => CommunityEvent.fromDoc(d.id, d.data())).toList();
             list.sort((a, b) {
@@ -67,12 +71,12 @@ class EventsRepository {
   Stream<List<CommunityEvent>> watchAllEvents() => watchEvents();
 
   Future<CommunityEvent?> getEvent(String eventId) async {
-    final doc = await _events.doc(eventId).get();
+    final doc = await _eventsMobile.doc(eventId).get();
     if (!doc.exists) return null;
     return CommunityEvent.fromDoc(doc.id, doc.data()!);
   }
 
-  /// Member-submitted event; appears after staff sets [approval_status] to `approved`.
+  /// Member-submitted event in `events_mobile`; staff approves in app or web admin.
   Future<String> submitUserEventForApproval({
     required String title,
     DateTime? date,
@@ -85,7 +89,7 @@ class EventsRepository {
     final uid = _auth.currentUser?.uid;
     if (uid == null) throw StateError('Not signed in');
 
-    final ref = _events.doc();
+    final ref = _eventsMobile.doc();
     await ref.set({
       'title': title,
       if (date != null) 'date': Timestamp.fromDate(date),
@@ -103,13 +107,13 @@ class EventsRepository {
     return ref.id;
   }
 
-  /// Staff: publish or reject a pending user event.
+  /// Staff: publish or reject a pending user event (`events_mobile`).
   Future<void> setEventApproval({
     required String eventId,
     required bool approve,
     String? rejectionReason,
   }) async {
-    final ref = _events.doc(eventId);
+    final ref = _eventsMobile.doc(eventId);
     await ref.update({
       'approval_status': approve ? 'approved' : 'rejected',
       if (!approve && rejectionReason != null && rejectionReason.isNotEmpty) 'rejection_reason': rejectionReason,
@@ -118,16 +122,16 @@ class EventsRepository {
     });
   }
 
-  /// Register current user using `registered_users` array + optional [available_spots].
+  /// Register current user; when [distribution] is `both`, also updates `events/{eventId}`.
   Future<void> register(String eventId) async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) throw StateError('Not signed in');
 
     await _db.runTransaction((tx) async {
-      final ref = _events.doc(eventId);
-      final snap = await tx.get(ref);
-      if (!snap.exists) throw StateError('Event not found');
-      final data = snap.data()!;
+      final mRef = _eventsMobile.doc(eventId);
+      final mSnap = await tx.get(mRef);
+      if (!mSnap.exists) throw StateError('Event not found');
+      final data = mSnap.data()!;
       final ru = (data['registered_users'] as List?)?.whereType<String>().toList() ?? [];
       if (ru.contains(uid)) return;
 
@@ -143,7 +147,16 @@ class EventsRepository {
       if (total != null && total > 0) {
         update['available_spots'] = total - ru.length - 1;
       }
-      tx.update(ref, update);
+      tx.update(mRef, update);
+
+      final dist = data['distribution'] as String?;
+      if (dist == 'both') {
+        final eRef = _eventsCurriculum.doc(eventId);
+        final eSnap = await tx.get(eRef);
+        if (eSnap.exists) {
+          tx.update(eRef, update);
+        }
+      }
     });
   }
 
@@ -152,10 +165,10 @@ class EventsRepository {
     if (uid == null) throw StateError('Not signed in');
 
     await _db.runTransaction((tx) async {
-      final ref = _events.doc(eventId);
-      final snap = await tx.get(ref);
-      if (!snap.exists) throw StateError('Event not found');
-      final data = snap.data()!;
+      final mRef = _eventsMobile.doc(eventId);
+      final mSnap = await tx.get(mRef);
+      if (!mSnap.exists) throw StateError('Event not found');
+      final data = mSnap.data()!;
       final ru = (data['registered_users'] as List?)?.whereType<String>().toList() ?? [];
       if (!ru.contains(uid)) return;
 
@@ -167,7 +180,16 @@ class EventsRepository {
       if (total != null && total > 0) {
         update['available_spots'] = total - (ru.length - 1);
       }
-      tx.update(ref, update);
+      tx.update(mRef, update);
+
+      final dist = data['distribution'] as String?;
+      if (dist == 'both') {
+        final eRef = _eventsCurriculum.doc(eventId);
+        final eSnap = await tx.get(eRef);
+        if (eSnap.exists) {
+          tx.update(eRef, update);
+        }
+      }
     });
   }
 

@@ -22,6 +22,8 @@ class _EventCreateScreenState extends State<EventCreateScreen> {
   final _eventsRepo = EventsRepository();
   final _imagePicker = ImagePicker();
   bool _submitting = false;
+  /// `false` = in person (`In-person`), `true` = online (`Online`) — matches curriculum `event_type`.
+  bool _online = false;
   DateTime? _eventDate;
   TimeOfDay? _eventTime;
   XFile? _pickedFlyer;
@@ -152,6 +154,7 @@ class _EventCreateScreenState extends State<EventCreateScreen> {
         time: timeStr,
         location: _location.text.trim(),
         details: _description.text.trim(),
+        eventType: _online ? 'Online' : 'In-person',
         imageUrl: imageUrl,
       );
       if (mounted) {
@@ -248,9 +251,34 @@ class _EventCreateScreenState extends State<EventCreateScreen> {
                     style: TextStyle(fontSize: 12, color: AppColors.mutedForeground),
                   ),
                   const SizedBox(height: 16),
+                  const Text('Format', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                  const SizedBox(height: 8),
+                  SegmentedButton<bool>(
+                    segments: const [
+                      ButtonSegment<bool>(
+                        value: false,
+                        label: Text('In person'),
+                        icon: Icon(Icons.place_outlined, size: 18),
+                      ),
+                      ButtonSegment<bool>(
+                        value: true,
+                        label: Text('Online'),
+                        icon: Icon(Icons.videocam_outlined, size: 18),
+                      ),
+                    ],
+                    selected: {_online},
+                    onSelectionChanged: (s) {
+                      final v = s.contains(true);
+                      setState(() => _online = v);
+                    },
+                  ),
+                  const SizedBox(height: 16),
                   TextFormField(
                     controller: _location,
-                    decoration: const InputDecoration(labelText: 'Location'),
+                    decoration: InputDecoration(
+                      labelText: _online ? 'Link or how to join' : 'Location',
+                      hintText: _online ? 'e.g. Zoom link, Google Meet, or platform name' : 'Address or venue',
+                    ),
                     validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
                   ),
                   const SizedBox(height: 16),

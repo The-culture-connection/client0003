@@ -8,7 +8,7 @@ import '../theme/app_theme.dart';
 import '../utils/relative_time.dart';
 import '../widgets/page_header.dart';
 
-/// Events list driven by Firestore `events` collection.
+/// Events list driven by Firestore `events_mobile`.
 class EventsScreen extends StatelessWidget {
   const EventsScreen({super.key});
 
