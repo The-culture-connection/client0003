@@ -1,9 +1,17 @@
+# Firebase backend only (mortar-stage). Web app staging is deployed separately on Railway
+# — see Digital Curriculum/DEPLOY_RAILWAY.md and infra/docs/STAGE_DEPLOYMENT.md.
 name: Deploy to Stage
 
 on:
   push:
-    branches: [release/*]
+    branches:
+      - stage
+      - "release/*"
   workflow_dispatch:
+
+concurrency:
+  group: deploy-stage-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   deploy:
@@ -15,23 +23,19 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-      
-      - name: Install Firebase CLI
-        run: npm install -g firebase-tools
-      
-      - name: Install dependencies
-        run: |
-          cd functions
-          npm ci
-      
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+
+      - name: Install dependencies (functions)
+        run: npm ci
+        working-directory: functions
+
       - name: Build functions
-        run: |
-          cd functions
-          npm run build
-      
-      - name: Deploy to Firebase
-        run: |
-          firebase deploy --project mortar-stage --only functions,firestore:rules,firestore:indexes
+        run: npm run build
+        working-directory: functions
+
+      - name: Deploy to mortar-stage
+        run: npx -y firebase-tools@latest deploy --project mortar-stage --only functions,firestore:rules,firestore:indexes,storage --non-interactive
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}

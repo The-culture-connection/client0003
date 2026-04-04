@@ -30,8 +30,9 @@ jobs:
           cd functions
           npm run build
       
+      # Firestore / Storage rules are deployed to mortar-stage only (see deploy-stage.yml).
       - name: Deploy to Firebase
         run: |
-          firebase deploy --project mortar-dev --only functions,firestore:rules,firestore:indexes
+          firebase deploy --project mortar-dev --only functions,firestore:indexes
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}

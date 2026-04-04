@@ -48,7 +48,21 @@ No need to set build/start commands in the dashboard unless you want to override
 
 Set these in the Railway service: **Variables** (or **Settings** → **Variables**).
 
-For **production Firebase**, point the app at your prod project:
+### Staging (`mortar-stage`)
+
+Use a **dedicated Railway service** (or environment) for staging and connect it to your staging branch (e.g. `stage`).
+
+| Variable | Value |
+|----------|--------|
+| `VITE_FIREBASE_ENV` | `stage` |
+
+That selects the built-in **`stage`** Firebase config in `src/app/lib/firebase.ts` (project `mortar-stage`). You only need the extra `VITE_FIREBASE_*` variables below if you want to override those defaults.
+
+Backend (Functions, Firestore rules, Storage) for `mortar-stage` is **not** deployed by Railway — use Firebase CLI from the monorepo root. See [infra/docs/STAGE_DEPLOYMENT.md](../infra/docs/STAGE_DEPLOYMENT.md).
+
+### Production Firebase
+
+For **production**, point the app at your prod project:
 
 | Variable | Description | Example |
 |----------|-------------|---------|

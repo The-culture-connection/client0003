@@ -1,11 +1,248 @@
-rules_version='2';
+rules_version = '2';
+
+/**
+ * Mortar — Firestore security (dev / stage / prod)
+ *
+ * Deploy: `firebase use staging` (or dev) then `firebase deploy --only firestore:rules`
+ *
+ * Design notes:
+ * - Cloud Functions use Admin SDK and bypass these rules.
+ * - Custom claims: assign `roles` array via Admin SDK (e.g. "Admin", "superAdmin").
+ * - invite_codes: unauthenticated read is required for the current web /join flow
+ *   (query by code before sign-up). This cannot fully prevent enumeration of unused
+ *   invites via crafted queries; migrate validation to a callable for stronger security.
+ */
 
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function tokenRoles() {
+      return ('roles' in request.auth.token && request.auth.token.roles is list)
+        ? request.auth.token.roles
+        : [];
+    }
+
+    /** Admin panel + privileged operations */
+    function hasStaffClaim() {
+      return isSignedIn()
+        && tokenRoles() is list
+        && tokenRoles().hasAny(['Admin', 'superAdmin']);
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /** True if document data grants network admin (Firestore mirror of claims). */
+    function dataHasStaffRole(data) {
+      return (data.keys().hasAll(['roles'])
+          && data.roles is list
+          && data.roles.hasAny(['Admin', 'superAdmin']))
+        || data.get('role', '') == 'Admin'
+        || data.get('role', '') == 'superAdmin';
+    }
+
+    /** Block users from granting themselves Admin/superAdmin via client writes. */
+    function gainedPrivilegedUserFields() {
+      return !dataHasStaffRole(resource.data) && dataHasStaffRole(request.resource.data);
+    }
+
+    // --- Expansion roster (server-maintained; admin UI reads) ---
+    match /eligibleUsers/{emailDoc} {
+      allow read: if hasStaffClaim();
+      allow write: if false;
+    }
+
+    match /inviteCodes/{inviteId} {
+      allow read: if hasStaffClaim();
+      allow write: if false;
+    }
+
+    match /expansion_cohort_emails/{docId} {
+      allow read, write: if hasStaffClaim();
+    }
+
+    // --- User profiles ---
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isOwner(userId)
+        && !dataHasStaffRole(request.resource.data)
+        || hasStaffClaim();
+      allow update: if isOwner(userId) && !gainedPrivilegedUserFields()
+        || hasStaffClaim();
+      allow delete: if hasStaffClaim();
+    }
+
+    match /users/{userId}/certificates/{certId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    match /users/{userId}/notifications/{notifId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    match /users/{userId}/surveyResponses/{docId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // --- Web join (legacy); see file header ---
+    match /invite_codes/{docId} {
+      allow read: if true;
+      allow create, delete: if hasStaffClaim();
+      allow update: if isSignedIn()
+        && resource.data.used == false
+        && request.resource.data.used == true
+        && request.resource.data.used_by == request.auth.uid;
+    }
+
+    // --- Community feed (Expansion app + curriculum) ---
+    match /feed_posts/{postId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.author_id == request.auth.uid;
+      allow update, delete: if isSignedIn()
+        && resource.data.author_id == request.auth.uid;
+    }
+
+    match /feed_posts/{postId}/likes/{likerId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && request.auth.uid == likerId;
+    }
+
+    match /feed_posts/{postId}/replies/{replyId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.author_id == request.auth.uid;
+      allow update, delete: if isSignedIn()
+        && resource.data.author_id == request.auth.uid;
+    }
+
+    match /feed_posts/{postId}/replies/{replyId}/likes/{likerId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && request.auth.uid == likerId;
+    }
+
+    // --- Events (RSVP from mobile + curriculum admin) ---
+    match /events/{eventId} {
+      allow read: if isSignedIn();
+      allow create, delete: if hasStaffClaim();
+      // Admins edit full documents; members may only touch RSVP-related fields.
+      allow update: if hasStaffClaim()
+        || (isSignedIn()
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['registered_users', 'updated_at', 'available_spots']));
+    }
+
+    // --- Curriculum structure ---
+    match /curricula/{document=**} {
+      allow read: if isSignedIn();
+      allow write: if hasStaffClaim();
+    }
+
+    match /courses/{document=**} {
+      allow read: if isSignedIn();
+      allow write: if hasStaffClaim();
+    }
+
+    match /courseProgress/{docId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isSignedIn()
+        && resource.data.userId == request.auth.uid;
+    }
+
+    // --- Groups ---
+    match /Groups/{groupId} {
+      allow read: if isSignedIn();
+      allow create: if hasStaffClaim();
+      allow update: if hasStaffClaim()
+        || (isSignedIn()
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['GroupMembers', 'PendingMembers']));
+      allow delete: if hasStaffClaim();
+    }
+
+    function groupDoc(groupId) {
+      return get(/databases/$(database)/documents/Groups/$(groupId));
+    }
+
+    function isGroupMember(groupId) {
+      return groupDoc(groupId).exists
+        && groupDoc(groupId).data.keys().hasAll(['GroupMembers'])
+        && groupDoc(groupId).data.GroupMembers is list
+        && request.auth.uid in groupDoc(groupId).data.GroupMembers;
+    }
+
+    match /Groups/{groupId}/Messages/{msgId} {
+      allow read: if isSignedIn() && (hasStaffClaim() || isGroupMember(groupId));
+      allow create: if isSignedIn()
+        && request.resource.data.Senderid == request.auth.uid
+        && (hasStaffClaim() || isGroupMember(groupId));
+      allow update, delete: if hasStaffClaim();
+    }
+
+    // --- DMs (student thread + admin replies). Collection id contains spaces — URL-encode in rules paths. ---
+    match /Digital%20Student%20DMs/{dmId} {
+      allow read: if isSignedIn()
+        && (resource.data.uid == request.auth.uid || hasStaffClaim());
+      allow create: if isSignedIn()
+        && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if hasStaffClaim();
+    }
+
+    match /Digital%20Student%20DMs/{dmId}/replies/{replyId} {
+      allow read: if isSignedIn()
+        && (get(/databases/$(database)/documents/Digital%20Student%20DMs/$(dmId)).data.uid == request.auth.uid
+          || hasStaffClaim());
+      allow create, update, delete: if hasStaffClaim();
+    }
+
+    // --- Graduation applications ---
+    match /GraduationApplications/{appId} {
+      allow read: if isSignedIn()
+        && (resource.data.userId == request.auth.uid || hasStaffClaim());
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == 'pending';
+      allow update, delete: if hasStaffClaim();
+    }
+
+    // --- Shop catalog (browse may be unauthenticated; stock updates from signed-in shoppers) ---
+    match /shopItems/{itemId} {
+      allow read: if true;
+      allow create, delete: if hasStaffClaim();
+      allow update: if hasStaffClaim()
+        || (isSignedIn()
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['sizeStocks', 'stockQuantity', 'updatedAt']));
+    }
+
+    // --- Web dashboard collections (tighten further when author fields are stable) ---
+    match /discussion_threads/{docId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if hasStaffClaim();
+    }
+
+    match /meeting_proposals/{docId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if hasStaffClaim();
+    }
+
+    match /certificates/{docId} {
+      allow read: if isSignedIn();
+      allow write: if hasStaffClaim();
+    }
+
+    // --- Deny everything else ---
     match /{document=**} {
-      // Open access for development. Expires automatically — extend before then
-      // or replace with production rules. (2026-03-27 was already past on 2026-04-03.)
-      allow read, write: if request.time < timestamp.date(2026, 12, 31);
+      allow read, write: if false;
     }
   }
 }

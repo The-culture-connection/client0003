@@ -1,31 +1,73 @@
 rules_version = '2';
 
-// Storage rules for curriculum lesson assets
+/**
+ * Mortar — Cloud Storage
+ * Deploy: `firebase use staging` then `firebase deploy --only storage`
+ */
+
 service firebase.storage {
   match /b/{bucket}/o {
-    // Lesson assets (images) - stored at: lesson_assets/{curriculumId}/{moduleId}/{chapterId}/{lessonId}/{slideId}/{filename}
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function tokenRoles() {
+      return ('roles' in request.auth.token && request.auth.token.roles is list)
+        ? request.auth.token.roles
+        : [];
+    }
+
+    function hasStaffClaim() {
+      return isSignedIn() && tokenRoles().hasAny(['Admin', 'superAdmin']);
+    }
+
+    function isSuperAdmin() {
+      return isSignedIn() && tokenRoles().hasAny(['superAdmin']);
+    }
+
+    // Published lesson slide assets (curriculum player)
     match /lesson_assets/{curriculumId}/{moduleId}/{chapterId}/{lessonId}/{slideId}/{fileName} {
-      // Allow read access to all authenticated users (for published lessons)
-      allow read: if request.auth != null;
-      // Allow write access only to admins (superAdmin role)
-      allow write: if request.auth != null && 
-                     request.auth.token.roles != null && 
-                     'superAdmin' in request.auth.token.roles;
+      allow read: if isSignedIn();
+      allow write: if isSuperAdmin();
     }
-    
-    // Legacy course files (for backward compatibility)
+
+    // Legacy course file layout
     match /courses/{courseId}/modules/{moduleId}/lessons/{lessonId}/{fileName} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow read: if isSignedIn();
+      allow write: if hasStaffClaim();
     }
-    
-    // Shop item images (admin uploads)
+
+    // Shop product images (public catalog)
     match /shop/{fileName} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if hasStaffClaim();
     }
-    
-    // Default: deny all other access
+
+    // Admin-created events (feed / curriculum)
+    match /events/images/{fileName} {
+      allow read: if true;
+      allow write: if hasStaffClaim();
+    }
+
+    // Course builder uploads (lesson images, etc.)
+    match /curriculum_content/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if hasStaffClaim();
+    }
+
+    // PPTX import staging files
+    match /curriculum_imports/{allPaths=**} {
+      allow read: if hasStaffClaim();
+      allow write: if hasStaffClaim();
+    }
+
+    // Data room PDFs and user-generated uploads
+    match /users/{userId}/dataroom/{allPaths=**} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow write: if isSignedIn() && request.auth.uid == userId;
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }

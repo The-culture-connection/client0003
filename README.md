@@ -54,7 +54,7 @@ Firebase-first monorepo powering Next.js web app and Flutter mobile app.
 
 ## Documentation
 
-See [infra/docs/PHASE_0_SETUP.md](infra/docs/PHASE_0_SETUP.md) for detailed setup and verification instructions.
+See [infra/docs/PHASE_0_SETUP.md](infra/docs/PHASE_0_SETUP.md) for detailed setup and verification instructions. Staging checklist: [infra/docs/STAGE_DEPLOYMENT.md](infra/docs/STAGE_DEPLOYMENT.md).
 
 ## Phase 0 Features
 
@@ -98,23 +98,29 @@ flutter run
 
 ### Dev
 
+CI deploys **functions + Firestore indexes** to `mortar-dev` (not Firestore/Storage rules from this repo).
+
 ```bash
-firebase use mortar-dev
-firebase deploy --only functions,firestore:rules,firestore:indexes
+firebase use dev
+firebase deploy --project mortar-dev --only functions,firestore:indexes
 ```
 
 ### Stage
 
+- **Digital Curriculum (web):** deploy on **[Railway](Digital%20Curriculum/DEPLOY_RAILWAY.md)** with `VITE_FIREBASE_ENV=stage` (see [infra/docs/STAGE_DEPLOYMENT.md](infra/docs/STAGE_DEPLOYMENT.md)).
+- **Firebase backend** (`mortar-stage` — Functions, Firestore rules/indexes, Storage rules):
+
 ```bash
-firebase use mortar-stage
-firebase deploy --only functions,firestore:rules,firestore:indexes
+npm run deploy:stage
 ```
+
+(`firebase use staging` then `firebase deploy --only functions,firestore:rules,firestore:indexes,storage` is equivalent.)
 
 ### Production
 
 ```bash
-firebase use mortar-9d29d
-firebase deploy --only functions,firestore:rules,firestore:indexes
+firebase use prod
+firebase deploy --project mortar-9d29d --only functions,firestore:rules,firestore:indexes
 ```
 
 ## License
