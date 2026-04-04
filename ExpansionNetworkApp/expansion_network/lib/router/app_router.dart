@@ -23,6 +23,7 @@ import '../screens/group_edit_screen.dart';
 import '../screens/groups_screen.dart';
 import '../screens/home_screen.dart';
 import '../screens/landing_screen.dart';
+import '../screens/session_gate_screen.dart';
 import '../screens/matching_screen.dart';
 import '../screens/messages_screen.dart';
 import '../screens/onboarding_screen.dart';
@@ -33,15 +34,26 @@ import '../widgets/expansion_shell.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 
-/// Auth + main app routes. [initialLocation] is `'/'` (landing).
+/// Auth + main app routes. [initialLocation] is `/session` so the marketing landing does not flash before session resolves.
 GoRouter createAppRouter(AuthController auth) {
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
-    initialLocation: '/',
+    initialLocation: '/session',
     refreshListenable: auth,
     redirect: (context, state) {
       final loc = state.matchedLocation;
-      if (auth.loading) return null;
+
+      if (auth.loading) {
+        if (loc == '/session' || loc.startsWith('/auth')) return null;
+        return '/session';
+      }
+
+      if (loc == '/session') {
+        final loggedIn = auth.user != null;
+        if (!loggedIn) return '/';
+        if (auth.needsExpansionOnboarding == true) return '/onboarding';
+        return '/home';
+      }
 
       final loggedIn = auth.user != null;
       final publicAuth = loc == '/' || loc.startsWith('/auth');
@@ -65,6 +77,10 @@ GoRouter createAppRouter(AuthController auth) {
       return null;
     },
     routes: [
+      GoRoute(
+        path: '/session',
+        builder: (context, state) => const SessionGateScreen(),
+      ),
       GoRoute(
         path: '/',
         builder: (context, state) => const LandingScreen(),

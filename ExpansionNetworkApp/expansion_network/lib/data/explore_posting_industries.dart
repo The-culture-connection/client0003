@@ -1,0 +1,21 @@
+/// Industries for job and skill postings (dropdown). Includes **Technology** per product request.
+const List<String> kExplorePostingIndustries = [
+  'Food & Beverage',
+  'Retail',
+  'Health, Wellness & Personal Care',
+  'Professional Services',
+  'Creative & Media Services',
+  'Education & Training',
+  'Childcare & Family Services',
+  'Home & Property Services',
+  'Construction & Skilled Trades',
+  'Automotive Services',
+  'Hospitality & Lodging',
+  'Entertainment & Recreation',
+  'Event & Wedding Services',
+  'Logistics & Transportation',
+  'Manufacturing & Production',
+  'Agriculture & Food Production',
+  'Community & Cultural Organizations',
+  'Technology',
+];

@@ -7,6 +7,7 @@ import '../services/dm_repository.dart';
 import '../services/user_profile_repository.dart';
 import '../theme/app_theme.dart';
 import '../widgets/messaging_attachment_preview.dart';
+import '../widgets/poster_profile_avatar.dart';
 
 class DirectChatScreen extends StatefulWidget {
   const DirectChatScreen({
@@ -102,11 +103,23 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
                       builder: (context, snap) {
                         final name = snap.data ?? 'Member';
                         return Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          child: Row(
                             children: [
-                              Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-                              const Text('Direct message', style: TextStyle(fontSize: 11, color: AppColors.mutedForeground)),
+                              PosterProfileAvatar(
+                                userId: widget.userId,
+                                radius: 20,
+                                displayNameHint: name,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                                    const Text('Direct message', style: TextStyle(fontSize: 11, color: AppColors.mutedForeground)),
+                                  ],
+                                ),
+                              ),
                             ],
                           ),
                         );
@@ -177,6 +190,10 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
                         mainAxisAlignment: mine ? MainAxisAlignment.end : MainAxisAlignment.start,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          if (!mine) ...[
+                            PosterProfileAvatar(userId: widget.userId, radius: 16),
+                            const SizedBox(width: 8),
+                          ],
                           Flexible(
                             child: Column(
                               crossAxisAlignment: mine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
@@ -213,6 +230,10 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
                               ],
                             ),
                           ),
+                          if (mine) ...[
+                            const SizedBox(width: 8),
+                            PosterProfileAvatar(userId: me, radius: 16),
+                          ],
                         ],
                       ),
                     );

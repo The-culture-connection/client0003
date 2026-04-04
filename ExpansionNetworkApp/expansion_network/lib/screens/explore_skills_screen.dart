@@ -6,6 +6,7 @@ import '../services/explore_listings_repository.dart';
 import '../theme/app_theme.dart';
 import '../utils/relative_time.dart';
 import '../widgets/page_header.dart';
+import '../widgets/poster_profile_avatar.dart';
 import '../widgets/user_profile_modal.dart';
 
 /// Skills-only list (sub-page of Explore).
@@ -109,6 +110,8 @@ class _SkillCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              PosterProfileAvatar(userId: listing.authorId, displayNameHint: listing.authorName, radius: 22),
+              const SizedBox(width: 10),
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
@@ -123,6 +126,14 @@ class _SkillCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(listing.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                    const SizedBox(height: 4),
+                    Text(
+                      [
+                        if (listing.industry != null && listing.industry!.isNotEmpty) listing.industry!,
+                        if (listing.location != null && listing.location!.isNotEmpty) listing.location!,
+                      ].join(' · '),
+                      style: const TextStyle(fontSize: 12, color: AppColors.mutedForeground),
+                    ),
                     if (listing.summary != null && listing.summary!.isNotEmpty) ...[
                       const SizedBox(height: 6),
                       Text(

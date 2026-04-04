@@ -8,6 +8,8 @@ class ExploreJob {
     this.company,
     this.location,
     this.description,
+    this.industry,
+    this.locationMode,
     required this.authorId,
     this.authorName,
     this.createdAt,
@@ -19,6 +21,9 @@ class ExploreJob {
   final String? company;
   final String? location;
   final String? description;
+  final String? industry;
+  /// `remote` or `in_person` when set.
+  final String? locationMode;
   final String authorId;
   final String? authorName;
   final DateTime? createdAt;
@@ -34,6 +39,8 @@ class ExploreJob {
       company: _s(d['company']),
       location: _s(d['location']),
       description: _s(d['description']),
+      industry: _s(d['industry']),
+      locationMode: _s(d['location_mode']),
       authorId: author,
       authorName: _s(d['author_name']),
       createdAt: _ts(d['created_at']),

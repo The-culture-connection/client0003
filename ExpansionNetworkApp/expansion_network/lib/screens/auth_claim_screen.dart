@@ -145,7 +145,7 @@ class _AuthClaimScreenState extends State<AuthClaimScreen> {
         return;
       }
       await FirebaseAuth.instance.signInWithCustomToken(token);
-      if (mounted) context.go('/');
+      if (mounted) context.go('/session');
     } catch (e) {
       setState(() => _error = userMessageForFirebaseCallableError(e));
     } finally {
@@ -181,7 +181,7 @@ class _AuthClaimScreenState extends State<AuthClaimScreen> {
         });
         return;
       }
-      if (mounted) context.go('/');
+      if (mounted) context.go('/session');
     } on FirebaseAuthException catch (e) {
       setState(() {
         _error = e.message ?? 'Sign-in failed. Check your password.';

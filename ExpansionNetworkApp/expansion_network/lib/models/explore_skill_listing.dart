@@ -6,6 +6,9 @@ class ExploreSkillListing {
     required this.id,
     required this.title,
     this.summary,
+    this.location,
+    this.industry,
+    this.locationMode,
     required this.authorId,
     this.authorName,
     this.createdAt,
@@ -15,6 +18,9 @@ class ExploreSkillListing {
   final String id;
   final String title;
   final String? summary;
+  final String? location;
+  final String? industry;
+  final String? locationMode;
   final String authorId;
   final String? authorName;
   final DateTime? createdAt;
@@ -28,6 +34,9 @@ class ExploreSkillListing {
       id: id,
       title: title,
       summary: _s(d['summary']),
+      location: _s(d['location']),
+      industry: _s(d['industry']),
+      locationMode: _s(d['location_mode']),
       authorId: author,
       authorName: _s(d['author_name']),
       createdAt: _ts(d['created_at']),

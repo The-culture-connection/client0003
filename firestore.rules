@@ -193,9 +193,16 @@ service cloud.firestore {
         && request.resource.data.title is string
         && request.resource.data.title.size() > 0
         && request.resource.data.title.size() <= 300
+        && request.resource.data.industry is string
+        && request.resource.data.industry.size() > 0
+        && request.resource.data.industry.size() <= 120
+        && request.resource.data.location is string
+        && request.resource.data.location.size() > 0
+        && request.resource.data.location.size() <= 200
+        && request.resource.data.location_mode in ['remote', 'in_person']
         && request.resource.data.keys().hasOnly([
-          'title', 'company', 'location', 'description', 'author_id', 'author_name',
-          'created_at', 'updated_at'
+          'title', 'company', 'location', 'description', 'industry', 'location_mode',
+          'author_id', 'author_name', 'created_at', 'updated_at'
         ]);
       allow update, delete: if hasStaffClaim()
         || (isSignedIn()
@@ -210,8 +217,16 @@ service cloud.firestore {
         && request.resource.data.title is string
         && request.resource.data.title.size() > 0
         && request.resource.data.title.size() <= 300
+        && request.resource.data.industry is string
+        && request.resource.data.industry.size() > 0
+        && request.resource.data.industry.size() <= 120
+        && request.resource.data.location is string
+        && request.resource.data.location.size() > 0
+        && request.resource.data.location.size() <= 200
+        && request.resource.data.location_mode in ['remote', 'in_person']
         && request.resource.data.keys().hasOnly([
-          'title', 'summary', 'author_id', 'author_name', 'created_at', 'updated_at'
+          'title', 'summary', 'location', 'industry', 'location_mode',
+          'author_id', 'author_name', 'created_at', 'updated_at'
         ]);
       allow update, delete: if hasStaffClaim()
         || (isSignedIn()

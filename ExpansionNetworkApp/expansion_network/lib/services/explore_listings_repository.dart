@@ -41,28 +41,43 @@ class ExploreListingsRepository {
   }
 
   Stream<List<ExploreJob>> watchJobsByAuthor(String authorId) {
-    return _jobs
-        .where('author_id', isEqualTo: authorId)
-        .orderBy('created_at', descending: true)
-        .snapshots()
-        .map(
-          (snap) => snap.docs
-              .map((d) => ExploreJob.fromDoc(d.id, d.data()))
-              .whereType<ExploreJob>()
-              .toList(),
+    // Single-field equality only (no orderBy) so profile modal works without a composite index.
+    return _jobs.where('author_id', isEqualTo: authorId).snapshots().map(
+          (snap) {
+            final list = snap.docs
+                .map((d) => ExploreJob.fromDoc(d.id, d.data()))
+                .whereType<ExploreJob>()
+                .toList();
+            list.sort((a, b) {
+              final ca = a.createdAt;
+              final cb = b.createdAt;
+              if (ca == null && cb == null) return 0;
+              if (ca == null) return 1;
+              if (cb == null) return -1;
+              return cb.compareTo(ca);
+            });
+            return list;
+          },
         );
   }
 
   Stream<List<ExploreSkillListing>> watchSkillListingsByAuthor(String authorId) {
-    return _skills
-        .where('author_id', isEqualTo: authorId)
-        .orderBy('created_at', descending: true)
-        .snapshots()
-        .map(
-          (snap) => snap.docs
-              .map((d) => ExploreSkillListing.fromDoc(d.id, d.data()))
-              .whereType<ExploreSkillListing>()
-              .toList(),
+    return _skills.where('author_id', isEqualTo: authorId).snapshots().map(
+          (snap) {
+            final list = snap.docs
+                .map((d) => ExploreSkillListing.fromDoc(d.id, d.data()))
+                .whereType<ExploreSkillListing>()
+                .toList();
+            list.sort((a, b) {
+              final ca = a.createdAt;
+              final cb = b.createdAt;
+              if (ca == null && cb == null) return 0;
+              if (ca == null) return 1;
+              if (cb == null) return -1;
+              return cb.compareTo(ca);
+            });
+            return list;
+          },
         );
   }
 
@@ -81,7 +96,9 @@ class ExploreListingsRepository {
   Future<String> createJob({
     required String title,
     String? company,
-    String? location,
+    required String location,
+    required String locationMode,
+    required String industry,
     String? description,
   }) async {
     final uid = _auth.currentUser?.uid;
@@ -90,8 +107,10 @@ class ExploreListingsRepository {
     final ref = _jobs.doc();
     await ref.set({
       'title': title,
+      'industry': industry,
+      'location_mode': locationMode,
+      'location': location,
       if (company != null && company.isNotEmpty) 'company': company,
-      if (location != null && location.isNotEmpty) 'location': location,
       if (description != null && description.isNotEmpty) 'description': description,
       'author_id': uid,
       'author_name': name,
@@ -104,6 +123,9 @@ class ExploreListingsRepository {
   Future<String> createSkillListing({
     required String title,
     String? summary,
+    required String location,
+    required String locationMode,
+    required String industry,
   }) async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) throw StateError('Not signed in');
@@ -111,6 +133,9 @@ class ExploreListingsRepository {
     final ref = _skills.doc();
     await ref.set({
       'title': title,
+      'industry': industry,
+      'location_mode': locationMode,
+      'location': location,
       if (summary != null && summary.isNotEmpty) 'summary': summary,
       'author_id': uid,
       'author_name': name,

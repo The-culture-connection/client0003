@@ -47,12 +47,19 @@ class EventsRepository {
 
   /// Events this user created (any approval status); filter [CommunityEvent.isPublished] in UI when needed.
   Stream<List<CommunityEvent>> watchEventsCreatedBy(String uid) {
-    return _events
-        .where('created_by', isEqualTo: uid)
-        .orderBy('created_at', descending: true)
-        .snapshots()
-        .map(
-          (snap) => snap.docs.map((d) => CommunityEvent.fromDoc(d.id, d.data())).toList(),
+    return _events.where('created_by', isEqualTo: uid).snapshots().map(
+          (snap) {
+            final list = snap.docs.map((d) => CommunityEvent.fromDoc(d.id, d.data())).toList();
+            list.sort((a, b) {
+              final ca = a.createdAt;
+              final cb = b.createdAt;
+              if (ca == null && cb == null) return 0;
+              if (ca == null) return 1;
+              if (cb == null) return -1;
+              return cb.compareTo(ca);
+            });
+            return list;
+          },
         );
   }
 

@@ -301,6 +301,15 @@ class _ProfileModalListings extends StatelessWidget {
         StreamBuilder<List<ExploreJob>>(
           stream: listings.watchJobsByAuthor(userId),
           builder: (context, snap) {
+            if (snap.hasError) {
+              return _listingCard(
+                title: 'Posted jobs',
+                child: Text(
+                  'Could not load jobs.\n${snap.error}',
+                  style: const TextStyle(fontSize: 12, color: AppColors.mutedForeground),
+                ),
+              );
+            }
             final jobs = snap.data ?? [];
             return _listingCard(
               title: 'Posted jobs',
@@ -332,6 +341,15 @@ class _ProfileModalListings extends StatelessWidget {
         StreamBuilder<List<ExploreSkillListing>>(
           stream: listings.watchSkillListingsByAuthor(userId),
           builder: (context, snap) {
+            if (snap.hasError) {
+              return _listingCard(
+                title: 'Skill listings',
+                child: Text(
+                  'Could not load skill listings.\n${snap.error}',
+                  style: const TextStyle(fontSize: 12, color: AppColors.mutedForeground),
+                ),
+              );
+            }
             final skills = snap.data ?? [];
             return _listingCard(
               title: 'Skill listings',
@@ -368,6 +386,15 @@ class _ProfileModalListings extends StatelessWidget {
             return StreamBuilder<List<CommunityEvent>>(
               stream: eventsRepo.watchEventsCreatedBy(userId),
               builder: (context, evSnap) {
+                if (evSnap.hasError) {
+                  return _listingCard(
+                    title: 'Events',
+                    child: Text(
+                      'Could not load events.\n${evSnap.error}',
+                      style: const TextStyle(fontSize: 12, color: AppColors.mutedForeground),
+                    ),
+                  );
+                }
                 final all = evSnap.data ?? [];
                 final visible = all.where((e) => me == userId || e.isPublished).toList();
                 return _listingCard(

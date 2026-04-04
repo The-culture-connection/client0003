@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import '../services/events_repository.dart';
 import '../theme/app_theme.dart';
 
-/// Port of [UI Basis/src/app/pages/EventCreate.tsx]
 class EventCreateScreen extends StatefulWidget {
   const EventCreateScreen({super.key});
 
@@ -14,45 +13,78 @@ class EventCreateScreen extends StatefulWidget {
 
 class _EventCreateScreenState extends State<EventCreateScreen> {
   final _title = TextEditingController();
-  final _date = TextEditingController();
-  final _time = TextEditingController();
   final _location = TextEditingController();
   final _description = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   final _eventsRepo = EventsRepository();
   bool _submitting = false;
+  DateTime? _eventDate;
+  TimeOfDay? _eventTime;
 
   @override
   void dispose() {
     _title.dispose();
-    _date.dispose();
-    _time.dispose();
     _location.dispose();
     _description.dispose();
     super.dispose();
   }
 
+  String _formatTime(BuildContext context, TimeOfDay t) {
+    return t.format(context);
+  }
+
+  Future<void> _pickDate() async {
+    final now = DateTime.now();
+    final d = await showDatePicker(
+      context: context,
+      initialDate: _eventDate ?? now,
+      firstDate: DateTime(now.year - 1),
+      lastDate: DateTime(now.year + 5),
+      builder: (context, child) {
+        final base = Theme.of(context);
+        return Theme(
+          data: base.copyWith(
+            colorScheme: base.colorScheme.copyWith(primary: AppColors.primary),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (d != null) setState(() => _eventDate = d);
+  }
+
+  Future<void> _pickTime() async {
+    final t = await showTimePicker(
+      context: context,
+      initialTime: _eventTime ?? TimeOfDay.now(),
+      builder: (context, child) {
+        final base = Theme.of(context);
+        return Theme(
+          data: base.copyWith(
+            colorScheme: base.colorScheme.copyWith(primary: AppColors.primary),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (t != null) setState(() => _eventTime = t);
+  }
+
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
-    final rawDate = _date.text.trim();
-    DateTime? eventDate;
-    if (rawDate.isNotEmpty) {
-      eventDate = DateTime.tryParse(rawDate);
-      if (eventDate == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Use an ISO date like 2026-04-15, or leave blank.')),
-          );
-        }
-        return;
-      }
+    final time = _eventTime;
+    if (time == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pick a time.')));
+      return;
     }
+    final timeStr = _formatTime(context, time);
+
     setState(() => _submitting = true);
     try {
       await _eventsRepo.submitUserEventForApproval(
         title: _title.text.trim(),
-        date: eventDate,
-        time: _time.text.trim(),
+        date: _eventDate,
+        time: timeStr,
         location: _location.text.trim(),
         details: _description.text.trim(),
       );
@@ -73,6 +105,11 @@ class _EventCreateScreenState extends State<EventCreateScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final dateLabel = _eventDate == null
+        ? 'Pick date (optional)'
+        : MaterialLocalizations.of(context).formatMediumDate(_eventDate!);
+    final timeLabel = _eventTime == null ? 'Pick time' : _formatTime(context, _eventTime!);
+
     return Scaffold(
       body: Column(
         children: [
@@ -113,23 +150,36 @@ class _EventCreateScreenState extends State<EventCreateScreen> {
                   Row(
                     children: [
                       Expanded(
-                        child:                   TextFormField(
-                    controller: _date,
-                    decoration: const InputDecoration(
-                      labelText: 'Date',
-                      hintText: 'YYYY-MM-DD (optional)',
-                    ),
-                  ),
+                        child: OutlinedButton.icon(
+                          onPressed: _pickDate,
+                          icon: const Icon(Icons.calendar_today_outlined, size: 18),
+                          label: Text(dateLabel, maxLines: 1, overflow: TextOverflow.ellipsis),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.foreground,
+                            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                            side: const BorderSide(color: AppColors.border),
+                          ),
+                        ),
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 12),
                       Expanded(
-                        child: TextFormField(
-                          controller: _time,
-                          decoration: const InputDecoration(labelText: 'Time'),
-                          validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
+                        child: FilledButton.icon(
+                          onPressed: _pickTime,
+                          icon: const Icon(Icons.schedule, size: 18),
+                          label: Text(timeLabel, maxLines: 1, overflow: TextOverflow.ellipsis),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: AppColors.onPrimary,
+                            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                          ),
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Date is optional; time is required.',
+                    style: TextStyle(fontSize: 12, color: AppColors.mutedForeground),
                   ),
                   const SizedBox(height: 16),
                   TextFormField(

@@ -59,6 +59,18 @@ class UserProfileRepository {
     return profileDisplayName(d);
   }
 
+  /// City + state for in-person posting location (Expansion / curriculum `users` doc).
+  Future<String?> getCityStateLineForUser(String uid) async {
+    final d = await getUserDoc(uid);
+    if (d == null) return null;
+    final city = profileString(d['city']);
+    final state = profileString(d['state']);
+    if (city != null && state != null) return '$city, $state';
+    if (city != null) return city;
+    if (state != null) return state;
+    return null;
+  }
+
   /// Live updates for profile UIs (e.g. Profile tab).
   Stream<DocumentSnapshot<Map<String, dynamic>>> watchUserDoc(String uid) =>
       _users.doc(uid).snapshots();

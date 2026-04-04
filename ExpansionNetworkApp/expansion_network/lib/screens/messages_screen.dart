@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../services/dm_repository.dart';
 import '../services/user_profile_repository.dart';
 import '../theme/app_theme.dart';
+import '../widgets/user_profile_modal.dart';
 
 /// Lists 1:1 threads from `dm_threads`.
 class MessagesScreen extends StatelessWidget {
@@ -102,11 +103,15 @@ class MessagesScreen extends StatelessWidget {
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  CircleAvatar(
-                                    backgroundColor: AppColors.primary,
-                                    child: Text(
-                                      other.isNotEmpty ? other.substring(0, 1).toUpperCase() : '?',
-                                      style: const TextStyle(color: AppColors.onPrimary, fontSize: 14, fontWeight: FontWeight.w600),
+                                  InkWell(
+                                    onTap: () => showUserProfileModal(context, userId: other),
+                                    customBorder: const CircleBorder(),
+                                    child: CircleAvatar(
+                                      backgroundColor: AppColors.primary,
+                                      child: Text(
+                                        other.isNotEmpty ? other.substring(0, 1).toUpperCase() : '?',
+                                        style: const TextStyle(color: AppColors.onPrimary, fontSize: 14, fontWeight: FontWeight.w600),
+                                      ),
                                     ),
                                   ),
                                   const SizedBox(width: 16),

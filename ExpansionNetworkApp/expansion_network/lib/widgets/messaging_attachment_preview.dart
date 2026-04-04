@@ -57,9 +57,11 @@ class _JobAttachmentCard extends StatelessWidget {
           context,
           icon: Icons.work_outline,
           title: j.title,
-          subtitle: [if (j.company != null && j.company!.isNotEmpty) j.company!, if (j.location != null) j.location!]
-              .where((e) => e.isNotEmpty)
-              .join(' · '),
+          subtitle: [
+            if (j.industry != null && j.industry!.isNotEmpty) j.industry!,
+            if (j.company != null && j.company!.isNotEmpty) j.company!,
+            if (j.location != null && j.location!.isNotEmpty) j.location!,
+          ].join(' · '),
           onTap: compact ? null : () => context.push('/explore'),
         );
       },
@@ -83,11 +85,16 @@ class _SkillAttachmentCard extends StatelessWidget {
         if (s == null) {
           return _loadingOrMissing(snap.connectionState == ConnectionState.waiting, 'Skill listing');
         }
+        final skillSub = [
+          if (s.industry != null && s.industry!.isNotEmpty) s.industry!,
+          if (s.location != null && s.location!.isNotEmpty) s.location!,
+          if (s.summary != null && s.summary!.isNotEmpty) s.summary!,
+        ].where((e) => e.isNotEmpty).join(' · ');
         return _cardShell(
           context,
           icon: Icons.psychology_outlined,
           title: s.title,
-          subtitle: s.summary ?? 'Skill offering',
+          subtitle: skillSub.isNotEmpty ? skillSub : 'Skill offering',
           onTap: compact ? null : () => context.push('/explore/skills'),
         );
       },

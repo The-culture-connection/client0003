@@ -12,9 +12,10 @@
 - **Landing:** `/` — **Claim with invite** → `/auth/claim`, Sign in → `/auth/sign-in`.
 - **Server gate:** After every sign-in, `AuthController` calls Cloud Function **`initializeUserSession`** (region `us-central1`). Access requires `eligibleUsers/{normalizedEmail}` with `networkAccess == true`. Auth alone or `users/{uid}` alone does **not** grant access.
 - **Routing:** `AuthController` + `GoRouter` redirect:
+  - **Initial route:** `/session` ([session_gate_screen.dart](lib/screens/session_gate_screen.dart)) — while `AuthController.loading`, stay here (spinner) so the **unauthenticated landing** does not flash before the shell. When idle: not signed in → `/`; signed in → `/onboarding` or `/home` as appropriate.
+  - While loading, `/auth/*` remains reachable; other routes redirect to `/session`.
   - Signed out users are limited to `/` and `/auth/*`. `/onboarding` requires sign-in.
-  - After a successful claim or login, users who still need profile data go to `/onboarding` (not `/home`).
-  - Signed-in users without completed onboarding are sent to `/onboarding` when opening shell routes.
+  - After a successful claim or login, navigation goes to **`/session`** (not `/`) so redirect lands on **Home** or **Onboarding** without showing the marketing landing first.
   - **Profile gate:** `needsExpansionOnboarding` is `false` if `profileCreated == true` **and** `onboardingComplete == true`, or (legacy) `expansionOnboardingComplete == true`, or `onboarding_status == 'complete'` (curriculum web completion).
 
 ### How the feature works (invite + session)
@@ -80,23 +81,24 @@ On **first create** (`set`), the app also writes default nested structures so do
 ### How the feature works
 
 - **Events** load from Firestore `events` with the same base schema as curriculum (`title`, `date`, `time`, `location`, `details`, `event_type`, `image_url`, `registered_users`, optional spots, timestamps). **Published** events are those with no `approval_status`, or `approval_status == 'approved'`. The Feed tab and full **Events** screen (`/events`) use `EventsRepository.watchPublishedEvents()` so **pending** or **rejected** member submissions stay off the public lists (unless you open the detail URL directly while allowed by rules).
-- **User-submitted events:** Members create events at `/events/create`; writes set `approval_status: 'pending'`, `created_by: uid`, and empty `registered_users`. Staff reviews in **Profile → Event approvals** (`/admin/events`, [admin_events_screen.dart](lib/screens/admin_events_screen.dart)): pending queue streams `approval_status == 'pending'`, tap for full metadata, **Accept** / **Decline** (optional reason stored as `rejection_reason`). Approve sets `approval_status` to `approved`. See `firestore.rules` `eventReadableByMember` / `memberSubmittedEventCreate`.
+- **User-submitted events:** Members create events at `/events/create` using **inline date** (`showDatePicker`) and **time** (`showTimePicker`) pickers themed with app primary; date optional, time required. Writes set `approval_status: 'pending'`, `created_by: uid`, and empty `registered_users`. Staff reviews in **Profile → Event approvals** (`/admin/events`, [admin_events_screen.dart](lib/screens/admin_events_screen.dart)): pending queue streams `approval_status == 'pending'`, tap for full metadata, **Accept** / **Decline** (optional reason stored as `rejection_reason`). Approve sets `approval_status` to `approved`. See `firestore.rules` `eventReadableByMember` / `memberSubmittedEventCreate`.
 - **FAB:** Feed → `/events/create` only. **No feed posts** in this tab; `feed_posts` routes remain for deep links only (`/feed/post/create`, `/feed/post/:postId`).
 - **Event detail:** Unpublished events show a banner; **Register** is disabled until the event is published.
-- **Profile modal:** Still opens from groups and anywhere `showUserProfileModal` is used. Added **Posted jobs**, **Skill listings**, and **Events** (created by this user): jobs/skills from `expansion_jobs` / `expansion_skills`; events from `events` where `created_by` matches (viewers only see others’ **published** events). **Message** opens `/messages/direct/{userId}`.
+- **Profile modal:** Still opens from groups and anywhere `showUserProfileModal` is used. **Posted jobs**, **Skill listings**, and **Events** use `where('author_id')` / `where('created_by')` **without** `orderBy` (sort client-side) so streams work without extra composite indexes; errors surface in the modal if rules or network fail. **Message** opens `/messages/direct/{userId}`.
 
 ## Home tab
 
 ### How the feature works
 
-- **Recent Activity (posts)** was removed. **Top Matches** stays above a new **Your communities** card that streams `groups_mobile`, filters to groups where the signed-in user is a member, sorts by `lastActivityAt`, and shows `lastActivitySnippet` (or thread/member counts). Rows open `/groups/{groupId}`. **Groups** in the row above still uses mock preview data for the two-tile strip.
+- **Recent Activity (posts)** was removed. Below **Welcome**, a **Latest job** / **Latest skill** row streams `expansion_jobs` and `expansion_skills` (newest first) and opens **Explore** on tap. **Top Matches** stays above **Your communities** (`groups_mobile` for the signed-in user, snippet + `/groups/{groupId}`).
 
 ## Explore tab — jobs, skills, connections, DMs
 
 ### How the feature works
 
-- **Jobs** and **skill listings** live in Firestore `expansion_jobs` and `expansion_skills` ([explore_listings_repository.dart](lib/services/explore_listings_repository.dart)). Explore shows filters **All / Jobs / Skills / Connections**; **Connections** remains sample rows with chat to `/messages/direct/{userId}`.
-- **Post flows:** FAB **+** → bottom sheet: **Post a job** (`/explore/jobs/create`), **Offer a skill** (`/explore/skills/create`), **Skills hub** (`/explore/skills` full list). Secondary FAB **Skills hub** for quick access.
+- **Jobs** and **skill listings** live in Firestore `expansion_jobs` and `expansion_skills` ([explore_listings_repository.dart](lib/services/explore_listings_repository.dart)). Fields include **`industry`** (dropdown from [explore_posting_industries.dart](lib/data/explore_posting_industries.dart), includes **Technology**), **`location_mode`** (`remote` \| `in_person`), and **`location`** (stored as `Remote` or city/state text; **In person** prefills from `users/{uid}` **`city`** + **`state`** via `UserProfileRepository.getCityStateLineForUser`). Explore shows filters **All / Jobs / Skills / Connections**; **Connections** remains sample rows with chat to `/messages/direct/{userId}`.
+- **Post flows:** FAB **+** → bottom sheet: **Post a job** (`/explore/jobs/create`), **Offer a skill** (`/explore/skills/create`). No separate **Skills hub** entry from Explore (full list still at `/explore/skills` if linked elsewhere).
+- **Profile avatars on listings:** [PosterProfileAvatar](lib/widgets/poster_profile_avatar.dart) on job/skill cards and in **Direct chat** (header + message rows); **Messages** list avatars open the peer’s profile modal.
 - **Messaging about a listing:** **Message** on a job or skill card opens `/messages/direct/{authorId}?attach=job&id={jobId}` or `attach=skill&id={skillId}`. [DirectChatScreen](lib/screens/direct_chat_screen.dart) shows a pending attachment strip; the first send includes `attachment_type` / `attachment_id` on the message doc. [MessagingAttachmentPreview](lib/widgets/messaging_attachment_preview.dart) renders the card above the text in the thread.
 - **Direct messages:** `dm_threads/{uidSmall_uidLarge}` with `participant_ids` (sorted), `updated_at`, `last_preview`, `last_sender_id`. Messages in `dm_threads/{id}/messages/{msgId}` with `sender_id`, `text`, `created_at`, optional attachment fields. [MessagesScreen](lib/screens/messages_screen.dart) lists threads for the current user (`array-contains` + `orderBy updated_at` — composite index in `firestore.indexes.json`).
 

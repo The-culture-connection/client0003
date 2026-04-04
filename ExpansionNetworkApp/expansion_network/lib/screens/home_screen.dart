@@ -2,7 +2,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../models/explore_job.dart';
+import '../models/explore_skill_listing.dart';
 import '../models/group_thread_firestore.dart';
+import '../services/explore_listings_repository.dart';
 import '../services/group_thread_repository.dart';
 import '../theme/app_theme.dart';
 
@@ -12,15 +15,6 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final upcomingEvents = [
-      _MiniEvent(1, 'Networking Workshop', 'Feb 28', '2:00 PM', true),
-      _MiniEvent(2, 'Guest Speaker Series', 'Mar 2', '6:00 PM', false),
-    ];
-    final myGroups = [
-      _MiniGroup(1, 'Tech Entrepreneurs', 156),
-      _MiniGroup(2, 'Class of 2024', 89),
-      _MiniGroup(3, 'Marketing Professionals', 134),
-    ];
     final topMatches = [
       _TopMatch(1, 'job', 'Senior Product Manager', 'TechCorp', 95),
       _TopMatch(2, 'connection', 'Maria Garcia', 'Marketing Director', 88),
@@ -42,27 +36,7 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  IntrinsicHeight(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Expanded(
-                          child: _GroupsCard(
-                            groups: myGroups.take(2).toList(),
-                            onSeeAll: () => context.go('/groups'),
-                            onGroupTap: (id) => context.push('/groups/$id'),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _EventsCard(
-                            events: upcomingEvents,
-                            onSeeAll: () => context.go('/feed'),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  const _HomeLatestJobSkillRow(),
                   const SizedBox(height: 12),
                   _TopMatchesCard(
                     matches: topMatches,
@@ -188,20 +162,158 @@ class _MyCommunitiesMessagesCard extends StatelessWidget {
   }
 }
 
-class _MiniEvent {
-  const _MiniEvent(this.id, this.title, this.date, this.time, this.registered);
-  final int id;
-  final String title;
-  final String date;
-  final String time;
-  final bool registered;
+class _HomeLatestJobSkillRow extends StatelessWidget {
+  const _HomeLatestJobSkillRow();
+
+  @override
+  Widget build(BuildContext context) {
+    final repo = ExploreListingsRepository();
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: StreamBuilder<List<ExploreJob>>(
+              stream: repo.watchJobs(),
+              builder: (context, snap) {
+                if (snap.hasError) {
+                  return _LatestListingCard(
+                    icon: Icons.work_outline,
+                    title: 'Latest job',
+                    primary: 'Couldn’t load',
+                    secondary: '${snap.error}',
+                    busy: false,
+                    onTap: () => context.go('/explore'),
+                  );
+                }
+                final list = snap.data ?? [];
+                final j = list.isNotEmpty ? list.first : null;
+                final sub = j == null
+                    ? 'Open Explore to post a job.'
+                    : [
+                        if (j.industry != null && j.industry!.isNotEmpty) j.industry!,
+                        if (j.location != null && j.location!.isNotEmpty) j.location!,
+                      ].join(' · ');
+                return _LatestListingCard(
+                  icon: Icons.work_outline,
+                  title: 'Latest job',
+                  primary: j?.title ?? 'No jobs yet',
+                  secondary: sub,
+                  busy: snap.connectionState == ConnectionState.waiting && !snap.hasData,
+                  onTap: () => context.go('/explore'),
+                );
+              },
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: StreamBuilder<List<ExploreSkillListing>>(
+              stream: repo.watchSkillListings(),
+              builder: (context, snap) {
+                if (snap.hasError) {
+                  return _LatestListingCard(
+                    icon: Icons.psychology_outlined,
+                    title: 'Latest skill',
+                    primary: 'Couldn’t load',
+                    secondary: '${snap.error}',
+                    busy: false,
+                    onTap: () => context.go('/explore'),
+                  );
+                }
+                final list = snap.data ?? [];
+                final s = list.isNotEmpty ? list.first : null;
+                final sub = s == null
+                    ? 'Open Explore to offer a skill.'
+                    : [
+                        if (s.industry != null && s.industry!.isNotEmpty) s.industry!,
+                        if (s.location != null && s.location!.isNotEmpty) s.location!,
+                      ].join(' · ');
+                return _LatestListingCard(
+                  icon: Icons.psychology_outlined,
+                  title: 'Latest skill',
+                  primary: s?.title ?? 'No skills yet',
+                  secondary: sub,
+                  busy: snap.connectionState == ConnectionState.waiting && !snap.hasData,
+                  onTap: () => context.go('/explore'),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-class _MiniGroup {
-  const _MiniGroup(this.id, this.name, this.members);
-  final int id;
-  final String name;
-  final int members;
+class _LatestListingCard extends StatelessWidget {
+  const _LatestListingCard({
+    required this.icon,
+    required this.title,
+    required this.primary,
+    required this.secondary,
+    required this.onTap,
+    this.busy = false,
+  });
+
+  final IconData icon;
+  final String title;
+  final String primary;
+  final String secondary;
+  final VoidCallback onTap;
+  final bool busy;
+
+  @override
+  Widget build(BuildContext context) {
+    return _CardShell(
+      title: title,
+      onAction: onTap,
+      child: busy
+          ? const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary))),
+            )
+          : InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(icon, size: 14, color: AppColors.primary),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            primary,
+                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (secondary.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        secondary,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 10, color: AppColors.mutedForeground),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+    );
+  }
 }
 
 class _TopMatch {
@@ -274,134 +386,6 @@ class _WelcomeCard extends StatelessWidget {
               child: const Text('Run Smart Matching'),
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _GroupsCard extends StatelessWidget {
-  const _GroupsCard({
-    required this.groups,
-    required this.onSeeAll,
-    required this.onGroupTap,
-  });
-
-  final List<_MiniGroup> groups;
-  final VoidCallback onSeeAll;
-  final void Function(int id) onGroupTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return _CardShell(
-      title: 'Groups',
-      onAction: onSeeAll,
-      child: Column(
-        children: [
-          for (final g in groups)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: InkWell(
-                onTap: () => onGroupTap(g.id),
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.background,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.groups, size: 12, color: AppColors.primary),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              g.name,
-                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                    color: AppColors.foreground,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${g.members} members',
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: AppColors.mutedForeground,
-                            ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _EventsCard extends StatelessWidget {
-  const _EventsCard({required this.events, required this.onSeeAll});
-
-  final List<_MiniEvent> events;
-  final VoidCallback onSeeAll;
-
-  @override
-  Widget build(BuildContext context) {
-    return _CardShell(
-      title: 'Events',
-      onAction: onSeeAll,
-      child: Column(
-        children: [
-          for (final e in events)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppColors.background,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.calendar_today, size: 12, color: AppColors.primary),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            e.title,
-                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                  fontWeight: FontWeight.w500,
-                                ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${e.date} • ${e.time}',
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: AppColors.mutedForeground,
-                          ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
         ],
       ),
     );

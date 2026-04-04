@@ -37,8 +37,7 @@ class _AuthSignInScreenState extends State<AuthSignInScreen> {
         password: _password.text,
       );
       if (mounted) {
-        // Let redirect resolve: / → /onboarding if profile incomplete, else /home.
-        context.go('/');
+        context.go('/session');
       }
     } on FirebaseAuthException catch (e) {
       setState(() => _error = e.message ?? e.code);

@@ -41,14 +41,6 @@
       ]
     },
     {
-      "collectionGroup": "events",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "created_by", "order": "ASCENDING" },
-        { "fieldPath": "created_at", "order": "DESCENDING" }
-      ]
-    },
-    {
       "collectionGroup": "meeting_proposals",
       "queryScope": "COLLECTION",
       "fields": [
@@ -97,22 +89,6 @@
         { "fieldPath": "updated_at", "order": "DESCENDING" }
       ]
     },
-    {
-      "collectionGroup": "expansion_jobs",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "author_id", "order": "ASCENDING" },
-        { "fieldPath": "created_at", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "expansion_skills",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "author_id", "order": "ASCENDING" },
-        { "fieldPath": "created_at", "order": "DESCENDING" }
-      ]
-    }
   ],
   "fieldOverrides": []
 }

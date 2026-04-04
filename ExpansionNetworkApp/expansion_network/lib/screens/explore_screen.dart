@@ -8,6 +8,7 @@ import '../services/explore_listings_repository.dart';
 import '../theme/app_theme.dart';
 import '../utils/relative_time.dart';
 import '../widgets/page_header.dart';
+import '../widgets/poster_profile_avatar.dart';
 import '../widgets/user_profile_modal.dart';
 
 /// Discover jobs (Firestore), skills (Firestore + sub-page), and sample connection matches.
@@ -36,23 +37,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
     return Scaffold(
       floatingActionButton: Padding(
         padding: const EdgeInsets.only(bottom: 72),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            FloatingActionButton.extended(
-              heroTag: 'skills',
-              onPressed: () => context.push('/explore/skills'),
-              icon: const Icon(Icons.psychology_outlined),
-              label: const Text('Skills hub'),
-            ),
-            const SizedBox(height: 12),
-            FloatingActionButton(
-              heroTag: 'add',
-              onPressed: () => _openPostMenu(context),
-              child: const Icon(Icons.add),
-            ),
-          ],
+        child: FloatingActionButton(
+          onPressed: () => _openPostMenu(context),
+          child: const Icon(Icons.add),
         ),
       ),
       body: CustomScrollView(
@@ -254,14 +241,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 context.push('/explore/skills/create');
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.view_list_outlined, color: AppColors.primary),
-              title: const Text('Skills hub (all listings)'),
-              onTap: () {
-                Navigator.pop(ctx);
-                context.push('/explore/skills');
-              },
-            ),
           ],
         ),
       ),
@@ -322,6 +301,8 @@ class _JobCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              PosterProfileAvatar(userId: job.authorId, displayNameHint: job.authorName, radius: 22),
+              const SizedBox(width: 10),
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
@@ -338,9 +319,11 @@ class _JobCard extends StatelessWidget {
                     Text(job.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
                     const SizedBox(height: 4),
                     Text(
-                      [if (job.company != null && job.company!.isNotEmpty) job.company!, if (job.location != null) job.location!]
-                          .where((e) => e.isNotEmpty)
-                          .join(' · '),
+                      [
+                        if (job.industry != null && job.industry!.isNotEmpty) job.industry!,
+                        if (job.company != null && job.company!.isNotEmpty) job.company!,
+                        if (job.location != null && job.location!.isNotEmpty) job.location!,
+                      ].join(' · '),
                       style: const TextStyle(fontSize: 13, color: AppColors.mutedForeground),
                     ),
                     if (job.description != null && job.description!.isNotEmpty) ...[
@@ -416,11 +399,27 @@ class _ExploreSkillRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              PosterProfileAvatar(userId: listing.authorId, displayNameHint: listing.authorName, radius: 22),
+              const SizedBox(width: 10),
               const Icon(Icons.psychology_outlined, color: AppColors.primary, size: 22),
               const SizedBox(width: 10),
               Expanded(
-                child: Text(listing.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(listing.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                    const SizedBox(height: 4),
+                    Text(
+                      [
+                        if (listing.industry != null && listing.industry!.isNotEmpty) listing.industry!,
+                        if (listing.location != null && listing.location!.isNotEmpty) listing.location!,
+                      ].join(' · '),
+                      style: const TextStyle(fontSize: 12, color: AppColors.mutedForeground),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -446,11 +445,6 @@ class _ExploreSkillRow extends StatelessWidget {
                   icon: const Icon(Icons.chat_bubble_outline, size: 18),
                   label: const Text('Message'),
                 ),
-              const Spacer(),
-              TextButton(
-                onPressed: () => context.push('/explore/skills'),
-                child: const Text('Skills hub'),
-              ),
             ],
           ),
         ],
