@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../constants/alumni_network_constants.dart';
+import '../models/network_member_hit.dart';
 import '../profile/profile_utils.dart';
 import 'alumni_access_repository.dart';
 
@@ -289,5 +290,97 @@ class UserProfileRepository {
       updatePayload['cohort_id'] = FieldValue.delete();
     }
     await ref.update(updatePayload);
+  }
+
+  /// Network Search: match [first_name] / [last_name] using Firestore prefix ranges on
+  /// `first_name` and `last_name`, then client-side token match (case-insensitive).
+  /// Requires at least **2** characters in [query]. Excludes [excludeUid] (e.g. self).
+  Future<List<NetworkMemberHit>> searchMembersByName(
+    String query, {
+    String? excludeUid,
+    int maxResults = 40,
+  }) async {
+    final raw = query.trim();
+    if (raw.length < 2) return [];
+
+    final tokens = raw
+        .toLowerCase()
+        .split(RegExp(r'\s+'))
+        .where((t) => t.isNotEmpty)
+        .toList();
+    if (tokens.isEmpty) return [];
+
+    final candidates = <String, Map<String, dynamic>>{};
+
+    Future<void> mergeRange(String field, String prefix) async {
+      if (prefix.length < 2) return;
+      final end = '$prefix\uf8ff';
+      try {
+        final snap = await _users
+            .orderBy(field)
+            .startAt([prefix])
+            .endAt([end])
+            .limit(50)
+            .get();
+        for (final d in snap.docs) {
+          candidates[d.id] = d.data();
+        }
+      } catch (_) {
+        // Missing field / index — skip this range
+      }
+    }
+
+    String titlePrefix(String t) {
+      if (t.isEmpty) return t;
+      return '${t[0].toUpperCase()}${t.length > 1 ? t.substring(1).toLowerCase() : ''}';
+    }
+
+    for (final t in tokens.take(2)) {
+      await mergeRange('first_name', t);
+      await mergeRange('first_name', titlePrefix(t));
+      await mergeRange('last_name', t);
+      await mergeRange('last_name', titlePrefix(t));
+    }
+
+    bool matchesName(Map<String, dynamic> d) {
+      final fn = (profileString(d['first_name']) ?? profileString(d['firstName']) ?? '').toLowerCase();
+      final ln = (profileString(d['last_name']) ?? profileString(d['lastName']) ?? '').toLowerCase();
+      final full = '$fn $ln'.replaceAll(RegExp(r'\s+'), ' ').trim();
+      for (final t in tokens) {
+        if (!fn.contains(t) && !ln.contains(t) && !full.contains(t)) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    final hits = <NetworkMemberHit>[];
+    for (final e in candidates.entries) {
+      if (excludeUid != null && e.key == excludeUid) continue;
+      if (!matchesName(e.value)) continue;
+      final d = e.value;
+      final city = profileString(d['city']);
+      final state = profileString(d['state']);
+      String? loc;
+      if (city != null && state != null) {
+        loc = '$city, $state';
+      } else {
+        loc = city ?? state;
+      }
+      hits.add(
+        NetworkMemberHit(
+          uid: e.key,
+          displayName: profileDisplayName(d),
+          profession: profileString(d['profession']),
+          locationLine: loc,
+        ),
+      );
+    }
+
+    hits.sort((a, b) => a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase()));
+    if (hits.length > maxResults) {
+      return hits.sublist(0, maxResults);
+    }
+    return hits;
   }
 }

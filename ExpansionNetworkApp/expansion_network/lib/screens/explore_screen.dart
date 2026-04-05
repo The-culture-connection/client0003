@@ -1,17 +1,21 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../models/explore_job.dart';
 import '../models/explore_skill_listing.dart';
+import '../models/network_member_hit.dart';
 import '../services/explore_listings_repository.dart';
+import '../services/user_profile_repository.dart';
 import '../theme/app_theme.dart';
 import '../utils/relative_time.dart';
 import '../widgets/page_header.dart';
 import '../widgets/poster_profile_avatar.dart';
 import '../widgets/user_profile_modal.dart';
 
-/// Discover jobs (Firestore), skills (Firestore + sub-page), and sample connection matches.
+/// Discover jobs (Firestore), skills (Firestore), and **Network Search** (`users` by name).
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
 
@@ -19,16 +23,59 @@ class ExploreScreen extends StatefulWidget {
   State<ExploreScreen> createState() => _ExploreScreenState();
 }
 
-enum _ExploreFilter { all, jobs, skills, connections }
+enum _ExploreFilter { all, jobs, skills, networkSearch }
 
 class _ExploreScreenState extends State<ExploreScreen> {
   _ExploreFilter _filter = _ExploreFilter.all;
   final _repo = ExploreListingsRepository();
+  final _profileRepo = UserProfileRepository();
+  final _networkSearchController = TextEditingController();
+  Timer? _networkDebounce;
+  String _networkQuery = '';
+  List<NetworkMemberHit> _networkHits = [];
+  bool _networkLoading = false;
 
-  static const _connections = <_Conn>[
-    _Conn('maria-garcia', 'Connect with Maria Garcia', 'Marketing Director • Class of 2022', 'New York, NY', '1w ago', 88),
-    _Conn('james-wilson', 'Connect with James Wilson', 'Tech Entrepreneur • Class of 2021', 'Austin, TX', '2w ago', 76),
-  ];
+  @override
+  void dispose() {
+    _networkDebounce?.cancel();
+    _networkSearchController.dispose();
+    super.dispose();
+  }
+
+  void _onNetworkSearchChanged(String value) {
+    _networkDebounce?.cancel();
+    _networkDebounce = Timer(const Duration(milliseconds: 400), () => _runNetworkSearch(value));
+  }
+
+  Future<void> _runNetworkSearch(String raw) async {
+    final q = raw.trim();
+    if (!mounted) return;
+    setState(() {
+      _networkQuery = q;
+      if (q.length < 2) {
+        _networkHits = [];
+        _networkLoading = false;
+      }
+    });
+    if (q.length < 2) return;
+
+    setState(() => _networkLoading = true);
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      final hits = await _profileRepo.searchMembersByName(q, excludeUid: uid);
+      if (!mounted) return;
+      setState(() {
+        _networkHits = hits;
+        _networkLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _networkHits = [];
+        _networkLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +94,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
           SliverToBoxAdapter(
             child: PageHeader(
               title: 'Explore',
-              subtitle: 'Jobs, skills, and connections',
+              subtitle: 'Jobs, skills, and network search',
               trailing: IconButton(
                 icon: const Icon(Icons.notifications_outlined, color: AppColors.foreground),
                 onPressed: () => context.push('/messages'),
@@ -95,9 +142,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   ),
                   const SizedBox(width: 8),
                   _FilterChip(
-                    label: 'Connections',
-                    selected: _filter == _ExploreFilter.connections,
-                    onTap: () => setState(() => _filter = _ExploreFilter.connections),
+                    label: 'Network Search',
+                    selected: _filter == _ExploreFilter.networkSearch,
+                    onTap: () {
+                      setState(() => _filter = _ExploreFilter.networkSearch);
+                      if (_networkSearchController.text.trim().length >= 2) {
+                        _runNetworkSearch(_networkSearchController.text);
+                      }
+                    },
                   ),
                 ],
               ),
@@ -125,7 +177,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   final skills = skillSnap.data ?? [];
                   final showJobs = _filter == _ExploreFilter.all || _filter == _ExploreFilter.jobs;
                   final showSkills = _filter == _ExploreFilter.all || _filter == _ExploreFilter.skills;
-                  final showConn = _filter == _ExploreFilter.all || _filter == _ExploreFilter.connections;
+                  final showNetwork = _filter == _ExploreFilter.networkSearch;
 
                   final children = <Widget>[];
 
@@ -175,15 +227,17 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     }
                   }
 
-                  if (showConn) {
-                    for (final c in _connections) {
-                      children.add(
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: _ConnectionCard(conn: c),
-                        ),
-                      );
-                    }
+                  if (showNetwork) {
+                    children.add(
+                      _NetworkSearchSection(
+                        controller: _networkSearchController,
+                        onChanged: _onNetworkSearchChanged,
+                        query: _networkQuery,
+                        loading: _networkLoading,
+                        hits: _networkHits,
+                        currentUid: uid,
+                      ),
+                    );
                   }
 
                   if (children.isEmpty) {
@@ -467,100 +521,174 @@ class _ExploreSkillRow extends StatelessWidget {
   }
 }
 
-class _Conn {
-  const _Conn(this.userId, this.title, this.subtitle, this.location, this.posted, this.match);
-  final String userId;
-  final String title;
-  final String subtitle;
-  final String location;
-  final String posted;
-  final int match;
-}
+class _NetworkSearchSection extends StatelessWidget {
+  const _NetworkSearchSection({
+    required this.controller,
+    required this.onChanged,
+    required this.query,
+    required this.loading,
+    required this.hits,
+    required this.currentUid,
+  });
 
-class _ConnectionCard extends StatelessWidget {
-  const _ConnectionCard({required this.conn});
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+  final String query;
+  final bool loading;
+  final List<NetworkMemberHit> hits;
+  final String? currentUid;
 
-  final _Conn conn;
+  static OutlineInputBorder _border(Color color) {
+    return OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: color),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TextField(
+            controller: controller,
+            onChanged: onChanged,
+            textInputAction: TextInputAction.search,
+            decoration: InputDecoration(
+              hintText: 'Search by first or last name',
+              filled: true,
+              fillColor: AppColors.card,
+              prefixIcon: const Icon(Icons.search, color: AppColors.mutedForeground),
+              border: _border(AppColors.border),
+              enabledBorder: _border(AppColors.border),
+              focusedBorder: _border(AppColors.primary),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Matches first and last names on member profiles (case-insensitive after you type).',
+            style: TextStyle(fontSize: 12, color: AppColors.mutedForeground),
+          ),
+          const SizedBox(height: 12),
+          if (loading)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: CircularProgressIndicator(color: AppColors.primary),
+              ),
+            )
+          else if (query.length < 2)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Text(
+                'Enter at least 2 characters to search.',
+                style: TextStyle(color: AppColors.mutedForeground),
+              ),
+            )
+          else if (hits.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Text(
+                'No members match that search.',
+                style: TextStyle(color: AppColors.mutedForeground),
+              ),
+            )
+          else
+            for (final h in hits)
+              _NetworkMemberCard(hit: h, currentUid: currentUid),
+        ],
+      ),
+    );
+  }
+}
+
+class _NetworkMemberCard extends StatelessWidget {
+  const _NetworkMemberCard({required this.hit, required this.currentUid});
+
+  final NetworkMemberHit hit;
+  final String? currentUid;
+
+  @override
+  Widget build(BuildContext context) {
+    final isSelf = currentUid != null && hit.uid == currentUid;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Material(
         color: AppColors.card,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.people_outline, color: AppColors.primary, size: 22),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
+        child: InkWell(
+          onTap: () => showUserProfileModal(context, userId: hit.uid),
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(conn.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-                    const SizedBox(height: 4),
-                    Text(conn.subtitle, style: const TextStyle(fontSize: 13, color: AppColors.mutedForeground)),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        const Icon(Icons.place_outlined, size: 12, color: AppColors.mutedForeground),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            conn.location,
-                            style: const TextStyle(fontSize: 11, color: AppColors.mutedForeground),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                    PosterProfileAvatar(userId: hit.uid, displayNameHint: hit.displayName, radius: 22),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            hit.displayName,
+                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
                           ),
-                        ),
-                        Text(' • ${conn.posted}', style: const TextStyle(fontSize: 11, color: AppColors.mutedForeground)),
-                      ],
+                          if (hit.profession != null && hit.profession!.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              hit.profession!,
+                              style: const TextStyle(fontSize: 13, color: AppColors.mutedForeground),
+                            ),
+                          ],
+                          if (hit.locationLine != null && hit.locationLine!.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                const Icon(Icons.place_outlined, size: 14, color: AppColors.mutedForeground),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    hit.locationLine!,
+                                    style: const TextStyle(fontSize: 12, color: AppColors.mutedForeground),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
                   ],
                 ),
-              ),
-            ],
+                const SizedBox(height: 12),
+                if (isSelf)
+                  const Text(
+                    'You',
+                    style: TextStyle(fontSize: 13, color: AppColors.mutedForeground, fontWeight: FontWeight.w500),
+                  )
+                else
+                  OutlinedButton.icon(
+                    onPressed: () => context.push('/messages/direct/${hit.uid}'),
+                    icon: const Icon(Icons.chat_bubble_outline, size: 18),
+                    label: const Text('Message'),
+                  ),
+              ],
+            ),
           ),
-          const Divider(height: 24),
-          Row(
-            children: [
-              const Icon(Icons.trending_up, size: 18, color: AppColors.primary),
-              const SizedBox(width: 6),
-              Text(
-                '${conn.match}% match',
-                style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600),
-              ),
-              const Spacer(),
-              OutlinedButton(
-                onPressed: () => context.push('/messages/direct/${conn.userId}'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.foreground,
-                  side: const BorderSide(color: AppColors.border),
-                ),
-                child: const Icon(Icons.chat_bubble_outline, size: 18),
-              ),
-              const SizedBox(width: 8),
-              FilledButton(
-                onPressed: () {},
-                style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
-                child: const Text('Connect'),
-              ),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }
