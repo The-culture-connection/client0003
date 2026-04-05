@@ -6,29 +6,37 @@ import 'package:flutter/services.dart';
 /// other Firebase plugins) were already initialized — same class of issue as
 /// `FirebaseCoreHostApi` in [ApplicationNotes]. **Fix:** stop the app fully,
 /// then **Run** again; prefer **Hot Reload** (`r`) while developing.
-String? firebaseNativeBridgeLostUserMessage(Object error) {
-  bool looksLikeLostChannel(Object o) {
-    final s = o.toString().toLowerCase();
-    return s.contains('unable to establish connection on channel') ||
-        s.contains('cloudfunctionshostapi') ||
-        s.contains('cloud_functions_platform_interface') ||
-        s.contains('pigeon.cloud_functions');
+/// True only for real Flutter ↔ native **channel** failures (Pigeon), not for
+/// normal HTTPS errors from the callable (those often mention
+/// `cloud_functions_platform_interface` in stack traces and must not be
+/// mislabeled as a “lost bridge”).
+bool _textLooksLikePigeonChannelFailure(String s) {
+  final t = s.toLowerCase();
+  if (t.contains('unable to establish connection on channel')) return true;
+  if (t.contains('channel was discarded')) return true;
+  if (t.contains('channel-error')) return true;
+  // Specific host API name appears in genuine channel errors, rarely in HTTP messages.
+  if (t.contains('cloudfunctionshostapi') &&
+      (t.contains('unable to establish') || t.contains('connection'))) {
+    return true;
   }
+  return false;
+}
 
-  if (looksLikeLostChannel(error)) {
+String? firebaseNativeBridgeLostUserMessage(Object error) {
+  if (error is PlatformException && error.code == 'channel-error') {
     return _firebaseBridgeRecoveryInstructions;
   }
-  if (error is PlatformException && error.code == 'channel-error') {
+  if (_textLooksLikePigeonChannelFailure(error.toString())) {
     return _firebaseBridgeRecoveryInstructions;
   }
   if (error is FirebaseFunctionsException) {
     final code = error.code.toLowerCase();
-    final msg = (error.message ?? '').toLowerCase();
-    if (code == 'unknown' && looksLikeLostChannel(error)) {
-      return _firebaseBridgeRecoveryInstructions;
-    }
-    if (msg.contains('unable to establish connection') ||
-        msg.contains('cloudfunctionshostapi')) {
+    final msg = error.message ?? '';
+    final combined = '${error.toString()} $msg';
+    // Only treat as bridge loss when the text clearly indicates the platform channel.
+    if ((code == 'unknown' || code == 'internal') &&
+        _textLooksLikePigeonChannelFailure(combined)) {
       return _firebaseBridgeRecoveryInstructions;
     }
   }
@@ -47,8 +55,10 @@ String userMessageForFirebaseCallableError(Object error) {
   final bridge = firebaseNativeBridgeLostUserMessage(error);
   if (bridge != null) return bridge;
   if (error is FirebaseFunctionsException) {
+    final code = error.code;
     final m = error.message?.trim();
-    if (m != null && m.isNotEmpty) return m;
+    if (m != null && m.isNotEmpty) return '[$code] $m';
+    return '[$code]';
   }
   return error.toString();
 }

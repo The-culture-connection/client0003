@@ -27,6 +27,7 @@ export { setUserBusinessProfile } from "./callables/setUserBusinessProfile";
 export { updateOnboardingStatus } from "./callables/updateOnboardingStatus";
 export { completeOnboarding } from "./callables/completeOnboarding";
 export { buildInitialMatches } from "./callables/buildInitialMatches";
+export { runExpansionUserMatching } from "./callables/runExpansionUserMatching";
 export { getCourseFile } from "./callables/getCourseFile";
 export { importPptxDeck } from "./callables/importPptxDeck";
 export { joinGroup, leaveGroup, deleteMobileGroup } from "./callables/groupMembership";

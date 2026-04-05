@@ -102,6 +102,12 @@ service cloud.firestore {
       allow read, write: if isOwner(userId);
     }
 
+    // Expansion Network — Cloud Function `runExpansionUserMatching` writes; owner reads matches.
+    match /users/{userId}/expansion_matches/{matchUserId} {
+      allow read: if isSignedIn() && isOwner(userId);
+      allow write: if false;
+    }
+
     // --- Web join (legacy); see file header ---
     match /invite_codes/{docId} {
       allow read: if true;

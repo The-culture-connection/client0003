@@ -1,4 +1,5 @@
 // Mirrors Digital Curriculum `src/app/lib/onboardingData.ts` — business goals and skill categories.
+// Human-readable listing: curriculum_options_reference.md (keep in sync when editing this file).
 
 const List<String> kBusinessGoals = [
   'Learn more soft skills (networking, lead generation)',
