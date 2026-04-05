@@ -1,11 +1,11 @@
 {
-    "name": "expansion_network",
-    "short_name": "expansion_network",
+    "name": "Mortar Alumni Network",
+    "short_name": "Mortar Alumni",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#232323",
+    "theme_color": "#232323",
+    "description": "Mortar Alumni Network — connect, explore, and grow.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

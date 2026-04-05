@@ -112,7 +112,7 @@ class ExpansionNetworkApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'Expansion Network',
+      title: 'Mortar Alumni Network',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
       routerConfig: router,

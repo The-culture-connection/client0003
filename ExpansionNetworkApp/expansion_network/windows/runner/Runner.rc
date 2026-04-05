@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.expansionnetwork" "\0"
-            VALUE "FileDescription", "expansion_network" "\0"
+            VALUE "FileDescription", "Mortar Alumni Network" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "expansion_network" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 com.expansionnetwork. All rights reserved." "\0"
             VALUE "OriginalFilename", "expansion_network.exe" "\0"
-            VALUE "ProductName", "expansion_network" "\0"
+            VALUE "ProductName", "Mortar Alumni Network" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
