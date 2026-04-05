@@ -127,9 +127,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                   ),
                                   child: Text(
                                     e.approvalStatus == 'pending'
-                                        ? 'This event is pending approval and is not visible on the public feed yet.'
+                                        ? 'This submission is under review in Digital Curriculum. It is not on the public feed yet.'
                                         : e.approvalStatus == 'rejected'
-                                            ? 'This event was not approved.${e.rejectionReason != null && e.rejectionReason!.isNotEmpty ? ' ${e.rejectionReason}' : ''}'
+                                            ? 'This event was not published.${e.rejectionReason != null && e.rejectionReason!.isNotEmpty ? ' ${e.rejectionReason}' : ''}'
                                             : 'This event is not published.',
                                     style: const TextStyle(fontSize: 13, color: AppColors.mutedForeground),
                                   ),

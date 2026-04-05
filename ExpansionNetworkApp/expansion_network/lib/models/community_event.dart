@@ -56,6 +56,19 @@ class CommunityEvent {
     return registeredCount >= cap;
   }
 
+  /// Short status for the submitter in the Expansion app (reviews happen in Digital Curriculum).
+  String get memberSubmissionStatusLabel {
+    if (isPublished) return 'Live on feed';
+    switch (approvalStatus) {
+      case 'pending':
+        return 'Submitted — under review';
+      case 'rejected':
+        return 'Not published';
+      default:
+        return 'Not published';
+    }
+  }
+
   static CommunityEvent fromDoc(String id, Map<String, dynamic> data) {
     final ru = data['registered_users'];
     List<String> users = [];

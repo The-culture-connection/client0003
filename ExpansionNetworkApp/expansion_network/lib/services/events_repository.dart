@@ -76,7 +76,7 @@ class EventsRepository {
     return CommunityEvent.fromDoc(doc.id, doc.data()!);
   }
 
-  /// Member-submitted event in `events_mobile`; staff approves in app or web admin.
+  /// Member-submitted event in `events_mobile`; staff publishes or declines in **Digital Curriculum**.
   Future<String> submitUserEventForApproval({
     required String title,
     DateTime? date,
@@ -107,7 +107,8 @@ class EventsRepository {
     return ref.id;
   }
 
-  /// Staff: publish or reject a pending user event (`events_mobile`).
+  /// Publish or reject a pending user event (`events_mobile`). Used by **Digital Curriculum**
+  /// admin tools — not called from the Expansion app.
   Future<void> setEventApproval({
     required String eventId,
     required bool approve,

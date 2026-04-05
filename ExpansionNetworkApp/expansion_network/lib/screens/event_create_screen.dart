@@ -159,7 +159,9 @@ class _EventCreateScreenState extends State<EventCreateScreen> {
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Submitted for approval. You’ll see it on the feed once staff approves.')),
+          const SnackBar(
+            content: Text('Submitted. You’ll see it on the feed once it’s reviewed in Digital Curriculum.'),
+          ),
         );
         context.go('/feed');
       }
@@ -331,7 +333,7 @@ class _EventCreateScreenState extends State<EventCreateScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Text(
-                      'Your event will be submitted for approval and will be visible to all members once approved.',
+                      'Your event will be submitted for review in Digital Curriculum and will be visible to all members once published.',
                       style: TextStyle(fontSize: 13, color: Color(0xFF5D4037)),
                     ),
                   ),

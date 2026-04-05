@@ -107,7 +107,7 @@ On **first create** (`set`), the app also writes default nested structures so do
 
 ## Staff — pending user events
 
-- **Route:** `/admin/events`. **Gate:** `currentUserHasStaffClaim()` (Auth token `roles` contains `Admin` or `superAdmin`, same as rules `hasStaffClaim()`).
+- **Expansion app:** Event **approve / decline** is **not** available in the mobile app. **`/admin/events`** shows an informational screen only; **Digital Curriculum** is where staff review `events_mobile` submissions. **Profile → “Events you submitted”** lists the signed-in member’s submissions with **read-only status** ([profile_screen.dart](lib/screens/profile_screen.dart): under review / live on feed / not published via [CommunityEvent.memberSubmissionStatusLabel](lib/models/community_event.dart)).
 
 ## Groups tab — Reddit-style threads (Firestore)
 

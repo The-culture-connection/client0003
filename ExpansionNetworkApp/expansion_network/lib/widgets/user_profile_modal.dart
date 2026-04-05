@@ -416,9 +416,8 @@ class _ProfileModalListings extends StatelessWidget {
                                 title: Text(e.title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
                                 subtitle: Text(
                                   [
-                                    if (e.approvalStatus == 'pending') 'Pending approval',
-                                    if (e.approvalStatus == 'rejected') 'Declined',
-                                    if (e.isPublished) formatEventDate(e.date),
+                                    e.memberSubmissionStatusLabel,
+                                    if (e.isPublished && e.date != null) formatEventDate(e.date),
                                   ].where((s) => s.isNotEmpty).join(' · '),
                                   style: const TextStyle(fontSize: 11, color: AppColors.mutedForeground),
                                 ),
