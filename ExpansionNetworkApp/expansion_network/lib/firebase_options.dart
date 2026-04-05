@@ -17,10 +17,7 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      throw UnsupportedError(
-        'DefaultFirebaseOptions have not been configured for web - '
-        'you can reconfigure this by running the FlutterFire CLI again.',
-      );
+      return web;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
@@ -28,15 +25,9 @@ class DefaultFirebaseOptions {
       case TargetPlatform.iOS:
         return ios;
       case TargetPlatform.macOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for macos - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return macos;
       case TargetPlatform.windows:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for windows - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return windows;
       case TargetPlatform.linux:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for linux - '
@@ -50,19 +41,49 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyC7SOdcffz1OKa_sdhG_f-irSlzSmRh4lA',
-    appId: '1:260497170681:android:1aef05688db81f66990228',
-    messagingSenderId: '260497170681',
-    projectId: 'mortar-dev',
-    storageBucket: 'mortar-dev.firebasestorage.app',
+    apiKey: 'AIzaSyCulFvj0z8sS9SGi6177sbce6xh7vceIyA',
+    appId: '1:999601815280:android:b57b285f09487cd30b8c35',
+    messagingSenderId: '999601815280',
+    projectId: 'mortar-stage',
+    storageBucket: 'mortar-stage.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyB3oL4t6QTlQCBCF4vIEFslbt_WOZKrmJM',
-    appId: '1:260497170681:ios:6bf558c02e05d9da990228',
-    messagingSenderId: '260497170681',
-    projectId: 'mortar-dev',
-    storageBucket: 'mortar-dev.firebasestorage.app',
+    apiKey: 'AIzaSyBLdLrBc5QGWgqS6w7tuiAsTsof_4nHTu8',
+    appId: '1:999601815280:ios:c553e9e0350583920b8c35',
+    messagingSenderId: '999601815280',
+    projectId: 'mortar-stage',
+    storageBucket: 'mortar-stage.firebasestorage.app',
     iosBundleId: 'com.expansionnetwork.expansionNetwork',
   );
+
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyBUJreREmYaNjbv7zlLLkdTNk-tiFODwA8',
+    appId: '1:999601815280:web:ea9680e90fc149160b8c35',
+    messagingSenderId: '999601815280',
+    projectId: 'mortar-stage',
+    authDomain: 'mortar-stage.firebaseapp.com',
+    storageBucket: 'mortar-stage.firebasestorage.app',
+    measurementId: 'G-XQ2CZ5J7TX',
+  );
+
+  static const FirebaseOptions macos = FirebaseOptions(
+    apiKey: 'AIzaSyBLdLrBc5QGWgqS6w7tuiAsTsof_4nHTu8',
+    appId: '1:999601815280:ios:c553e9e0350583920b8c35',
+    messagingSenderId: '999601815280',
+    projectId: 'mortar-stage',
+    storageBucket: 'mortar-stage.firebasestorage.app',
+    iosBundleId: 'com.expansionnetwork.expansionNetwork',
+  );
+
+  static const FirebaseOptions windows = FirebaseOptions(
+    apiKey: 'AIzaSyBUJreREmYaNjbv7zlLLkdTNk-tiFODwA8',
+    appId: '1:999601815280:web:4c4ed2e46f9081470b8c35',
+    messagingSenderId: '999601815280',
+    projectId: 'mortar-stage',
+    authDomain: 'mortar-stage.firebaseapp.com',
+    storageBucket: 'mortar-stage.firebasestorage.app',
+    measurementId: 'G-XN3T0BMWVH',
+  );
+
 }

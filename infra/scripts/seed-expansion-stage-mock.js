@@ -1,16 +1,24 @@
 /**
  * Seed Expansion mock data from fixed curriculum-style fixtures (no scaling).
  *
- * Prerequisites: GOOGLE_APPLICATION_CREDENTIALS or gcloud application-default login.
+ * Prerequisites (pick one):
+ *   - `--credentials path/to/serviceAccount.json` (Firebase Console → Project settings → Service accounts → Generate new private key), or
+ *   - `GOOGLE_APPLICATION_CREDENTIALS` env var pointing at that JSON, or
+ *   - `gcloud auth application-default login` (Google Cloud SDK) with access to the project.
  *
- * Usage:
+ * Stage example (PowerShell):
  *   npm install --prefix infra/scripts
- *   npm.cmd run seed:dev:expansion-mock
- *   node seed-expansion-stage-mock.js --project mortar-dev
+ *   node seed-expansion-stage-mock.js --project mortar-stage --credentials C:\\path\\to\\mortar-stage-adminsdk.json
+ *
+ * Or from repo root:
+ *   npm run seed:stage:expansion-mock
+ *   (set GOOGLE_APPLICATION_CREDENTIALS first if you do not use --credentials)
  *
  * Optional: SEED_DRY_RUN=1 or --dry-run
  */
 
+const fs = require("fs");
+const path = require("path");
 const admin = require("firebase-admin");
 const { FieldValue, Timestamp } = require("firebase-admin/firestore");
 
@@ -28,7 +36,40 @@ function argProject() {
   );
 }
 
+function argCredentialsPath() {
+  const i = process.argv.indexOf("--credentials");
+  if (i >= 0 && process.argv[i + 1]) return process.argv[i + 1];
+  return null;
+}
+
 const PROJECT_ID = argProject();
+
+function initFirebaseAdmin() {
+  if (admin.apps.length) return;
+  const flagPath = argCredentialsPath();
+  const envPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+  const keyPath = flagPath || envPath;
+  if (keyPath) {
+    const abs = path.resolve(keyPath);
+    if (!fs.existsSync(abs)) {
+      console.error(`Service account file not found: ${abs}`);
+      process.exit(1);
+    }
+    const json = JSON.parse(fs.readFileSync(abs, "utf8"));
+    admin.initializeApp({
+      credential: admin.credential.cert(json),
+      projectId: PROJECT_ID,
+    });
+    console.log(`Using credentials file: ${abs}`);
+    return;
+  }
+  admin.initializeApp({ projectId: PROJECT_ID });
+  if (!DRY_RUN) {
+    console.warn(
+      "No --credentials or GOOGLE_APPLICATION_CREDENTIALS; using default application credentials (gcloud ADC). If the run fails, pass --credentials <adminsdk.json> for mortar-stage."
+    );
+  }
+}
 
 /** Shorthand / typos in source JSON → full curriculum label where the app expects it. */
 const SKILL_SEEKING_ALIASES = {
@@ -913,9 +954,7 @@ async function main() {
 
   console.log(`Project: ${PROJECT_ID}${DRY_RUN ? " (DRY RUN)" : ""}`);
 
-  if (!admin.apps.length) {
-    admin.initializeApp({ projectId: PROJECT_ID });
-  }
+  initFirebaseAdmin();
 
   const auth = admin.auth();
   const db = admin.firestore();
