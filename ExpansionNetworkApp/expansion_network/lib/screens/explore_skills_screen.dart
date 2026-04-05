@@ -127,6 +127,13 @@ class _SkillCard extends StatelessWidget {
                   children: [
                     Text(listing.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
                     const SizedBox(height: 4),
+                    if (listing.skillsOffering.isNotEmpty) ...[
+                      Text(
+                        'Skills offering: ${listing.skillsOffering.join(' · ')}',
+                        style: const TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w500),
+                      ),
+                      const SizedBox(height: 4),
+                    ],
                     Text(
                       [
                         if (listing.industry != null && listing.industry!.isNotEmpty) listing.industry!,

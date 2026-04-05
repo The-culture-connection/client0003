@@ -6,6 +6,7 @@ import '../data/explore_posting_industries.dart';
 import '../services/explore_listings_repository.dart';
 import '../services/user_profile_repository.dart';
 import '../theme/app_theme.dart';
+import '../widgets/explore_curriculum_skills_multiselect.dart';
 
 class SkillCreateScreen extends StatefulWidget {
   const SkillCreateScreen({super.key});
@@ -24,6 +25,8 @@ class _SkillCreateScreenState extends State<SkillCreateScreen> {
   bool _busy = false;
   bool _inPerson = false;
   String? _industry;
+  final Set<String> _skillsOffering = {};
+  String? _expandedOfferingCategory;
 
   @override
   void dispose() {
@@ -31,6 +34,28 @@ class _SkillCreateScreenState extends State<SkillCreateScreen> {
     _summary.dispose();
     _location.dispose();
     super.dispose();
+  }
+
+  void _toggleOfferingCategory(String title) {
+    setState(() {
+      _expandedOfferingCategory = _expandedOfferingCategory == title ? null : title;
+    });
+  }
+
+  void _toggleOfferingSkill(String skill) {
+    if (_skillsOffering.contains(skill)) {
+      setState(() => _skillsOffering.remove(skill));
+      return;
+    }
+    if (_skillsOffering.length >= ExploreListingsRepository.maxSkillsPerListing) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('At most ${ExploreListingsRepository.maxSkillsPerListing} skills per listing.'),
+        ),
+      );
+      return;
+    }
+    setState(() => _skillsOffering.add(skill));
   }
 
   Future<void> _onLocationModeChanged(Set<bool> selected) async {
@@ -55,6 +80,12 @@ class _SkillCreateScreenState extends State<SkillCreateScreen> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Select an industry.')));
       return;
     }
+    if (_skillsOffering.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Select at least one skill you are offering.')),
+      );
+      return;
+    }
     final locMode = _inPerson ? 'in_person' : 'remote';
     final locText = _inPerson ? _location.text.trim() : 'Remote';
     if (_inPerson && locText.isEmpty) {
@@ -68,6 +99,7 @@ class _SkillCreateScreenState extends State<SkillCreateScreen> {
     try {
       await _repo.createSkillListing(
         title: _title.text.trim(),
+        skillsOffering: _skillsOffering.toList(),
         summary: _summary.text.trim().isEmpty ? null : _summary.text.trim(),
         location: locText,
         locationMode: locMode,
@@ -122,7 +154,18 @@ class _SkillCreateScreenState extends State<SkillCreateScreen> {
                     ),
                     validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
+                  ExploreCurriculumSkillsMultiselect(
+                    sectionTitle: 'Skills offering',
+                    sectionHint:
+                        'Expand a category and check every skill you are offering — same curriculum list as onboarding. You can pick more than one.',
+                    selectedSkills: _skillsOffering,
+                    expandedCategoryTitle: _expandedOfferingCategory,
+                    onCategoryHeaderTap: _toggleOfferingCategory,
+                    onSkillToggle: _toggleOfferingSkill,
+                    maxSkills: ExploreListingsRepository.maxSkillsPerListing,
+                  ),
+                  const SizedBox(height: 20),
                   DropdownButtonFormField<String>(
                     key: ValueKey(_industry ?? ''),
                     initialValue: _industry,

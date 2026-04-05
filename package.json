@@ -14,6 +14,8 @@
     "deploy:stage:rules": "firebase deploy --project mortar-stage --only firestore:rules,storage",
     "deploy:stage:functions": "firebase deploy --project mortar-stage --only functions",
     "seed": "node infra/scripts/seed.js",
+    "seed:dev:expansion-mock": "npm --prefix infra/scripts run seed:dev:expansion-mock",
+    "seed:stage:expansion-mock": "npm --prefix infra/scripts run seed:stage:expansion-mock",
     "assign-superadmin": "node infra/scripts/assign-superadmin-roles.js",
     "lint": "npm run lint --workspaces",
     "build": "npm run build --workspaces",

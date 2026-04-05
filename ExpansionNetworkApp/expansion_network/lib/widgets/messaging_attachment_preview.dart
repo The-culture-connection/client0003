@@ -58,10 +58,11 @@ class _JobAttachmentCard extends StatelessWidget {
           icon: Icons.work_outline,
           title: j.title,
           subtitle: [
+            if (j.skillsSeeking.isNotEmpty) 'Seeking: ${j.skillsSeeking.join(' · ')}',
             if (j.industry != null && j.industry!.isNotEmpty) j.industry!,
             if (j.company != null && j.company!.isNotEmpty) j.company!,
             if (j.location != null && j.location!.isNotEmpty) j.location!,
-          ].join(' · '),
+          ].where((e) => e.isNotEmpty).join(' · '),
           onTap: compact ? null : () => context.push('/explore'),
         );
       },
@@ -86,6 +87,7 @@ class _SkillAttachmentCard extends StatelessWidget {
           return _loadingOrMissing(snap.connectionState == ConnectionState.waiting, 'Skill listing');
         }
         final skillSub = [
+          if (s.skillsOffering.isNotEmpty) 'Offering: ${s.skillsOffering.join(' · ')}',
           if (s.industry != null && s.industry!.isNotEmpty) s.industry!,
           if (s.location != null && s.location!.isNotEmpty) s.location!,
           if (s.summary != null && s.summary!.isNotEmpty) s.summary!,

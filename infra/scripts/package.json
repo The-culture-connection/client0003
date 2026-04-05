@@ -1,0 +1,12 @@
+{
+  "name": "@mortar/infra-scripts",
+  "private": true,
+  "description": "Standalone deps for Firestore/Auth seed scripts (firebase-admin not hoisted from repo root for all setups)",
+  "dependencies": {
+    "firebase-admin": "^13.6.1"
+  },
+  "scripts": {
+    "seed:dev:expansion-mock": "node seed-expansion-stage-mock.js --project mortar-dev",
+    "seed:stage:expansion-mock": "node seed-expansion-stage-mock.js --project mortar-stage"
+  }
+}

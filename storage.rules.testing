@@ -1,0 +1,30 @@
+rules_version = '2';
+
+/**
+ * Mortar — Cloud Storage (TESTING / DEVELOPMENT ONLY)
+ *
+ * NOT for production. Any signed-in user may read and write any object in the bucket.
+ *
+ * How to use:
+ * 1. Temporarily point firebase.json → "storage": { "rules": "storage.rules.testing" }
+ * 2. Deploy: npx firebase-tools@latest deploy --only storage
+ * 3. Revert firebase.json to "storage.rules" before any production deploy.
+ *
+ * Storage emulator (no Auth): uncomment the `allow read, write: if true` block below
+ * and comment out the signed-in match, then start emulators with storage enabled.
+ */
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // --- Default for testing with Auth (emulator or real project): signed-in = full access ---
+    match /{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    // --- Optional: completely open bucket (emulator only, never deploy to prod) ---
+    // match /{allPaths=**} {
+    //   allow read, write: if true;
+    // }
+  }
+}

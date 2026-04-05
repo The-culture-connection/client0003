@@ -6,6 +6,7 @@ import '../data/explore_posting_industries.dart';
 import '../services/explore_listings_repository.dart';
 import '../services/user_profile_repository.dart';
 import '../theme/app_theme.dart';
+import '../widgets/explore_curriculum_skills_multiselect.dart';
 
 class JobCreateScreen extends StatefulWidget {
   const JobCreateScreen({super.key});
@@ -25,6 +26,8 @@ class _JobCreateScreenState extends State<JobCreateScreen> {
   bool _busy = false;
   bool _inPerson = false;
   String? _industry;
+  final Set<String> _skillsSeeking = {};
+  String? _expandedSeekingCategory;
 
   @override
   void dispose() {
@@ -33,6 +36,28 @@ class _JobCreateScreenState extends State<JobCreateScreen> {
     _location.dispose();
     _description.dispose();
     super.dispose();
+  }
+
+  void _toggleSeekingCategory(String title) {
+    setState(() {
+      _expandedSeekingCategory = _expandedSeekingCategory == title ? null : title;
+    });
+  }
+
+  void _toggleSeekingSkill(String skill) {
+    if (_skillsSeeking.contains(skill)) {
+      setState(() => _skillsSeeking.remove(skill));
+      return;
+    }
+    if (_skillsSeeking.length >= ExploreListingsRepository.maxSkillsPerListing) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('At most ${ExploreListingsRepository.maxSkillsPerListing} skills per job.'),
+        ),
+      );
+      return;
+    }
+    setState(() => _skillsSeeking.add(skill));
   }
 
   Future<void> _onLocationModeChanged(Set<bool> selected) async {
@@ -57,6 +82,12 @@ class _JobCreateScreenState extends State<JobCreateScreen> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Select an industry.')));
       return;
     }
+    if (_skillsSeeking.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Select at least one skill you are seeking.')),
+      );
+      return;
+    }
     final locMode = _inPerson ? 'in_person' : 'remote';
     final locText = _inPerson ? _location.text.trim() : 'Remote';
     if (_inPerson && locText.isEmpty) {
@@ -70,6 +101,7 @@ class _JobCreateScreenState extends State<JobCreateScreen> {
     try {
       await _repo.createJob(
         title: _title.text.trim(),
+        skillsSeeking: _skillsSeeking.toList(),
         company: _company.text.trim().isEmpty ? null : _company.text.trim(),
         location: locText,
         locationMode: locMode,
@@ -122,7 +154,18 @@ class _JobCreateScreenState extends State<JobCreateScreen> {
                     decoration: const InputDecoration(labelText: 'Title'),
                     validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
+                  ExploreCurriculumSkillsMultiselect(
+                    sectionTitle: 'Skills seeking',
+                    sectionHint:
+                        'Expand a category and check every skill this role needs — same curriculum list as onboarding. You can pick more than one.',
+                    selectedSkills: _skillsSeeking,
+                    expandedCategoryTitle: _expandedSeekingCategory,
+                    onCategoryHeaderTap: _toggleSeekingCategory,
+                    onSkillToggle: _toggleSeekingSkill,
+                    maxSkills: ExploreListingsRepository.maxSkillsPerListing,
+                  ),
+                  const SizedBox(height: 20),
                   TextFormField(controller: _company, decoration: const InputDecoration(labelText: 'Company (optional)')),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(

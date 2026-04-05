@@ -6,6 +6,7 @@ import '../models/community_event.dart';
 import '../services/events_repository.dart';
 import '../theme/app_theme.dart';
 import '../utils/relative_time.dart';
+import '../widgets/event_rsvp_attendee_tile.dart';
 import '../widgets/page_header.dart';
 
 /// Events list driven by Firestore `events_mobile`.
@@ -118,6 +119,27 @@ class EventsScreen extends StatelessWidget {
                                 _row(Icons.place_outlined, e.location),
                                 _row(Icons.category_outlined, e.eventType),
                                 _row(Icons.people_outline, '${e.registeredCount} attending'),
+                                if (e.registeredCount > 0) ...[
+                                  const SizedBox(height: 12),
+                                  const Text(
+                                    'RSVPs',
+                                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  ...e.registeredUsers
+                                      .take(5)
+                                      .map((id) => EventRsvpAttendeeTile(userId: id, dense: true)),
+                                  if (e.registeredCount > 5)
+                                    Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: TextButton(
+                                        onPressed: () => context.push('/events/${e.id}'),
+                                        child: Text(
+                                          'View all ${e.registeredCount} RSVPs',
+                                        ),
+                                      ),
+                                    ),
+                                ],
                                 const SizedBox(height: 12),
                                 SizedBox(
                                   width: double.infinity,

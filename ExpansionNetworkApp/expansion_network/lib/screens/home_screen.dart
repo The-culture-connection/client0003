@@ -191,6 +191,7 @@ class _HomeLatestJobSkillRow extends StatelessWidget {
                 final sub = j == null
                     ? 'Open Explore to post a job.'
                     : [
+                        if (j.skillsSeeking.isNotEmpty) j.skillsSeeking.join(' · '),
                         if (j.industry != null && j.industry!.isNotEmpty) j.industry!,
                         if (j.location != null && j.location!.isNotEmpty) j.location!,
                       ].join(' · ');
@@ -225,6 +226,7 @@ class _HomeLatestJobSkillRow extends StatelessWidget {
                 final sub = s == null
                     ? 'Open Explore to offer a skill.'
                     : [
+                        if (s.skillsOffering.isNotEmpty) s.skillsOffering.join(' · '),
                         if (s.industry != null && s.industry!.isNotEmpty) s.industry!,
                         if (s.location != null && s.location!.isNotEmpty) s.location!,
                       ].join(' · ');

@@ -1,8 +1,11 @@
 rules_version = '2';
 
 /**
- * Mortar — Cloud Storage
- * Deploy: `firebase use staging` then `firebase deploy --only storage`
+ * Mortar — Cloud Storage (production-oriented)
+ * Deploy: `firebase use <alias>` then `firebase deploy --only storage`
+ *
+ * For permissive dev/test rules, see `storage.rules.testing` and point
+ * firebase.json "storage.rules" at that file only on non-prod projects.
  */
 
 service firebase.storage {

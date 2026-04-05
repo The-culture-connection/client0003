@@ -7,6 +7,7 @@ import '../models/community_event.dart';
 import '../services/events_repository.dart';
 import '../theme/app_theme.dart';
 import '../utils/relative_time.dart';
+import '../widgets/event_rsvp_attendee_tile.dart';
 
 class EventDetailScreen extends StatefulWidget {
   const EventDetailScreen({super.key, required this.eventId});
@@ -191,6 +192,21 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                 e.details,
                                 style: const TextStyle(fontSize: 15, height: 1.45, color: AppColors.foreground),
                               ),
+                              const SizedBox(height: 24),
+                              Text(
+                                'RSVPs · ${e.registeredCount} going',
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                              ),
+                              const SizedBox(height: 8),
+                              if (e.registeredUsers.isEmpty)
+                                const Text(
+                                  'No RSVPs yet. Be the first to register.',
+                                  style: TextStyle(fontSize: 14, color: AppColors.mutedForeground),
+                                )
+                              else
+                                ...e.registeredUsers.map(
+                                  (id) => EventRsvpAttendeeTile(userId: id),
+                                ),
                               const SizedBox(height: 24),
                               SizedBox(
                                 width: double.infinity,

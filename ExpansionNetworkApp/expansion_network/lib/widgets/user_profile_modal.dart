@@ -323,7 +323,10 @@ class _ProfileModalListings extends StatelessWidget {
                             contentPadding: EdgeInsets.zero,
                             title: Text(j.title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
                             subtitle: Text(
-                              j.createdAt != null ? formatRelativeTime(j.createdAt!) : '',
+                              [
+                                if (j.skillsSeeking.isNotEmpty) 'Seeking: ${j.skillsSeeking.join(' · ')}',
+                                if (j.createdAt != null) formatRelativeTime(j.createdAt!),
+                              ].where((e) => e.isNotEmpty).join(' · '),
                               style: const TextStyle(fontSize: 11, color: AppColors.mutedForeground),
                             ),
                             trailing: const Icon(Icons.chevron_right, size: 18),
@@ -363,7 +366,10 @@ class _ProfileModalListings extends StatelessWidget {
                             contentPadding: EdgeInsets.zero,
                             title: Text(s.title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
                             subtitle: Text(
-                              s.createdAt != null ? formatRelativeTime(s.createdAt!) : '',
+                              [
+                                if (s.skillsOffering.isNotEmpty) 'Offering: ${s.skillsOffering.join(' · ')}',
+                                if (s.createdAt != null) formatRelativeTime(s.createdAt!),
+                              ].where((e) => e.isNotEmpty).join(' · '),
                               style: const TextStyle(fontSize: 11, color: AppColors.mutedForeground),
                             ),
                             trailing: const Icon(Icons.chevron_right, size: 18),

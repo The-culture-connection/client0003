@@ -7,6 +7,7 @@ import '../models/community_event.dart';
 import '../services/events_repository.dart';
 import '../theme/app_theme.dart';
 import '../utils/relative_time.dart';
+import '../widgets/event_rsvp_attendee_tile.dart';
 import '../widgets/page_header.dart';
 
 /// Community feed: published [events] only (no feed posts).
@@ -216,6 +217,25 @@ class _EventListTile extends StatelessWidget {
             _iconRow(Icons.place_outlined, event.location),
             _iconRow(Icons.category_outlined, event.eventType),
             _iconRow(Icons.people_outline, '${event.registeredCount} registered'),
+            if (event.registeredCount > 0) ...[
+              const SizedBox(height: 12),
+              const Text(
+                'RSVPs',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+              ),
+              const SizedBox(height: 8),
+              ...event.registeredUsers
+                  .take(5)
+                  .map((id) => EventRsvpAttendeeTile(userId: id, dense: true)),
+              if (event.registeredCount > 5)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton(
+                    onPressed: () => context.push('/events/${event.id}'),
+                    child: Text('View all ${event.registeredCount} RSVPs'),
+                  ),
+                ),
+            ],
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,

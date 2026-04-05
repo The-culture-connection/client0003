@@ -318,6 +318,13 @@ class _JobCard extends StatelessWidget {
                   children: [
                     Text(job.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
                     const SizedBox(height: 4),
+                    if (job.skillsSeeking.isNotEmpty) ...[
+                      Text(
+                        'Skills seeking: ${job.skillsSeeking.join(' · ')}',
+                        style: const TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w500),
+                      ),
+                      const SizedBox(height: 4),
+                    ],
                     Text(
                       [
                         if (job.industry != null && job.industry!.isNotEmpty) job.industry!,
@@ -411,6 +418,13 @@ class _ExploreSkillRow extends StatelessWidget {
                   children: [
                     Text(listing.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
                     const SizedBox(height: 4),
+                    if (listing.skillsOffering.isNotEmpty) ...[
+                      Text(
+                        'Skills offering: ${listing.skillsOffering.join(' · ')}',
+                        style: const TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w500),
+                      ),
+                      const SizedBox(height: 4),
+                    ],
                     Text(
                       [
                         if (listing.industry != null && listing.industry!.isNotEmpty) listing.industry!,

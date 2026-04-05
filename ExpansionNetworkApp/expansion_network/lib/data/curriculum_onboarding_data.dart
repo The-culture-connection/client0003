@@ -124,6 +124,11 @@ const List<CurriculumSkillCategory> kCurriculumSkillCategories = [
   ),
 ];
 
+/// All skill labels from [kCurriculumSkillCategories] (category order, then skill order).
+/// Used for Explore job/skill posting pickers (`skill_seeking` / `skill_offering`).
+List<String> get kCurriculumSkillLabelsFlat =>
+    kCurriculumSkillCategories.expand((c) => c.skills).toList(growable: false);
+
 /// Same list as Digital Curriculum `onboardingData.ts` — `INDUSTRIES`.
 const List<String> kIndustries = [
   'Food & Beverage',

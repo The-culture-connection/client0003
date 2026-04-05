@@ -5,6 +5,7 @@ class ExploreJob {
   const ExploreJob({
     required this.id,
     required this.title,
+    this.skillsSeeking = const [],
     this.company,
     this.location,
     this.description,
@@ -18,6 +19,8 @@ class ExploreJob {
 
   final String id;
   final String title;
+  /// Curriculum skill labels (`skill_seeking` in Firestore — list of strings; legacy single string supported).
+  final List<String> skillsSeeking;
   final String? company;
   final String? location;
   final String? description;
@@ -36,6 +39,7 @@ class ExploreJob {
     return ExploreJob(
       id: id,
       title: title,
+      skillsSeeking: _skillList(d['skill_seeking']),
       company: _s(d['company']),
       location: _s(d['location']),
       description: _s(d['description']),
@@ -46,6 +50,15 @@ class ExploreJob {
       createdAt: _ts(d['created_at']),
       updatedAt: _ts(d['updated_at']),
     );
+  }
+
+  static List<String> _skillList(dynamic v) {
+    if (v == null) return [];
+    if (v is String && v.isNotEmpty) return [v];
+    if (v is List) {
+      return v.whereType<String>().where((s) => s.isNotEmpty).toList();
+    }
+    return [];
   }
 
   static String? _s(dynamic v) => v is String ? v : null;
