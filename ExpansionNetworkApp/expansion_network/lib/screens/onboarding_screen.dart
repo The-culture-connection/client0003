@@ -237,7 +237,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       );
       if (!mounted) return;
       context.read<AuthController>().markExpansionOnboardingComplete();
-      context.go('/home');
+      context.go('/welcome-intro');
     } catch (e) {
       setState(() => _error = e.toString());
     } finally {

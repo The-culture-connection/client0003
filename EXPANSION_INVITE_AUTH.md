@@ -33,7 +33,7 @@ App profile and synced gate fields: `uid`, `email`, `normalizedEmail`, `role`, `
 | Callable | Access | Purpose |
 |----------|--------|---------|
 | `initializeUserSession` | Authenticated | Enforce eligibility; merge `users/{uid}`; return `READY_FOR_HOME` or `REQUIRES_ONBOARDING` or `UNAUTHORIZED`. |
-| `claimInviteAndCreateAccount` | Public | Validate latest invite; create Auth user if missing; mark invite used; return `customToken` or structured errors (`ALREADY_EXISTS`, etc.). |
+| `claimInviteAndCreateAccount` | Public | Validate latest invite; create Auth user with email/password; mark invite used; link Firestore. Returns `signInWithEmailPassword: true` — client signs in with `signInWithEmailAndPassword` (no custom token / no `signBlob` IAM). Structured errors: `ALREADY_EXISTS`, etc. |
 | `finalizeInviteClaim` | Authenticated | After `signInWithEmailAndPassword`, consumes the invite and links `eligibleUsers` / `users/{uid}` (for people who already had Firebase Auth). Idempotent if this user already consumed the invite. |
 | `createOrUpdateEligibleUser` | Admin | Upsert eligible user; optionally generate invite (not for Students by default). |
 | `generateInviteCode` | Admin | New code; revokes prior invite via `revoked: true` on old doc. |
@@ -52,7 +52,7 @@ After sign-in, `initializeUserSession` drives state:
 - **REQUIRES_ONBOARDING** — allowed; sent to onboarding until `profileCreated` / `onboardingComplete` (or legacy `expansionOnboardingComplete` / `onboarding_status`).
 - **READY_FOR_HOME** — allowed; cross-checked with `UserProfileRepository.needsExpansionOnboarding`.
 
-First-time signup: **`/auth/claim`** → `claimInviteAndCreateAccount` → `signInWithCustomToken`.
+First-time signup: **`/auth/claim`** → `claimInviteAndCreateAccount` → **`signInWithEmailAndPassword`** with the same password (server already ran `createUser`).
 
 ## Web admin
 
@@ -78,8 +78,23 @@ Also add your web origin under **Firebase Console → Authentication → Setting
 
 ## Firestore rules and migration
 
-- **Current repo `firestore.rules`:** time-bounded open access for development on the shared `mortar-dev` project. Tightening rules requires **merging** with all curriculum collections that use the same database; do not only lock `eligibleUsers` / `inviteCodes` without removing a global `match /{document=**}` allow, because Firestore allows access if **any** matching rule grants it.
+- **Current repo `firestore.rules`:** production-style rules (e.g. `eligibleUsers` / `inviteCodes` **client** `allow write: if false`; server-only maintenance via Admin SDK / callables). Tightening or loosening rules affects **mobile/web clients only**. **Cloud Functions use the Firebase Admin SDK and bypass Security Rules** for Firestore reads/writes from function code.
 - **Data migration:** move or mirror approved emails into `eligibleUsers`; legacy `expansion_cohort_emails` can still supply `cohort_id` but **does not** grant alumni network access by itself.
+
+### If `claimInviteAndCreateAccount` fails with Firestore `PERMISSION_DENIED`
+
+Symptoms: app shows **`failed-precondition`** mentioning Firestore / permission (often after **`batch.commit`**).
+
+1. **Rules are not the cause** for Admin SDK writes. Pasting “open” rules in the console does not fix this class of error if IAM is wrong.
+2. **Check IAM** (Google Cloud Console → **IAM** for the same project as Firestore):
+   - Identify the **Cloud Functions Gen 2 / Cloud Run** runtime identity (often **`PROJECT_ID@appspot.gserviceaccount.com`** or **`PROJECT_NUMBER-compute@developer.gserviceaccount.com`**).
+   - Ensure it has **`Cloud Datastore User`**, **`Editor`**, or **`Firebase Admin`** (or equivalent) on that project. Hardening that removed default roles from the compute service account is a common cause of **`7 PERMISSION_DENIED`** from Firestore.
+3. **Same project:** confirm `firebase use` and the Flutter `firebase_options` project id match the project where `eligibleUsers` / `inviteCodes` / `users` data lives.
+4. **Logs:** Cloud Functions logs for `claimInviteAndCreateAccount:batch.commit` include the full gRPC error.
+
+### Custom tokens on invite claim (removed)
+
+**`claimInviteAndCreateAccount`** no longer calls **`createCustomToken`**. After `auth.createUser({ email, password })` and Firestore updates, the app signs in with **`signInWithEmailAndPassword`**, which avoids **`iam.serviceAccounts.signBlob`** and related IAM on the Cloud Run runtime service account.
 
 ## Invite code hashing (not implemented)
 

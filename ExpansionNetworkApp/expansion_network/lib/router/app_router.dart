@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -24,6 +25,7 @@ import '../screens/groups_screen.dart';
 import '../screens/home_screen.dart';
 import '../screens/landing_screen.dart';
 import '../screens/session_gate_screen.dart';
+import '../screens/welcome_mortarverse_intro_screen.dart';
 import '../screens/matching_screen.dart';
 import '../screens/messages_screen.dart';
 import '../screens/onboarding_screen.dart';
@@ -44,7 +46,7 @@ GoRouter createAppRouter(AuthController auth) {
       final loc = state.matchedLocation;
 
       if (auth.loading) {
-        if (loc == '/session' || loc.startsWith('/auth')) return null;
+        if (loc == '/session' || loc.startsWith('/auth') || loc == '/welcome-intro') return null;
         return '/session';
       }
 
@@ -59,6 +61,11 @@ GoRouter createAppRouter(AuthController auth) {
       final publicAuth = loc == '/' || loc.startsWith('/auth');
 
       if (!loggedIn && !publicAuth && !loc.startsWith('/onboarding')) {
+        // [AuthController] can lag one frame behind Firebase right after sign-in; without this,
+        // `/welcome-intro` was redirected to `/` and the post-login animation never showed.
+        if (loc == '/welcome-intro' && FirebaseAuth.instance.currentUser != null) {
+          return null;
+        }
         return '/';
       }
       if (!loggedIn && loc.startsWith('/onboarding')) {
@@ -68,7 +75,7 @@ GoRouter createAppRouter(AuthController auth) {
       final needsOnboarding = auth.needsExpansionOnboarding == true;
       final doneOnboarding = auth.needsExpansionOnboarding == false;
 
-      if (loggedIn && needsOnboarding && !loc.startsWith('/onboarding')) {
+      if (loggedIn && needsOnboarding && !loc.startsWith('/onboarding') && loc != '/welcome-intro') {
         return '/onboarding';
       }
       if (loggedIn && doneOnboarding && publicAuth) {
@@ -80,6 +87,10 @@ GoRouter createAppRouter(AuthController auth) {
       GoRoute(
         path: '/session',
         builder: (context, state) => const SessionGateScreen(),
+      ),
+      GoRoute(
+        path: '/welcome-intro',
+        builder: (context, state) => const WelcomeMortarverseIntroScreen(),
       ),
       GoRoute(
         path: '/',

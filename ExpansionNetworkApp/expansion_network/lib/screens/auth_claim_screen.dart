@@ -1,3 +1,4 @@
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -139,14 +140,31 @@ class _AuthClaimScreenState extends State<AuthClaimScreen> {
         setState(() => _error = _mapClaimError(code));
         return;
       }
-      final token = data['customToken'] as String?;
-      if (token == null || token.isEmpty) {
-        setState(() => _error = 'Claim succeeded but no session token returned.');
+      final usePasswordSignIn = data['signInWithEmailPassword'] == true;
+      if (usePasswordSignIn) {
+        await FirebaseAuth.instance.signInWithEmailAndPassword(
+          email: _email.text.trim(),
+          password: _password.text,
+        );
+      } else {
+        final token = data['customToken'] as String?;
+        if (token == null || token.isEmpty) {
+          setState(() => _error = 'Claim succeeded but no session token returned.');
+          return;
+        }
+        await FirebaseAuth.instance.signInWithCustomToken(token);
+      }
+      if (mounted) context.go('/welcome-intro');
+    } catch (e) {
+      if (e is FirebaseFunctionsException && e.code == 'already-exists') {
+        setState(() {
+          _authAccountExistsFallback();
+          _error = e.message?.trim().isNotEmpty == true
+              ? e.message!
+              : _mapClaimError('ALREADY_EXISTS');
+        });
         return;
       }
-      await FirebaseAuth.instance.signInWithCustomToken(token);
-      if (mounted) context.go('/session');
-    } catch (e) {
       setState(() => _error = userMessageForFirebaseCallableError(e));
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -181,7 +199,7 @@ class _AuthClaimScreenState extends State<AuthClaimScreen> {
         });
         return;
       }
-      if (mounted) context.go('/session');
+      if (mounted) context.go('/welcome-intro');
     } on FirebaseAuthException catch (e) {
       setState(() {
         _error = e.message ?? 'Sign-in failed. Check your password.';

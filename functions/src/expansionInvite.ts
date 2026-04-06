@@ -123,6 +123,97 @@ function onboardingCompleteFromUserData(u: DocumentData | undefined): boolean {
   return false;
 }
 
+/** Firebase Admin Auth / Google API errors are not HttpsErrors; rethrowing them becomes `[internal] INTERNAL` on the client. */
+function readErrorCode(e: unknown): string {
+  if (e && typeof e === "object" && "code" in e) {
+    return String((e as { code: unknown }).code);
+  }
+  return "";
+}
+
+function readErrorMessage(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  return String(e);
+}
+
+/**
+ * Maps Firebase Admin Auth and related failures to [HttpsError] so the app shows a useful message
+ * instead of `[internal] INTERNAL`.
+ */
+function mapClaimAccountErrorToHttps(e: unknown, phase: string): HttpsError {
+  const code = readErrorCode(e);
+  const msg = readErrorMessage(e);
+  console.error(`claimInviteAndCreateAccount:${phase}`, code, msg, e);
+
+  if (code === "auth/email-already-exists") {
+    return new HttpsError(
+      "already-exists",
+      "An account already exists for this email. Use “Already have an account?” to sign in.",
+    );
+  }
+  if (code === "auth/invalid-email") {
+    return new HttpsError("invalid-argument", "This email address is not valid.");
+  }
+  if (code === "auth/weak-password" || code === "auth/invalid-password") {
+    return new HttpsError(
+      "invalid-argument",
+      "Password does not meet Firebase requirements. Try a longer or stronger password.",
+    );
+  }
+  if (code === "auth/operation-not-allowed") {
+    return new HttpsError(
+      "failed-precondition",
+      "Email/password sign-up is disabled for this Firebase project. Enable it in Firebase Console → Authentication → Sign-in method.",
+    );
+  }
+  if (code === "auth/uid-already-exists") {
+    return new HttpsError(
+      "already-exists",
+      "This account already exists. Try signing in instead.",
+    );
+  }
+  if (code === "auth/internal-error") {
+    return new HttpsError(
+      "unavailable",
+      "Firebase Auth returned a temporary error. Try again in a few moments.",
+    );
+  }
+  const looksLikeFirestorePermissionDenied =
+    code === "7" ||
+    code === "PERMISSION_DENIED" ||
+    /PERMISSION_DENIED|permission denied|insufficient permissions/i.test(msg);
+
+  if (looksLikeFirestorePermissionDenied) {
+    if (phase === "batch.commit") {
+      return new HttpsError(
+        "failed-precondition",
+        "Firestore returned PERMISSION_DENIED on the server write. Cloud Functions use the Admin SDK, so client Security Rules (even fully open rules) do not apply to this operation. Fix IAM: Google Cloud Console → IAM → find the Cloud Functions / Cloud Run runtime service account (often PROJECT_ID@appspot.gserviceaccount.com or …-compute@developer.gserviceaccount.com) and ensure it has “Cloud Datastore User” or “Editor” (or “Firebase Admin”) on this GCP project. Also confirm the Functions project matches the Firestore database (firebase use / same project as the app).",
+      );
+    }
+    return new HttpsError(
+      "failed-precondition",
+      `Permission denied during ${phase}. Code: ${code || "n/a"}. Check Cloud Function logs and GCP IAM.`,
+    );
+  }
+  if (
+    msg.includes("signBlob") ||
+    msg.includes("iam.serviceAccounts") ||
+    code === "403" ||
+    msg.includes("Permission 'iam.serviceAccounts.signBlob'")
+  ) {
+    return new HttpsError(
+      "failed-precondition",
+      "Server cannot mint a sign-in token. (1) If the function runs as PROJECT_ID@appspot.gserviceaccount.com: IAM → Service Accounts → open that account → Permissions → Grant Access → New principal = the SAME email → role Service Account Token Creator (signing needs this on self). (2) Or grant …-compute@developer.gserviceaccount.com Token Creator on PROJECT_ID@appspot.gserviceaccount.com. (3) Check Cloud Run → claiminviteandcreateaccount → Service account. Roles on firebase-adminsdk-… only apply if that SA is the runtime identity.",
+    );
+  }
+
+  const hint = code ? ` (${code})` : "";
+  return new HttpsError(
+    "internal",
+    `Registration failed${hint}. Try again or contact support. If this keeps happening, check Cloud Function logs for claimInviteAndCreateAccount.`,
+  );
+}
+
 /** Shared invite + eligible row checks (latest invite only). */
 interface ClaimInviteContext {
   normalizedEmail: string;
@@ -294,7 +385,11 @@ export const initializeUserSession = onCall(defaultCallableOptions, async (reque
   };
 });
 
-/** Public: claim invite, create Auth user if needed, return custom token. */
+/**
+ * Public: claim invite, create Auth user with email/password, link Firestore.
+ * Does **not** return a custom token — the client signs in with the same password via
+ * `signInWithEmailAndPassword`, avoiding `iam.serviceAccounts.signBlob` / IAM on Cloud Run.
+ */
 export const claimInviteAndCreateAccount = onCall(
   defaultCallableOptions,
   async (request) => {
@@ -334,17 +429,21 @@ export const claimInviteAndCreateAccount = onCall(
         existingUid: existing.uid,
       };
     } catch (e: unknown) {
-      const err = e as { code?: string };
-      if (err.code !== "auth/user-not-found") {
-        throw e;
+      if (readErrorCode(e) !== "auth/user-not-found") {
+        throw mapClaimAccountErrorToHttps(e, "getUserByEmail");
       }
     }
 
-    const userRecord = await auth.createUser({
-      email: emailRaw.trim(),
-      password,
-      emailVerified: false,
-    });
+    let userRecord;
+    try {
+      userRecord = await auth.createUser({
+        email: emailRaw.trim(),
+        password,
+        emailVerified: false,
+      });
+    } catch (e: unknown) {
+      throw mapClaimAccountErrorToHttps(e, "createUser");
+    }
     uid = userRecord.uid;
 
     const batch = db.batch();
@@ -384,16 +483,19 @@ export const claimInviteAndCreateAccount = onCall(
       },
       { merge: true },
     );
-    await batch.commit();
+    try {
+      await batch.commit();
+    } catch (e: unknown) {
+      throw mapClaimAccountErrorToHttps(e, "batch.commit");
+    }
 
     const userSnap = await userRef.get();
     const ready = onboardingCompleteFromUserData(userSnap.data());
 
-    const customToken = await auth.createCustomToken(uid);
-
     return {
       ok: true,
-      customToken,
+      /** Client must call `signInWithEmailAndPassword` with the same email/password. */
+      signInWithEmailPassword: true,
       state: ready ? "READY_FOR_HOME" : "REQUIRES_ONBOARDING",
       role: el.role,
       cohortId: (el.cohortId as string) || null,

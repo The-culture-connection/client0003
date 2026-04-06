@@ -8,20 +8,28 @@
 
 ## Authentication
 
-- **Provider:** Firebase Auth — email / password. **First-time alumni access** uses a **one-time invite code** (Cloud Function `claimInviteAndCreateAccount`) then `signInWithCustomToken`; **returning users** sign in with email/password only.
+- **Provider:** Firebase Auth — email / password. **First-time alumni access** uses a **one-time invite code** (Cloud Function `claimInviteAndCreateAccount` creates the Auth user server-side) then the app calls **`signInWithEmailAndPassword`** with the same password; **returning users** sign in with email/password only.
 - **Landing:** `/` — **Claim with invite** → `/auth/claim`, Sign in → `/auth/sign-in`.
 - **Server gate:** After every sign-in, `AuthController` calls Cloud Function **`initializeUserSession`** (region `us-central1`). Access requires `eligibleUsers/{normalizedEmail}` with `networkAccess == true`. Auth alone or `users/{uid}` alone does **not** grant access.
 - **Routing:** `AuthController` + `GoRouter` redirect:
   - **Initial route:** `/session` ([session_gate_screen.dart](lib/screens/session_gate_screen.dart)) — while `AuthController.loading`, stay here (spinner) so the **unauthenticated landing** does not flash before the shell. When idle: not signed in → `/`; signed in → `/onboarding` or `/home` as appropriate.
   - While loading, `/auth/*` remains reachable; other routes redirect to `/session`.
   - Signed out users are limited to `/` and `/auth/*`. `/onboarding` requires sign-in.
-  - After a successful claim or login, navigation goes to **`/session`** (not `/`) so redirect lands on **Home** or **Onboarding** without showing the marketing landing first.
+  - After a successful claim or login, navigation goes to **`/welcome-intro`** (full-screen **`assets/Welcome.gif`**), then **`/home`** or **`/onboarding`** depending on profile state. If session is still loading when the timer fires, the intro routes to **`/session`** so the gate can finish resolving.
+  - After **Expansion onboarding** completes ([onboarding_screen.dart](lib/screens/onboarding_screen.dart) **Complete profile**), navigation goes to **`/welcome-intro`** again, then **`/home`** when the GIF timer finishes (so first-time users can see the welcome twice: after sign-in and after onboarding).
+  - **`/welcome-intro`** is allowed while `AuthController.loading` and is exempt from the “needs onboarding → `/onboarding`” redirect until the user leaves it, so new users still see the intro before the onboarding flow.
   - **Profile gate:** `needsExpansionOnboarding` is `false` if `profileCreated == true` **and** `onboardingComplete == true`, or (legacy) `expansionOnboardingComplete == true`, or `onboarding_status == 'complete'` (curriculum web completion).
+
+### How the feature works (post-sign-in welcome intro)
+
+- **Route:** `/welcome-intro` — [welcome_mortarverse_intro_screen.dart](lib/screens/welcome_mortarverse_intro_screen.dart). Shown after **email/password sign-in** ([auth_sign_in_screen.dart](lib/screens/auth_sign_in_screen.dart)), **invite claim** completion ([auth_claim_screen.dart](lib/screens/auth_claim_screen.dart)), and after **onboarding** completes ([onboarding_screen.dart](lib/screens/onboarding_screen.dart)); not on cold start when the user is already signed in. **Router note:** [app_router.dart](lib/router/app_router.dart) must allow this path when `FirebaseAuth.instance.currentUser` is set even if [AuthController](lib/auth/auth_controller.dart) has not updated `_user` yet; otherwise GoRouter immediately redirects to `/` and the sequence never appears.
+- **Asset:** [welcome_mortarverse_intro_screen.dart](lib/screens/welcome_mortarverse_intro_screen.dart) loads **`assets/Welcome.gif`** with **`rootBundle.load`** + **`Image.memory`** (only that manifest entry — not `MortarAppIcon.png`, which is only for `flutter_launcher_icons`). It **evicts** any cached `AssetImage` for the welcome path and checks the **GIF signature** so a PNG renamed to `.gif` surfaces a clear error. Flutter **loops** the GIF; a **`Timer`** (`kWelcomeGifPlaybackDuration`, default **5s**) controls when navigation runs — **change that constant** so it matches one full play of your GIF. After replacing the file, do a **full rebuild** (and reinstall the app if the old asset seems stuck).
+- **Exit:** When the timer elapses, **GoRouter** sends the user to **`/home`** or **`/onboarding`** via `AuthController.needsExpansionOnboarding`, or **`/session`** if still loading. After onboarding, `needsExpansionOnboarding` is already false, so the exit is always **`/home`** (unless session is still loading).
 
 ### How the feature works (invite + session)
 
 - **Eligible roster:** Admins maintain `eligibleUsers/{normalizedEmail}` (and optional `cohortId`) via Mortar web **Admin → Expansion invites** (Next.js: `createOrUpdateEligibleUser`, `generateInviteCode`) and Digital Curriculum **Admin → App Access Hub** (same callables; per-student **Alumni app invite** uses role `Digital Curriculum Alumni` with a generated code). **Alumni Applications → Admit** also calls `createOrUpdateEligibleUser` with that role after curriculum admit. Server still exposes `bulkUploadEligibleUsers` and `promoteToDigitalCurriculumAlumni` for scripts or future tooling; the listed web UIs no longer surface bulk JSON or promote-only forms. Invite documents live in `inviteCodes/{inviteId}`; `eligibleUsers.latestInviteCodeId` points at the **current** code. Generating a new code **revokes** the previous invite doc (`revoked: true`).
-- **Claim flow (`/auth/claim`):** Two steps: (1) **Email + invite code** → `validateInviteCode` (returns `authAccountExists`). (2a) **No Auth account yet:** password + confirm → `claimInviteAndCreateAccount` → `signInWithCustomToken`. (2b) **Auth account already exists:** **one** password field → `signInWithEmailAndPassword` → `finalizeInviteClaim` to consume the invite and link Firestore. **Edit email or code** returns to step 1. Race: if step 2a hits `ALREADY_EXISTS`, the UI switches to the single-password path.
+- **Claim flow (`/auth/claim`):** Two steps: (1) **Email + invite code** → `validateInviteCode` (returns `authAccountExists`). (2a) **No Auth account yet:** password + confirm → `claimInviteAndCreateAccount` (server `createUser` + Firestore) → **`signInWithEmailAndPassword`** when `signInWithEmailPassword` is true (no custom token). (2b) **Auth account already exists:** **one** password field → `signInWithEmailAndPassword` → `finalizeInviteClaim` to consume the invite and link Firestore. **Edit email or code** returns to step 1. Race: if step 2a hits `ALREADY_EXISTS`, the UI switches to the single-password path. **`claimInviteAndCreateAccount`** maps Firebase Admin errors (email exists, invalid email/password, disabled Email/Password provider, Firestore permission) to **`HttpsError`** messages; check Cloud Function logs for `claimInviteAndCreateAccount:*` phases (`getUserByEmail`, `createUser`, `batch.commit`).
 - **Login flow:** Email/password sign-in → `initializeUserSession` syncs `role`, `networkAccess`, `normalizedEmail`, `lastLoginAt` into `users/{uid}` and returns `READY_FOR_HOME` vs `REQUIRES_ONBOARDING` vs `UNAUTHORIZED` (wrong or no eligible row, or student without network access).
 - **Legacy cohort CSV:** `expansion_cohort_emails` import still sets cohort hints; it does **not** replace `eligibleUsers` for network authorization. See repo root `EXPANSION_INVITE_AUTH.md`.
 
@@ -33,7 +41,7 @@
 4. **Desired skills** — same UX, min 3 skills.
 5. **Industry** — single choice from `kIndustries`.
 6. **Work structure** — sliders: flexibility (1–10), weekly hours (20–80), ownership (1–10); stored as `work_structure`.
-7. **Profile links** — LinkedIn, portfolio, Instagram, Facebook, TikTok (optional); **Complete profile** writes Firestore.
+7. **Profile links** — LinkedIn, portfolio, Instagram, Facebook, TikTok (optional); **Complete profile** writes Firestore, marks onboarding complete in [AuthController](lib/auth/auth_controller.dart), then navigates to **`/welcome-intro`** ( **`assets/Welcome.gif`** ) before **`/home`**.
 
 ## Firestore — `users/{uid}` (curriculum-aligned)
 

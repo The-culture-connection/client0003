@@ -37,7 +37,7 @@ class _AuthSignInScreenState extends State<AuthSignInScreen> {
         password: _password.text,
       );
       if (mounted) {
-        context.go('/session');
+        context.go('/welcome-intro');
       }
     } on FirebaseAuthException catch (e) {
       setState(() => _error = e.message ?? e.code);
