@@ -1,0 +1,13 @@
+# Copy to key.properties or keystore.properties in THIS folder (android/), not android/app/.
+# Save the file (0 bytes on disk = Gradle sees nothing). UTF-8 or UTF-16 is fine.
+# If both files exist, they are merged (keystore.properties overrides key.properties for same key).
+#
+# Each line: key=value (first "=" only). No Java .properties escapes — Windows paths with \ are OK.
+# Do not put "=" inside a password (split is at the first "=" only).
+storePassword=YOUR_STORE_PASSWORD
+keyPassword=YOUR_KEY_PASSWORD
+keyAlias=upload
+# Relative to android/:
+storeFile=../../../infra/Credentials/android-play-release/upload-keystore.jks
+# Absolute example (forward slashes):
+# storeFile=C:/Users/You/Documents/.../upload-keystore.jks

@@ -41,20 +41,20 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyC7SOdcffz1OKa_sdhG_f-irSlzSmRh4lA',
-    appId: '1:260497170681:android:1aef05688db81f66990228',
-    messagingSenderId: '260497170681',
-    projectId: 'mortar-dev',
-    storageBucket: 'mortar-dev.firebasestorage.app',
+    apiKey: 'AIzaSyCulFvj0z8sS9SGi6177sbce6xh7vceIyA',
+    appId: '1:999601815280:android:b57b285f09487cd30b8c35',
+    messagingSenderId: '999601815280',
+    projectId: 'mortar-stage',
+    storageBucket: 'mortar-stage.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyB3oL4t6QTlQCBCF4vIEFslbt_WOZKrmJM',
-    appId: '1:260497170681:ios:6bf558c02e05d9da990228',
-    messagingSenderId: '260497170681',
-    projectId: 'mortar-dev',
-    storageBucket: 'mortar-dev.firebasestorage.app',
-    iosBundleId: 'com.expansionnetwork.expansionNetwork',
+    apiKey: 'AIzaSyBLdLrBc5QGWgqS6w7tuiAsTsof_4nHTu8',
+    appId: '1:999601815280:ios:c553e9e0350583920b8c35',
+    messagingSenderId: '999601815280',
+    projectId: 'mortar-stage',
+    storageBucket: 'mortar-stage.firebasestorage.app',
+    iosBundleId: 'com.mortar.wearemortar',
   );
 
   static const FirebaseOptions web = FirebaseOptions(
@@ -73,7 +73,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '999601815280',
     projectId: 'mortar-stage',
     storageBucket: 'mortar-stage.firebasestorage.app',
-    iosBundleId: 'com.expansionnetwork.expansionNetwork',
+    iosBundleId: 'com.mortar.wearemortar',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
