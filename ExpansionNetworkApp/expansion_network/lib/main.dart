@@ -33,6 +33,8 @@ Future<void> main() async {
 ///
 /// Use **Hot Reload** (`r`) or a **full stop + Run** — not Hot Restart (`R`) — while developing.
 Future<bool> _initFirebase() async {
+  // Never pair this with iOS AppDelegate FirebaseApp.configure(): that fills [apps] early and
+  // skips [initializeApp] below → broken Dart/native state and Release heap crashes.
   if (Firebase.apps.isNotEmpty) {
     return true;
   }
