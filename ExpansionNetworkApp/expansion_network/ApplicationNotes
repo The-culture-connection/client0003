@@ -11,6 +11,7 @@
 ## Authentication
 
 - **Provider:** Firebase Auth — email / password. **First-time alumni access** uses a **one-time invite code** (Cloud Function `claimInviteAndCreateAccount` creates the Auth user server-side) then the app calls **`signInWithEmailAndPassword`** with the same password; **returning users** sign in with email/password only.
+- **iOS native Firebase:** `ios/Runner/AppDelegate.swift` calls **`FirebaseApp.configure()`** before `GeneratedPluginRegistrant` so **Auth / Functions** see a default app (with `GoogleService-Info.plist`). If session init denies access and there is **no** Firestore profile, **iOS** uses **`signOut()` only** (not `user.delete()`) to avoid rare native crashes after sign-in; other platforms may still delete the orphan Auth user.
 - **Landing:** `/` — **Claim with invite** → `/auth/claim`, Sign in → `/auth/sign-in`.
 - **Server gate:** After every sign-in, `AuthController` calls Cloud Function **`initializeUserSession`** (region `us-central1`). Access requires `eligibleUsers/{normalizedEmail}` with `networkAccess == true`. Auth alone or `users/{uid}` alone does **not** grant access.
 - **Routing:** `AuthController` + `GoRouter` redirect:

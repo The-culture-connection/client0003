@@ -1,7 +1,8 @@
 import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart'
+    show ChangeNotifier, TargetPlatform, debugPrint, defaultTargetPlatform;
 
 import '../constants/alumni_network_constants.dart';
 import '../services/expansion_session_service.dart';
@@ -127,10 +128,17 @@ class AuthController extends ChangeNotifier {
     try {
       final existingProfile = await _profileRepository.getUserDoc(user.uid);
       if (existingProfile == null) {
-        try {
-          await user.delete();
-        } catch (_) {
+        // On iOS, Auth user.delete() has triggered native SIGABRT in some Firebase/Xcode
+        // combinations right after sign-in. Sign out only; orphan Auth users can be
+        // cleaned in Console or via a callable if needed.
+        if (defaultTargetPlatform == TargetPlatform.iOS) {
           await _auth.signOut();
+        } else {
+          try {
+            await user.delete();
+          } catch (_) {
+            await _auth.signOut();
+          }
         }
       } else {
         await _auth.signOut();
