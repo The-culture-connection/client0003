@@ -50,7 +50,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyBLdLrBc5QGWgqS6w7tuiAsTsof_4nHTu8',
-    appId: '1:999601815280:ios:c553e9e0350583920b8c35',
+    appId: '1:999601815280:ios:2b17fdc1272dca230b8c35',
     messagingSenderId: '999601815280',
     projectId: 'mortar-stage',
     storageBucket: 'mortar-stage.firebasestorage.app',
@@ -69,7 +69,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions macos = FirebaseOptions(
     apiKey: 'AIzaSyBLdLrBc5QGWgqS6w7tuiAsTsof_4nHTu8',
-    appId: '1:999601815280:ios:c553e9e0350583920b8c35',
+    appId: '1:999601815280:ios:2b17fdc1272dca230b8c35',
     messagingSenderId: '999601815280',
     projectId: 'mortar-stage',
     storageBucket: 'mortar-stage.firebasestorage.app',
