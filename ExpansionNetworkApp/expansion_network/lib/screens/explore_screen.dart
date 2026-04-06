@@ -16,6 +16,9 @@ import '../widgets/poster_profile_avatar.dart';
 import '../widgets/user_profile_modal.dart';
 
 /// Discover jobs (Firestore), skills (Firestore), and **Network Search** (`users` by name).
+///
+/// Active filter is read from [GoRouterState] (`/explore?filter=jobs|skills|network`) so deep links
+/// from Home and chip taps stay in sync with [StatefulShellRoute] branch state.
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
 
@@ -26,7 +29,6 @@ class ExploreScreen extends StatefulWidget {
 enum _ExploreFilter { all, jobs, skills, networkSearch }
 
 class _ExploreScreenState extends State<ExploreScreen> {
-  _ExploreFilter _filter = _ExploreFilter.all;
   final _repo = ExploreListingsRepository();
   final _profileRepo = UserProfileRepository();
   final _networkSearchController = TextEditingController();
@@ -34,6 +36,28 @@ class _ExploreScreenState extends State<ExploreScreen> {
   String _networkQuery = '';
   List<NetworkMemberHit> _networkHits = [];
   bool _networkLoading = false;
+
+  static _ExploreFilter _filterFromParam(String? raw) {
+    final p = raw?.toLowerCase().trim() ?? '';
+    switch (p) {
+      case 'jobs':
+      case 'job':
+        return _ExploreFilter.jobs;
+      case 'skills':
+      case 'skill':
+        return _ExploreFilter.skills;
+      case 'network':
+      case 'networksearch':
+        return _ExploreFilter.networkSearch;
+      default:
+        return _ExploreFilter.all;
+    }
+  }
+
+  _ExploreFilter _filterFor(BuildContext context) {
+    final raw = GoRouterState.of(context).uri.queryParameters['filter'];
+    return _filterFromParam(raw);
+  }
 
   @override
   void dispose() {
@@ -80,6 +104,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   @override
   Widget build(BuildContext context) {
     final uid = FirebaseAuth.instance.currentUser?.uid;
+    final filter = _filterFor(context);
 
     return Scaffold(
       floatingActionButton: Padding(
@@ -125,27 +150,27 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 children: [
                   _FilterChip(
                     label: 'All',
-                    selected: _filter == _ExploreFilter.all,
-                    onTap: () => setState(() => _filter = _ExploreFilter.all),
+                    selected: filter == _ExploreFilter.all,
+                    onTap: () => context.go('/explore'),
                   ),
                   const SizedBox(width: 8),
                   _FilterChip(
                     label: 'Jobs',
-                    selected: _filter == _ExploreFilter.jobs,
-                    onTap: () => setState(() => _filter = _ExploreFilter.jobs),
+                    selected: filter == _ExploreFilter.jobs,
+                    onTap: () => context.go('/explore?filter=jobs'),
                   ),
                   const SizedBox(width: 8),
                   _FilterChip(
                     label: 'Skills',
-                    selected: _filter == _ExploreFilter.skills,
-                    onTap: () => setState(() => _filter = _ExploreFilter.skills),
+                    selected: filter == _ExploreFilter.skills,
+                    onTap: () => context.go('/explore?filter=skills'),
                   ),
                   const SizedBox(width: 8),
                   _FilterChip(
                     label: 'Network Search',
-                    selected: _filter == _ExploreFilter.networkSearch,
+                    selected: filter == _ExploreFilter.networkSearch,
                     onTap: () {
-                      setState(() => _filter = _ExploreFilter.networkSearch);
+                      context.go('/explore?filter=network');
                       if (_networkSearchController.text.trim().length >= 2) {
                         _runNetworkSearch(_networkSearchController.text);
                       }
@@ -175,9 +200,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   }
                   final jobs = jobSnap.data ?? [];
                   final skills = skillSnap.data ?? [];
-                  final showJobs = _filter == _ExploreFilter.all || _filter == _ExploreFilter.jobs;
-                  final showSkills = _filter == _ExploreFilter.all || _filter == _ExploreFilter.skills;
-                  final showNetwork = _filter == _ExploreFilter.networkSearch;
+                  final showJobs = filter == _ExploreFilter.all || filter == _ExploreFilter.jobs;
+                  final showSkills = filter == _ExploreFilter.all || filter == _ExploreFilter.skills;
+                  final showNetwork = filter == _ExploreFilter.networkSearch;
 
                   final children = <Widget>[];
 
@@ -187,7 +212,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         padding: EdgeInsets.all(24),
                         child: CircularProgressIndicator(color: AppColors.primary),
                       )));
-                    } else if (jobs.isEmpty && _filter == _ExploreFilter.jobs) {
+                    } else if (jobs.isEmpty && filter == _ExploreFilter.jobs) {
                       children.add(const Padding(
                         padding: EdgeInsets.all(24),
                         child: Text('No jobs yet. Tap + to post one.', style: TextStyle(color: AppColors.mutedForeground)),
@@ -207,7 +232,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   if (showSkills) {
                     if (skills.isEmpty && skillSnap.connectionState == ConnectionState.waiting) {
                       children.add(const SizedBox.shrink());
-                    } else if (skills.isEmpty && _filter == _ExploreFilter.skills) {
+                    } else if (skills.isEmpty && filter == _ExploreFilter.skills) {
                       children.add(const Padding(
                         padding: EdgeInsets.all(24),
                         child: Text(

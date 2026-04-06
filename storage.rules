@@ -62,6 +62,15 @@ service firebase.storage {
         && request.resource.contentType.matches('image/.*');
     }
 
+    // Community feed post images (Expansion app); path scoped by uid
+    match /feed_posts/member_uploads/{userId}/{fileName} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn()
+        && request.auth.uid == userId
+        && request.resource.size < 11 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
     // Course builder uploads (lesson images, etc.)
     match /curriculum_content/{allPaths=**} {
       allow read: if isSignedIn();

@@ -5,9 +5,12 @@ import 'package:go_router/go_router.dart';
 import '../models/explore_job.dart';
 import '../models/explore_skill_listing.dart';
 import '../models/group_thread_firestore.dart';
+import '../models/feed_post.dart';
 import '../services/explore_listings_repository.dart';
+import '../services/feed_posts_repository.dart';
 import '../services/group_thread_repository.dart';
 import '../theme/app_theme.dart';
+import '../widgets/feed_post_card.dart';
 
 /// Port of [UI Basis/src/app/pages/Home.tsx] — group activity from `groups_mobile`, no feed posts.
 class HomeScreen extends StatelessWidget {
@@ -15,12 +18,13 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final topMatches = [
-      _TopMatch(1, 'job', 'Senior Product Manager', 'TechCorp', 95),
-      _TopMatch(2, 'connection', 'Maria Garcia', 'Marketing Director', 88),
-    ];
-
     return Scaffold(
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => context.push('/feed/post/create'),
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.onPrimary,
+        child: const Icon(Icons.add),
+      ),
       body: CustomScrollView(
         slivers: [
           SliverPadding(
@@ -38,10 +42,7 @@ class HomeScreen extends StatelessWidget {
                   const SizedBox(height: 12),
                   const _HomeLatestJobSkillRow(),
                   const SizedBox(height: 12),
-                  _TopMatchesCard(
-                    matches: topMatches,
-                    onViewAll: () => context.go('/explore'),
-                  ),
+                  const _RecentActivityCard(),
                   const SizedBox(height: 12),
                   const _MyCommunitiesMessagesCard(),
                 ],
@@ -162,6 +163,83 @@ class _MyCommunitiesMessagesCard extends StatelessWidget {
   }
 }
 
+class _RecentActivityCard extends StatelessWidget {
+  const _RecentActivityCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final repo = FeedPostsRepository();
+
+    return StreamBuilder<List<FeedPost>>(
+      stream: repo.watchPosts(limit: 2),
+      builder: (context, snap) {
+        if (snap.hasError) {
+          return _CardShell(
+            title: 'Recent Activity',
+            actionLabel: 'View All',
+            onAction: () => context.push('/posts'),
+            child: Text(
+              'Could not load posts.\n${snap.error}',
+              style: const TextStyle(fontSize: 12, color: AppColors.mutedForeground),
+            ),
+          );
+        }
+        if (!snap.hasData) {
+          return _CardShell(
+            title: 'Recent Activity',
+            actionLabel: 'View All',
+            onAction: () => context.push('/posts'),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Center(
+                child: SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                ),
+              ),
+            ),
+          );
+        }
+        final posts = snap.data!;
+        return _CardShell(
+          title: 'Recent Activity',
+          actionLabel: 'View All',
+          onAction: () => context.push('/posts'),
+          child: posts.isEmpty
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'No posts yet. Tap + to share an update with a photo or note.',
+                      style: TextStyle(fontSize: 12, color: AppColors.mutedForeground),
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: () => context.push('/feed/post/create'),
+                      child: const Text('Create post'),
+                    ),
+                  ],
+                )
+              : Column(
+                  children: [
+                    for (var i = 0; i < posts.length; i++) ...[
+                      if (i > 0) const Divider(height: 1, color: AppColors.border),
+                      FeedPostCard(
+                        post: posts[i],
+                        compact: true,
+                        showImage: false,
+                        onOpenPost: () => context.push('/feed/post/${posts[i].id}'),
+                      ),
+                    ],
+                  ],
+                ),
+        );
+      },
+    );
+  }
+}
+
 class _HomeLatestJobSkillRow extends StatelessWidget {
   const _HomeLatestJobSkillRow();
 
@@ -183,7 +261,7 @@ class _HomeLatestJobSkillRow extends StatelessWidget {
                     primary: 'Couldn’t load',
                     secondary: '${snap.error}',
                     busy: false,
-                    onTap: () => context.go('/explore'),
+                    onTap: () => context.go('/explore?filter=jobs'),
                   );
                 }
                 final list = snap.data ?? [];
@@ -201,7 +279,7 @@ class _HomeLatestJobSkillRow extends StatelessWidget {
                   primary: j?.title ?? 'No jobs yet',
                   secondary: sub,
                   busy: snap.connectionState == ConnectionState.waiting && !snap.hasData,
-                  onTap: () => context.go('/explore'),
+                  onTap: () => context.go('/explore?filter=jobs'),
                 );
               },
             ),
@@ -218,7 +296,7 @@ class _HomeLatestJobSkillRow extends StatelessWidget {
                     primary: 'Couldn’t load',
                     secondary: '${snap.error}',
                     busy: false,
-                    onTap: () => context.go('/explore'),
+                    onTap: () => context.go('/explore?filter=skills'),
                   );
                 }
                 final list = snap.data ?? [];
@@ -236,7 +314,7 @@ class _HomeLatestJobSkillRow extends StatelessWidget {
                   primary: s?.title ?? 'No skills yet',
                   secondary: sub,
                   busy: snap.connectionState == ConnectionState.waiting && !snap.hasData,
-                  onTap: () => context.go('/explore'),
+                  onTap: () => context.go('/explore?filter=skills'),
                 );
               },
             ),
@@ -318,15 +396,6 @@ class _LatestListingCard extends StatelessWidget {
   }
 }
 
-class _TopMatch {
-  const _TopMatch(this.id, this.type, this.title, this.company, this.match);
-  final int id;
-  final String type;
-  final String title;
-  final String company;
-  final int match;
-}
-
 class _WelcomeCard extends StatelessWidget {
   const _WelcomeCard({required this.onMatching});
 
@@ -387,103 +456,6 @@ class _WelcomeCard extends StatelessWidget {
               onPressed: onMatching,
               child: const Text('Run Smart Matching'),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TopMatchesCard extends StatelessWidget {
-  const _TopMatchesCard({required this.matches, required this.onViewAll});
-
-  final List<_TopMatch> matches;
-  final VoidCallback onViewAll;
-
-  @override
-  Widget build(BuildContext context) {
-    return _CardShell(
-      title: 'Top Matches',
-      actionLabel: 'View All',
-      onAction: onViewAll,
-      child: Column(
-        children: [
-          Row(
-            children: [
-              for (final m in matches)
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppColors.background,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Icon(
-                                  m.type == 'job' ? Icons.work_outline : Icons.people_outline,
-                                  size: 16,
-                                  color: AppColors.primary,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      m.title,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                    ),
-                                    Text(
-                                      m.company,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                            color: AppColors.mutedForeground,
-                                          ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Icon(Icons.trending_up, size: 12, color: AppColors.primary),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${m.match}% match',
-                                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                      color: AppColors.primary,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-            ],
           ),
         ],
       ),

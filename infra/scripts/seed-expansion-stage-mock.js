@@ -1,20 +1,25 @@
 /**
- * Seed Expansion mock data from fixed curriculum-style fixtures (no scaling).
+ * Seed Expansion mock data: fixed users + community feed_posts ONLY (no jobs, skills, events, groups).
+ *
+ * Creates Firebase Auth accounts with explicit UIDs `user_001` … `user_020` and matching `users/{uid}` docs.
+ * Feed posts use **post_details** as the visible body; **post_title** is empty and **post_category** is `General`.
  *
  * Prerequisites (pick one):
- *   - `--credentials path/to/serviceAccount.json` (Firebase Console → Project settings → Service accounts → Generate new private key), or
- *   - `GOOGLE_APPLICATION_CREDENTIALS` env var pointing at that JSON, or
- *   - `gcloud auth application-default login` (Google Cloud SDK) with access to the project.
+ *   - `--credentials path/to/serviceAccount.json`, or
+ *   - `GOOGLE_APPLICATION_CREDENTIALS`, or
+ *   - `gcloud auth application-default login`
  *
- * Stage example (PowerShell):
- *   npm install --prefix infra/scripts
+ * Example:
  *   node seed-expansion-stage-mock.js --project mortar-stage --credentials C:\\path\\to\\mortar-stage-adminsdk.json
  *
- * Or from repo root:
- *   npm run seed:stage:expansion-mock
- *   (set GOOGLE_APPLICATION_CREDENTIALS first if you do not use --credentials)
+ * From monorepo root (WorkingMortarProj), not expansion_network/, with a service account JSON:
+ *   PowerShell — if "npm.ps1 cannot be loaded" (execution policy), use npm.cmd:
+ *     $env:GOOGLE_APPLICATION_CREDENTIALS = "C:\\path\\to\\mortar-stage-adminsdk.json"
+ *     npm.cmd run seed:stage:expansion-mock
+ *   Or call node directly (no npm):
+ *     node infra/scripts/seed-expansion-stage-mock.js --project mortar-stage --credentials "C:\\path\\to\\file.json"
  *
- * Optional: SEED_DRY_RUN=1 or --dry-run
+ * Optional: SEED_DRY_RUN=1 or --dry-run (no credentials required for dry run)
  */
 
 const fs = require("fs");
@@ -44,63 +49,53 @@ function argCredentialsPath() {
 
 const PROJECT_ID = argProject();
 
-function initFirebaseAdmin() {
-  if (admin.apps.length) return;
+function resolveCredentialsPath() {
   const flagPath = argCredentialsPath();
   const envPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
-  const keyPath = flagPath || envPath;
-  if (keyPath) {
-    const abs = path.resolve(keyPath);
-    if (!fs.existsSync(abs)) {
-      console.error(`Service account file not found: ${abs}`);
-      process.exit(1);
+  return flagPath || envPath || null;
+}
+
+function initFirebaseAdmin() {
+  if (admin.apps.length) return;
+  const keyPath = resolveCredentialsPath();
+  if (!keyPath) {
+    if (DRY_RUN) {
+      admin.initializeApp({ projectId: PROJECT_ID });
+      return;
     }
-    const json = JSON.parse(fs.readFileSync(abs, "utf8"));
-    admin.initializeApp({
-      credential: admin.credential.cert(json),
-      projectId: PROJECT_ID,
-    });
-    console.log(`Using credentials file: ${abs}`);
-    return;
+    console.error(`
+No service account JSON found. Firebase Admin cannot use mortar-stage without credentials on this machine.
+
+Do one of the following (run from monorepo root WorkingMortarProj):
+
+  1) PowerShell — use $env: (leading dollar sign). If npm fails with Execution Policy, use npm.cmd:
+     $env:GOOGLE_APPLICATION_CREDENTIALS = "C:\\path\\to\\mortar-stage-adminsdk.json"
+     npm.cmd run seed:stage:expansion-mock
+
+  2) Git Bash:
+     export GOOGLE_APPLICATION_CREDENTIALS="/c/path/to/mortar-stage-adminsdk.json"
+     npm run seed:stage:expansion-mock
+
+  3) Any shell — bypass npm entirely:
+     node infra/scripts/seed-expansion-stage-mock.js --project mortar-stage --credentials "C:\\path\\to\\mortar-stage-adminsdk.json"
+
+Download a key: Firebase Console → Project settings → Service accounts → Generate new private key (do not commit the file).
+
+Dry run (no Auth/Firestore calls): SEED_DRY_RUN=1 or add --dry-run
+`);
+    process.exit(1);
   }
-  admin.initializeApp({ projectId: PROJECT_ID });
-  if (!DRY_RUN) {
-    console.warn(
-      "No --credentials or GOOGLE_APPLICATION_CREDENTIALS; using default application credentials (gcloud ADC). If the run fails, pass --credentials <adminsdk.json> for mortar-stage."
-    );
+  const abs = path.resolve(keyPath);
+  if (!fs.existsSync(abs)) {
+    console.error(`Service account file not found: ${abs}`);
+    process.exit(1);
   }
-}
-
-/** Shorthand / typos in source JSON → full curriculum label where the app expects it. */
-const SKILL_SEEKING_ALIASES = {
-  "CRM systems": "Customer relationship management (CRM) systems",
-  "crm systems": "Customer relationship management (CRM) systems",
-};
-
-function normalizeSeekingSkill(s) {
-  if (typeof s !== "string") return null;
-  const t = s.trim();
-  if (!t) return null;
-  return SKILL_SEEKING_ALIASES[t] ?? t;
-}
-
-function uniqueStrings(arr) {
-  const out = [];
-  const seen = new Set();
-  for (const x of arr) {
-    if (x == null || typeof x !== "string") continue;
-    const n = x.trim();
-    if (!n || seen.has(n)) continue;
-    seen.add(n);
-    out.push(n);
-  }
-  return out;
-}
-
-function jobSkillSeeking(job) {
-  const pref = Array.isArray(job.preferred_skills) ? job.preferred_skills : [];
-  const growth = Array.isArray(job.growth_skills) ? job.growth_skills : [];
-  return uniqueStrings([...pref, ...growth].map(normalizeSeekingSkill).filter(Boolean));
+  const json = JSON.parse(fs.readFileSync(abs, "utf8"));
+  admin.initializeApp({
+    credential: admin.credential.cert(json),
+    projectId: PROJECT_ID,
+  });
+  console.log(`Using credentials file: ${abs}`);
 }
 
 function ts(dateStr) {
@@ -112,6 +107,7 @@ function name(u) {
 }
 
 function buildUserDoc(uid, bp) {
+  const roles = Array.isArray(bp.roles) && bp.roles.length ? bp.roles : ["Alumni"];
   return {
     uid,
     email: bp.email,
@@ -121,13 +117,15 @@ function buildUserDoc(uid, bp) {
     first_name: bp.first_name,
     last_name: bp.last_name,
     industry: bp.industry,
-    city: "Cincinnati",
-    state: "Ohio",
-    roles: ["Digital Curriculum Alumni"],
+    city: bp.city || "Cincinnati",
+    state: bp.state || "Ohio",
+    bio: bp.bio || "",
+    profession: bp.profession || "",
+    roles,
     badges: { earned: [], visible: [] },
-    business_goals: bp.business_goals,
-    confident_skills: bp.confident_skills,
-    desired_skills: bp.desired_skills,
+    business_goals: bp.business_goals || [],
+    confident_skills: bp.confident_skills || [],
+    desired_skills: bp.desired_skills || [],
     membership: { status: "active", paid_modules: [] },
     onboarding_status: "complete",
     not_in_cohort: true,
@@ -140,52 +138,31 @@ function buildUserDoc(uid, bp) {
   };
 }
 
+/**
+ * Prefer fixed UID `bp.uid`. If that Auth user exists, reuse; else create with that uid.
+ * If email is already taken by another uid, createUser will fail — resolve in Firebase Console first.
+ */
 async function getOrCreateAuthUser(auth, bp, password) {
   if (DRY_RUN) {
-    return { uid: `dry-${bp.email}`, isNew: true };
+    return { uid: bp.uid, isNew: true };
   }
   try {
-    const existing = await auth.getUserByEmail(bp.email);
-    return { uid: existing.uid, isNew: false };
+    const u = await auth.getUser(bp.uid);
+    return { uid: u.uid, isNew: false };
   } catch (e) {
     if (e.code !== "auth/user-not-found") throw e;
+  }
     const created = await auth.createUser({
+    uid: bp.uid,
       email: bp.email,
       password,
       displayName: `${bp.first_name} ${bp.last_name}`,
       emailVerified: true,
     });
     return { uid: created.uid, isNew: true };
-  }
 }
 
-/** Map loose profile industries to Explore posting allowlist where needed. */
-function industryForListing(authorIndustry) {
-  const m = {
-    "Beauty & Wellness": "Health, Wellness & Personal Care",
-    Fitness: "Health, Wellness & Personal Care",
-    "Creative Services": "Creative & Media Services",
-    Logistics: "Logistics & Transportation",
-    "Logistics & Transportation": "Logistics & Transportation",
-    Construction: "Construction & Skilled Trades",
-    "Construction & Skilled Trades": "Construction & Skilled Trades",
-    Technology: "Technology",
-    Retail: "Retail",
-    "Food & Beverage": "Food & Beverage",
-    "Professional Services": "Professional Services",
-    "Health, Wellness & Personal Care": "Health, Wellness & Personal Care",
-    Education: "Education & Training",
-    "Education & Training": "Education & Training",
-  };
-  return m[authorIndustry] || authorIndustry || "Professional Services";
-}
-
-function jobLocationMode(loc) {
-  if (typeof loc !== "string") return "in_person";
-  return loc.trim().toLowerCase() === "remote" ? "remote" : "in_person";
-}
-
-/** Firestore batch max 500 ops; count each set. */
+/** Firestore batch max ~500 ops. */
 function createBatchWriter(db) {
   let batch = db.batch();
   let count = 0;
@@ -207,749 +184,469 @@ function createBatchWriter(db) {
   return { set, commit };
 }
 
-// --- Mock fixtures (values as authored; small normalizations in code only where noted) ---
+// --- Fixtures: 20 users (order matches post authors 1:1) ---
 
-const RAW_USERS = [
+const MOCK_USERS = [
   {
-    first_name: "Aaliyah",
-    last_name: "Grant",
-    industry: "Beauty & Wellness",
-    business_goals: ["Open second salon location", "Hire 2 stylists"],
-    skills_offering: [
-      "Customer persona development",
+    uid: "user_001",
+    first_name: "Alana",
+    last_name: "Pierce",
+    email: "alana.pierce@example.com",
+    role: "Alumni",
+    roles: ["Alumni"],
+    city: "Cincinnati",
+    state: "Ohio",
+    bio: "I run a dessert brand and want to scale into wholesale.",
+    industry: "Food & Beverage",
+    profession: "Bakery Owner",
+    business_goals: ["Sell skills/services", "Build partnerships", "Grow my network"],
+    confident_skills: [
+      "Service design and packaging",
       "Pricing strategy and margin analysis",
-      "Community engagement and reputation building",
+      "Customer persona development",
     ],
-    skills_seeking: [
+    desired_skills: [
+      "Strategic partnerships and distribution channels",
+      "Brand identity development",
       "Hiring and onboarding systems",
-      "Social media growth strategy",
-      "Delegation and team empowerment",
     ],
   },
   {
-    first_name: "Marcus",
+    uid: "user_002",
+    first_name: "Jalen",
+    last_name: "Cross",
+    email: "jalen.cross@example.com",
+    role: "Alumni",
+    roles: ["Alumni"],
+    city: "Cincinnati",
+    state: "Ohio",
+    bio: "I help businesses automate operations.",
+    industry: "Technology",
+    profession: "Automation Specialist",
+    business_goals: ["Sell skills/services", "Learn more technical skills", "Grow my network"],
+    confident_skills: [
+      "Automation and workflow optimization",
+      "Digital tool stack development",
+      "AI tools for business productivity",
+    ],
+    desired_skills: [
+      "Sales conversation and closing techniques",
+      "Lead generation strategy",
+      "Public speaking and thought leadership",
+    ],
+  },
+  {
+    uid: "user_003",
+    first_name: "Taryn",
+    last_name: "Bishop",
+    email: "taryn.bishop@example.com",
+    role: "Alumni",
+    roles: ["Alumni"],
+    city: "Cincinnati",
+    state: "Ohio",
+    bio: "Growing a fashion boutique and want better retention.",
+    industry: "Retail",
+    profession: "Boutique Owner",
+    business_goals: ["Sell skills/services", "Buy skills/services", "Grow my network"],
+    confident_skills: [
+      "Brand identity development",
+      "Story-driven brand positioning",
+      "Customer persona development",
+    ],
+    desired_skills: [
+      "Customer lifetime value optimization",
+      "Email marketing and retention systems",
+      "Cash flow management and forecasting",
+    ],
+  },
+  {
+    uid: "user_004",
+    first_name: "Derrick",
+    last_name: "Lofton",
+    email: "derrick.lofton@example.com",
+    role: "Alumni",
+    roles: ["Alumni"],
+    city: "Cincinnati",
+    state: "Ohio",
+    bio: "Scaling a logistics company.",
+    industry: "Logistics",
+    profession: "Logistics Owner",
+    business_goals: ["Build partnerships", "Grow my network", "Buy skills/services"],
+    confident_skills: ["Operational workflow design", "Vendor sourcing and supply chain management"],
+    desired_skills: ["Lead generation strategy", "CRM systems", "Brand identity development"],
+  },
+  {
+    uid: "user_005",
+    first_name: "Monique",
     last_name: "Reed",
-    industry: "Food & Beverage",
-    business_goals: ["Launch food truck", "Secure downtown permit"],
-    skills_offering: [
-      "Vendor sourcing and supply chain management",
-      "Service design and packaging",
-      "Budget development and cost control",
-    ],
-    skills_seeking: [
-      "Strategic partnerships and distribution channels",
-      "Lead generation strategy",
-      "Investor communication and financial reporting",
-    ],
+    email: "monique.reed@example.com",
+    role: "Alumni",
+    roles: ["Alumni"],
+    city: "Cincinnati",
+    state: "Ohio",
+    bio: "Helping founders tell better stories.",
+    industry: "Marketing",
+    profession: "Brand Strategist",
+    business_goals: ["Sell skills/services", "Grow my network"],
+    confident_skills: ["Story-driven brand positioning", "Executive communication"],
+    desired_skills: ["Business financial modeling", "Negotiation and deal structuring"],
   },
   {
-    first_name: "Tiana",
-    last_name: "Coleman",
-    industry: "Retail",
-    business_goals: ["Increase foot traffic", "Expand product line"],
-    skills_offering: [
-      "Brand identity development",
-      "Customer journey mapping",
-      "Pricing experiments and market testing",
-    ],
-    skills_seeking: [
-      "E-commerce and digital sales systems",
-      "Automation and workflow optimization",
-      "Email marketing and retention systems",
-    ],
-  },
-  {
-    first_name: "Devon",
-    last_name: "Price",
+    uid: "user_006",
+    first_name: "Isaiah",
+    last_name: "Cole",
+    email: "isaiah.cole@example.com",
+    role: "Alumni",
+    roles: ["Alumni"],
+    city: "Cincinnati",
+    state: "Ohio",
+    bio: "Fitness entrepreneur building community.",
     industry: "Fitness",
-    business_goals: ["Open gym studio", "Build membership base"],
-    skills_offering: [
-      "Community engagement and reputation building",
-      "Customer discovery and validation",
-      "Public speaking and thought leadership",
-    ],
-    skills_seeking: [
-      "Cash flow management and forecasting",
-      "Marketing funnel design",
-      "KPI tracking and performance management",
-    ],
+    profession: "Gym Owner",
+    business_goals: ["Grow my network", "Build partnerships"],
+    confident_skills: ["Community engagement", "Public speaking"],
+    desired_skills: ["Pricing strategy", "Cash flow management"],
   },
   {
-    first_name: "Jasmine",
-    last_name: "Walker",
-    industry: "Creative Services",
-    business_goals: ["Grow freelance clients", "Build agency"],
-    skills_offering: [
-      "Brand identity development",
-      "Executive communication and storytelling",
-      "Story-driven brand positioning",
-    ],
-    skills_seeking: [
-      "Sales conversation and closing techniques",
-      "Negotiation and deal structuring",
-      "Customer lifetime value optimization",
-    ],
+    uid: "user_007",
+    first_name: "Kendra",
+    last_name: "Sloan",
+    email: "kendra.sloan@example.com",
+    role: "Alumni",
+    roles: ["Alumni"],
+    city: "Cincinnati",
+    state: "Ohio",
+    bio: "Consultant helping founders scale.",
+    industry: "Consulting",
+    profession: "Business Consultant",
+    business_goals: ["Sell skills/services", "Build partnerships"],
+    confident_skills: ["Vision articulation", "Founder decision-making"],
+    desired_skills: ["Lead generation", "Marketing funnels"],
   },
   {
+    uid: "user_008",
+    first_name: "Marcus",
+    last_name: "Fleming",
+    email: "marcus.fleming@example.com",
+    role: "Alumni",
+    roles: ["Alumni"],
+    city: "Cincinnati",
+    state: "Ohio",
+    bio: "Finance focused operator.",
+    industry: "Finance",
+    profession: "Financial Strategist",
+    business_goals: ["Sell skills/services"],
+    confident_skills: ["Financial modeling", "Budget development"],
+    desired_skills: ["Brand strategy", "Networking"],
+  },
+  {
+    uid: "user_009",
+    first_name: "Zaria",
+    last_name: "Knight",
+    email: "zaria.knight@example.com",
+    role: "Alumni",
+    roles: ["Alumni"],
+    city: "Cincinnati",
+    state: "Ohio",
+    bio: "Building a skincare brand.",
+    industry: "Beauty",
+    profession: "Founder",
+    business_goals: ["Sell skills/services", "Grow my network"],
+    confident_skills: ["Customer persona", "Brand identity"],
+    desired_skills: ["Operations systems", "Hiring"],
+  },
+  {
+    uid: "user_010",
+    first_name: "Devon",
+    last_name: "Hayes",
+    email: "devon.hayes@example.com",
+    role: "Alumni",
+    roles: ["Alumni"],
+    city: "Cincinnati",
+    state: "Ohio",
+    bio: "Event-based business builder.",
+    industry: "Events",
+    profession: "Event Organizer",
+    business_goals: ["Build partnerships"],
+    confident_skills: ["Networking", "Public speaking"],
+    desired_skills: ["Financial planning", "Marketing"],
+  },
+  {
+    uid: "user_011",
+    first_name: "Tristan",
+    last_name: "Moore",
+    email: "tristan.moore@example.com",
+    role: "Alumni",
+    roles: ["Alumni"],
+    city: "Cincinnati",
+    state: "Ohio",
+    bio: "Tech founder building SaaS.",
+    industry: "Tech",
+    profession: "Founder",
+    business_goals: ["Build partnerships"],
+    confident_skills: ["MVP development", "Automation"],
+    desired_skills: ["Sales", "Investor communication"],
+  },
+  {
+    uid: "user_012",
+    first_name: "Laila",
+    last_name: "Grant",
+    email: "laila.grant@example.com",
+    role: "Alumni",
+    roles: ["Alumni"],
+    city: "Cincinnati",
+    state: "Ohio",
+    bio: "Retail expansion strategist.",
+    industry: "Retail",
+    profession: "Retail Owner",
+    business_goals: ["Sell skills/services"],
+    confident_skills: ["Pricing", "Customer journey"],
+    desired_skills: ["Partnerships", "CRM"],
+  },
+  {
+    uid: "user_013",
     first_name: "Andre",
-    last_name: "Mitchell",
-    industry: "Construction",
-    business_goals: ["Land commercial contracts", "Build reliable subcontractor team"],
-    skills_offering: [
-      "Operational workflow design",
-      "Vendor sourcing and supply chain management",
-      "Conflict resolution and team mediation",
-    ],
-    skills_seeking: [
-      "Strategic networking and relationship building",
-      "Investor communication and financial reporting",
-      "Founder decision-making under ambiguity",
-    ],
+    last_name: "Mason",
+    email: "andre.mason@example.com",
+    role: "Alumni",
+    roles: ["Alumni"],
+    city: "Cincinnati",
+    state: "Ohio",
+    bio: "Operations builder.",
+    industry: "Operations",
+    profession: "Operator",
+    business_goals: ["Sell skills/services"],
+    confident_skills: ["SOPs", "Workflow"],
+    desired_skills: ["Branding", "Sales"],
   },
   {
-    first_name: "Nia",
-    last_name: "Harris",
-    industry: "Education",
-    business_goals: ["Launch tutoring center", "Build recurring memberships"],
-    skills_offering: [
-      "Customer persona development",
-      "Service design and packaging",
-      "Community engagement and reputation building",
-    ],
-    skills_seeking: [
-      "Marketing funnel design",
-      "Lead generation strategy",
-      "AI tools for business productivity",
-    ],
-  },
-  {
-    first_name: "Chris",
-    last_name: "Daniels",
-    industry: "Technology",
-    business_goals: ["Launch SaaS tool", "Reach first 100 users"],
-    skills_offering: [
-      "Minimum viable product (MVP) development",
-      "Digital tool stack development",
-      "Automation and workflow optimization",
-    ],
-    skills_seeking: [
-      "Customer discovery and validation",
-      "Story-driven brand positioning",
-      "Strategic partnerships and distribution channels",
-    ],
-  },
-  {
-    first_name: "Brianna",
-    last_name: "Lopez",
-    industry: "Food & Beverage",
-    business_goals: ["Start catering business", "Book 10 monthly clients"],
-    skills_offering: [
-      "Service design and packaging",
-      "Pricing strategy and margin analysis",
-      "Operational workflow design",
-    ],
-    skills_seeking: [
-      "Email marketing and retention systems",
-      "Public speaking and thought leadership",
-      "Strategic networking and relationship building",
-    ],
-  },
-  {
-    first_name: "Tyrell",
-    last_name: "Jackson",
-    industry: "Retail",
-    business_goals: ["Open sneaker store", "Host community events"],
-    skills_offering: [
-      "Brand identity development",
-      "Community engagement and reputation building",
-      "Strategic networking and relationship building",
-    ],
-    skills_seeking: [
-      "Cash flow management and forecasting",
-      "Hiring and onboarding systems",
-      "E-commerce and digital sales systems",
-    ],
-  },
-  {
-    first_name: "Kayla",
-    last_name: "Morris",
-    industry: "Professional Services",
-    business_goals: ["Scale consulting business", "Hire VA"],
-    skills_offering: [
-      "Executive communication and storytelling",
-      "Founder decision-making under ambiguity",
-      "Strategic networking and relationship building",
-    ],
-    skills_seeking: [
-      "Automation and workflow optimization",
-      "KPI tracking and performance management",
-      "Delegation and team empowerment",
-    ],
-  },
-  {
-    first_name: "Darius",
-    last_name: "Owens",
-    industry: "Logistics & Transportation",
-    business_goals: ["Win local contracts", "Improve dispatch efficiency"],
-    skills_offering: [
-      "Operational workflow design",
-      "Time management and founder productivity systems",
-      "Vendor sourcing and supply chain management",
-    ],
-    skills_seeking: [
-      "Brand identity development",
-      "CRM systems",
-      "Strategic partnerships and distribution channels",
-    ],
-  },
-  {
-    first_name: "Imani",
-    last_name: "Brooks",
-    industry: "Health, Wellness & Personal Care",
-    business_goals: ["Launch wellness studio", "Build recurring client base"],
-    skills_offering: [
-      "Customer journey mapping",
-      "Service design and packaging",
-      "Community engagement and reputation building",
-    ],
-    skills_seeking: [
-      "Pricing strategy and margin analysis",
-      "Lead generation strategy",
-      "Email marketing and retention systems",
-    ],
-  },
-  {
-    first_name: "Malik",
-    last_name: "Turner",
-    industry: "Technology",
-    business_goals: ["Build B2B software", "Close first pilot customer"],
-    skills_offering: [
-      "Digital tool stack development",
-      "Data analytics and performance tracking",
-      "AI tools for business productivity",
-    ],
-    skills_seeking: [
-      "Sales conversation and closing techniques",
-      "Negotiation and deal structuring",
-      "Vision articulation and mission design",
-    ],
-  },
-  {
-    first_name: "Sierra",
+    uid: "user_014",
+    first_name: "Brielle",
     last_name: "Banks",
-    industry: "Creative Services",
-    business_goals: ["Grow creative agency", "Retain higher-paying clients"],
-    skills_offering: [
-      "Story-driven brand positioning",
-      "Executive communication and storytelling",
-      "Brand identity development",
-    ],
-    skills_seeking: [
-      "Cash flow management and forecasting",
-      "Customer lifetime value optimization",
-      "Strategic partnerships and distribution channels",
-    ],
+    email: "brielle.banks@example.com",
+    role: "Alumni",
+    roles: ["Alumni"],
+    city: "Cincinnati",
+    state: "Ohio",
+    bio: "Creative entrepreneur.",
+    industry: "Creative",
+    profession: "Designer",
+    business_goals: ["Sell skills/services"],
+    confident_skills: ["Branding", "UX"],
+    desired_skills: ["Finance", "Sales"],
   },
   {
-    first_name: "Jordan",
-    last_name: "Perry",
-    industry: "Construction & Skilled Trades",
-    business_goals: ["Build a more efficient team", "Reduce operational bottlenecks"],
-    skills_offering: [
-      "Operational workflow design",
-      "Standard operating procedures (SOPs)",
-      "Hiring and onboarding systems",
-    ],
-    skills_seeking: [
-      "Founder resilience and stress management",
-      "Investor communication and financial reporting",
-      "Public speaking and thought leadership",
-    ],
+    uid: "user_015",
+    first_name: "Noah",
+    last_name: "Daniels",
+    email: "noah.daniels@example.com",
+    role: "Alumni",
+    roles: ["Alumni"],
+    city: "Cincinnati",
+    state: "Ohio",
+    bio: "Product founder.",
+    industry: "Product",
+    profession: "Founder",
+    business_goals: ["Build partnerships"],
+    confident_skills: ["Product testing", "UX"],
+    desired_skills: ["Sales", "Distribution"],
   },
   {
-    first_name: "Naomi",
-    last_name: "Ellis",
-    industry: "Retail",
-    business_goals: ["Launch online store", "Grow recurring customers"],
-    skills_offering: [
-      "Customer persona development",
-      "Marketing funnel design",
-      "Email marketing and retention systems",
-    ],
-    skills_seeking: [
-      "E-commerce and digital sales systems",
-      "Automation and workflow optimization",
-      "Budget development and cost control",
-    ],
+    uid: "user_016",
+    first_name: "Camille",
+    last_name: "Ross",
+    email: "camille.ross@example.com",
+    role: "Alumni",
+    roles: ["Alumni"],
+    city: "Cincinnati",
+    state: "Ohio",
+    bio: "Marketing builder.",
+    industry: "Marketing",
+    profession: "Marketer",
+    business_goals: ["Sell skills/services"],
+    confident_skills: ["Funnels", "Email marketing"],
+    desired_skills: ["Finance", "Negotiation"],
   },
   {
-    first_name: "Xavier",
+    uid: "user_017",
+    first_name: "Ethan",
+    last_name: "Bryant",
+    email: "ethan.bryant@example.com",
+    role: "Alumni",
+    roles: ["Alumni"],
+    city: "Cincinnati",
+    state: "Ohio",
+    bio: "Contractor scaling business.",
+    industry: "Construction",
+    profession: "Contractor",
+    business_goals: ["Build partnerships"],
+    confident_skills: ["Operations", "Hiring"],
+    desired_skills: ["Branding", "Lead gen"],
+  },
+  {
+    uid: "user_018",
+    first_name: "Nyla",
     last_name: "Carter",
-    industry: "Professional Services",
-    business_goals: ["Expand legal support practice", "Build strategic referral pipeline"],
-    skills_offering: [
-      "Negotiation and deal structuring",
-      "Executive communication and storytelling",
-      "Conflict resolution and team mediation",
-    ],
-    skills_seeking: [
-      "Lead generation strategy",
-      "Story-driven brand positioning",
-      "Community engagement and reputation building",
-    ],
+    email: "nyla.carter@example.com",
+    role: "Alumni",
+    roles: ["Alumni"],
+    city: "Cincinnati",
+    state: "Ohio",
+    bio: "Beauty entrepreneur.",
+    industry: "Beauty",
+    profession: "Founder",
+    business_goals: ["Sell skills/services"],
+    confident_skills: ["Brand", "Community"],
+    desired_skills: ["Finance", "Systems"],
   },
   {
-    first_name: "Leah",
-    last_name: "Robinson",
-    industry: "Education & Training",
-    business_goals: ["Package courses", "Build speaking opportunities"],
-    skills_offering: [
-      "Service design and packaging",
-      "Public speaking and thought leadership",
-      "Customer journey mapping",
-    ],
-    skills_seeking: [
-      "Email marketing and retention systems",
-      "AI tools for business productivity",
-      "Customer lifetime value optimization",
-    ],
+    uid: "user_019",
+    first_name: "Trevor",
+    last_name: "Scott",
+    email: "trevor.scott@example.com",
+    role: "Alumni",
+    roles: ["Alumni"],
+    city: "Cincinnati",
+    state: "Ohio",
+    bio: "Consultant scaling clients.",
+    industry: "Consulting",
+    profession: "Consultant",
+    business_goals: ["Sell skills/services"],
+    confident_skills: ["Sales", "CRM"],
+    desired_skills: ["Brand", "Marketing"],
   },
   {
-    first_name: "Terrell",
-    last_name: "Young",
-    industry: "Food & Beverage",
-    business_goals: ["Open café location", "Improve margins"],
-    skills_offering: [
-      "Vendor sourcing and supply chain management",
-      "Pricing strategy and margin analysis",
-      "Budget development and cost control",
-    ],
-    skills_seeking: [
-      "Brand identity development",
-      "Strategic networking and relationship building",
-      "Hiring and onboarding systems",
-    ],
+    uid: "user_020",
+    first_name: "Arielle",
+    last_name: "Vance",
+    email: "arielle.vance@example.com",
+    role: "Alumni",
+    roles: ["Alumni"],
+    city: "Cincinnati",
+    state: "Ohio",
+    bio: "Community builder.",
+    industry: "Community",
+    profession: "Organizer",
+    business_goals: ["Grow my network"],
+    confident_skills: ["Networking", "Events"],
+    desired_skills: ["Funding", "Operations"],
   },
 ];
 
-const RAW_JOBS = [
+/** Post body in app = post_details; timestamps preserved from fixtures. */
+const MOCK_FEED_POSTS = [
   {
-    title: "Part-Time Operations Coordinator",
-    company: "Grant Glow Studio",
-    location: "Cincinnati, OH",
-    description:
-      "Support scheduling, vendor communication, and daily business operations for a growing salon brand.",
-    preferred_skills: [
-      "Operational workflow design",
-      "Time management and founder productivity systems",
-      "Hiring and onboarding systems",
-    ],
-    growth_skills: ["KPI tracking and performance management", "Delegation and team empowerment"],
+    details:
+      "What are some low-cost ways y’all are getting new customers in person? I feel like social media alone is not enough.",
+    created_at: "2026-03-25T20:56:17-04:00",
   },
   {
-    title: "Social Media & Community Assistant",
-    company: "OTR Coffee Collective",
-    location: "Cincinnati, OH",
-    description: "Help manage social content, event promotion, and community engagement for a local café brand.",
-    preferred_skills: [
-      "Social media growth strategy",
-      "Story-driven brand positioning",
-      "Community engagement and reputation building",
-    ],
-    growth_skills: ["Email marketing and retention systems", "Public speaking and thought leadership"],
+    details:
+      "I’m reworking my brand and realizing my visuals look polished but my messaging still feels vague. How did you all tighten your brand voice?",
+    created_at: "2026-03-26T09:14:00-04:00",
   },
   {
-    title: "Founder’s Administrative Assistant",
-    company: "Northside Creative House",
-    location: "Remote",
-    description: "Support a founder with scheduling, communication, workflow organization, and follow-ups.",
-    preferred_skills: [
-      "Executive communication and storytelling",
-      "Time management and founder productivity systems",
-      "Operational workflow design",
-    ],
-    growth_skills: ["Delegation and team empowerment", "Automation and workflow optimization"],
+    details:
+      "I need to get more organized before I grow any more. What’s the first system you would put in place for a small retail business?",
+    created_at: "2026-03-26T11:22:00-04:00",
   },
   {
-    title: "Sales & Partnerships Intern",
-    company: "Brickline Retail Group",
-    location: "Cincinnati, OH",
-    description: "Support outreach to local businesses, event partners, and potential collaborators.",
-    preferred_skills: [
-      "Lead generation strategy",
-      "Strategic partnerships and distribution channels",
-      "CRM systems",
-    ],
-    growth_skills: ["Negotiation and deal structuring", "Customer lifetime value optimization"],
+    details:
+      "Has anyone had success finding real collaboration partners through networking events? I’m trying to be more intentional and not just collect contacts.",
+    created_at: "2026-03-26T13:48:00-04:00",
   },
   {
-    title: "Customer Experience Associate",
-    company: "Sage Wellness Studio",
-    location: "Cincinnati, OH",
-    description: "Help improve the customer journey, support bookings, and create a welcoming client experience.",
-    preferred_skills: [
-      "User experience and customer journey mapping",
-      "Service design and packaging",
-      "Community engagement and reputation building",
-    ],
-    growth_skills: ["Customer persona development", "Email marketing and retention systems"],
+    details:
+      "What tools are you all using to automate repetitive business tasks? I’m trying to save time without creating a complicated setup.",
+    created_at: "2026-03-26T15:05:00-04:00",
   },
   {
-    title: "Brand Content Intern",
-    company: "LaunchHer Agency",
-    location: "Remote",
-    description: "Assist with content creation, storytelling, and digital brand strategy for women-led startups.",
-    preferred_skills: [
-      "Brand identity development",
-      "Story-driven brand positioning",
-      "Executive communication and storytelling",
-    ],
-    growth_skills: ["Marketing funnel design", "Social media growth strategy"],
+    details:
+      "I get interest in my services but a lot of people never follow through. What helped you improve your conversion rate?",
+    created_at: "2026-03-26T18:31:00-04:00",
   },
   {
-    title: "Community Event Assistant",
-    company: "Culture Connect Network",
-    location: "Cincinnati, OH",
-    description: "Help coordinate founder meetups, networking events, and community activations.",
-    preferred_skills: [
-      "Strategic networking and relationship building",
-      "Community engagement and reputation building",
-      "Operational workflow design",
-    ],
-    growth_skills: ["Public speaking and thought leadership", "Brand identity development"],
+    details:
+      "For those of you who have hired your first employee or contractor, what did you wish you had in place before hiring?",
+    created_at: "2026-03-27T08:17:00-04:00",
   },
   {
-    title: "Junior Business Analyst",
-    company: "Next Door Ventures",
-    location: "Remote",
-    description: "Assist with KPI tracking, business reporting, and growth performance analysis.",
-    preferred_skills: [
-      "Data analytics and performance tracking",
-      "Business financial modeling",
-      "KPI tracking and performance management",
-    ],
-    growth_skills: ["Investor communication and financial reporting", "Automation and workflow optimization"],
+    details:
+      "I’m trying to decide whether I should bootstrap longer or start applying for grants. How did you know it was time to seek outside funding?",
+    created_at: "2026-03-27T10:42:00-04:00",
   },
   {
-    title: "Retail Floor & Merchandising Assistant",
-    company: "Main Street Market House",
-    location: "Cincinnati, OH",
-    description: "Support in-store customer experience, merchandising, and launch preparation.",
-    preferred_skills: [
-      "Customer persona development",
-      "Service design and packaging",
-      "Operational workflow design",
-    ],
-    growth_skills: ["Pricing experiments and market testing", "Brand identity development"],
+    details:
+      "Email marketing feels important but I honestly have no clue where to start. Are newsletters worth it when your audience is still small?",
+    created_at: "2026-03-27T12:08:00-04:00",
   },
   {
-    title: "CRM & Lead Follow-Up Assistant",
-    company: "Elevate Tax Solutions",
-    location: "Remote",
-    description: "Manage inbound leads, support follow-up systems, and organize client pipelines.",
-    preferred_skills: [
-      "Customer relationship management (CRM) systems",
-      "Lead generation strategy",
-      "Customer lifetime value optimization",
-    ],
-    growth_skills: ["Email marketing and retention systems", "Negotiation and deal structuring"],
+    details:
+      "I offer multiple services right now and I think it’s confusing people. Did simplifying your offers help you sell more?",
+    created_at: "2026-03-27T16:55:00-04:00",
   },
   {
-    title: "Operations Intern",
-    company: "West End Supply Co.",
-    location: "Cincinnati, OH",
-    description: "Assist with inventory systems, vendor communication, and internal process cleanup.",
-    preferred_skills: [
-      "Vendor sourcing and supply chain management",
-      "Standard operating procedures (SOPs)",
-      "Operational workflow design",
-    ],
-    growth_skills: ["Automation and workflow optimization", "Budget development and cost control"],
+    details:
+      "How are you all handling founder burnout? I’m realizing that being constantly available is making me less effective.",
+    created_at: "2026-03-28T09:10:00-04:00",
   },
   {
-    title: "Product Testing Coordinator",
-    company: "Rooted Home Goods",
-    location: "Remote",
-    description: "Support customer feedback collection and product iteration for a growing consumer brand.",
-    preferred_skills: [
-      "Customer discovery and validation",
-      "Iterative product testing and improvement",
-      "User experience and customer journey mapping",
-    ],
-    growth_skills: ["Pricing experiments and market testing", "Customer persona development"],
+    details:
+      "I want to meet more founders who are serious and actually building. Where are you all finding good community right now?",
+    created_at: "2026-03-28T11:37:00-04:00",
   },
   {
-    title: "Grant Research Assistant",
-    company: "Urban Impact Labs",
-    location: "Remote",
-    description: "Research grant opportunities and support founder funding readiness.",
-    preferred_skills: [
-      "Understanding capital sources (loans, grants, investors)",
-      "Business financial modeling",
-      "Investor communication and financial reporting",
-    ],
-    growth_skills: ["Executive communication and storytelling", "Vision articulation and mission design"],
+    details:
+      "I’m losing time because too much is still in my head. What’s the easiest way to start documenting SOPs without overcomplicating it?",
+    created_at: "2026-03-28T14:02:00-04:00",
   },
   {
-    title: "Founder Support Coordinator",
-    company: "Scale Black Founders",
-    location: "Cincinnati, OH",
-    description: "Support startup founders with scheduling, systems, communication, and resource navigation.",
-    preferred_skills: [
-      "Founder decision-making under ambiguity",
-      "Delegation and team empowerment",
-      "Time management and founder productivity systems",
-    ],
-    growth_skills: ["Conflict resolution and team mediation", "Founder resilience and stress management"],
+    details:
+      "For product-based businesses, what has helped most with repeat purchases? I’m trying to increase retention instead of always chasing new buyers.",
+    created_at: "2026-03-28T18:19:00-04:00",
   },
   {
-    title: "E-Commerce Assistant",
-    company: "The Daily Edit",
-    location: "Remote",
-    description: "Help manage online product listings, customer support, and digital sales systems.",
-    preferred_skills: [
-      "E-commerce and digital sales systems",
-      "Customer journey mapping",
-      "Email marketing and retention systems",
-    ],
-    growth_skills: ["Automation and workflow optimization", "Data analytics and performance tracking"],
+    details:
+      "I’m thinking about partnering with another local business for a shared event. What makes a partnership actually work instead of becoming extra work?",
+    created_at: "2026-03-29T08:25:00-04:00",
   },
   {
-    title: "Startup Outreach Fellow",
-    company: "Founder Forward Collective",
-    location: "Cincinnati, OH",
-    description: "Build founder relationships and help recruit members into local programming.",
-    preferred_skills: [
-      "Strategic networking and relationship building",
-      "Public speaking and thought leadership",
-      "Community engagement and reputation building",
-    ],
-    growth_skills: ["CRM systems", "Lead generation strategy"],
+    details:
+      "Do you all separate your personal and business money completely from day one? Curious what financial habits helped you early on.",
+    created_at: "2026-03-29T10:53:00-04:00",
   },
   {
-    title: "Service Packaging Assistant",
-    company: "BrightPath Consulting",
-    location: "Remote",
-    description: "Support service refinement, offer packaging, and customer journey optimization.",
-    preferred_skills: [
-      "Service design and packaging",
-      "Customer discovery and validation",
-      "User experience and customer journey mapping",
-    ],
-    growth_skills: ["Pricing experiments and market testing", "Story-driven brand positioning"],
+    details:
+      "I’m struggling with delegation because I feel like I can do everything faster myself. How did you get better at letting go?",
+    created_at: "2026-03-29T13:16:00-04:00",
   },
   {
-    title: "Business Systems Coordinator",
-    company: "Pillar Strategy Group",
-    location: "Remote",
-    description: "Improve workflows, organize SOPs, and help optimize backend systems for clients.",
-    preferred_skills: [
-      "Operational workflow design",
-      "Standard operating procedures (SOPs)",
-      "Automation and workflow optimization",
-    ],
-    growth_skills: ["KPI tracking and performance management", "AI tools for business productivity"],
+    details:
+      "How many times did you test or tweak your offer before it started resonating? I’m trying not to pivot too fast, but I also don’t want to ignore feedback.",
+    created_at: "2026-03-29T15:44:00-04:00",
   },
   {
-    title: "Brand Partnerships Assistant",
-    company: "Crown & Co.",
-    location: "Cincinnati, OH",
-    description: "Support local brand partnerships, outreach, and collaborative campaigns.",
-    preferred_skills: [
-      "Strategic partnerships and distribution channels",
-      "Negotiation and deal structuring",
-      "Story-driven brand positioning",
-    ],
-    growth_skills: ["Public speaking and thought leadership", "Executive communication and storytelling"],
+    details:
+      "What’s one thing that made your business feel more premium or more trustworthy to customers without spending a ton?",
+    created_at: "2026-03-30T09:01:00-04:00",
   },
   {
-    title: "AI Productivity Intern",
-    company: "FlowStack Studio",
-    location: "Remote",
-    description: "Help implement AI and automation tools to streamline internal business operations.",
-    preferred_skills: [
-      "AI tools for business productivity",
-      "Digital tool stack development",
-      "Automation and workflow optimization",
-    ],
-    growth_skills: ["Data analytics and performance tracking", "Operational workflow design"],
+    details:
+      "Would people be interested in a casual meetup for founders trying to get more organized before Q2? I think it could be helpful to talk through goals in person.",
+    created_at: "2026-03-30T12:20:00-04:00",
   },
 ];
-
-/** Mixed offering + seeking rows — only `offering` become expansion_skills docs. */
-const RAW_SKILL_ROWS = [
-  {
-    skill_type: "offering",
-    skill_title: "Pricing Strategy & Margin Review",
-    summary: "I can help you price your services or products more profitably without scaring off customers.",
-  },
-  {
-    skill_type: "offering",
-    skill_title: "Brand Identity Development",
-    summary: "I’ll help you tighten your visual brand and messaging so your business feels more polished and clear.",
-  },
-  {
-    skill_type: "offering",
-    skill_title: "Customer Persona Development",
-    summary: "I can help you get clearer on who your ideal customer is and how to market to them.",
-  },
-  {
-    skill_type: "offering",
-    skill_title: "Social Media Growth Strategy",
-    summary: "I’ll help you figure out what to post, who to target, and how to actually grow.",
-  },
-  {
-    skill_type: "offering",
-    skill_title: "Operational Workflow Cleanup",
-    summary: "I can help simplify your backend systems so your business runs smoother day to day.",
-  },
-  {
-    skill_type: "offering",
-    skill_title: "Sales Script & Closing Help",
-    summary: "I can help you improve how you talk about your offer and close more confidently.",
-  },
-  {
-    skill_type: "offering",
-    skill_title: "Founder Productivity Systems",
-    summary: "I’ll help you organize your time, tasks, and systems so you stop feeling scattered.",
-  },
-  {
-    skill_type: "offering",
-    skill_title: "MVP & Offer Feedback",
-    summary: "I can help you pressure-test your offer, app, or early business concept.",
-  },
-  {
-    skill_type: "offering",
-    skill_title: "CRM & Lead Tracking Setup",
-    summary: "I can help you organize your leads and follow-up process so opportunities don’t slip through.",
-  },
-  {
-    skill_type: "offering",
-    skill_title: "AI Tools for Business Productivity",
-    summary: "I can show you simple AI tools that save time in your business immediately.",
-  },
-  {
-    skill_type: "seeking",
-    skill_title: "Need Help with Hiring & Onboarding Systems",
-    summary: "I’m growing and need support building a better process for bringing people onto my team.",
-  },
-  {
-    skill_type: "seeking",
-    skill_title: "Looking for Investor Communication Guidance",
-    summary: "I need help learning how to talk about my business financially and present it more clearly.",
-  },
-  {
-    skill_type: "seeking",
-    skill_title: "Need Help with Lead Generation Strategy",
-    summary: "I want help figuring out how to consistently attract more leads.",
-  },
-  {
-    skill_type: "seeking",
-    skill_title: "Looking for Better Cash Flow Management",
-    summary: "I need help understanding and managing my money better month to month.",
-  },
-  {
-    skill_type: "seeking",
-    skill_title: "Need Help Packaging My Services",
-    summary: "I want to make my offer clearer and easier for customers to understand and buy.",
-  },
-  {
-    skill_type: "seeking",
-    skill_title: "Looking for Better Marketing Funnel Design",
-    summary: "I want help building a system that turns attention into paying customers.",
-  },
-  {
-    skill_type: "seeking",
-    skill_title: "Need Help with Strategic Partnerships",
-    summary: "I want to learn how to find and structure better brand or business partnerships.",
-  },
-  {
-    skill_type: "seeking",
-    skill_title: "Looking for SOP / Systems Support",
-    summary: "I need help documenting and organizing how my business runs.",
-  },
-  {
-    skill_type: "seeking",
-    skill_title: "Need Help with Public Speaking & Thought Leadership",
-    summary: "I want to get more comfortable representing my business publicly.",
-  },
-  {
-    skill_type: "seeking",
-    skill_title: "Looking for Better Automation & Workflow Tools",
-    summary: "I want to stop doing everything manually and build smarter systems.",
-  },
-];
-
-const RAW_EVENTS = [
-  {
-    title: "Pop-Up Shop Vendor Meetup",
-    location: "Over-the-Rhine Market, Cincinnati",
-    details: "Meet local vendors and learn how to secure booth space",
-    event_type: "In-person",
-  },
-  {
-    title: "How to Get Your First 100 Customers",
-    location: "Zoom",
-    details: "Marketing strategies for local businesses",
-    event_type: "Online",
-  },
-  {
-    title: "Small Business Grant Workshop",
-    location: "Cincinnati Business Hub",
-    details: "Learn how to apply for grants",
-    event_type: "In-person",
-  },
-  {
-    title: "Networking Night for Creatives",
-    location: "The Lounge, Downtown",
-    details: "Connect with designers, photographers, and creatives",
-    event_type: "In-person",
-  },
-  {
-    title: "Retail Store Owner Roundtable",
-    location: "Zoom",
-    details: "Discuss inventory and pricing strategies",
-    event_type: "Online",
-  },
-];
-
-const RAW_GROUPS = [
-  { name: "Cincinnati Small Business Owners", category: "Community & Networking" },
-  { name: "Retail Store Owners", category: "Industry-Specific" },
-  { name: "Marketing for Local Businesses", category: "Marketing & Brand Growth" },
-  { name: "Funding & Grants Help", category: "Money, Funding & Resources" },
-  { name: "Startup Founders Circle", category: "Business & Entrepreneurship" },
-];
-
-const RAW_REPLIES = [
-  {
-    body: "I had the same issue when I opened my shop — honestly foot traffic didn’t pick up until I partnered with another local business.",
-  },
-  {
-    body: "Try running a soft launch event first. That helped me get my first 20 customers.",
-  },
-  {
-    body: "Not gonna lie, pricing was the hardest part for me too.",
-  },
-  {
-    body: "I’d definitely recommend using Square if you’re just starting.",
-  },
-  {
-    body: "This is super helpful, thank you for sharing this.",
-  },
-];
-
-function slug(s) {
-  return String(s)
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 48);
-}
 
 async function main() {
   if (process.env.FIRESTORE_EMULATOR_HOST) {
     console.warn("WARN: FIRESTORE_EMULATOR_HOST is set. Unset for cloud project seeding.");
+  }
+
+  if (MOCK_FEED_POSTS.length !== MOCK_USERS.length) {
+    console.error(
+      `Fixture mismatch: ${MOCK_USERS.length} users vs ${MOCK_FEED_POSTS.length} posts (expected equal for 1:1 authors).`
+    );
+    process.exit(1);
   }
 
   console.log(`Project: ${PROJECT_ID}${DRY_RUN ? " (DRY RUN)" : ""}`);
@@ -959,19 +656,9 @@ async function main() {
   const auth = admin.auth();
   const db = admin.firestore();
 
-  const blueprints = RAW_USERS.map((row, i) => ({
-    email: `seed.mock.u${i}@mortar-dev.local`,
-    first_name: row.first_name,
-    last_name: row.last_name,
-    industry: row.industry,
-    business_goals: row.business_goals,
-    confident_skills: row.skills_offering || [],
-    desired_skills: row.skills_seeking || [],
-  }));
-
   const resolved = [];
-  for (let i = 0; i < blueprints.length; i++) {
-    const bp = blueprints[i];
+  for (let i = 0; i < MOCK_USERS.length; i++) {
+    const bp = MOCK_USERS[i];
     const { uid, isNew } = await getOrCreateAuthUser(auth, bp, DEFAULT_PASSWORD);
     resolved.push({ ...bp, uid, authIsNew: isNew });
     if (!DRY_RUN) {
@@ -984,156 +671,30 @@ async function main() {
   }
 
   const users = resolved;
-  const u = (i) => users[i % users.length];
-
   const bw = DRY_RUN ? null : createBatchWriter(db);
 
-  RAW_EVENTS.forEach((ev, i) => {
-    const id = `seed_mock_event_${slug(ev.title)}_${i}`;
-    const day = 1 + i * 3;
-    const isOnline = (ev.event_type || "").toLowerCase().includes("online");
-    const payload = {
-      title: ev.title,
-      date: ts(`2026-06-${String(day).padStart(2, "0")}T${12 + (i % 6)}:00:00-04:00`),
-      time: isOnline ? "12:00 PM - 1:30 PM" : "6:00 PM - 8:00 PM",
-      location: ev.location,
-      details: ev.details,
-      event_type: isOnline ? "Online" : "In-person",
-      distribution: "mobile",
-      registered_users: i % 2 === 0 && users[0] ? [users[0].uid] : [],
-      total_spots: isOnline ? 0 : 40,
-      available_spots: isOnline ? 0 : 38,
-      created_at: FieldValue.serverTimestamp(),
-      updated_at: FieldValue.serverTimestamp(),
-    };
-    if (!DRY_RUN) bw.set(db.collection("events_mobile").doc(id), payload);
-  });
-
-  const allMemberIds = users.map((x) => x.uid);
-
-  RAW_GROUPS.forEach((g, gi) => {
-    const gid = `seed_group_mock_${gi}`;
-    const gRef = db.collection("groups_mobile").doc(gid);
-    const creator = users[0];
-    const threadId = "seed_thread_welcome";
-    const thread = {
-      title: `Welcome to ${g.name}`,
-      body: "Introduce yourself and share what you’re working on this month.",
-      author_id: creator.uid,
-      author_name: name(creator),
-      author_role: "Digital Curriculum Alumni",
-      created_at: FieldValue.serverTimestamp(),
-      updated_at: FieldValue.serverTimestamp(),
-      score: 0,
-      helpful_score: 0,
-      reply_count: RAW_REPLIES.length,
-    };
-
-    if (!DRY_RUN) {
-      bw.set(
-        gRef,
-        {
-          Name: g.name,
-          Status: "Open",
-          Created: FieldValue.serverTimestamp(),
-          GroupMembers: allMemberIds,
-          PendingMembers: [],
-          createdBy: creator.uid,
-          description: `Community: ${g.name}. Mock seed data.`,
-          rulesText: "Be respectful — test data.",
-          category: g.category,
-          memberCount: allMemberIds.length,
-          threadCount: 1,
-          lastActivityAt: FieldValue.serverTimestamp(),
-          lastActivitySnippet: RAW_REPLIES[0].body.slice(0, 80),
-        },
-        { merge: true }
-      );
-
-      bw.set(gRef.collection("threads").doc(threadId), thread);
-
-      RAW_REPLIES.forEach((rep, ri) => {
-        const author = u(gi + ri + 1);
-        const cid = `seed_comment_${ri}`;
-        bw.set(gRef.collection("threads").doc(threadId).collection("comments").doc(cid), {
-          body: rep.body,
+  if (!DRY_RUN && bw) {
+    MOCK_FEED_POSTS.forEach((p, i) => {
+      const author = users[i];
+      const id = `seed_mock_feed_${String(i).padStart(2, "0")}`;
+      bw.set(db.collection("feed_posts").doc(id), {
+        post_details: p.details,
+        post_title: "",
+        post_category: "General",
           author_id: author.uid,
           author_name: name(author),
-          created_at: FieldValue.serverTimestamp(),
+        created_at: ts(p.created_at),
+        updated_at: ts(p.created_at),
         });
       });
-    }
-  });
-
-  RAW_JOBS.forEach((job, ji) => {
-    const author = u(ji);
-    const loc = job.location || "Cincinnati, OH";
-    const mode = jobLocationMode(loc);
-    const locStored = mode === "remote" ? "Remote" : loc;
-    const skills = jobSkillSeeking(job);
-    if (skills.length === 0) {
-      console.warn(`Job "${job.title}" has no skill_seeking after merge — skipping.`);
-      return;
-    }
-    const id = `seed_mock_job_${ji}`;
-    if (!DRY_RUN) {
-      bw.set(
-        db.collection("expansion_jobs").doc(id),
-        {
-          title: job.title,
-          company: job.company,
-          location: locStored,
-          location_mode: mode,
-          industry: industryForListing(author.industry),
-          description: job.description,
-          skill_seeking: skills,
-          author_id: author.uid,
-          author_name: name(author),
-          created_at: FieldValue.serverTimestamp(),
-          updated_at: FieldValue.serverTimestamp(),
-        },
-        { merge: true }
-      );
-    }
-  });
-
-  const offeringRows = RAW_SKILL_ROWS.filter((r) => r.skill_type === "offering");
-  offeringRows.forEach((row, si) => {
-    const author = u(si + 5);
-    const id = `seed_mock_skill_${si}`;
-    const title = row.skill_title;
-    if (!DRY_RUN) {
-      bw.set(
-        db.collection("expansion_skills").doc(id),
-        {
-          title,
-          summary: row.summary,
-          skill_offering: [title],
-          location: "Cincinnati, OH",
-          location_mode: "in_person",
-          industry: industryForListing(author.industry),
-          author_id: author.uid,
-          author_name: name(author),
-          created_at: FieldValue.serverTimestamp(),
-          updated_at: FieldValue.serverTimestamp(),
-        },
-        { merge: true }
-      );
-    }
-  });
-
-  if (!DRY_RUN && bw) {
     await bw.commit();
   }
 
-  console.log("\nSummary (fixed mock):");
-  console.log(`  Users: ${RAW_USERS.length}`);
-  console.log(`  events_mobile: ${RAW_EVENTS.length}`);
-  console.log(`  groups_mobile: ${RAW_GROUPS.length} (1 thread + ${RAW_REPLIES.length} comments each)`);
-  console.log(`  expansion_jobs: ${RAW_JOBS.length} (skill_seeking = preferred + growth)`);
-  console.log(`  expansion_skills: ${offeringRows.length} (offering rows only; skill_offering = [skill_title])`);
+  console.log("\nSummary (users + feed_posts only):");
+  console.log(`  Auth + users/{uid}: ${MOCK_USERS.length} (UIDs user_001 … user_020)`);
+  console.log(`  feed_posts: ${MOCK_FEED_POSTS.length} (ids seed_mock_feed_00 …)`);
+  console.log(`  Password (new accounts): ${DEFAULT_PASSWORD}`);
   console.log("\nDone.");
-  console.log(`Sign-in: seed.mock.u0..u${RAW_USERS.length - 1}@mortar-dev.local password=${DEFAULT_PASSWORD}`);
 }
 
 main().catch((err) => {

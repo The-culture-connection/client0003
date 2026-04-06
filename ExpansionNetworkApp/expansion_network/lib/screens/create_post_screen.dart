@@ -1,14 +1,17 @@
+import 'dart:typed_data';
+
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../router/feed_post_navigation.dart';
-import '../data/feed_post_categories.dart';
 import '../services/feed_posts_repository.dart';
 import '../services/user_profile_repository.dart';
 import '../theme/app_theme.dart';
 
-/// Create a community feed post (category, title, details) — mirrors curriculum discussions.
+/// Create a community feed post: description and optional image (no separate title/category in UI).
 class CreatePostScreen extends StatefulWidget {
   const CreatePostScreen({super.key});
 
@@ -17,29 +20,112 @@ class CreatePostScreen extends StatefulWidget {
 }
 
 class _CreatePostScreenState extends State<CreatePostScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _title = TextEditingController();
+  static const int _maxImageBytes = 10 * 1024 * 1024;
+
   final _details = TextEditingController();
   final _posts = FeedPostsRepository();
   final _users = UserProfileRepository();
+  final _picker = ImagePicker();
 
-  String _category = kFeedPostCategories.first;
   bool _saving = false;
+  XFile? _pickedImage;
+  Uint8List? _pickedPreviewBytes;
 
   @override
   void dispose() {
-    _title.dispose();
     _details.dispose();
     super.dispose();
   }
 
+  Future<void> _pickImage() async {
+    if (_saving) return;
+    try {
+      final x = await _picker.pickImage(source: ImageSource.gallery, maxWidth: 2048, maxHeight: 2048, imageQuality: 88);
+      if (x == null) return;
+      final len = await x.length();
+      if (len > _maxImageBytes) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Image must be 10MB or smaller.')),
+          );
+        }
+        return;
+      }
+      final bytes = await x.readAsBytes();
+      setState(() {
+        _pickedImage = x;
+        _pickedPreviewBytes = bytes;
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open photo library: $e')),
+        );
+      }
+    }
+  }
+
+  void _clearImage() {
+    if (_saving) return;
+    setState(() {
+      _pickedImage = null;
+      _pickedPreviewBytes = null;
+    });
+  }
+
+  Future<String?> _uploadImage() async {
+    final x = _pickedImage;
+    if (x == null) return null;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) throw StateError('Not signed in');
+
+    final safeName = x.name.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+    final objectName = '${DateTime.now().millisecondsSinceEpoch}_$safeName';
+    final ref = FirebaseStorage.instance.ref().child('feed_posts/member_uploads/$uid/$objectName');
+
+    final bytes = await x.readAsBytes();
+    if (bytes.length > _maxImageBytes) {
+      throw StateError('Image must be 10MB or smaller.');
+    }
+
+    final contentType = _guessImageContentType(safeName);
+    await ref.putData(bytes, SettableMetadata(contentType: contentType));
+    return ref.getDownloadURL();
+  }
+
+  static String _guessImageContentType(String name) {
+    final lower = name.toLowerCase();
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.webp')) return 'image/webp';
+    if (lower.endsWith('.gif')) return 'image/gif';
+    return 'image/jpeg';
+  }
+
+  String? _validateBody() {
+    final d = _details.text.trim();
+    final hasImage = _pickedImage != null;
+    if (d.isEmpty && !hasImage) {
+      return 'Add a description or a photo';
+    }
+    return null;
+  }
+
   Future<void> _submit() async {
-    if (!(_formKey.currentState?.validate() ?? false)) return;
+    final bodyErr = _validateBody();
+    if (bodyErr != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(bodyErr)));
+      return;
+    }
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
 
     setState(() => _saving = true);
     try {
+      String? imageUrl;
+      if (_pickedImage != null) {
+        imageUrl = await _uploadImage();
+      }
+
       final data = await _users.getUserDoc(uid);
       final fn = _s(data?['first_name']) ?? _s(data?['firstName']);
       final ln = _s(data?['last_name']) ?? _s(data?['lastName']);
@@ -48,11 +134,15 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           ? combined
           : (FirebaseAuth.instance.currentUser?.email ?? 'Member');
 
+      final details = _details.text.trim();
+      final title = (details.isEmpty && _pickedImage != null) ? 'Photo' : '';
+
       final id = await _posts.createPost(
-        postCategory: _category,
-        postTitle: _title.text.trim(),
-        postDetails: _details.text.trim(),
+        postCategory: 'General',
+        postTitle: title,
+        postDetails: details,
         authorName: authorName,
+        imageUrl: imageUrl,
       );
       if (!mounted) return;
       context.pop();
@@ -85,7 +175,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                   children: [
                     IconButton(
                       icon: const Icon(Icons.arrow_back),
-                      onPressed: () => context.pop(),
+                      onPressed: _saving ? null : () => context.pop(),
                     ),
                     Expanded(
                       child: Text(
@@ -100,68 +190,73 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           ),
           const Divider(height: 1, color: AppColors.border),
           Expanded(
-            child: Form(
-              key: _formKey,
-              child: ListView(
-                padding: const EdgeInsets.all(24),
-                children: [
-                  Text('Category', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 8),
-                  DropdownButtonFormField<String>(
-                    initialValue: _category,
-                    decoration: const InputDecoration(border: OutlineInputBorder()),
-                    items: [
-                      for (final c in kFeedPostCategories)
-                        DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis)),
+            child: ListView(
+              padding: const EdgeInsets.all(24),
+              children: [
+                Text(
+                  'Description',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _details,
+                  decoration: const InputDecoration(
+                    hintText: 'What would you like to share?',
+                    alignLabelWithHint: true,
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 8,
+                  minLines: 4,
+                  enabled: !_saving,
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Photo',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 8),
+                if (_pickedImage == null)
+                  OutlinedButton.icon(
+                    onPressed: _saving ? null : _pickImage,
+                    icon: const Icon(Icons.add_photo_alternate_outlined),
+                    label: const Text('Add image'),
+                  )
+                else
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: _pickedPreviewBytes != null
+                            ? Image.memory(_pickedPreviewBytes!, fit: BoxFit.cover)
+                            : const SizedBox(
+                                height: 200,
+                                child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+                              ),
+                      ),
+                      TextButton.icon(
+                        onPressed: _saving ? null : _clearImage,
+                        icon: const Icon(Icons.delete_outline),
+                        label: const Text('Remove image'),
+                      ),
                     ],
-                    onChanged: _saving ? null : (v) => setState(() => _category = v ?? _category),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Same categories as the digital curriculum discussions.',
-                    style: TextStyle(fontSize: 12, color: AppColors.mutedForeground.withValues(alpha: 0.9)),
+                const SizedBox(height: 24),
+                FilledButton(
+                  onPressed: _saving ? null : _submit,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    minimumSize: const Size(double.infinity, 48),
                   ),
-                  const SizedBox(height: 20),
-                  TextFormField(
-                    controller: _title,
-                    decoration: const InputDecoration(
-                      labelText: 'Post title',
-                      border: OutlineInputBorder(),
-                    ),
-                    maxLength: 200,
-                    enabled: !_saving,
-                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter a title' : null,
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _details,
-                    decoration: const InputDecoration(
-                      labelText: 'Post details',
-                      alignLabelWithHint: true,
-                      border: OutlineInputBorder(),
-                    ),
-                    maxLines: 10,
-                    minLines: 5,
-                    enabled: !_saving,
-                    validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter details' : null,
-                  ),
-                  const SizedBox(height: 16),
-                  FilledButton(
-                    onPressed: _saving ? null : _submit,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      minimumSize: const Size(double.infinity, 48),
-                    ),
-                    child: _saving
-                        ? const SizedBox(
-                            height: 22,
-                            width: 22,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.onPrimary),
-                          )
-                        : const Text('Publish'),
-                  ),
-                ],
-              ),
+                  child: _saving
+                      ? const SizedBox(
+                          height: 22,
+                          width: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.onPrimary),
+                        )
+                      : const Text('Publish'),
+                ),
+              ],
             ),
           ),
         ],

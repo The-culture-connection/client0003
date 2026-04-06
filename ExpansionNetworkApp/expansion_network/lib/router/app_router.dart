@@ -18,6 +18,7 @@ import '../screens/events_screen.dart';
 import '../screens/explore_screen.dart';
 import '../screens/feed_screen.dart';
 import '../screens/post_detail_screen.dart';
+import '../screens/social_feed_screen.dart';
 import '../screens/group_create_screen.dart';
 import '../screens/group_detail_screen.dart';
 import '../screens/group_edit_screen.dart';
@@ -61,8 +62,6 @@ GoRouter createAppRouter(AuthController auth) {
       final publicAuth = loc == '/' || loc.startsWith('/auth');
 
       if (!loggedIn && !publicAuth && !loc.startsWith('/onboarding')) {
-        // [AuthController] can lag one frame behind Firebase right after sign-in; without this,
-        // `/welcome-intro` was redirected to `/` and the post-login animation never showed.
         if (loc == '/welcome-intro' && FirebaseAuth.instance.currentUser != null) {
           return null;
         }
@@ -142,7 +141,10 @@ GoRouter createAppRouter(AuthController auth) {
             routes: [
               GoRoute(
                 path: '/explore',
-                pageBuilder: (context, state) => const NoTransitionPage<void>(child: ExploreScreen()),
+                pageBuilder: (context, state) => NoTransitionPage<void>(
+                  key: ValueKey<String>('explore-${state.uri}'),
+                  child: const ExploreScreen(),
+                ),
               ),
             ],
           ),
@@ -155,6 +157,11 @@ GoRouter createAppRouter(AuthController auth) {
             ],
           ),
         ],
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/posts',
+        builder: (context, state) => const SocialFeedScreen(),
       ),
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,

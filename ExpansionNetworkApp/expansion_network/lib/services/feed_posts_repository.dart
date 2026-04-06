@@ -41,11 +41,12 @@ class FeedPostsRepository {
     required String postTitle,
     required String postDetails,
     required String authorName,
+    String? imageUrl,
   }) async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) throw StateError('Not signed in');
 
-    final ref = await _posts.add({
+    final data = <String, dynamic>{
       'post_category': postCategory.trim(),
       'post_title': postTitle.trim(),
       'post_details': postDetails.trim(),
@@ -53,8 +54,24 @@ class FeedPostsRepository {
       'author_name': authorName.trim(),
       'created_at': FieldValue.serverTimestamp(),
       'updated_at': FieldValue.serverTimestamp(),
-    });
+    };
+    final img = imageUrl?.trim();
+    if (img != null && img.isNotEmpty) {
+      data['image_url'] = img;
+    }
+
+    final ref = await _posts.add(data);
     return ref.id;
+  }
+
+  Future<void> deletePost(String postId) async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) throw StateError('Not signed in');
+    final doc = await _posts.doc(postId).get();
+    if (!doc.exists) return;
+    final author = doc.data()?['author_id'];
+    if (author != uid) throw StateError('Only the author can delete this post');
+    await _posts.doc(postId).delete();
   }
 
   /// Whether the current user has liked the post (`feed_posts/{id}/likes/{uid}`).

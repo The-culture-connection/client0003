@@ -8,13 +8,15 @@ import 'package:provider/provider.dart';
 
 import '../auth/auth_controller.dart';
 
-/// **Only** `assets/Welcome.gif` is used for the post-sign-in welcome animation (not `MortarAppIcon.png`).
+/// Post–profile-completion welcome: **`assets/Welcome.gif`** for [kWelcomeGifPlaybackDuration], then **Home**.
 const String kWelcomeGifAsset = 'assets/Welcome.gif';
 
-/// [Image.memory] loops GIFs; navigation runs once after this duration. Match one full play of your GIF.
-const Duration kWelcomeGifPlaybackDuration = Duration(seconds: 5);
+/// Full playback length before navigating to Home (match one full loop of your GIF).
+const Duration kWelcomeGifPlaybackDuration = Duration(milliseconds: 5300);
 
-/// Full-screen welcome GIF after sign-in, then **Home** or **Onboarding** (same routing as before).
+/// Haptic pulses during the intro, measured from the same t=0 as [kWelcomeGifPlaybackDuration] (after the GIF is on screen).
+const List<int> kWelcomeIntroHapticOffsetsMs = [700, 2400, 4000];
+
 class WelcomeMortarverseIntroScreen extends StatefulWidget {
   const WelcomeMortarverseIntroScreen({super.key});
 
@@ -24,6 +26,7 @@ class WelcomeMortarverseIntroScreen extends StatefulWidget {
 
 class _WelcomeMortarverseIntroScreenState extends State<WelcomeMortarverseIntroScreen> {
   Timer? _navTimer;
+  final List<Timer> _hapticTimers = [];
   late final Future<_WelcomeGifLoad> _gifFuture;
 
   @override
@@ -31,10 +34,50 @@ class _WelcomeMortarverseIntroScreenState extends State<WelcomeMortarverseIntroS
     super.initState();
     _gifFuture = _loadWelcomeGifBytes();
     imageCache.evict(AssetImage(kWelcomeGifAsset));
-    _navTimer = Timer(kWelcomeGifPlaybackDuration, _goNextIfMounted);
+    _scheduleNavAfterGifReady();
   }
 
-  /// Loads exactly [kWelcomeGifAsset] from the manifest (not any other image).
+  /// Start the 5.3s countdown only after the asset is loaded (and after the next
+  /// frame so [Image.memory] can paint). Otherwise the timer overlaps bundle I/O
+  /// and the GIF gets less than a full [kWelcomeGifPlaybackDuration] on screen.
+  void _scheduleNavAfterGifReady() {
+    _gifFuture.then((load) {
+      if (!mounted) return;
+      void startNavTimer() {
+        _navTimer?.cancel();
+        _navTimer = Timer(kWelcomeGifPlaybackDuration, _goNextIfMounted);
+      }
+
+      void scheduleHapticsForIntro() {
+        for (final t in _hapticTimers) {
+          t.cancel();
+        }
+        _hapticTimers.clear();
+        for (final ms in kWelcomeIntroHapticOffsetsMs) {
+          _hapticTimers.add(
+            Timer(Duration(milliseconds: ms), () {
+              if (!mounted) return;
+              HapticFeedback.mediumImpact();
+            }),
+          );
+        }
+      }
+
+      if (load.bytes != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            scheduleHapticsForIntro();
+            startNavTimer();
+          });
+        });
+      } else {
+        startNavTimer();
+      }
+    });
+  }
+
   Future<_WelcomeGifLoad> _loadWelcomeGifBytes() async {
     try {
       final data = await rootBundle.load(kWelcomeGifAsset);
@@ -42,11 +85,10 @@ class _WelcomeMortarverseIntroScreenState extends State<WelcomeMortarverseIntroS
       if (bytes.length < 6) {
         return _WelcomeGifLoad.error('File too small to be a GIF.');
       }
-      final isGif = bytes[0] == 0x47 && bytes[1] == 0x49 && bytes[2] == 0x46; // "GIF"
+      final isGif = bytes[0] == 0x47 && bytes[1] == 0x49 && bytes[2] == 0x46;
       if (!isGif) {
         return _WelcomeGifLoad.error(
-          '$kWelcomeGifAsset is not a GIF (starts with wrong bytes). '
-          'If you renamed a PNG to .gif, export a real animated GIF or fix the file.',
+          '$kWelcomeGifAsset is not a GIF. Export a real animated GIF or fix the file.',
         );
       }
       return _WelcomeGifLoad.ok(bytes);
@@ -54,7 +96,7 @@ class _WelcomeMortarverseIntroScreenState extends State<WelcomeMortarverseIntroS
       debugPrint('Welcome GIF load failed: $e\n$st');
       return _WelcomeGifLoad.error(
         'Could not load $kWelcomeGifAsset.\n\n'
-        'Place Welcome.gif in expansion_network/assets/, list it under flutter.assets in pubspec.yaml, then flutter pub get and rebuild (not just hot reload).',
+        'Add Welcome.gif under expansion_network/assets/, list it in pubspec.yaml flutter.assets, then flutter pub get and rebuild.',
       );
     }
   }
@@ -70,16 +112,16 @@ class _WelcomeMortarverseIntroScreenState extends State<WelcomeMortarverseIntroS
       context.go('/session');
       return;
     }
-    if (auth.needsExpansionOnboarding == true) {
-      context.go('/onboarding');
-    } else {
-      context.go('/home');
-    }
+    context.go('/home');
   }
 
   @override
   void dispose() {
     _navTimer?.cancel();
+    for (final t in _hapticTimers) {
+      t.cancel();
+    }
+    _hapticTimers.clear();
     super.dispose();
   }
 

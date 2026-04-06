@@ -9,11 +9,14 @@ class PosterProfileAvatar extends StatelessWidget {
     super.key,
     required this.userId,
     this.displayNameHint,
+    this.photoUrl,
     this.radius = 18,
   });
 
   final String userId;
   final String? displayNameHint;
+  /// When set (e.g. from `users/{uid}.photo_url`), shows a network image instead of initials.
+  final String? photoUrl;
   final double radius;
 
   static String _initials(String? name) {
@@ -34,6 +37,9 @@ class PosterProfileAvatar extends StatelessWidget {
         child: const Icon(Icons.person_outline, size: 18, color: AppColors.mutedForeground),
       );
     }
+    final trimmedPhoto = photoUrl?.trim();
+    final hasPhoto = trimmedPhoto != null && trimmedPhoto.isNotEmpty;
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -42,14 +48,19 @@ class PosterProfileAvatar extends StatelessWidget {
         child: CircleAvatar(
           radius: radius,
           backgroundColor: AppColors.primary,
-          child: Text(
-            _initials(displayNameHint),
-            style: TextStyle(
-              fontSize: radius * 0.65,
-              fontWeight: FontWeight.w600,
-              color: AppColors.onPrimary,
-            ),
-          ),
+          backgroundImage: hasPhoto ? NetworkImage(trimmedPhoto) : null,
+          // Only valid when [backgroundImage] is non-null (see CircleAvatar assertion).
+          onBackgroundImageError: hasPhoto ? (_, __) {} : null,
+          child: hasPhoto
+              ? null
+              : Text(
+                  _initials(displayNameHint),
+                  style: TextStyle(
+                    fontSize: radius * 0.65,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.onPrimary,
+                  ),
+                ),
         ),
       ),
     );

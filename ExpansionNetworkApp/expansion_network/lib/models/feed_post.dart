@@ -9,6 +9,7 @@ class FeedPost {
     required this.postDetails,
     required this.authorId,
     required this.authorName,
+    this.imageUrl,
     this.createdAt,
     this.updatedAt,
   });
@@ -19,6 +20,8 @@ class FeedPost {
   final String postDetails;
   final String authorId;
   final String authorName;
+  /// Optional image from Storage (`image_url` on the Firestore doc).
+  final String? imageUrl;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -30,6 +33,7 @@ class FeedPost {
       postDetails: _s(data['post_details']) ?? '',
       authorId: _s(data['author_id']) ?? '',
       authorName: _s(data['author_name']) ?? 'Member',
+      imageUrl: _s(data['image_url']),
       createdAt: _ts(data['created_at']),
       updatedAt: _ts(data['updated_at']),
     );

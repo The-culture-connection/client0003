@@ -7,6 +7,7 @@ import '../services/feed_posts_repository.dart';
 import '../services/user_profile_repository.dart';
 import '../theme/app_theme.dart';
 import '../utils/relative_time.dart';
+import '../widgets/poster_profile_avatar.dart';
 import '../widgets/user_profile_modal.dart';
 
 class PostDetailScreen extends StatefulWidget {
@@ -216,39 +217,75 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                            decoration: BoxDecoration(
-                                              color: AppColors.secondary,
-                                              borderRadius: BorderRadius.circular(6),
-                                              border: Border.all(color: AppColors.border),
-                                            ),
-                                            child: Text(
-                                              post.postCategory,
-                                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 12),
-                                          Text(
-                                            post.postTitle,
-                                            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
-                                          ),
-                                          const SizedBox(height: 8),
-                                          InkWell(
-                                            onTap: post.authorId.isEmpty
-                                                ? null
-                                                : () => showUserProfileModal(context, userId: post.authorId),
-                                            borderRadius: BorderRadius.circular(8),
-                                            child: Padding(
-                                              padding: const EdgeInsets.symmetric(vertical: 4),
-                                              child: Text(
-                                                '${_displayAuthorNameForId(post.authorId, post.authorName)} · ${formatRelativeTime(post.createdAt)}',
-                                                style: const TextStyle(fontSize: 13, color: AppColors.primary, fontWeight: FontWeight.w500),
+                                          Row(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              PosterProfileAvatar(
+                                                userId: post.authorId,
+                                                displayNameHint: post.authorName,
+                                                radius: 22,
                                               ),
-                                            ),
+                                              const SizedBox(width: 10),
+                                              Expanded(
+                                                child: InkWell(
+                                                  onTap: post.authorId.isEmpty
+                                                      ? null
+                                                      : () => showUserProfileModal(context, userId: post.authorId),
+                                                  borderRadius: BorderRadius.circular(8),
+                                                  child: Padding(
+                                                    padding: const EdgeInsets.symmetric(vertical: 4),
+                                                    child: Text(
+                                                      '${_displayAuthorNameForId(post.authorId, post.authorName)} · ${formatRelativeTime(post.createdAt)}',
+                                                      style: const TextStyle(
+                                                        fontSize: 13,
+                                                        color: AppColors.primary,
+                                                        fontWeight: FontWeight.w500,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                           const SizedBox(height: 16),
-                                          Text(post.postDetails, style: const TextStyle(fontSize: 15, height: 1.45)),
+                                          if (post.postDetails.trim().isNotEmpty)
+                                            Text(post.postDetails, style: const TextStyle(fontSize: 15, height: 1.45)),
+                                          if (post.imageUrl != null && post.imageUrl!.trim().isNotEmpty) ...[
+                                            if (post.postDetails.trim().isNotEmpty) const SizedBox(height: 16),
+                                            ClipRRect(
+                                              borderRadius: BorderRadius.circular(10),
+                                              child: AspectRatio(
+                                                aspectRatio: 4 / 3,
+                                                child: Image.network(
+                                                  post.imageUrl!.trim(),
+                                                  fit: BoxFit.cover,
+                                                  loadingBuilder: (context, child, progress) {
+                                                    if (progress == null) return child;
+                                                    return Container(
+                                                      color: AppColors.secondary,
+                                                      child: const Center(
+                                                        child: SizedBox(
+                                                          width: 28,
+                                                          height: 28,
+                                                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                                                        ),
+                                                      ),
+                                                    );
+                                                  },
+                                                  errorBuilder: (_, __, ___) => Container(
+                                                    color: AppColors.secondary,
+                                                    padding: const EdgeInsets.all(16),
+                                                    child: const Center(
+                                                      child: Text(
+                                                        'Could not load image',
+                                                        style: TextStyle(color: AppColors.mutedForeground),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
                                           const SizedBox(height: 16),
                                           _PostLikeRow(postId: widget.postId),
                                         ],
@@ -460,8 +497,8 @@ class _PostLikeRow extends StatelessWidget {
               stream: repo.watchPostLikeCount(postId),
               builder: (context, countSnap) {
                 final n = countSnap.data ?? 0;
-                return TextButton.icon(
-                  onPressed: uid == null
+                return InkWell(
+                  onTap: uid == null
                       ? null
                       : () async {
                           try {
@@ -472,31 +509,31 @@ class _PostLikeRow extends StatelessWidget {
                             }
                           }
                         },
-                  icon: Icon(
-                    liked ? Icons.favorite : Icons.favorite_border,
-                    size: 22,
-                    color: liked ? Colors.redAccent : AppColors.mutedForeground,
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          liked ? Icons.favorite : Icons.favorite_border,
+                          size: 22,
+                          color: liked ? AppColors.primary : AppColors.mutedForeground,
+                          fill: liked ? 1.0 : 0.0,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '$n',
+                          style: const TextStyle(
+                            fontSize: 15,
+                            color: AppColors.mutedForeground,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  label: Text('$n'),
-                  style: TextButton.styleFrom(foregroundColor: AppColors.mutedForeground),
                 );
               },
-            );
-          },
-        ),
-        StreamBuilder<int>(
-          stream: repo.watchReplyCount(postId),
-          builder: (context, snap) {
-            final n = snap.data ?? 0;
-            return Padding(
-              padding: const EdgeInsets.only(left: 8),
-              child: Row(
-                children: [
-                  const Icon(Icons.chat_bubble_outline, size: 20, color: AppColors.mutedForeground),
-                  const SizedBox(width: 4),
-                  Text('$n', style: const TextStyle(color: AppColors.mutedForeground)),
-                ],
-              ),
             );
           },
         ),
@@ -566,8 +603,8 @@ class _ReplyTile extends StatelessWidget {
                     stream: repo.watchReplyLikeCount(postId, reply.id),
                     builder: (context, countSnap) {
                       final n = countSnap.data ?? 0;
-                      return TextButton.icon(
-                        onPressed: uid == null
+                      return InkWell(
+                        onTap: uid == null
                             ? null
                             : () async {
                                 try {
@@ -578,17 +615,28 @@ class _ReplyTile extends StatelessWidget {
                                   }
                                 }
                               },
-                        icon: Icon(
-                          liked ? Icons.favorite : Icons.favorite_border,
-                          size: 18,
-                          color: liked ? Colors.redAccent : AppColors.mutedForeground,
-                        ),
-                        label: Text('$n'),
-                        style: TextButton.styleFrom(
-                          foregroundColor: AppColors.mutedForeground,
-                          padding: EdgeInsets.zero,
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        borderRadius: BorderRadius.circular(8),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                liked ? Icons.favorite : Icons.favorite_border,
+                                size: 18,
+                                color: liked ? AppColors.primary : AppColors.mutedForeground,
+                                fill: liked ? 1.0 : 0.0,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '$n',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: AppColors.mutedForeground,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       );
                     },
