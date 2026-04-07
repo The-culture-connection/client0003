@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart'
     show ChangeNotifier, TargetPlatform, debugPrint, defaultTargetPlatform;
 
 import '../constants/alumni_network_constants.dart';
+import '../expansion_release_trace.dart';
 import '../services/expansion_session_service.dart';
 import '../services/user_profile_repository.dart';
 
@@ -73,14 +74,19 @@ class AuthController extends ChangeNotifier {
 
   Future<void> _applySessionForUser(User user) async {
     try {
+      expansionReleaseTrace('session: calling initializeUserSession uid=${user.uid}');
       final data = await _sessionService.initializeUserSession();
       final state = data['state'] as String?;
       final reason = data['reason'] as String?;
+      expansionReleaseTrace(
+        'session: initializeUserSession returned state=$state reason=$reason',
+      );
 
       if (state == 'UNAUTHORIZED') {
         _accessDeniedMessage = reason == 'no_network_access'
             ? kSessionNoNetworkAccessMessage
             : kSessionNotAuthorizedMessage;
+        expansionReleaseTrace('session: UNAUTHORIZED → revokeAfterDenial');
         await _revokeAfterDenial(user);
         return;
       }
@@ -105,6 +111,9 @@ class AuthController extends ChangeNotifier {
       }
 
       if (_needsExpansionOnboarding == false) {
+        expansionReleaseTrace(
+          'session: profile gate needsExpansionOnboarding check uid=${user.uid}',
+        );
         final stillNeeds = await _profileRepository.needsExpansionOnboarding(
           user.uid,
         );
@@ -114,6 +123,7 @@ class AuthController extends ChangeNotifier {
       }
     } catch (e, st) {
       debugPrint('AuthController: initializeUserSession failed: $e\n$st');
+      expansionReleaseTrace('session: initializeUserSession error → revokeAfterDenial');
       _accessDeniedMessage = firebaseNativeBridgeLostUserMessage(e) ??
           'Could not verify alumni network access. Check your connection, or '
           'ensure Cloud Functions are deployed (initializeUserSession).';
@@ -126,12 +136,14 @@ class AuthController extends ChangeNotifier {
     _provisionedCohortId = null;
     _needsExpansionOnboarding = null;
     try {
+      expansionReleaseTrace('revoke: getUserDoc uid=${user.uid}');
       final existingProfile = await _profileRepository.getUserDoc(user.uid);
       if (existingProfile == null) {
         // On iOS, Auth user.delete() has triggered native SIGABRT in some Firebase/Xcode
         // combinations right after sign-in. Sign out only; orphan Auth users can be
         // cleaned in Console or via a callable if needed.
         if (defaultTargetPlatform == TargetPlatform.iOS) {
+          expansionReleaseTrace('revoke: iOS signOut (no profile)');
           await _auth.signOut();
         } else {
           try {
@@ -141,6 +153,7 @@ class AuthController extends ChangeNotifier {
           }
         }
       } else {
+        expansionReleaseTrace('revoke: signOut (has profile)');
         await _auth.signOut();
       }
     } catch (e, st) {

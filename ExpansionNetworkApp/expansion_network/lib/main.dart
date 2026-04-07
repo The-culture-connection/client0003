@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'auth/auth_controller.dart';
+import 'expansion_release_trace.dart';
 import 'firebase_options.dart';
 import 'router/app_router.dart';
 import 'theme/app_theme.dart';
@@ -35,11 +36,18 @@ Future<void> main() async {
 Future<bool> _initFirebase() async {
   // Never pair this with iOS AppDelegate FirebaseApp.configure(): that fills [apps] early and
   // skips [initializeApp] below → broken Dart/native state and Release heap crashes.
+  expansionReleaseTrace(
+    '_initFirebase: Firebase.apps.length=${Firebase.apps.length} (before init)',
+  );
   if (Firebase.apps.isNotEmpty) {
+    expansionReleaseTrace('_initFirebase: skipped initializeApp (apps already non-empty)');
     return true;
   }
   try {
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    expansionReleaseTrace(
+      '_initFirebase: initializeApp ok, apps.length=${Firebase.apps.length}',
+    );
     return true;
   } on PlatformException catch (e, st) {
     debugPrint('_initFirebase: $e\n$st');
