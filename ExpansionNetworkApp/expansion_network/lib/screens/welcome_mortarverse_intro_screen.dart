@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -8,14 +9,26 @@ import 'package:provider/provider.dart';
 
 import '../auth/auth_controller.dart';
 
-/// Post–profile-completion welcome: **`assets/Welcome.gif`** for [kWelcomeGifPlaybackDuration], then **Home**.
+/// Post–profile-completion welcome: **`assets/Welcome.gif`**, then **Home**.
 const String kWelcomeGifAsset = 'assets/Welcome.gif';
 
-/// Full playback length before navigating to Home (match one full loop of your GIF).
-const Duration kWelcomeGifPlaybackDuration = Duration(milliseconds: 5300);
+/// If the GIF is a single frame, or a frame has **no** delay in the file, hold this long
+/// before Home (replaces a fixed wall-clock “whole animation” timer).
+const Duration kWelcomeSingleFrameOrZeroDelayHold = Duration(milliseconds: 5300);
 
-/// Haptic pulses during the intro, measured from the same t=0 as [kWelcomeGifPlaybackDuration] (after the GIF is on screen).
-const List<int> kWelcomeIntroHapticOffsetsMs = [700, 2400, 4000];
+/// Minimum time each frame stays on screen when the encoder stored `0` delay.
+const Duration kWelcomeGifMinFrameDuration = Duration(milliseconds: 16);
+
+/// Seconds from **GIF start** (same moment as codec playback: first frame is on screen —
+/// we schedule after that frame paints). Match these to beats in `Welcome.gif` (e.g. stopwatch
+/// from when motion begins, or your editor’s timeline). Use decimals for fine tuning (e.g. 2.35).
+const List<double> kWelcomeIntroHapticTimesSec = [0.7, 2.4, 4.0];
+
+/// Flutter exposes only short impacts, not a true sustained motor buzz. We approximate
+/// “BUUUZZ” with a train of [heavyImpact] calls — raise [kWelcomeIntroBuzzPulseCount] or
+/// tighten [kWelcomeIntroBuzzPulseGapMs] for a longer / denser rumble.
+const int kWelcomeIntroBuzzPulseCount = 10;
+const int kWelcomeIntroBuzzPulseGapMs = 26;
 
 class WelcomeMortarverseIntroScreen extends StatefulWidget {
   const WelcomeMortarverseIntroScreen({super.key});
@@ -25,57 +38,150 @@ class WelcomeMortarverseIntroScreen extends StatefulWidget {
 }
 
 class _WelcomeMortarverseIntroScreenState extends State<WelcomeMortarverseIntroScreen> {
-  Timer? _navTimer;
+  bool _loading = true;
+  String? _errorMessage;
+  ui.Codec? _codec;
+  ui.Image? _frameImage;
+
   final List<Timer> _hapticTimers = [];
-  late final Future<_WelcomeGifLoad> _gifFuture;
+  bool _disposed = false;
 
   @override
   void initState() {
     super.initState();
-    _gifFuture = _loadWelcomeGifBytes();
     imageCache.evict(AssetImage(kWelcomeGifAsset));
-    _scheduleNavAfterGifReady();
+    _bootstrap();
   }
 
-  /// Start the 5.3s countdown only after the asset is loaded (and after the next
-  /// frame so [Image.memory] can paint). Otherwise the timer overlaps bundle I/O
-  /// and the GIF gets less than a full [kWelcomeGifPlaybackDuration] on screen.
-  void _scheduleNavAfterGifReady() {
-    _gifFuture.then((load) {
-      if (!mounted) return;
-      void startNavTimer() {
-        _navTimer?.cancel();
-        _navTimer = Timer(kWelcomeGifPlaybackDuration, _goNextIfMounted);
-      }
+  Future<void> _bootstrap() async {
+    final load = await _loadWelcomeGifBytes();
+    if (!mounted || _disposed) return;
+    if (load.errorMessage != null) {
+      setState(() {
+        _loading = false;
+        _errorMessage = load.errorMessage;
+      });
+      return;
+    }
 
-      void scheduleHapticsForIntro() {
-        for (final t in _hapticTimers) {
-          t.cancel();
-        }
-        _hapticTimers.clear();
-        for (final ms in kWelcomeIntroHapticOffsetsMs) {
-          _hapticTimers.add(
-            Timer(Duration(milliseconds: ms), () {
-              if (!mounted) return;
-              HapticFeedback.mediumImpact();
-            }),
-          );
-        }
-      }
+    ui.Codec codec;
+    try {
+      codec = await ui.instantiateImageCodec(load.bytes!);
+    } catch (e, st) {
+      debugPrint('Welcome GIF codec failed: $e\n$st');
+      if (!mounted || _disposed) return;
+      setState(() {
+        _loading = false;
+        _errorMessage =
+            'Could not decode $kWelcomeGifAsset.\n\nTry re-exporting the GIF or use a shorter animation.';
+      });
+      return;
+    }
 
-      if (load.bytes != null) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) return;
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (!mounted) return;
-            scheduleHapticsForIntro();
-            startNavTimer();
-          });
+    if (!mounted || _disposed) {
+      codec.dispose();
+      return;
+    }
+
+    _codec = codec;
+    setState(() => _loading = false);
+
+    await _playOneLoop(codec);
+  }
+
+  /// Advances frames using each [FrameInfo.duration] from the file — same timeline as the
+  /// GIF spec, so Home follows **one full loop** and haptics match what you see.
+  Future<void> _playOneLoop(ui.Codec codec) async {
+    final n = codec.frameCount;
+    if (n <= 0) {
+      _cancelHapticTimers();
+      if (mounted && !_disposed) {
+        _goNextIfMounted();
+      }
+      return;
+    }
+
+    var frameIndex = 0;
+    var hapticsScheduled = false;
+
+    try {
+      while (mounted && !_disposed && frameIndex < n) {
+        late final ui.FrameInfo frame;
+        try {
+          frame = await codec.getNextFrame();
+        } catch (e, st) {
+          if (_disposed || !mounted) return;
+          debugPrint('Welcome GIF getNextFrame failed: $e\n$st');
+          break;
+        }
+        if (!mounted || _disposed) return;
+
+        final img = frame.image;
+        setState(() {
+          _frameImage?.dispose();
+          _frameImage = img;
         });
-      } else {
-        startNavTimer();
+
+        if (!hapticsScheduled) {
+          hapticsScheduled = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted || _disposed) return;
+            _scheduleWallClockHaptics();
+          });
+        }
+
+        var step = frame.duration;
+        if (step == Duration.zero) {
+          step = n == 1 ? kWelcomeSingleFrameOrZeroDelayHold : kWelcomeGifMinFrameDuration;
+        }
+
+        await Future<void>.delayed(step);
+        frameIndex++;
       }
-    });
+    } catch (e, st) {
+      if (!_disposed) {
+        debugPrint('Welcome GIF playback failed: $e\n$st');
+      }
+    } finally {
+      _cancelHapticTimers();
+      if (mounted && !_disposed) {
+        _goNextIfMounted();
+      }
+    }
+  }
+
+  void _scheduleWallClockHaptics() {
+    _cancelHapticTimers();
+    for (final sec in kWelcomeIntroHapticTimesSec) {
+      final delay = Duration(
+        microseconds: (sec * Duration.microsecondsPerSecond).round(),
+      );
+      _hapticTimers.add(
+        Timer(delay, () {
+          if (!mounted || _disposed) return;
+          _emitBuzzRumble();
+        }),
+      );
+    }
+  }
+
+  /// Dense [HapticFeedback.heavyImpact] pulses read as a short “rumble” on most iPhones.
+  void _emitBuzzRumble() {
+    for (var i = 0; i < kWelcomeIntroBuzzPulseCount; i++) {
+      _hapticTimers.add(
+        Timer(Duration(milliseconds: kWelcomeIntroBuzzPulseGapMs * i), () {
+          if (!mounted || _disposed) return;
+          HapticFeedback.heavyImpact();
+        }),
+      );
+    }
+  }
+
+  void _cancelHapticTimers() {
+    for (final t in _hapticTimers) {
+      t.cancel();
+    }
+    _hapticTimers.clear();
   }
 
   Future<_WelcomeGifLoad> _loadWelcomeGifBytes() async {
@@ -102,7 +208,7 @@ class _WelcomeMortarverseIntroScreenState extends State<WelcomeMortarverseIntroS
   }
 
   void _goNextIfMounted() {
-    if (!mounted) return;
+    if (!mounted || _disposed) return;
     _goNext();
   }
 
@@ -117,11 +223,12 @@ class _WelcomeMortarverseIntroScreenState extends State<WelcomeMortarverseIntroS
 
   @override
   void dispose() {
-    _navTimer?.cancel();
-    for (final t in _hapticTimers) {
-      t.cancel();
-    }
-    _hapticTimers.clear();
+    _disposed = true;
+    _cancelHapticTimers();
+    _codec?.dispose();
+    _codec = null;
+    _frameImage?.dispose();
+    _frameImage = null;
     super.dispose();
   }
 
@@ -131,37 +238,38 @@ class _WelcomeMortarverseIntroScreenState extends State<WelcomeMortarverseIntroS
       backgroundColor: Colors.black,
       body: SafeArea(
         child: Center(
-          child: FutureBuilder<_WelcomeGifLoad>(
-            future: _gifFuture,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState != ConnectionState.done) {
-                return const SizedBox(
-                  width: 36,
-                  height: 36,
-                  child: CircularProgressIndicator(color: Colors.white24, strokeWidth: 2),
-                );
-              }
-              final load = snapshot.data!;
-              if (load.errorMessage != null) {
-                return Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Text(
-                    load.errorMessage!,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.white70, height: 1.35),
-                  ),
-                );
-              }
-              return Image.memory(
-                load.bytes!,
-                fit: BoxFit.contain,
-                gaplessPlayback: true,
-                filterQuality: FilterQuality.medium,
-              );
-            },
-          ),
+          child: _buildBody(),
         ),
       ),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_loading) {
+      return const SizedBox(
+        width: 36,
+        height: 36,
+        child: CircularProgressIndicator(color: Colors.white24, strokeWidth: 2),
+      );
+    }
+    if (_errorMessage != null) {
+      return Padding(
+        padding: const EdgeInsets.all(24),
+        child: Text(
+          _errorMessage!,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Colors.white70, height: 1.35),
+        ),
+      );
+    }
+    final img = _frameImage;
+    if (img == null) {
+      return const SizedBox.shrink();
+    }
+    return RawImage(
+      image: img,
+      fit: BoxFit.contain,
+      filterQuality: FilterQuality.medium,
     );
   }
 }
