@@ -9,6 +9,12 @@ import '../expansion_release_trace.dart';
 import '../services/expansion_session_service.dart';
 import '../services/user_profile_repository.dart';
 
+/// Lets native Firebase Auth finish **Keychain** persistence before we call
+/// [initializeUserSession] (which forces another token / Keychain path). On iOS,
+/// overlapping Swift concurrency work there has produced `swift_task_dealloc`
+/// crashes (FirebaseAuth `AuthKeychainStorageReal.update`); see [ApplicationNotes].
+const Duration _kIosAuthKeychainSettleBeforeSession = Duration(milliseconds: 350);
+
 /// Firebase Auth + Cloud Function [initializeUserSession] drive routing.
 ///
 /// Routes: existing session → session init; new users → invite claim (callable) then custom token sign-in.
@@ -27,6 +33,9 @@ class AuthController extends ChangeNotifier {
   final ExpansionSessionService _sessionService;
   final FirebaseAuth _auth;
   StreamSubscription<User?>? _sub;
+
+  /// Cleared on sign-out. Used to run the iOS keychain settle delay only once per uid.
+  String? _iosSessionSettleUid;
 
   User? _user;
   bool _loading = true;
@@ -54,6 +63,7 @@ class AuthController extends ChangeNotifier {
   Future<void> _onAuthChanged(User? user) async {
     _user = user;
     if (user == null) {
+      _iosSessionSettleUid = null;
       _needsExpansionOnboarding = null;
       _expansionOnboardingRoles = null;
       _provisionedCohortId = null;
@@ -74,6 +84,14 @@ class AuthController extends ChangeNotifier {
 
   Future<void> _applySessionForUser(User user) async {
     try {
+      if (defaultTargetPlatform == TargetPlatform.iOS &&
+          _iosSessionSettleUid != user.uid) {
+        _iosSessionSettleUid = user.uid;
+        expansionReleaseTrace(
+          'session: iOS ${_kIosAuthKeychainSettleBeforeSession.inMilliseconds}ms settle before initializeUserSession uid=${user.uid}',
+        );
+        await Future<void>.delayed(_kIosAuthKeychainSettleBeforeSession);
+      }
       expansionReleaseTrace('session: calling initializeUserSession uid=${user.uid}');
       final data = await _sessionService.initializeUserSession();
       final state = data['state'] as String?;
