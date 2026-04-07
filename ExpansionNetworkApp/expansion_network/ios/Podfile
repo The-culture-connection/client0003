@@ -1,3 +1,8 @@
+# Xcode 26.4 / Swift 6.3 can crash in `libswift_Concurrency` with Firebase iOS < 12.12
+# ("Freed pointer was not the last allocation", `asyncLet_finish_after_task_completion`).
+# FirebaseFunctions + concurrent Firestore work are common triggers; see firebase-ios-sdk#15974.
+$FirebaseSDKVersion = '12.12.0'
+
 # cloud_firestore / current Firebase iOS pods require iOS 15+.
 platform :ios, '15.0'
 
@@ -28,7 +33,10 @@ require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelpe
 flutter_ios_podfile_setup
 
 target 'Runner' do
-  use_frameworks!
+  # Static linkage avoids dynamic-loader / duplicate-symbol issues with Firebase + gRPC in
+  # Release (often reported as SIGABRT, heap corruption, or "memory" crashes). See:
+  # https://firebase.google.com/docs/ios/link-firebase-static-dynamic
+  use_frameworks! :linkage => :static
   use_modular_headers!
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))

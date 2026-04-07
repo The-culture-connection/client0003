@@ -13,7 +13,7 @@ import '../services/user_profile_repository.dart';
 /// [initializeUserSession] (which forces another token / Keychain path). On iOS,
 /// overlapping Swift concurrency work there has produced `swift_task_dealloc`
 /// crashes (FirebaseAuth `AuthKeychainStorageReal.update`); see [ApplicationNotes].
-const Duration _kIosAuthKeychainSettleBeforeSession = Duration(milliseconds: 350);
+const Duration _kIosAuthKeychainSettleBeforeSession = Duration(milliseconds: 600);
 
 /// Firebase Auth + Cloud Function [initializeUserSession] drive routing.
 ///
@@ -25,7 +25,13 @@ class AuthController extends ChangeNotifier {
     FirebaseAuth? auth,
   })  : _profileRepository = profileRepository ?? UserProfileRepository(),
         _sessionService = sessionService ?? ExpansionSessionService(),
-        _auth = auth ?? FirebaseAuth.instance {
+        _auth = auth ?? FirebaseAuth.instance;
+
+  /// Subscribes to [FirebaseAuth.authStateChanges]. Call once after the first frame
+  /// ([ExpansionNetworkApp] does this) so Profile/Release cold start does not race native
+  /// Keychain persistence with the first token/session work.
+  void attachAuthListener() {
+    if (_sub != null) return;
     _sub = _auth.authStateChanges().listen(_onAuthChanged);
   }
 

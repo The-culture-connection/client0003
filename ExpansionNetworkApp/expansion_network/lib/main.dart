@@ -24,7 +24,10 @@ Future<void> main() async {
   runApp(
     ChangeNotifierProvider.value(
       value: authController,
-      child: ExpansionNetworkApp(router: router),
+      child: ExpansionNetworkApp(
+        router: router,
+        authController: authController,
+      ),
     ),
   );
 }
@@ -34,15 +37,12 @@ Future<void> main() async {
 ///
 /// Use **Hot Reload** (`r`) or a **full stop + Run** — not Hot Restart (`R`) — while developing.
 Future<bool> _initFirebase() async {
-  // Never pair this with iOS AppDelegate FirebaseApp.configure(): that fills [apps] early and
-  // skips [initializeApp] below → broken Dart/native state and Release heap crashes.
+  // iOS `AppDelegate` calls `FirebaseApp.configure()` before plugin registration so
+  // Firestore/Auth (registered before `firebase_core` alphabetically) see a default app.
+  // Dart still calls [initializeApp] with [DefaultFirebaseOptions]; `duplicate-app` is OK.
   expansionReleaseTrace(
     '_initFirebase: Firebase.apps.length=${Firebase.apps.length} (before init)',
   );
-  if (Firebase.apps.isNotEmpty) {
-    expansionReleaseTrace('_initFirebase: skipped initializeApp (apps already non-empty)');
-    return true;
-  }
   try {
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
     expansionReleaseTrace(
@@ -61,6 +61,9 @@ Future<bool> _initFirebase() async {
     rethrow;
   } on FirebaseException catch (e, st) {
     if (e.code == 'duplicate-app') {
+      expansionReleaseTrace(
+        '_initFirebase: duplicate-app (already initialized), apps.length=${Firebase.apps.length}',
+      );
       return true;
     }
     debugPrint('_initFirebase: $e\n$st');
@@ -114,10 +117,31 @@ class _FirebaseBridgeLostApp extends StatelessWidget {
   }
 }
 
-class ExpansionNetworkApp extends StatelessWidget {
-  const ExpansionNetworkApp({required this.router, super.key});
+class ExpansionNetworkApp extends StatefulWidget {
+  const ExpansionNetworkApp({
+    required this.router,
+    required this.authController,
+    super.key,
+  });
 
   final GoRouter router;
+  final AuthController authController;
+
+  @override
+  State<ExpansionNetworkApp> createState() => _ExpansionNetworkAppState();
+}
+
+class _ExpansionNetworkAppState extends State<ExpansionNetworkApp> {
+  @override
+  void initState() {
+    super.initState();
+    // Profile / Release: subscribing in [AuthController]'s constructor runs in the same
+    // synchronous startup window as native Firebase + Keychain; defer one frame so Swift
+    // concurrency / Auth keychain work is less likely to overlap (see ApplicationNotes).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      widget.authController.attachAuthListener();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -125,7 +149,7 @@ class ExpansionNetworkApp extends StatelessWidget {
       title: 'Mortar Alumni Network',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
-      routerConfig: router,
+      routerConfig: widget.router,
     );
   }
 }
