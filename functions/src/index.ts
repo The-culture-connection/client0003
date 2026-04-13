@@ -7,6 +7,7 @@ import "./firebaseGlobalOptions";
 export * from "./expansionInvite";
 
 export { onUserCreated } from "./triggers/onUserCreated";
+export { onUserReportCreated } from "./triggers/onUserReportCreated";
 export { onMatchProfileWrite } from "./triggers/onMatchProfileWrite";
 export { scheduledNudgeIncompleteProfiles } from "./triggers/scheduledNudgeIncompleteProfiles";
 
@@ -33,6 +34,8 @@ export { importPptxDeck } from "./callables/importPptxDeck";
 export { joinGroup, leaveGroup, deleteMobileGroup } from "./callables/groupMembership";
 export {
   adminCreateMobileGroup,
+  adminUpdateMobileGroup,
+  adminModifyMobileGroupMembers,
   getUserModerationSnapshot,
   moderateUserAccount,
 } from "./callables/adminMobileModeration";

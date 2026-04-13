@@ -191,6 +191,171 @@ export const adminCreateMobileGroup = onCall(
   }
 );
 
+const adminUpdateMobileGroupSchema = z.object({
+  groupId: z.string().min(1),
+  name: z.string().min(1).max(120),
+  description: z.string().max(5000).optional().default(""),
+  rulesText: z.string().max(20000).optional().default(""),
+  category: z.string().optional().default(""),
+  visibility: z.enum(["public", "private"]),
+  status: z.enum(["Open", "Closed"]),
+});
+
+/** Staff-only: update `groups_mobile` metadata (same fields as create). */
+export const adminUpdateMobileGroup = onCall(
+  {region: "us-central1", invoker: "public", cors: callableCors},
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) {
+      throw new HttpsError("unauthenticated", "Sign in required");
+    }
+    await assertCallerIsNetworkAdmin(uid);
+
+    const parsed = adminUpdateMobileGroupSchema.safeParse(request.data);
+    if (!parsed.success) {
+      throw new HttpsError("invalid-argument", "Invalid payload for adminUpdateMobileGroup");
+    }
+    const {groupId, name, description, rulesText, category, visibility, status} = parsed.data;
+
+    const ref = db.collection(MOBILE_GROUPS).doc(groupId);
+    const snap = await ref.get();
+    if (!snap.exists) {
+      throw new HttpsError("not-found", "Community not found");
+    }
+
+    const catTrim = category.trim();
+    if (catTrim && !ALLOWED_GROUP_CATEGORIES.has(catTrim)) {
+      throw new HttpsError("invalid-argument", "Invalid category");
+    }
+
+    const descTrim = description.trim();
+    const rulesTrim = rulesText.trim();
+
+    const updates: Record<string, unknown> = {
+      Name: name.trim(),
+      Status: status,
+      visibility,
+      description: descTrim ? descTrim : FieldValue.delete(),
+      rulesText: rulesTrim ? rulesTrim : FieldValue.delete(),
+      category: catTrim ? catTrim : FieldValue.delete(),
+    };
+    await ref.update(updates);
+
+    return {ok: true, groupId};
+  }
+);
+
+const adminModifyMobileGroupMembersSchema = z.object({
+  groupId: z.string().min(1),
+  addRows: z.array(placementRowSchema).max(200).optional().default([]),
+  removeUids: z.array(z.string().min(1)).max(500).optional().default([]),
+  removeEmails: z.array(z.string().min(3).max(320)).max(200).optional().default([]),
+});
+
+/** Staff-only: add/remove `GroupMembers` and append `placement_audit` for new adds. */
+export const adminModifyMobileGroupMembers = onCall(
+  {region: "us-central1", invoker: "public", cors: callableCors},
+  async (request) => {
+    const caller = request.auth?.uid;
+    if (!caller) {
+      throw new HttpsError("unauthenticated", "Sign in required");
+    }
+    await assertCallerIsNetworkAdmin(caller);
+
+    const parsed = adminModifyMobileGroupMembersSchema.safeParse(request.data);
+    if (!parsed.success) {
+      throw new HttpsError("invalid-argument", "Invalid payload for adminModifyMobileGroupMembers");
+    }
+    const {groupId, addRows, removeUids, removeEmails} = parsed.data;
+
+    const ref = db.collection(MOBILE_GROUPS).doc(groupId);
+
+    const removeSet = new Set(removeUids);
+    const unresolvedAddEmails: string[] = [];
+    const unresolvedRemoveEmails: string[] = [];
+    const addResolved: Array<{uid: string; email: string; reportReason: string}> = [];
+
+    for (const em of removeEmails) {
+      const norm = normalizeEmail(em);
+      if (!norm) continue;
+      try {
+        const au = await auth.getUserByEmail(norm);
+        removeSet.add(au.uid);
+      } catch {
+        unresolvedRemoveEmails.push(norm);
+      }
+    }
+
+    for (const row of addRows) {
+      const em = normalizeEmail(row.email);
+      if (!em) continue;
+      try {
+        const au = await auth.getUserByEmail(em);
+        addResolved.push({
+          uid: au.uid,
+          email: em,
+          reportReason: row.reportReason?.trim() ?? "",
+        });
+      } catch {
+        unresolvedAddEmails.push(em);
+      }
+    }
+
+    if (addResolved.length === 0 && removeSet.size === 0) {
+      return {
+        ok: true,
+        groupId,
+        unresolvedAddEmails,
+        unresolvedRemoveEmails,
+      };
+    }
+
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists) {
+        throw new HttpsError("not-found", "Community not found");
+      }
+      const data = snap.data()!;
+      const prev = Array.isArray(data.GroupMembers) ? [...(data.GroupMembers as string[])] : [];
+      const oldSet = new Set(prev);
+      for (const r of removeSet) {
+        oldSet.delete(r);
+      }
+      for (const a of addResolved) {
+        oldSet.add(a.uid);
+      }
+      const nextMembers = Array.from(oldSet);
+
+      const prevAudit = Array.isArray(data.placement_audit)
+        ? [...(data.placement_audit as Record<string, unknown>[])]
+        : [];
+      const newAudit = [...prevAudit];
+      for (const a of addResolved) {
+        if (!prev.includes(a.uid)) {
+          newAudit.push({
+            email: a.email,
+            uid: a.uid,
+            reportReason: a.reportReason,
+            placedAt: Timestamp.now(),
+          });
+        }
+      }
+
+      tx.update(ref, {
+        GroupMembers: nextMembers,
+        placement_audit: newAudit,
+      });
+    });
+
+    return {
+      ok: true,
+      groupId,
+      unresolvedAddEmails,
+      unresolvedRemoveEmails,
+    };
+  }
+);
+
 const getUserModerationSnapshotSchema = z.object({
   uid: z.string().min(1),
 });

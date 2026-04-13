@@ -38,6 +38,9 @@ import '../widgets/expansion_shell.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 
+/// For global overlays (e.g. content suspension dialog) that use the root navigator.
+GlobalKey<NavigatorState> get expansionRootNavigatorKey => _rootNavigatorKey;
+
 /// Auth + main app routes. [initialLocation] is `/session` so the marketing landing does not flash before session resolves.
 GoRouter createAppRouter(AuthController auth) {
   return GoRouter(

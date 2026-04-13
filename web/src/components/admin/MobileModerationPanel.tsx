@@ -26,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const GROUP_CATEGORIES = [
   "__none__",
@@ -40,6 +41,26 @@ const GROUP_CATEGORIES = [
 ] as const;
 
 type PlacementRow = { email: string; reportReason: string };
+
+const CATEGORY_VALUES = GROUP_CATEGORIES.filter((c) => c !== "__none__") as readonly string[];
+
+function categoryFieldToUi(raw: unknown): string {
+  const c = str(raw).trim();
+  return CATEGORY_VALUES.includes(c) ? c : "__none__";
+}
+
+function groupCreatedMs(data: Record<string, unknown>): number {
+  const c = data.Created;
+  if (
+    c &&
+    typeof c === "object" &&
+    "toMillis" in c &&
+    typeof (c as { toMillis: unknown }).toMillis === "function"
+  ) {
+    return (c as { toMillis: () => number }).toMillis();
+  }
+  return 0;
+}
 
 function str(v: unknown): string {
   return typeof v === "string" ? v : v == null ? "" : String(v);
@@ -226,6 +247,38 @@ export function MobileModerationPanel() {
   const [modBusy, setModBusy] = useState<string | null>(null);
   const [modErr, setModErr] = useState<string | null>(null);
 
+  const [mobileGroups, setMobileGroups] = useState<
+    QueryDocumentSnapshot<Record<string, unknown>>[]
+  >([]);
+  const [mobileGroupsErr, setMobileGroupsErr] = useState<string | null>(null);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editRules, setEditRules] = useState("");
+  const [editCategory, setEditCategory] = useState("__none__");
+  const [editVisibility, setEditVisibility] = useState<"public" | "private">("public");
+  const [editStatus, setEditStatus] = useState<"Open" | "Closed">("Open");
+  const [addMemberEmail, setAddMemberEmail] = useState("");
+  const [addMemberReason, setAddMemberReason] = useState("");
+  const [removeMemberEmail, setRemoveMemberEmail] = useState("");
+  const [manageBusy, setManageBusy] = useState<string | null>(null);
+  const [manageMsg, setManageMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    const q = query(collection(db, "groups_mobile"));
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        setMobileGroupsErr(null);
+        const docs = snap.docs as QueryDocumentSnapshot<Record<string, unknown>>[];
+        docs.sort((a, b) => groupCreatedMs(b.data()) - groupCreatedMs(a.data()));
+        setMobileGroups(docs);
+      },
+      (e) => setMobileGroupsErr(e.message)
+    );
+    return () => unsub();
+  }, []);
+
   useEffect(() => {
     const q = query(
       collection(db, "user_reports"),
@@ -282,6 +335,9 @@ export function MobileModerationPanel() {
               ? ` Unresolved emails (no Auth user): ${unresolved.join(", ")}`
               : "")
         );
+        if (gid) {
+          setSelectedGroupId(gid);
+        }
       }
     } catch (e: unknown) {
       const err = e as { message?: string };
@@ -334,10 +390,133 @@ export function MobileModerationPanel() {
     }
   };
 
+  const applyGroupDocToEditor = (d: QueryDocumentSnapshot<Record<string, unknown>>) => {
+    const data = d.data();
+    setSelectedGroupId(d.id);
+    setEditName(str(data.Name));
+    setEditDescription(str(data.description));
+    setEditRules(str(data.rulesText));
+    setEditCategory(categoryFieldToUi(data.category));
+    const vis = str(data.visibility).toLowerCase();
+    setEditVisibility(vis === "private" ? "private" : "public");
+    const st = str(data.Status);
+    setEditStatus(st === "Closed" ? "Closed" : "Open");
+    setManageMsg(null);
+  };
+
+  const handleSaveGroupMeta = async () => {
+    if (!selectedGroupId || !editName.trim()) return;
+    setManageBusy("meta");
+    setManageMsg(null);
+    try {
+      await runCallable("adminUpdateMobileGroup", {
+        groupId: selectedGroupId,
+        name: editName.trim(),
+        description: editDescription,
+        rulesText: editRules,
+        category: editCategory === "__none__" ? "" : editCategory,
+        visibility: editVisibility,
+        status: editStatus,
+      });
+      setManageMsg("Saved community details.");
+    } catch (e: unknown) {
+      const err = e as { message?: string };
+      setManageMsg(err.message ?? String(e));
+    } finally {
+      setManageBusy(null);
+    }
+  };
+
+  const handleAddMember = async () => {
+    if (!selectedGroupId || !addMemberEmail.trim()) return;
+    setManageBusy("add");
+    setManageMsg(null);
+    try {
+      const out = await runCallable("adminModifyMobileGroupMembers", {
+        groupId: selectedGroupId,
+        addRows: [
+          {
+            email: addMemberEmail.trim(),
+            reportReason: addMemberReason.trim(),
+          },
+        ],
+        removeUids: [],
+        removeEmails: [],
+      });
+      const ua = (out.unresolvedAddEmails as string[]) ?? [];
+      setAddMemberEmail("");
+      setAddMemberReason("");
+      setManageMsg(
+        ua.length
+          ? `No Auth user for: ${ua.join(", ")}`
+          : "Member added."
+      );
+    } catch (e: unknown) {
+      const err = e as { message?: string };
+      setManageMsg(err.message ?? String(e));
+    } finally {
+      setManageBusy(null);
+    }
+  };
+
+  const handleRemoveUid = async (uid: string) => {
+    if (!selectedGroupId) return;
+    setManageBusy(`rm:${uid}`);
+    setManageMsg(null);
+    try {
+      await runCallable("adminModifyMobileGroupMembers", {
+        groupId: selectedGroupId,
+        addRows: [],
+        removeUids: [uid],
+        removeEmails: [],
+      });
+      setManageMsg("Member removed.");
+    } catch (e: unknown) {
+      const err = e as { message?: string };
+      setManageMsg(err.message ?? String(e));
+    } finally {
+      setManageBusy(null);
+    }
+  };
+
+  const handleRemoveByEmail = async () => {
+    if (!selectedGroupId || !removeMemberEmail.trim()) return;
+    setManageBusy("rmEmail");
+    setManageMsg(null);
+    try {
+      const out = await runCallable("adminModifyMobileGroupMembers", {
+        groupId: selectedGroupId,
+        addRows: [],
+        removeUids: [],
+        removeEmails: [removeMemberEmail.trim()],
+      });
+      const ur = (out.unresolvedRemoveEmails as string[]) ?? [];
+      setRemoveMemberEmail("");
+      setManageMsg(
+        ur.length
+          ? `No Auth user for: ${ur.join(", ")}`
+          : "Remove by email processed."
+      );
+    } catch (e: unknown) {
+      const err = e as { message?: string };
+      setManageMsg(err.message ?? String(e));
+    } finally {
+      setManageBusy(null);
+    }
+  };
+
+  const selectedGroupData = selectedGroupId
+    ? mobileGroups.find((g) => g.id === selectedGroupId)?.data()
+    : undefined;
+  const memberUids = Array.isArray(selectedGroupData?.GroupMembers)
+    ? (selectedGroupData!.GroupMembers as string[])
+    : [];
+
   return (
-    <div className="space-y-10 max-w-4xl">
-      <Card className="p-6 border-border bg-card">
-        <h2 className="text-lg font-semibold mb-2">Mobile communities (groups_mobile)</h2>
+    <div className="space-y-10 max-w-7xl">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        <Card className="p-6 border-border bg-card">
+        <h2 className="text-lg font-semibold mb-2">Create mobile community</h2>
         <p className="text-sm text-muted-foreground mb-4">
           Staff-created communities with <strong>public</strong> (anyone can join) or{" "}
           <strong>private</strong> (no self-join; add members by email). Optional placement
@@ -476,6 +655,211 @@ export function MobileModerationPanel() {
           ) : null}
         </div>
       </Card>
+
+        <Card className="p-6 border-border bg-card">
+          <h2 className="text-lg font-semibold mb-2">Manage mobile communities</h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            All <code className="text-xs bg-muted px-1">groups_mobile</code> docs (live list). Select one to edit
+            fields or membership. Updates use Cloud Functions so they work without Auth custom claims on your
+            account.
+          </p>
+          {mobileGroupsErr ? (
+            <p className="text-sm text-destructive mb-3">{mobileGroupsErr}</p>
+          ) : null}
+          <div className="space-y-4">
+            <div>
+              <Label>Communities</Label>
+              <ScrollArea className="h-[200px] border border-border rounded-md mt-1">
+                <ul className="p-2 space-y-1">
+                  {mobileGroups.length === 0 ? (
+                    <li className="text-sm text-muted-foreground px-2 py-3">No communities yet.</li>
+                  ) : (
+                    mobileGroups.map((g) => {
+                      const data = g.data();
+                      const label = str(data.Name) || g.id;
+                      const sel = g.id === selectedGroupId;
+                      return (
+                        <li key={g.id}>
+                          <button
+                            type="button"
+                            onClick={() => applyGroupDocToEditor(g)}
+                            className={`w-full text-left text-sm rounded-md px-2 py-2 transition-colors ${
+                              sel
+                                ? "bg-accent text-accent-foreground"
+                                : "hover:bg-muted"
+                            }`}
+                          >
+                            <span className="font-medium line-clamp-1">{label}</span>
+                            <span className="block text-xs opacity-80 font-mono truncate">{g.id}</span>
+                          </button>
+                        </li>
+                      );
+                    })
+                  )}
+                </ul>
+              </ScrollArea>
+            </div>
+
+            {selectedGroupId ? (
+              <div className="space-y-4 pt-2 border-t border-border/60">
+                <p className="text-xs text-muted-foreground font-mono break-all">Editing: {selectedGroupId}</p>
+                <div>
+                  <Label>Name</Label>
+                  <Input
+                    className="mt-1"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    maxLength={120}
+                  />
+                </div>
+                <div>
+                  <Label>Description</Label>
+                  <Textarea
+                    className="mt-1"
+                    value={editDescription}
+                    onChange={(e) => setEditDescription(e.target.value)}
+                    rows={2}
+                  />
+                </div>
+                <div>
+                  <Label>Rules</Label>
+                  <Textarea
+                    className="mt-1"
+                    value={editRules}
+                    onChange={(e) => setEditRules(e.target.value)}
+                    rows={2}
+                  />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <Label>Category</Label>
+                    <Select value={editCategory} onValueChange={setEditCategory}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="None" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {GROUP_CATEGORIES.map((c) => (
+                          <SelectItem key={c} value={c}>
+                            {c === "__none__" ? "None" : c}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Visibility</Label>
+                    <Select
+                      value={editVisibility}
+                      onValueChange={(v) => setEditVisibility(v as "public" | "private")}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="public">Public</SelectItem>
+                        <SelectItem value="private">Private</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Status</Label>
+                    <Select
+                      value={editStatus}
+                      onValueChange={(v) => setEditStatus(v as "Open" | "Closed")}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Open">Open</SelectItem>
+                        <SelectItem value="Closed">Closed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  disabled={manageBusy !== null || !editName.trim()}
+                  onClick={() => void handleSaveGroupMeta()}
+                >
+                  {manageBusy === "meta" ? "Saving…" : "Save community details"}
+                </Button>
+
+                <div className="space-y-2 pt-2 border-t border-border/60">
+                  <Label>Members ({memberUids.length})</Label>
+                  <ScrollArea className="h-[min(220px,40vh)] border border-border rounded-md">
+                    <ul className="p-2 space-y-1">
+                      {memberUids.length === 0 ? (
+                        <li className="text-sm text-muted-foreground px-2">No members.</li>
+                      ) : (
+                        memberUids.map((uid) => (
+                          <li
+                            key={uid}
+                            className="flex flex-wrap items-center justify-between gap-2 text-sm px-2 py-1 rounded hover:bg-muted/60"
+                          >
+                            <span className="font-mono text-xs break-all">{uid}</span>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              disabled={manageBusy !== null}
+                              onClick={() => void handleRemoveUid(uid)}
+                            >
+                              {manageBusy === `rm:${uid}` ? "…" : "Remove"}
+                            </Button>
+                          </li>
+                        ))
+                      )}
+                    </ul>
+                  </ScrollArea>
+                  <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                    <Input
+                      placeholder="Add by email"
+                      value={addMemberEmail}
+                      onChange={(e) => setAddMemberEmail(e.target.value)}
+                    />
+                    <Input
+                      className="sm:flex-1"
+                      placeholder="Audit reason (optional)"
+                      value={addMemberReason}
+                      onChange={(e) => setAddMemberReason(e.target.value)}
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={manageBusy !== null || !addMemberEmail.trim()}
+                      onClick={() => void handleAddMember()}
+                    >
+                      {manageBusy === "add" ? "…" : "Add"}
+                    </Button>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Input
+                      placeholder="Remove by email"
+                      value={removeMemberEmail}
+                      onChange={(e) => setRemoveMemberEmail(e.target.value)}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={manageBusy !== null || !removeMemberEmail.trim()}
+                      onClick={() => void handleRemoveByEmail()}
+                    >
+                      {manageBusy === "rmEmail" ? "…" : "Remove by email"}
+                    </Button>
+                  </div>
+                </div>
+
+                {manageMsg ? (
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">{manageMsg}</p>
+                ) : null}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Select a community to edit.</p>
+            )}
+          </div>
+        </Card>
+      </div>
 
       <Card className="p-6 border-border bg-card">
         <h2 className="text-lg font-semibold mb-2">User reports (moderation)</h2>

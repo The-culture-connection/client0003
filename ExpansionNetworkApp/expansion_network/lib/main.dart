@@ -9,6 +9,7 @@ import 'expansion_release_trace.dart';
 import 'firebase_options.dart';
 import 'router/app_router.dart';
 import 'theme/app_theme.dart';
+import 'widgets/content_suspension_gate.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -150,6 +151,9 @@ class _ExpansionNetworkAppState extends State<ExpansionNetworkApp> {
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
       routerConfig: widget.router,
+      builder: (context, child) {
+        return ContentSuspensionGate(child: child);
+      },
     );
   }
 }
