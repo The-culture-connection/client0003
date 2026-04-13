@@ -255,61 +255,74 @@ class _MediaStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final h = compact ? 160.0 : 220.0;
+    // Tall cap so portrait / logo art shows in full (contain), not cropped like cover.
+    final singleMaxH = compact ? 420.0 : 640.0;
+    final carouselH = compact ? 200.0 : 260.0;
     if (media.length == 1) {
       final m = media.first;
       return ClipRRect(
         borderRadius: BorderRadius.circular(4),
-        child: SizedBox(
-          height: h,
-          width: double.infinity,
-          child: m.isVideo
-              ? _MortarInlineVideo(url: m.url, height: h)
-              : CachedNetworkImage(
-                  imageUrl: m.url,
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                  placeholder: (_, __) => const Center(
-                    child: SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+        child: ColoredBox(
+          color: const Color(0xFF0A0A0A),
+          child: SizedBox(
+            width: double.infinity,
+            height: singleMaxH,
+            child: m.isVideo
+                ? _MortarInlineVideo(url: m.url, height: singleMaxH)
+                : CachedNetworkImage(
+                    imageUrl: m.url,
+                    fit: BoxFit.contain,
+                    width: double.infinity,
+                    height: singleMaxH,
+                    alignment: Alignment.center,
+                    placeholder: (_, __) => const Center(
+                      child: SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                      ),
                     ),
+                    errorWidget: (_, __, ___) => const Center(child: Icon(Icons.broken_image_outlined)),
                   ),
-                  errorWidget: (_, __, ___) => const Center(child: Icon(Icons.broken_image_outlined)),
-                ),
+          ),
         ),
       );
     }
 
     return SizedBox(
-      height: h,
+      height: carouselH,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: media.length,
         separatorBuilder: (_, __) => const SizedBox(width: 6),
         itemBuilder: (context, i) {
           final m = media[i];
-          final w = compact ? 200.0 : 280.0;
+          final w = compact ? 220.0 : 300.0;
           return ClipRRect(
             borderRadius: BorderRadius.circular(4),
-            child: SizedBox(
-              width: w,
-              height: h,
-              child: m.isVideo
-                  ? _MortarInlineVideo(url: m.url, height: h)
-                  : CachedNetworkImage(
-                      imageUrl: m.url,
-                      fit: BoxFit.cover,
-                      placeholder: (_, __) => const Center(
-                        child: SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+            child: ColoredBox(
+              color: const Color(0xFF0A0A0A),
+              child: SizedBox(
+                width: w,
+                height: carouselH,
+                child: m.isVideo
+                    ? _MortarInlineVideo(url: m.url, height: carouselH)
+                    : CachedNetworkImage(
+                        imageUrl: m.url,
+                        fit: BoxFit.contain,
+                        width: w,
+                        height: carouselH,
+                        alignment: Alignment.center,
+                        placeholder: (_, __) => const Center(
+                          child: SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                          ),
                         ),
+                        errorWidget: (_, __, ___) => const Icon(Icons.broken_image_outlined),
                       ),
-                      errorWidget: (_, __, ___) => const Icon(Icons.broken_image_outlined),
-                    ),
+              ),
             ),
           );
         },
@@ -429,7 +442,7 @@ class _MortarInlineVideoState extends State<_MortarInlineVideo> {
           alignment: Alignment.center,
           children: [
             FittedBox(
-              fit: BoxFit.cover,
+              fit: BoxFit.contain,
               child: SizedBox(
                 width: c.value.size.width,
                 height: c.value.size.height,
