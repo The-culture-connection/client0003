@@ -292,6 +292,44 @@ service cloud.firestore {
             .hasOnly(['registered_users', 'updated_at', 'available_spots']));
     }
 
+    // --- Mortar Info (staff announcements for Expansion home) ---
+    function mortarInfoPostKeys() {
+      return [
+        'title', 'body', 'published', 'media', 'created_at', 'updated_at',
+        'newsletter_url', 'newsletter_label'
+      ];
+    }
+
+    function staffMortarInfoWrite() {
+      return request.resource.data.keys().hasOnly(mortarInfoPostKeys())
+        && request.resource.data.title is string
+        && request.resource.data.title.size() <= 300
+        && request.resource.data.body is string
+        && request.resource.data.body.size() <= 20000
+        && (request.resource.data.title.size() > 0 || request.resource.data.body.size() > 0)
+        && request.resource.data.published is bool
+        && request.resource.data.media is list
+        && request.resource.data.media.size() <= 30
+        && (!('newsletter_url' in request.resource.data)
+          || (request.resource.data.newsletter_url is string
+            && request.resource.data.newsletter_url.size() <= 2048
+            && (request.resource.data.newsletter_url.size() == 0
+              || request.resource.data.newsletter_url.matches('https://.*'))))
+        && (!('newsletter_label' in request.resource.data)
+          || (request.resource.data.newsletter_label is string
+            && request.resource.data.newsletter_label.size() <= 200));
+    }
+
+    match /mortar_info_posts/{postId} {
+      allow read: if isSignedIn() && (
+        resource.data.get('published', false) == true
+        || hasStaffClaim()
+      );
+      allow create: if hasStaffClaim() && staffMortarInfoWrite();
+      allow update: if hasStaffClaim() && staffMortarInfoWrite();
+      allow delete: if hasStaffClaim();
+    }
+
     // --- Expansion app: jobs & skills listings (Explore) ---
     match /expansion_jobs/{jobId} {
       allow read: if isSignedIn();

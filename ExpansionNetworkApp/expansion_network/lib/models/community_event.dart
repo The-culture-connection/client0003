@@ -46,6 +46,21 @@ class CommunityEvent {
   bool get isPublished =>
       approvalStatus == null || approvalStatus == 'approved';
 
+  /// Staff / admin portal → `events_mobile` with `distribution: mobile` or `both`.
+  bool get isMortarHostedEvent {
+    final d = distribution?.trim().toLowerCase();
+    return d == 'mobile' || d == 'both';
+  }
+
+  /// Same as [isMortarHostedEvent] (kept for call sites that used this name).
+  bool get isMortarEvent => isMortarHostedEvent;
+
+  /// Member-submitted event with `created_by` — show poster row (not staff `distribution` posts).
+  bool get showsMemberPoster =>
+      !isMortarHostedEvent &&
+      createdBy != null &&
+      createdBy!.trim().isNotEmpty;
+
   bool isRegistered(String uid) => registeredUsers.contains(uid);
 
   int get registeredCount => registeredUsers.length;

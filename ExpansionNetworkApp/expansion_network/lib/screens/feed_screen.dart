@@ -8,12 +8,28 @@ import '../services/events_repository.dart';
 import '../theme/app_theme.dart';
 import '../utils/content_action_guard.dart';
 import '../utils/relative_time.dart';
+import '../widgets/event_poster_byline.dart';
 import '../widgets/event_rsvp_attendee_tile.dart';
+import '../widgets/event_source_badge.dart';
 import '../widgets/page_header.dart';
 
 /// Community feed: published [events] only (no feed posts).
-class FeedScreen extends StatelessWidget {
+class FeedScreen extends StatefulWidget {
   const FeedScreen({super.key});
+
+  @override
+  State<FeedScreen> createState() => _FeedScreenState();
+}
+
+class _FeedScreenState extends State<FeedScreen> {
+  /// 0 = All Events, 1 = Registered Events
+  int _tabIndex = 0;
+
+  List<CommunityEvent> _visibleEvents(List<CommunityEvent> all, String? uid) {
+    if (_tabIndex == 0) return all;
+    if (uid == null) return [];
+    return all.where((e) => e.isRegistered(uid)).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,6 +53,28 @@ class FeedScreen extends StatelessWidget {
             child: PageHeader(
               title: 'Events',
               subtitle: 'Upcoming community events',
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: SegmentedButton<int>(
+                segments: const [
+                  ButtonSegment<int>(value: 0, label: Text('All Events')),
+                  ButtonSegment<int>(value: 1, label: Text('Registered Events')),
+                ],
+                selected: {_tabIndex},
+                onSelectionChanged: (Set<int> next) {
+                  setState(() => _tabIndex = next.first);
+                },
+                style: SegmentedButton.styleFrom(
+                  selectedBackgroundColor: AppColors.primary,
+                  selectedForegroundColor: AppColors.onPrimary,
+                  backgroundColor: AppColors.secondary,
+                  foregroundColor: AppColors.foreground,
+                  side: const BorderSide(color: AppColors.border),
+                ),
+              ),
             ),
           ),
           SliverPadding(
@@ -76,90 +114,43 @@ class FeedScreen extends StatelessWidget {
                     ),
                   );
                 }
-                final u = uid;
-                final registeredCount = u == null ? 0 : events.where((e) => e.isRegistered(u)).length;
+                final visible = _visibleEvents(events, uid);
+                if (visible.isEmpty) {
+                  final message = _tabIndex == 1 && uid == null
+                      ? 'Sign in to see events you\'re registered for.'
+                      : 'You haven\'t registered for any events yet.';
+                  return SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(8, 24, 8, 32),
+                      child: Text(
+                        message,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: AppColors.mutedForeground, fontSize: 15),
+                      ),
+                    ),
+                  );
+                }
                 return SliverList(
-                  delegate: SliverChildListDelegate([
-                    _EventsSummaryBar(eventCount: events.length, registeredCount: registeredCount),
-                    const SizedBox(height: 16),
-                    for (final e in events)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final e = visible[index];
+                      return Padding(
+                        padding: EdgeInsets.only(bottom: index < visible.length - 1 ? 16 : 0),
                         child: _EventListTile(
                           event: e,
                           uid: uid,
                           onTap: () => context.push('/events/${e.id}'),
                         ),
-                      ),
-                  ]),
+                      );
+                    },
+                    childCount: visible.length,
+                  ),
                 );
               },
             ),
           ),
         ],
       ),
-    );
-  }
-}
-
-class _EventsSummaryBar extends StatelessWidget {
-  const _EventsSummaryBar({required this.eventCount, required this.registeredCount});
-
-  final int eventCount;
-  final int registeredCount;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        gradient: LinearGradient(
-          colors: [AppColors.primary, AppColors.primary.withValues(alpha: 0.85)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _StatCell(value: '$eventCount', label: 'Events', color: AppColors.onPrimary),
-          ),
-          Expanded(
-            child: _StatCell(value: '$registeredCount', label: 'Registered', color: AppColors.onPrimary),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatCell extends StatelessWidget {
-  const _StatCell({required this.value, required this.label, required this.color});
-
-  final String value;
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                color: color,
-                fontWeight: FontWeight.bold,
-              ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: color.withValues(alpha: 0.9),
-              ),
-        ),
-      ],
     );
   }
 }
@@ -179,11 +170,7 @@ class _EventListTile extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       child: Container(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.card,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.border),
-        ),
+        decoration: mortarEventListCardDecoration(event),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -202,9 +189,36 @@ class _EventListTile extends StatelessWidget {
               ),
             if (event.imageUrl != null && event.imageUrl!.isNotEmpty) const SizedBox(height: 12),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(child: Text(event.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16))),
-                if (registered)
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              event.title,
+                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                            ),
+                          ),
+                          if (event.isMortarHostedEvent) ...[
+                            const SizedBox(width: 8),
+                            const MortarOfficialVerifiedSeal(),
+                          ],
+                        ],
+                      ),
+                      if (event.isMortarHostedEvent) ...[
+                        const SizedBox(height: 8),
+                        EventSourceBadges(event: event, dense: true),
+                      ],
+                    ],
+                  ),
+                ),
+                if (registered) ...[
+                  const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
@@ -213,8 +227,13 @@ class _EventListTile extends StatelessWidget {
                     ),
                     child: const Text('Registered', style: TextStyle(fontSize: 11, color: AppColors.onPrimary)),
                   ),
+                ],
               ],
             ),
+            if (event.showsMemberPoster) ...[
+              const SizedBox(height: 10),
+              EventPosterByline(userId: event.createdBy!, dense: true),
+            ],
             const SizedBox(height: 12),
             _iconRow(Icons.calendar_today, formatEventDate(event.date)),
             _iconRow(Icons.schedule, event.time),
@@ -245,6 +264,15 @@ class _EventListTile extends StatelessWidget {
               width: double.infinity,
               child: OutlinedButton(
                 onPressed: onTap,
+                style: event.isMortarHostedEvent
+                    ? OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        side: const BorderSide(color: AppColors.primary, width: 1.5),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      )
+                    : OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
                 child: const Text('View details'),
               ),
             ),
@@ -255,13 +283,16 @@ class _EventListTile extends StatelessWidget {
   }
 
   Widget _iconRow(IconData icon, String text) {
+    final accent = event.isMortarHostedEvent;
+    final iconColor = accent ? AppColors.primary : AppColors.mutedForeground;
+    final textColor = accent ? AppColors.foreground.withValues(alpha: 0.92) : AppColors.mutedForeground;
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Row(
         children: [
-          Icon(icon, size: 16, color: AppColors.mutedForeground),
+          Icon(icon, size: 16, color: iconColor),
           const SizedBox(width: 8),
-          Expanded(child: Text(text, style: const TextStyle(fontSize: 13, color: AppColors.mutedForeground))),
+          Expanded(child: Text(text, style: TextStyle(fontSize: 13, color: textColor))),
         ],
       ),
     );

@@ -6,8 +6,11 @@ import 'package:go_router/go_router.dart';
 import '../models/community_event.dart';
 import '../services/events_repository.dart';
 import '../theme/app_theme.dart';
+import '../utils/event_calendar_prompt.dart';
 import '../utils/relative_time.dart';
+import '../widgets/event_poster_byline.dart';
 import '../widgets/event_rsvp_attendee_tile.dart';
+import '../widgets/event_source_badge.dart';
 
 class EventDetailScreen extends StatefulWidget {
   const EventDetailScreen({super.key, required this.eventId});
@@ -57,14 +60,22 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   Future<void> _toggleRegister(CommunityEvent e) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
+    final wasRegistered = e.isRegistered(uid);
     setState(() => _busy = true);
     try {
-      if (e.isRegistered(uid)) {
+      if (wasRegistered) {
         await _events.unregister(widget.eventId);
       } else {
         await _events.register(widget.eventId);
       }
       await _load();
+      if (!mounted) return;
+      if (!wasRegistered) {
+        final ev = _event;
+        if (ev != null && ev.date != null && ev.isRegistered(uid) && mounted) {
+          await showPostRegisterCalendarSheet(context, ev);
+        }
+      }
     } catch (err) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$err')));
@@ -116,125 +127,157 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         : ListView(
                             padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
                             children: [
-                              if (!e.isPublished) ...[
-                                Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.secondary,
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(color: AppColors.border),
-                                  ),
-                                  child: Text(
-                                    e.approvalStatus == 'pending'
-                                        ? 'This submission is under review in Digital Curriculum. It is not on the public feed yet.'
-                                        : e.approvalStatus == 'rejected'
-                                            ? 'This event was not published.${e.rejectionReason != null && e.rejectionReason!.isNotEmpty ? ' ${e.rejectionReason}' : ''}'
-                                            : 'This event is not published.',
-                                    style: const TextStyle(fontSize: 13, color: AppColors.mutedForeground),
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                              ],
-                              if (e.imageUrl != null && e.imageUrl!.isNotEmpty)
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: AspectRatio(
-                                    aspectRatio: 16 / 9,
-                                    child: CachedNetworkImage(
-                                      imageUrl: e.imageUrl!,
-                                      fit: BoxFit.cover,
-                                      placeholder: (_, __) => Container(color: AppColors.secondary),
-                                      errorWidget: (_, __, ___) => Container(
-                                        color: AppColors.secondary,
-                                        alignment: Alignment.center,
-                                        child: const Icon(Icons.event, size: 48, color: AppColors.mutedForeground),
+                              Container(
+                                decoration: e.isMortarHostedEvent ? mortarEventListCardDecoration(e) : null,
+                                padding: e.isMortarHostedEvent ? const EdgeInsets.all(14) : EdgeInsets.zero,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    if (!e.isPublished) ...[
+                                      Container(
+                                        width: double.infinity,
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.secondary,
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(color: AppColors.border),
+                                        ),
+                                        child: Text(
+                                          e.approvalStatus == 'pending'
+                                              ? 'This submission is under review in Digital Curriculum. It is not on the public feed yet.'
+                                              : e.approvalStatus == 'rejected'
+                                                  ? 'This event was not published.${e.rejectionReason != null && e.rejectionReason!.isNotEmpty ? ' ${e.rejectionReason}' : ''}'
+                                                  : 'This event is not published.',
+                                          style: const TextStyle(fontSize: 13, color: AppColors.mutedForeground),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 16),
+                                    ],
+                                    if (e.imageUrl != null && e.imageUrl!.isNotEmpty)
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: AspectRatio(
+                                          aspectRatio: 16 / 9,
+                                          child: CachedNetworkImage(
+                                            imageUrl: e.imageUrl!,
+                                            fit: BoxFit.cover,
+                                            placeholder: (_, __) => Container(color: AppColors.secondary),
+                                            errorWidget: (_, __, ___) => Container(
+                                              color: AppColors.secondary,
+                                              alignment: Alignment.center,
+                                              child: const Icon(Icons.event, size: 48, color: AppColors.mutedForeground),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    if (e.imageUrl != null && e.imageUrl!.isNotEmpty) const SizedBox(height: 16),
+                                    Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            e.title,
+                                            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+                                          ),
+                                        ),
+                                        if (e.isMortarHostedEvent) ...[
+                                          const SizedBox(width: 10),
+                                          const MortarOfficialVerifiedSeal(size: 26),
+                                        ],
+                                      ],
+                                    ),
+                                    if (e.isMortarHostedEvent) ...[
+                                      const SizedBox(height: 8),
+                                      EventSourceBadges(event: e),
+                                    ],
+                                    if (e.showsMemberPoster) ...[
+                                      const SizedBox(height: 12),
+                                      EventPosterByline(userId: e.createdBy!, dense: false),
+                                    ],
+                                    const SizedBox(height: 8),
+                                    Wrap(
+                                      spacing: 8,
+                                      runSpacing: 8,
+                                      children: [
+                                        Chip(
+                                          label: Text(e.eventType),
+                                          backgroundColor: AppColors.secondary,
+                                          side: const BorderSide(color: AppColors.border),
+                                        ),
+                                        if (e.date != null)
+                                          Chip(
+                                            label: Text(formatEventDate(e.date)),
+                                            backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+                                            side: BorderSide.none,
+                                          ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 16),
+                                    _detailRow(e, Icons.schedule, e.time),
+                                    _detailRow(e, Icons.place_outlined, e.location),
+                                    _detailRow(e, Icons.people_outline, '${e.registeredCount} registered'),
+                                    if (e.totalSpots != null && e.totalSpots! > 0)
+                                      _detailRow(e, Icons.event_seat, '${e.availableSpots ?? 0} spots left of ${e.totalSpots}'),
+                                    const SizedBox(height: 20),
+                                    Text(
+                                      'Details',
+                                      style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      e.details,
+                                      style: const TextStyle(fontSize: 15, height: 1.45, color: AppColors.foreground),
+                                    ),
+                                    const SizedBox(height: 24),
+                                    Text(
+                                      'RSVPs · ${e.registeredCount} going',
+                                      style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    if (e.registeredUsers.isEmpty)
+                                      const Text(
+                                        'No RSVPs yet. Be the first to register.',
+                                        style: TextStyle(fontSize: 14, color: AppColors.mutedForeground),
+                                      )
+                                    else
+                                      ...e.registeredUsers.map(
+                                        (id) => EventRsvpAttendeeTile(userId: id),
+                                      ),
+                                    const SizedBox(height: 24),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton(
+                                        onPressed: (!e.isPublished ||
+                                                _busy ||
+                                                u == null ||
+                                                (e.isFull && !e.isRegistered(u)))
+                                            ? null
+                                            : () => _toggleRegister(e),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: AppColors.primary,
+                                          foregroundColor: AppColors.onPrimary,
+                                          padding: const EdgeInsets.symmetric(vertical: 14),
+                                          elevation: e.isMortarHostedEvent ? 4 : 0,
+                                          shadowColor: e.isMortarHostedEvent
+                                              ? AppColors.primary.withValues(alpha: 0.55)
+                                              : Colors.transparent,
+                                        ),
+                                        child: _busy
+                                            ? const SizedBox(
+                                                height: 22,
+                                                width: 22,
+                                                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.onPrimary),
+                                              )
+                                            : Text(
+                                                u != null && e.isRegistered(u)
+                                                    ? 'Unregister'
+                                                    : e.isFull
+                                                        ? 'Event full'
+                                                        : 'Register',
+                                              ),
                                       ),
                                     ),
-                                  ),
-                                ),
-                              if (e.imageUrl != null && e.imageUrl!.isNotEmpty) const SizedBox(height: 16),
-                              Text(
-                                e.title,
-                                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
-                              ),
-                              const SizedBox(height: 8),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: [
-                                  Chip(
-                                    label: Text(e.eventType),
-                                    backgroundColor: AppColors.secondary,
-                                    side: const BorderSide(color: AppColors.border),
-                                  ),
-                                  if (e.date != null)
-                                    Chip(
-                                      label: Text(formatEventDate(e.date)),
-                                      backgroundColor: AppColors.primary.withValues(alpha: 0.12),
-                                      side: BorderSide.none,
-                                    ),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-                              _row(Icons.schedule, e.time),
-                              _row(Icons.place_outlined, e.location),
-                              _row(Icons.people_outline, '${e.registeredCount} registered'),
-                              if (e.totalSpots != null && e.totalSpots! > 0)
-                                _row(Icons.event_seat, '${e.availableSpots ?? 0} spots left of ${e.totalSpots}'),
-                              const SizedBox(height: 20),
-                              Text(
-                                'Details',
-                                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                e.details,
-                                style: const TextStyle(fontSize: 15, height: 1.45, color: AppColors.foreground),
-                              ),
-                              const SizedBox(height: 24),
-                              Text(
-                                'RSVPs · ${e.registeredCount} going',
-                                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-                              ),
-                              const SizedBox(height: 8),
-                              if (e.registeredUsers.isEmpty)
-                                const Text(
-                                  'No RSVPs yet. Be the first to register.',
-                                  style: TextStyle(fontSize: 14, color: AppColors.mutedForeground),
-                                )
-                              else
-                                ...e.registeredUsers.map(
-                                  (id) => EventRsvpAttendeeTile(userId: id),
-                                ),
-                              const SizedBox(height: 24),
-                              SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton(
-                                  onPressed: (!e.isPublished ||
-                                          _busy ||
-                                          u == null ||
-                                          (e.isFull && !e.isRegistered(u)))
-                                      ? null
-                                      : () => _toggleRegister(e),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.primary,
-                                    foregroundColor: AppColors.onPrimary,
-                                    padding: const EdgeInsets.symmetric(vertical: 14),
-                                  ),
-                                  child: _busy
-                                      ? const SizedBox(
-                                          height: 22,
-                                          width: 22,
-                                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.onPrimary),
-                                        )
-                                      : Text(
-                                          u != null && e.isRegistered(u)
-                                              ? 'Unregister'
-                                              : e.isFull
-                                                  ? 'Event full'
-                                                  : 'Register',
-                                        ),
+                                  ],
                                 ),
                               ),
                             ],
@@ -245,15 +288,19 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     );
   }
 
-  Widget _row(IconData icon, String text) {
+  Widget _detailRow(CommunityEvent e, IconData icon, String text) {
+    final accent = e.isMortarHostedEvent;
+    final iconColor = accent ? AppColors.primary : AppColors.mutedForeground;
+    final textColor =
+        accent ? AppColors.foreground.withValues(alpha: 0.92) : AppColors.mutedForeground;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 20, color: AppColors.mutedForeground),
+          Icon(icon, size: 20, color: iconColor),
           const SizedBox(width: 10),
-          Expanded(child: Text(text, style: const TextStyle(fontSize: 15, color: AppColors.mutedForeground))),
+          Expanded(child: Text(text, style: TextStyle(fontSize: 15, color: textColor))),
         ],
       ),
     );

@@ -12,6 +12,8 @@ import '../services/group_thread_repository.dart';
 import '../theme/app_theme.dart';
 import '../utils/content_action_guard.dart';
 import '../widgets/feed_post_card.dart';
+import '../models/mortar_info_post.dart';
+import '../services/mortar_info_repository.dart';
 
 /// Port of [UI Basis/src/app/pages/Home.tsx] — group activity from `groups_mobile`, no feed posts.
 class HomeScreen extends StatelessWidget {
@@ -44,7 +46,7 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  const _HomeLatestJobSkillRow(),
+                  const _HomeLatestMortarJobSkillRow(),
                   const SizedBox(height: 12),
                   const _RecentActivityCard(),
                   const SizedBox(height: 12),
@@ -247,95 +249,172 @@ class _RecentActivityCard extends StatelessWidget {
   }
 }
 
-class _HomeLatestJobSkillRow extends StatelessWidget {
-  const _HomeLatestJobSkillRow();
+class _HomeLatestMortarJobSkillRow extends StatelessWidget {
+  const _HomeLatestMortarJobSkillRow();
 
   @override
   Widget build(BuildContext context) {
-    final repo = ExploreListingsRepository();
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: StreamBuilder<List<ExploreJob>>(
-              stream: repo.watchJobs(),
-              builder: (context, snap) {
-                if (snap.hasError) {
-                  return _LatestListingCard(
+    final exploreRepo = ExploreListingsRepository();
+    final mortarRepo = MortarInfoRepository();
+    final cardWidth = () {
+      final w = MediaQuery.sizeOf(context).width - 32;
+      return w * 0.78;
+    }();
+    return _CardShell(
+      title: 'Latest',
+      actionLabel: 'Explore',
+      onAction: () => context.go('/explore'),
+      secondaryActionLabel: 'Events',
+      onSecondaryAction: () => context.push('/events'),
+      child: SizedBox(
+        height: 168,
+        child: ListView(
+          scrollDirection: Axis.horizontal,
+          clipBehavior: Clip.none,
+          children: [
+            SizedBox(
+              width: cardWidth,
+              child: StreamBuilder<List<MortarInfoPost>>(
+                stream: mortarRepo.watchPublishedPosts(limit: 5),
+                builder: (context, snap) {
+                  if (snap.hasError) {
+                    return _LatestListingPane(
+                      icon: Icons.campaign_outlined,
+                      label: 'Mortar',
+                      primary: 'Couldn’t load',
+                      secondary: _shortError(snap.error),
+                      busy: false,
+                      onTap: () {},
+                    );
+                  }
+                  final list = snap.data ?? [];
+                  final p = list.isNotEmpty ? list.first : null;
+                  final primary = p == null
+                      ? 'No updates yet'
+                      : (p.title.trim().isNotEmpty ? p.title.trim() : _bodyPreview(p.body, 72));
+                  final secondary = p == null
+                      ? 'Official news will appear here.'
+                      : _mortarPostSecondary(p);
+                  return _LatestListingPane(
+                    icon: Icons.campaign_outlined,
+                    label: 'Mortar',
+                    primary: primary,
+                    secondary: secondary,
+                    busy: snap.connectionState == ConnectionState.waiting && !snap.hasData,
+                    onTap: p != null ? () => context.push('/mortar-info/${p.id}') : () {},
+                  );
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
+            SizedBox(
+              width: cardWidth,
+              child: StreamBuilder<List<ExploreJob>>(
+                stream: exploreRepo.watchJobs(),
+                builder: (context, snap) {
+                  if (snap.hasError) {
+                    return _LatestListingPane(
+                      icon: Icons.work_outline,
+                      label: 'Job',
+                      primary: 'Couldn’t load',
+                      secondary: '${snap.error}',
+                      busy: false,
+                      onTap: () => context.go('/explore?filter=jobs'),
+                    );
+                  }
+                  final list = snap.data ?? [];
+                  final j = list.isNotEmpty ? list.first : null;
+                  final sub = j == null
+                      ? 'Open Explore to post a job.'
+                      : [
+                          if (j.skillsSeeking.isNotEmpty) j.skillsSeeking.join(' · '),
+                          if (j.industry != null && j.industry!.isNotEmpty) j.industry!,
+                          if (j.location != null && j.location!.isNotEmpty) j.location!,
+                        ].join(' · ');
+                  return _LatestListingPane(
                     icon: Icons.work_outline,
-                    title: 'Latest job',
-                    primary: 'Couldn’t load',
-                    secondary: '${snap.error}',
-                    busy: false,
+                    label: 'Job',
+                    primary: j?.title ?? 'No jobs yet',
+                    secondary: sub,
+                    busy: snap.connectionState == ConnectionState.waiting && !snap.hasData,
                     onTap: () => context.go('/explore?filter=jobs'),
                   );
-                }
-                final list = snap.data ?? [];
-                final j = list.isNotEmpty ? list.first : null;
-                final sub = j == null
-                    ? 'Open Explore to post a job.'
-                    : [
-                        if (j.skillsSeeking.isNotEmpty) j.skillsSeeking.join(' · '),
-                        if (j.industry != null && j.industry!.isNotEmpty) j.industry!,
-                        if (j.location != null && j.location!.isNotEmpty) j.location!,
-                      ].join(' · ');
-                return _LatestListingCard(
-                  icon: Icons.work_outline,
-                  title: 'Latest job',
-                  primary: j?.title ?? 'No jobs yet',
-                  secondary: sub,
-                  busy: snap.connectionState == ConnectionState.waiting && !snap.hasData,
-                  onTap: () => context.go('/explore?filter=jobs'),
-                );
-              },
+                },
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: StreamBuilder<List<ExploreSkillListing>>(
-              stream: repo.watchSkillListings(),
-              builder: (context, snap) {
-                if (snap.hasError) {
-                  return _LatestListingCard(
+            const SizedBox(width: 12),
+            SizedBox(
+              width: cardWidth,
+              child: StreamBuilder<List<ExploreSkillListing>>(
+                stream: exploreRepo.watchSkillListings(),
+                builder: (context, snap) {
+                  if (snap.hasError) {
+                    return _LatestListingPane(
+                      icon: Icons.psychology_outlined,
+                      label: 'Skill',
+                      primary: 'Couldn’t load',
+                      secondary: '${snap.error}',
+                      busy: false,
+                      onTap: () => context.go('/explore?filter=skills'),
+                    );
+                  }
+                  final list = snap.data ?? [];
+                  final s = list.isNotEmpty ? list.first : null;
+                  final sub = s == null
+                      ? 'Open Explore to offer a skill.'
+                      : [
+                          if (s.skillsOffering.isNotEmpty) s.skillsOffering.join(' · '),
+                          if (s.industry != null && s.industry!.isNotEmpty) s.industry!,
+                          if (s.location != null && s.location!.isNotEmpty) s.location!,
+                        ].join(' · ');
+                  return _LatestListingPane(
                     icon: Icons.psychology_outlined,
-                    title: 'Latest skill',
-                    primary: 'Couldn’t load',
-                    secondary: '${snap.error}',
-                    busy: false,
+                    label: 'Skill',
+                    primary: s?.title ?? 'No skills yet',
+                    secondary: sub,
+                    busy: snap.connectionState == ConnectionState.waiting && !snap.hasData,
                     onTap: () => context.go('/explore?filter=skills'),
                   );
-                }
-                final list = snap.data ?? [];
-                final s = list.isNotEmpty ? list.first : null;
-                final sub = s == null
-                    ? 'Open Explore to offer a skill.'
-                    : [
-                        if (s.skillsOffering.isNotEmpty) s.skillsOffering.join(' · '),
-                        if (s.industry != null && s.industry!.isNotEmpty) s.industry!,
-                        if (s.location != null && s.location!.isNotEmpty) s.location!,
-                      ].join(' · ');
-                return _LatestListingCard(
-                  icon: Icons.psychology_outlined,
-                  title: 'Latest skill',
-                  primary: s?.title ?? 'No skills yet',
-                  secondary: sub,
-                  busy: snap.connectionState == ConnectionState.waiting && !snap.hasData,
-                  onTap: () => context.go('/explore?filter=skills'),
-                );
-              },
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
-class _LatestListingCard extends StatelessWidget {
-  const _LatestListingCard({
+String _shortError(Object? e) {
+  final s = e?.toString() ?? '';
+  if (s.length <= 120) return s;
+  return '${s.substring(0, 117)}…';
+}
+
+String _bodyPreview(String body, int maxChars) {
+  final t = body.trim();
+  if (t.isEmpty) return 'Tap to read';
+  if (t.length <= maxChars) return t;
+  return '${t.substring(0, maxChars).trim()}…';
+}
+
+String _mortarPostSecondary(MortarInfoPost p) {
+  final parts = <String>[];
+  if (p.body.trim().isNotEmpty && p.title.trim().isNotEmpty) {
+    parts.add(_bodyPreview(p.body, 80));
+  } else if (p.body.trim().isNotEmpty && p.title.trim().isEmpty) {
+    parts.add(_bodyPreview(p.body, 100));
+  }
+  if (p.hasNewsletterLink) parts.add('Newsletter link');
+  if (p.media.isNotEmpty) parts.add('${p.media.length} attachment${p.media.length == 1 ? '' : 's'}');
+  if (parts.isEmpty) return 'Official Mortar update · tap to read';
+  return parts.take(2).join(' · ');
+}
+
+class _LatestListingPane extends StatelessWidget {
+  const _LatestListingPane({
     required this.icon,
-    required this.title,
+    required this.label,
     required this.primary,
     required this.secondary,
     required this.onTap,
@@ -343,7 +422,7 @@ class _LatestListingCard extends StatelessWidget {
   });
 
   final IconData icon;
-  final String title;
+  final String label;
   final String primary;
   final String secondary;
   final VoidCallback onTap;
@@ -351,55 +430,65 @@ class _LatestListingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _CardShell(
-      title: title,
-      onAction: onTap,
-      child: busy
-          ? const Padding(
-              padding: EdgeInsets.symmetric(vertical: 12),
-              child: Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary))),
-            )
-          : InkWell(
-              onTap: onTap,
-              borderRadius: BorderRadius.circular(8),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppColors.background,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(icon, size: 14, color: AppColors.primary),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            primary,
-                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (secondary.isNotEmpty) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        secondary,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 10, color: AppColors.mutedForeground),
-                      ),
-                    ],
-                  ],
-                ),
+    return busy
+        ? const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Center(
+              child: SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
               ),
             ),
-    );
+          )
+        : InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(icon, size: 14, color: AppColors.primary),
+                      const SizedBox(width: 6),
+                      Text(
+                        label,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.mutedForeground,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    primary,
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (secondary.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      secondary,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 10, color: AppColors.mutedForeground),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          );
   }
 }
 
@@ -476,12 +565,16 @@ class _CardShell extends StatelessWidget {
     required this.child,
     this.onAction,
     this.actionLabel,
+    this.onSecondaryAction,
+    this.secondaryActionLabel,
   });
 
   final String title;
   final Widget child;
   final VoidCallback? onAction;
   final String? actionLabel;
+  final VoidCallback? onSecondaryAction;
+  final String? secondaryActionLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -505,24 +598,57 @@ class _CardShell extends StatelessWidget {
                       ),
                 ),
               ),
-              if (onAction != null)
-                TextButton(
-                  onPressed: onAction,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (actionLabel != null)
-                        Text(
-                          actionLabel!,
-                          style: const TextStyle(fontSize: 12, color: AppColors.primary),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (onSecondaryAction != null && secondaryActionLabel != null)
+                      TextButton(
+                        onPressed: onSecondaryAction,
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
-                      if (actionLabel == null)
-                        const Icon(Icons.arrow_forward, size: 16, color: AppColors.primary),
-                      if (actionLabel != null)
-                        const Icon(Icons.arrow_forward, size: 14, color: AppColors.primary),
-                    ],
-                  ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              secondaryActionLabel!,
+                              style: const TextStyle(fontSize: 12, color: AppColors.primary),
+                            ),
+                            const SizedBox(width: 2),
+                            const Icon(Icons.arrow_forward, size: 14, color: AppColors.primary),
+                          ],
+                        ),
+                      ),
+                    if (onAction != null)
+                      TextButton(
+                        onPressed: onAction,
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (actionLabel != null)
+                              Text(
+                                actionLabel!,
+                                style: const TextStyle(fontSize: 12, color: AppColors.primary),
+                              ),
+                            if (actionLabel == null)
+                              const Icon(Icons.arrow_forward, size: 16, color: AppColors.primary),
+                            if (actionLabel != null)
+                              const Icon(Icons.arrow_forward, size: 14, color: AppColors.primary),
+                          ],
+                        ),
+                      ),
+                  ],
                 ),
+              ),
             ],
           ),
           const SizedBox(height: 8),

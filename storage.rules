@@ -62,6 +62,15 @@ service firebase.storage {
         && request.resource.contentType.matches('image/.*');
     }
 
+    // Staff Mortar Info announcements (images + videos; postId from Firestore doc id)
+    match /mortar_info/{postId}/{fileName} {
+      allow read: if isSignedIn();
+      allow write: if hasStaffClaim()
+        && request.resource.size < 101 * 1024 * 1024
+        && (request.resource.contentType.matches('image/.*')
+          || request.resource.contentType.matches('video/.*'));
+    }
+
     // Community feed post images (Expansion app); path scoped by uid
     match /feed_posts/member_uploads/{userId}/{fileName} {
       allow read: if isSignedIn();

@@ -38,6 +38,7 @@ import {
   KeyRound,
   Smartphone,
   ShieldAlert,
+  Megaphone,
 } from "lucide-react";
 import { useAuth } from "../components/auth/AuthProvider";
 import {
@@ -117,6 +118,7 @@ import {
 } from "../lib/curriculum";
 import { AppAccessHubPanel } from "../components/admin/AppAccessHubPanel";
 import { MobileModerationPanel } from "../components/admin/MobileModerationPanel";
+import { MortarInfoAdminPanel } from "../components/admin/MortarInfoAdminPanel";
 import { registerDigitalCurriculumAlumniEligible } from "../lib/expansionEligible";
 
 interface DirectMessage {
@@ -1030,6 +1032,10 @@ export function AdminPage() {
           <TabsTrigger value="expansion-mobile">
             <ShieldAlert className="w-4 h-4 mr-2" />
             Expansion mobile
+          </TabsTrigger>
+          <TabsTrigger value="mortar-info">
+            <Megaphone className="w-4 h-4 mr-2" />
+            Mortar Info
           </TabsTrigger>
           <TabsTrigger value="messages">
             <MessageSquare className="w-4 h-4 mr-2" />
@@ -2038,6 +2044,10 @@ export function AdminPage() {
             <code className="text-xs bg-muted px-1">moderateUserAccount</code> to this project.
           </p>
           <MobileModerationPanel />
+        </TabsContent>
+
+        <TabsContent value="mortar-info" className="space-y-6">
+          <MortarInfoAdminPanel />
         </TabsContent>
 
         {/* Shop Tab */}
