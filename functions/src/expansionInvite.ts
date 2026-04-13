@@ -13,6 +13,8 @@ import {
 } from "firebase-admin/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 
+import { callableCorsAllowlist } from "./callableCorsAllowlist";
+
 initializeApp();
 const db = getFirestore();
 const auth = getAuth();
@@ -26,21 +28,11 @@ const auth = getAuth();
  * `invoker: "public"` only opens the **HTTP** endpoint; handlers still enforce
  * Firebase Auth (`request.auth`) or your own checks (e.g. admin callables).
  *
- * `cors` uses full origins (scheme + host) and/or RegExp per `cors` package.
+ * `cors` uses full origins (scheme + host) and/or RegExp — see [callableCorsAllowlist.ts](callableCorsAllowlist.ts).
  */
 const defaultCallableOptions = {
   invoker: "public" as const,
-  cors: [
-    /^https:\/\/[\w-]+\.up\.railway\.app$/,
-    "https://mortar-web-staging.up.railway.app",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:3000",
-    "https://mortar-dev.firebaseapp.com",
-    "https://mortar-dev.web.app",
-    "https://mortar-stage.firebaseapp.com",
-    "https://mortar-stage.web.app",
-  ] as (string | RegExp)[],
+  cors: callableCorsAllowlist,
 };
 
 const ELIGIBLE = "eligibleUsers";

@@ -32,7 +32,7 @@ Connect the Railway service to the branch you use for staging (e.g. `stage`). Pu
    Add your Railway hostname, e.g. `something.up.railway.app`, and any custom domain.
 
 2. **Callable CORS**  
-   `functions/src/index.ts` already allows `https://*.up.railway.app` (regex) and `https://mortar-web-staging.up.railway.app`. If you get CORS errors, add your **exact** `https://…` origin to `defaultCallableOptions.cors` and redeploy **functions** to `mortar-stage`.
+   Shared list: [`functions/src/callableCorsAllowlist.ts`](../../functions/src/callableCorsAllowlist.ts) (regex for typical `*.up.railway.app` plus explicit origins). If the browser reports **No 'Access-Control-Allow-Origin'** for your Railway URL, add that **exact** `https://…` origin (no trailing slash) there and run **`firebase deploy --only functions --project mortar-stage`** from repo root.
 
 ---
 

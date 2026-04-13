@@ -7,6 +7,8 @@ import {getFirestore, FieldValue} from "firebase-admin/firestore";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
 import {z} from "zod";
 
+import {callableCorsAllowlist} from "../callableCorsAllowlist";
+
 if (getApps().length === 0) {
   initializeApp();
 }
@@ -48,18 +50,6 @@ async function deleteMobileGroupDeep(groupId: string): Promise<void> {
   await groupRef.delete();
 }
 
-const callableCors = [
-  /^https:\/\/[\w-]+\.up\.railway\.app$/,
-  "https://mortar-web-staging.up.railway.app",
-  "http://localhost:5173",
-  "http://127.0.0.1:5173",
-  "http://localhost:3000",
-  "https://mortar-dev.firebaseapp.com",
-  "https://mortar-dev.web.app",
-  "https://mortar-stage.firebaseapp.com",
-  "https://mortar-stage.web.app",
-] as (string | RegExp)[];
-
 const joinLeaveSchema = z.object({
   groupId: z.string().min(1),
   /** Expansion app uses `mobile` → `groups_mobile`; web curriculum omits → `Groups`. */
@@ -71,7 +61,7 @@ function groupsCollection(scope: string | undefined): string {
 }
 
 export const joinGroup = onCall(
-  {region: "us-central1", invoker: "public", cors: callableCors},
+  {region: "us-central1", invoker: "public", cors: callableCorsAllowlist},
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) {
@@ -125,7 +115,7 @@ export const joinGroup = onCall(
 );
 
 export const leaveGroup = onCall(
-  {region: "us-central1", invoker: "public", cors: callableCors},
+  {region: "us-central1", invoker: "public", cors: callableCorsAllowlist},
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) {
@@ -153,7 +143,7 @@ const deleteMobileGroupSchema = z.object({
 
 /** Creator or staff (token claims): deletes `groups_mobile` doc and all `threads` / `comments` / `votes`. */
 export const deleteMobileGroup = onCall(
-  {region: "us-central1", invoker: "public", cors: callableCors},
+  {region: "us-central1", invoker: "public", cors: callableCorsAllowlist},
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) {

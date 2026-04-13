@@ -13,6 +13,8 @@ import {
 import {HttpsError, onCall} from "firebase-functions/v2/https";
 import {z} from "zod";
 
+import {callableCorsAllowlist} from "../callableCorsAllowlist";
+
 if (getApps().length === 0) {
   initializeApp();
 }
@@ -26,18 +28,6 @@ const MOBILE_GROUPS = "groups_mobile";
 const FEED_POSTS = "feed_posts";
 const EVENTS_MOBILE = "events_mobile";
 const USER_REPORTS = "user_reports";
-
-const callableCors = [
-  /^https:\/\/[\w-]+\.up\.railway\.app$/,
-  "https://mortar-web-staging.up.railway.app",
-  "http://localhost:5173",
-  "http://127.0.0.1:5173",
-  "http://localhost:3000",
-  "https://mortar-dev.firebaseapp.com",
-  "https://mortar-dev.web.app",
-  "https://mortar-stage.firebaseapp.com",
-  "https://mortar-stage.web.app",
-] as (string | RegExp)[];
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
@@ -123,7 +113,7 @@ const adminCreateMobileGroupSchema = z.object({
 });
 
 export const adminCreateMobileGroup = onCall(
-  {region: "us-central1", invoker: "public", cors: callableCors},
+  {region: "us-central1", invoker: "public", cors: callableCorsAllowlist},
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) {
@@ -203,7 +193,7 @@ const adminUpdateMobileGroupSchema = z.object({
 
 /** Staff-only: update `groups_mobile` metadata (same fields as create). */
 export const adminUpdateMobileGroup = onCall(
-  {region: "us-central1", invoker: "public", cors: callableCors},
+  {region: "us-central1", invoker: "public", cors: callableCorsAllowlist},
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) {
@@ -254,7 +244,7 @@ const adminModifyMobileGroupMembersSchema = z.object({
 
 /** Staff-only: add/remove `GroupMembers` and append `placement_audit` for new adds. */
 export const adminModifyMobileGroupMembers = onCall(
-  {region: "us-central1", invoker: "public", cors: callableCors},
+  {region: "us-central1", invoker: "public", cors: callableCorsAllowlist},
   async (request) => {
     const caller = request.auth?.uid;
     if (!caller) {
@@ -361,7 +351,7 @@ const getUserModerationSnapshotSchema = z.object({
 });
 
 export const getUserModerationSnapshot = onCall(
-  {region: "us-central1", invoker: "public", cors: callableCors},
+  {region: "us-central1", invoker: "public", cors: callableCorsAllowlist},
   async (request) => {
     const caller = request.auth?.uid;
     if (!caller) {
@@ -407,7 +397,7 @@ const moderateUserAccountSchema = z.object({
 });
 
 export const moderateUserAccount = onCall(
-  {region: "us-central1", invoker: "public", cors: callableCors},
+  {region: "us-central1", invoker: "public", cors: callableCorsAllowlist},
   async (request) => {
     const caller = request.auth?.uid;
     if (!caller) {

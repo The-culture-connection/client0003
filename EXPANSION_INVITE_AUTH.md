@@ -66,9 +66,9 @@ First-time signup: **`/auth/claim`** → `claimInviteAndCreateAccount` → **`si
 
 Callable functions are invoked from the browser. **Gen 2** runs on **Cloud Run**. Two things matter:
 
-1. **`invoker: "public"`** on each `onCall` (see `defaultCallableOptions` in `functions/src/index.ts`). The **OPTIONS** preflight has **no** Google IAM identity; if Cloud Run only allows authenticated invokers, the edge returns **403** with **no CORS headers** → DevTools shows “No `Access-Control-Allow-Origin`”. Public invoker opens only the HTTP URL; your code still enforces **Firebase Auth** (`request.auth`) or admin checks.
+1. **`invoker: "public"`** on each `onCall` (see `defaultCallableOptions` in `functions/src/expansionInvite.ts` and the admin / group callables). The **OPTIONS** preflight has **no** Google IAM identity; if Cloud Run only allows authenticated invokers, the edge returns **403** with **no CORS headers** → DevTools shows “No `Access-Control-Allow-Origin`”. Public invoker opens only the HTTP URL; your code still enforces **Firebase Auth** (`request.auth`) or admin checks.
 
-2. **`cors`** — explicit origins (full `https://…` URLs) plus a RegExp for `*.up.railway.app`. Add more hosts if you use a custom domain.
+2. **`cors`** — shared list in `functions/src/callableCorsAllowlist.ts`: explicit `https://…` origins plus a RegExp for typical `*.up.railway.app` URLs. Add more hosts if you use a custom domain, then redeploy functions.
 
 **Redeploy after changing options:** `firebase deploy --only functions`.
 
