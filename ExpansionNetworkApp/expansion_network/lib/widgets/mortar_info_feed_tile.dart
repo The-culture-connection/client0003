@@ -1,9 +1,10 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:video_player/video_player.dart';
 
 import '../models/mortar_info_post.dart';
 import '../theme/app_theme.dart';
+import '../utils/safe_launch_url.dart';
 
 String mortarInfoRelativeTime(DateTime? at) {
   if (at == null) return 'Recently';
@@ -36,15 +37,16 @@ class MortarInfoFeedTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final card = Container(
       width: double.infinity,
       decoration: BoxDecoration(
         color: AppColors.card,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFE0E0E0)),
+        border: Border.all(color: scheme.outline.withValues(alpha: 0.5)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withValues(alpha: 0.25),
             blurRadius: 8,
             offset: const Offset(0, 1),
           ),
@@ -77,31 +79,32 @@ class MortarInfoFeedTile extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          const Expanded(
+                          Expanded(
                             child: Text(
                               'Mortar',
                               style: TextStyle(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 14,
                                 height: 1.2,
+                                color: scheme.onSurface,
                               ),
                             ),
                           ),
                           Text(
                             mortarInfoRelativeTime(post.createdAt),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
-                              color: AppColors.mutedForeground,
+                              color: scheme.onSurface.withValues(alpha: 0.65),
                             ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 2),
-                      const Text(
+                      Text(
                         'Alumni Network · Official update',
                         style: TextStyle(
                           fontSize: 11,
-                          color: AppColors.mutedForeground,
+                          color: scheme.onSurface.withValues(alpha: 0.55),
                           height: 1.2,
                         ),
                       ),
@@ -114,10 +117,11 @@ class MortarInfoFeedTile extends StatelessWidget {
             if (post.title.trim().isNotEmpty) ...[
               Text(
                 post.title.trim(),
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize: 15,
                   height: 1.35,
+                  color: scheme.onSurface,
                 ),
               ),
               const SizedBox(height: 6),
@@ -126,7 +130,11 @@ class MortarInfoFeedTile extends StatelessWidget {
               post.body.trim(),
               maxLines: compact ? 4 : null,
               overflow: compact ? TextOverflow.ellipsis : TextOverflow.visible,
-              style: const TextStyle(fontSize: 14, height: 1.45, color: Color(0xFF1C1C1C)),
+              style: TextStyle(
+                fontSize: 14,
+                height: 1.45,
+                color: scheme.onSurface.withValues(alpha: 0.92),
+              ),
             ),
             if (post.hasNewsletterLink) ...[
               const SizedBox(height: 10),
@@ -173,21 +181,21 @@ class _NewsletterLinkCard extends StatelessWidget {
   Future<void> _open(BuildContext context) async {
     final uri = Uri.tryParse(url);
     if (uri == null) return;
-    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!ok && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not open link')),
-      );
-    }
+    await safeLaunchExternalUrl(
+      uri,
+      messengerContext: context,
+      userFailureMessage: 'Could not open newsletter link',
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final host = _linkHost(url) ?? url;
     final title = (label != null && label!.trim().isNotEmpty) ? label!.trim() : 'Newsletter & resources';
 
     return Material(
-      color: const Color(0xFFF4F4F4),
+      color: AppColors.secondary,
       borderRadius: BorderRadius.circular(4),
       child: InkWell(
         onTap: () => _open(context),
@@ -197,7 +205,7 @@ class _NewsletterLinkCard extends StatelessWidget {
           padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 12, vertical: compact ? 10 : 12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: const Color(0xFFCECECE)),
+            border: Border.all(color: scheme.outline.withValues(alpha: 0.45)),
           ),
           child: Row(
             children: [
@@ -211,10 +219,10 @@ class _NewsletterLinkCard extends StatelessWidget {
                       title,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
-                        color: Color(0xFF1C1C1C),
+                        color: scheme.onSurface,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -222,12 +230,15 @@ class _NewsletterLinkCard extends StatelessWidget {
                       host,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 11, color: AppColors.mutedForeground),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: scheme.onSurface.withValues(alpha: 0.6),
+                      ),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.open_in_new, size: 16, color: AppColors.mutedForeground),
+              Icon(Icons.open_in_new, size: 16, color: scheme.onSurface.withValues(alpha: 0.55)),
             ],
           ),
         ),
@@ -242,17 +253,6 @@ class _MediaStrip extends StatelessWidget {
   final List<MortarInfoMediaItem> media;
   final bool compact;
 
-  Future<void> _openVideo(BuildContext context, String url) async {
-    final uri = Uri.tryParse(url);
-    if (uri == null) return;
-    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!ok && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not open video')),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final h = compact ? 160.0 : 220.0;
@@ -264,15 +264,7 @@ class _MediaStrip extends StatelessWidget {
           height: h,
           width: double.infinity,
           child: m.isVideo
-              ? InkWell(
-                  onTap: () => _openVideo(context, m.url),
-                  child: Container(
-                    color: const Color(0xFF1a1a1a),
-                    child: const Center(
-                      child: Icon(Icons.play_circle_filled, size: 56, color: Colors.white70),
-                    ),
-                  ),
-                )
+              ? _MortarInlineVideo(url: m.url, height: h)
               : CachedNetworkImage(
                   imageUrl: m.url,
                   fit: BoxFit.cover,
@@ -305,15 +297,7 @@ class _MediaStrip extends StatelessWidget {
               width: w,
               height: h,
               child: m.isVideo
-                  ? InkWell(
-                      onTap: () => _openVideo(context, m.url),
-                      child: Container(
-                        color: const Color(0xFF1a1a1a),
-                        child: const Center(
-                          child: Icon(Icons.play_circle_filled, size: 44, color: Colors.white70),
-                        ),
-                      ),
-                    )
+                  ? _MortarInlineVideo(url: m.url, height: h)
                   : CachedNetworkImage(
                       imageUrl: m.url,
                       fit: BoxFit.cover,
@@ -329,6 +313,142 @@ class _MediaStrip extends StatelessWidget {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+/// In-app playback for Storage/network video so we do not rely on [url_launcher] (Android Pigeon).
+class _MortarInlineVideo extends StatefulWidget {
+  const _MortarInlineVideo({required this.url, required this.height});
+
+  final String url;
+  final double height;
+
+  @override
+  State<_MortarInlineVideo> createState() => _MortarInlineVideoState();
+}
+
+class _MortarInlineVideoState extends State<_MortarInlineVideo> {
+  VideoPlayerController? _controller;
+  bool _failed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _init();
+  }
+
+  Future<void> _init() async {
+    final uri = Uri.tryParse(widget.url);
+    if (uri == null) {
+      if (mounted) setState(() => _failed = true);
+      return;
+    }
+    final c = VideoPlayerController.networkUrl(uri);
+    try {
+      await c.initialize();
+      if (!mounted) {
+        await c.dispose();
+        return;
+      }
+      await c.setLooping(false);
+      await c.setVolume(1);
+      c.addListener(_onVideoTick);
+      setState(() => _controller = c);
+    } catch (_) {
+      await c.dispose();
+      if (mounted) setState(() => _failed = true);
+    }
+  }
+
+  void _onVideoTick() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _controller?.removeListener(_onVideoTick);
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  Future<void> _togglePlay() async {
+    final c = _controller;
+    if (c == null || !c.value.isInitialized) return;
+    if (c.value.isPlaying) {
+      await c.pause();
+    } else {
+      await c.play();
+    }
+    if (mounted) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_failed) {
+      return ColoredBox(
+        color: AppColors.secondary,
+        child: Center(
+          child: TextButton.icon(
+            onPressed: () {
+              final u = Uri.tryParse(widget.url);
+              if (u != null) {
+                safeLaunchExternalUrl(u, messengerContext: context, userFailureMessage: 'Could not open video');
+              }
+            },
+            icon: const Icon(Icons.open_in_new),
+            label: const Text('Open video'),
+          ),
+        ),
+      );
+    }
+
+    final c = _controller;
+    if (c == null || !c.value.isInitialized) {
+      return const ColoredBox(
+        color: Color(0xFF101010),
+        child: Center(
+          child: SizedBox(
+            width: 28,
+            height: 28,
+            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+          ),
+        ),
+      );
+    }
+
+    final showPlayOverlay = !c.value.isPlaying;
+
+    return Material(
+      color: Colors.black,
+      child: InkWell(
+        onTap: _togglePlay,
+        child: Stack(
+          fit: StackFit.expand,
+          alignment: Alignment.center,
+          children: [
+            FittedBox(
+              fit: BoxFit.cover,
+              child: SizedBox(
+                width: c.value.size.width,
+                height: c.value.size.height,
+                child: VideoPlayer(c),
+              ),
+            ),
+            if (showPlayOverlay)
+              ColoredBox(
+                color: Colors.black38,
+                child: Center(
+                  child: Icon(
+                    Icons.play_circle_filled,
+                    size: widget.height > 180 ? 56 : 44,
+                    color: Colors.white.withValues(alpha: 0.9),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

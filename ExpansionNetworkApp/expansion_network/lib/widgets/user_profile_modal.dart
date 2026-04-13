@@ -17,6 +17,26 @@ import '../utils/relative_time.dart';
 import 'profile_section_card.dart';
 import 'profile_user_blocks.dart';
 
+/// Pops the profile bottom sheet, then [GoRouter.go]s so we never stack a second
+/// `/explore` branch page (its [NoTransitionPage] uses `ValueKey('explore-${state.uri}')`,
+/// which trips `Navigator` if duplicated).
+void _popProfileSheetThenGo(BuildContext context, String location) {
+  final router = GoRouter.of(context);
+  Navigator.of(context).pop();
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    router.go(location);
+  });
+}
+
+/// Pops the sheet, then pushes a root stack route after the pop completes.
+void _popProfileSheetThenPush(BuildContext context, String location) {
+  final router = GoRouter.of(context);
+  Navigator.of(context).pop();
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    router.push(location);
+  });
+}
+
 /// Read-only profile sheet matching the Profile tab layout (no edit actions).
 Future<void> showUserProfileModal(
   BuildContext context, {
@@ -463,10 +483,7 @@ class _ProfileModalListings extends StatelessWidget {
                               style: const TextStyle(fontSize: 11, color: AppColors.mutedForeground),
                             ),
                             trailing: const Icon(Icons.chevron_right, size: 18),
-                            onTap: () {
-                              Navigator.pop(context);
-                              context.push('/explore');
-                            },
+                            onTap: () => _popProfileSheetThenGo(context, '/explore?filter=jobs'),
                           ),
                       ],
                     ),
@@ -506,10 +523,7 @@ class _ProfileModalListings extends StatelessWidget {
                               style: const TextStyle(fontSize: 11, color: AppColors.mutedForeground),
                             ),
                             trailing: const Icon(Icons.chevron_right, size: 18),
-                            onTap: () {
-                              Navigator.pop(context);
-                              context.push('/explore/skills');
-                            },
+                            onTap: () => _popProfileSheetThenPush(context, '/explore/skills'),
                           ),
                       ],
                     ),
@@ -555,10 +569,7 @@ class _ProfileModalListings extends StatelessWidget {
                                   style: const TextStyle(fontSize: 11, color: AppColors.mutedForeground),
                                 ),
                                 trailing: const Icon(Icons.chevron_right, size: 18),
-                                onTap: () {
-                                  Navigator.pop(context);
-                                  context.push('/events/${e.id}');
-                                },
+                                onTap: () => _popProfileSheetThenPush(context, '/events/${e.id}'),
                               ),
                           ],
                         ),

@@ -28,6 +28,7 @@ import '../screens/home_screen.dart';
 import '../screens/landing_screen.dart';
 import '../screens/session_gate_screen.dart';
 import '../screens/welcome_mortarverse_intro_screen.dart';
+import '../screens/mortar_feed_screen.dart';
 import '../screens/mortar_info_detail_screen.dart';
 import '../screens/matching_screen.dart';
 import '../screens/messages_screen.dart';
@@ -253,6 +254,11 @@ GoRouter createAppRouter(AuthController auth) {
           final id = state.pathParameters['eventId']!;
           return EventDetailScreen(eventId: id);
         },
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/mortar-feed',
+        builder: (context, state) => const MortarFeedScreen(),
       ),
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,
