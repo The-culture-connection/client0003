@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 
@@ -9,11 +10,14 @@ class UserReportsRepository {
   UserReportsRepository({
     FirebaseFirestore? firestore,
     FirebaseAuth? auth,
+    FirebaseFunctions? functions,
   })  : _db = firestore ?? FirebaseFirestore.instance,
-        _auth = auth ?? FirebaseAuth.instance;
+        _auth = auth ?? FirebaseAuth.instance,
+        _functions = functions ?? FirebaseFunctions.instanceFor(region: 'us-central1');
 
   final FirebaseFirestore _db;
   final FirebaseAuth _auth;
+  final FirebaseFunctions _functions;
 
   CollectionReference<Map<String, dynamic>> get _col => _db.collection('user_reports');
 
@@ -101,6 +105,28 @@ class UserReportsRepository {
   Future<void> dismissReport(String reportId) async {
     await _col.doc(reportId).update({
       'status': 'dismissed',
+      'updated_at': FieldValue.serverTimestamp(),
+    });
+  }
+
+  /// Staff: [moderateUserAccount] then mark report resolved with [staff_resolution] `ban` or `unsuspend`.
+  Future<void> finalizeStaffModeration({
+    required String reportId,
+    required String reportedUserId,
+    required bool ban,
+  }) async {
+    final me = _auth.currentUser?.uid;
+    if (me == null) throw StateError('Not signed in');
+    final callable = _functions.httpsCallable('moderateUserAccount');
+    await callable.call<Map<String, dynamic>>({
+      'uid': reportedUserId,
+      'action': ban ? 'ban' : 'lift_content_suspension',
+    });
+    await _col.doc(reportId).update({
+      'status': 'resolved',
+      'staff_resolution': ban ? 'ban' : 'unsuspend',
+      'resolved_at': FieldValue.serverTimestamp(),
+      'resolved_by': me,
       'updated_at': FieldValue.serverTimestamp(),
     });
   }

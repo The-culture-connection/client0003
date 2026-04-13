@@ -3,18 +3,22 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   collection,
+  doc,
   onSnapshot,
   orderBy,
   query,
+  serverTimestamp,
+  updateDoc,
   type QueryDocumentSnapshot,
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
-import { db, functions } from "@/lib/firebase";
+import { auth, db, functions } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -36,6 +40,165 @@ const GROUP_CATEGORIES = [
 ] as const;
 
 type PlacementRow = { email: string; reportReason: string };
+
+function str(v: unknown): string {
+  return typeof v === "string" ? v : v == null ? "" : String(v);
+}
+
+function ModerationSnapshotView({ payload }: { payload: Record<string, unknown> }) {
+  const user = (payload.user as Record<string, unknown>) ?? {};
+  const feedPosts = Array.isArray(payload.feedPosts) ? payload.feedPosts : [];
+  const eventsMobile = Array.isArray(payload.eventsMobile) ? payload.eventsMobile : [];
+  const reportsAboutUser = Array.isArray(payload.reportsAboutUser)
+    ? payload.reportsAboutUser
+    : [];
+
+  const displayName = [str(user.first_name), str(user.last_name)].filter(Boolean).join(" ").trim();
+  const nameLine = displayName || str(user.display_name) || "—";
+  const tribe = str(user.tribe) || str(user.industry) || "—";
+
+  const Row = ({ label, value }: { label: string; value: string }) => (
+    <div className="grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-1 text-sm py-1 border-b border-border/60 last:border-0">
+      <span className="text-muted-foreground font-medium">{label}</span>
+      <span className="text-foreground break-words">{value || "—"}</span>
+    </div>
+  );
+
+  return (
+    <div className="space-y-5 text-foreground">
+      <div>
+        <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+          Member profile
+        </h4>
+        <div className="rounded-lg border border-border bg-background/50 p-3">
+          <Row label="Name" value={nameLine} />
+          <Row label="Email" value={str(user.email)} />
+          <Row label="Profession" value={str(user.profession)} />
+          <Row label="Tribe" value={tribe} />
+          <Row label="City / state" value={[str(user.city), str(user.state)].filter(Boolean).join(", ")} />
+          <Row
+            label="Flags"
+            value={[
+              user.account_banned === true ? "Account banned" : null,
+              user.content_suspended === true ? "Content suspended" : null,
+            ]
+              .filter(Boolean)
+              .join(" · ") || "None"}
+          />
+          {str(user.bio) ? (
+            <div className="mt-2 pt-2 border-t border-border/60">
+              <span className="text-xs text-muted-foreground font-medium">Bio</span>
+              <p className="text-sm mt-1 whitespace-pre-wrap">{str(user.bio)}</p>
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      <div>
+        <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+          Recent feed posts ({feedPosts.length})
+        </h4>
+        {feedPosts.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No recent posts found.</p>
+        ) : (
+          <ul className="space-y-2">
+            {(feedPosts as Record<string, unknown>[]).slice(0, 6).map((p, i) => (
+              <li
+                key={str(p.id) || String(i)}
+                className="rounded-md border border-border/80 bg-background/40 px-3 py-2 text-sm"
+              >
+                <span className="text-xs text-muted-foreground font-mono">{str(p.id)}</span>
+                <p className="mt-1 line-clamp-3 text-foreground">
+                  {str(p.post_title) ||
+                    str(p.post_details) ||
+                    str(p.description) ||
+                    str(p.body) ||
+                    "(no text)"}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div>
+        <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+          Events (mobile) ({eventsMobile.length})
+        </h4>
+        {eventsMobile.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No events found.</p>
+        ) : (
+          <ul className="space-y-2">
+            {(eventsMobile as Record<string, unknown>[]).slice(0, 6).map((e, i) => (
+              <li
+                key={str(e.id) || String(i)}
+                className="rounded-md border border-border/80 bg-background/40 px-3 py-2 text-sm"
+              >
+                <span className="font-medium text-foreground">{str(e.title) || "Event"}</span>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {[str(e.date), str(e.time), str(e.approval_status)].filter(Boolean).join(" · ")}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div>
+        <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+          Other reports about this member ({reportsAboutUser.length})
+        </h4>
+        {reportsAboutUser.length === 0 ? (
+          <p className="text-sm text-muted-foreground">None in snapshot.</p>
+        ) : (
+          <ul className="space-y-2">
+            {(reportsAboutUser as Record<string, unknown>[]).slice(0, 5).map((r, i) => (
+              <li
+                key={str(r.id) || String(i)}
+                className="rounded-md border border-border/80 bg-background/40 px-3 py-2 text-sm"
+              >
+                <span className="text-xs text-muted-foreground">{str(r.status)}</span>
+                <p className="mt-1 line-clamp-2">{str(r.reason)}</p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function createdMs(data: Record<string, unknown>): number {
+  const c = data.created_at;
+  if (
+    c &&
+    typeof c === "object" &&
+    "toMillis" in c &&
+    typeof (c as { toMillis: unknown }).toMillis === "function"
+  ) {
+    return (c as { toMillis: () => number }).toMillis();
+  }
+  return 0;
+}
+
+function reportSort(
+  a: QueryDocumentSnapshot<Record<string, unknown>>,
+  b: QueryDocumentSnapshot<Record<string, unknown>>
+): number {
+  const da = a.data();
+  const db = b.data();
+  const af = str(da.staff_resolution) ? 1 : 0;
+  const bf = str(db.staff_resolution) ? 1 : 0;
+  if (af !== bf) return af - bf;
+  return createdMs(db) - createdMs(da);
+}
+
+function isReportVisible(data: Record<string, unknown>): boolean {
+  const sr = str(data.staff_resolution);
+  if (sr === "ban" || sr === "unsuspend") return true;
+  const s = str(data.status);
+  return s === "open" || s === "investigating";
+}
 
 export function MobileModerationPanel() {
   const [groupName, setGroupName] = useState("");
@@ -61,6 +224,7 @@ export function MobileModerationPanel() {
   >({});
   const [snapshotBusy, setSnapshotBusy] = useState<string | null>(null);
   const [modBusy, setModBusy] = useState<string | null>(null);
+  const [modErr, setModErr] = useState<string | null>(null);
 
   useEffect(() => {
     const q = query(
@@ -78,14 +242,11 @@ export function MobileModerationPanel() {
     return () => unsub();
   }, []);
 
-  const openReports = useMemo(
-    () =>
-      reports.filter((d) => {
-        const s = String(d.data().status ?? "");
-        return s === "open" || s === "investigating";
-      }),
-    [reports]
-  );
+  const visibleReports = useMemo(() => {
+    const list = reports.filter((d) => isReportVisible(d.data()));
+    list.sort(reportSort);
+    return list;
+  }, [reports]);
 
   const runCallable = async (fn: string, data: Record<string, unknown>) => {
     const callable = httpsCallable(functions, fn);
@@ -148,14 +309,26 @@ export function MobileModerationPanel() {
     }
   };
 
-  const runModeration = async (
+  const finalizeDecision = async (
+    reportId: string,
     reportedUid: string,
-    action: "ban" | "lift_content_suspension" | "unban"
+    action: "ban" | "lift_content_suspension"
   ) => {
-    const key = `${reportedUid}:${action}`;
-    setModBusy(key);
+    const busyKey = `${reportId}:${action}`;
+    setModErr(null);
+    setModBusy(busyKey);
     try {
       await runCallable("moderateUserAccount", { uid: reportedUid, action });
+      await updateDoc(doc(db, "user_reports", reportId), {
+        status: "resolved",
+        staff_resolution: action === "ban" ? "ban" : "unsuspend",
+        resolved_at: serverTimestamp(),
+        resolved_by: auth.currentUser?.uid ?? null,
+        updated_at: serverTimestamp(),
+      });
+    } catch (e: unknown) {
+      const err = e as { message?: string };
+      setModErr(err.message ?? String(e));
     } finally {
       setModBusy(null);
     }
@@ -307,31 +480,61 @@ export function MobileModerationPanel() {
       <Card className="p-6 border-border bg-card">
         <h2 className="text-lg font-semibold mb-2">User reports (moderation)</h2>
         <p className="text-sm text-muted-foreground mb-4">
-          Open a report to load profile + recent activity (feed, events, prior reports).{" "}
-          <strong>Ban</strong> disables Auth and sets <code className="text-xs bg-muted px-1">account_banned</code>{" "}
-          + content suspension. <strong>Unsuspend</strong> clears{" "}
-          <code className="text-xs bg-muted px-1">content_suspended</code> only. Use{" "}
-          <strong>Unban</strong> re-enables Auth, clears <code className="text-xs bg-muted px-1">account_banned</code>, and lifts content suspension.
+          <strong>Ban</strong> disables the account and suspends posting. <strong>Unsuspend</strong> clears content
+          suspension only. Decisions are final for each report and update status in Firestore. Expand{" "}
+          <strong>Profile &amp; activity</strong> for a readable summary.
         </p>
+        {modErr ? (
+          <p className="text-sm text-destructive mb-3" role="alert">
+            {modErr}
+          </p>
+        ) : null}
         {reportsErr ? (
           <p className="text-sm text-destructive">{reportsErr}</p>
-        ) : openReports.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No open or investigating reports.</p>
+        ) : visibleReports.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No reports in the active queue.</p>
         ) : (
           <ul className="space-y-4">
-            {openReports.map((d) => {
+            {visibleReports.map((d) => {
               const data = d.data();
-              const reported = String(data.reported_user_id ?? "");
-              const reason = String(data.reason ?? "");
-              const st = String(data.status ?? "");
+              const reported = str(data.reported_user_id);
+              const reason = str(data.reason);
+              const st = str(data.status);
+              const sr = str(data.staff_resolution);
+              const finalized = sr === "ban" || sr === "unsuspend";
               const isOpen = expandedId === d.id;
+              const busyBan = modBusy === `${d.id}:ban`;
+              const busyUns = modBusy === `${d.id}:lift_content_suspension`;
+
               return (
                 <li
                   key={d.id}
-                  className="border border-border rounded-lg p-4 space-y-2"
+                  className={`rounded-lg border p-4 space-y-3 transition-colors ${
+                    finalized
+                      ? "border-muted-foreground/30 bg-muted/40 opacity-95"
+                      : "border-border bg-card"
+                  }`}
                 >
-                  <div className="flex flex-wrap items-center gap-2 justify-between">
-                    <span className="text-sm font-medium">Status: {st}</span>
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm font-semibold">Report</span>
+                        <Badge variant="outline" className="text-xs">
+                          Status: {st}
+                        </Badge>
+                        {finalized ? (
+                          <Badge
+                            variant={sr === "ban" ? "destructive" : "secondary"}
+                            className="text-xs"
+                          >
+                            {sr === "ban" ? "Final: banned" : "Final: posting restored"}
+                          </Badge>
+                        ) : null}
+                      </div>
+                      <p className="text-xs text-muted-foreground font-mono break-all">
+                        Reported UID: {reported || "—"}
+                      </p>
+                    </div>
                     <Button
                       size="sm"
                       variant={isOpen ? "secondary" : "outline"}
@@ -342,56 +545,48 @@ export function MobileModerationPanel() {
                         }
                       }}
                     >
-                      {isOpen ? "Hide detail" : "Profile & activity"}
+                      {isOpen ? "Hide profile & activity" : "Profile & activity"}
                     </Button>
                   </div>
-                  <p className="text-xs text-muted-foreground font-mono break-all">
-                    Reported UID: {reported}
-                  </p>
-                  <p className="text-sm">{reason}</p>
+
+                  <p className="text-sm leading-relaxed">{reason || "—"}</p>
+
+                  {!finalized && reported ? (
+                    <div className="flex flex-wrap gap-2 pt-1 border-t border-border/60">
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        disabled={modBusy !== null}
+                        onClick={() => void finalizeDecision(d.id, reported, "ban")}
+                      >
+                        {busyBan ? "…" : "Ban"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        disabled={modBusy !== null}
+                        onClick={() => void finalizeDecision(d.id, reported, "lift_content_suspension")}
+                      >
+                        {busyUns ? "…" : "Unsuspend"}
+                      </Button>
+                    </div>
+                  ) : finalized ? (
+                    <p className="text-xs text-muted-foreground pt-1 border-t border-border/60">
+                      No further actions — decision recorded on this report.
+                    </p>
+                  ) : null}
+
                   {isOpen ? (
-                    <div className="space-y-3 pt-2">
+                    <div className="pt-2 border-t border-border/60">
                       {snapshotBusy === d.id ? (
-                        <p className="text-sm text-muted-foreground">Loading snapshot…</p>
+                        <p className="text-sm text-muted-foreground py-4 text-center">Loading…</p>
                       ) : snapshotById[d.id] === null ? (
-                        <p className="text-sm text-destructive">Could not load snapshot.</p>
+                        <p className="text-sm text-destructive">Could not load profile snapshot.</p>
                       ) : snapshotById[d.id] ? (
-                        <pre className="text-[11px] leading-snug overflow-auto max-h-72 p-3 rounded-md bg-muted">
-                          {JSON.stringify(snapshotById[d.id], null, 2)}
-                        </pre>
+                        <ModerationSnapshotView payload={snapshotById[d.id]!} />
                       ) : (
-                        <p className="text-sm text-muted-foreground">Click to load.</p>
+                        <p className="text-sm text-muted-foreground">Open this section to load details.</p>
                       )}
-                      {reported ? (
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            disabled={modBusy !== null}
-                            onClick={() => void runModeration(reported, "ban")}
-                          >
-                            {modBusy === `${reported}:ban` ? "…" : "Ban user"}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            disabled={modBusy !== null}
-                            onClick={() => void runModeration(reported, "lift_content_suspension")}
-                          >
-                            {modBusy === `${reported}:lift_content_suspension`
-                              ? "…"
-                              : "Unsuspend (lift posting)"}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={modBusy !== null}
-                            onClick={() => void runModeration(reported, "unban")}
-                          >
-                            {modBusy === `${reported}:unban` ? "…" : "Unban"}
-                          </Button>
-                        </div>
-                      ) : null}
                     </div>
                   ) : null}
                 </li>
