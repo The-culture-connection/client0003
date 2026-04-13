@@ -48,48 +48,97 @@ Future<void> showUserProfileModal(
   );
 }
 
+/// Dialog owns its [TextEditingController] so dispose order matches Flutter’s widget tree
+/// (avoids `_dependents.isEmpty` / controller races when popping the route).
+class _ReportMemberDialog extends StatefulWidget {
+  const _ReportMemberDialog();
+
+  @override
+  State<_ReportMemberDialog> createState() => _ReportMemberDialogState();
+}
+
+class _ReportMemberDialogState extends State<_ReportMemberDialog> {
+  final _controller = TextEditingController();
+  String? _error;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final r = _controller.text.trim();
+    if (r.isEmpty) {
+      setState(() => _error = 'Please describe what we should review.');
+      return;
+    }
+    if (r.length > 4000) {
+      setState(() => _error = 'Please shorten your report (max 4000 characters).');
+      return;
+    }
+    setState(() => _error = null);
+    Navigator.of(context).pop<String>(r);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Report member'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+              controller: _controller,
+              maxLines: 5,
+              decoration: const InputDecoration(
+                labelText: 'What should we review?',
+                hintText: 'Describe the issue…',
+                alignLabelWithHint: true,
+              ),
+              onChanged: (_) {
+                if (_error != null) setState(() => _error = null);
+              },
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 8),
+              Text(_error!, style: TextStyle(color: Colors.red.shade700, fontSize: 13)),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop<String?>(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(onPressed: _submit, child: const Text('Submit')),
+      ],
+    );
+  }
+}
+
 Future<void> _openReportFlow(
   BuildContext context, {
   required String reportedUserId,
 }) async {
-  final controller = TextEditingController();
-  final submit = await showDialog<bool>(
+  final reason = await showDialog<String?>(
     context: context,
-    builder: (ctx) => AlertDialog(
-      title: const Text('Report member'),
-      content: TextField(
-        controller: controller,
-        maxLines: 5,
-        decoration: const InputDecoration(
-          labelText: 'What should we review?',
-          hintText: 'Describe the issue…',
-          alignLabelWithHint: true,
-        ),
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-        FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Submit')),
-      ],
-    ),
+    useRootNavigator: true,
+    builder: (ctx) => const _ReportMemberDialog(),
   );
-  if (submit != true) {
-    controller.dispose();
-    return;
-  }
-  final reason = controller.text.trim();
-  controller.dispose();
-  if (reason.isEmpty) return;
+  if (reason == null || reason.isEmpty) return;
   try {
     await UserReportsRepository().submitReport(reportedUserId: reportedUserId, reason: reason);
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Thanks — our team will review.')),
-      );
-    }
+    if (!context.mounted) return;
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      const SnackBar(content: Text('Thanks — our team will review.')),
+    );
   } catch (e) {
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
-    }
+    if (!context.mounted) return;
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text('$e')));
   }
 }
 

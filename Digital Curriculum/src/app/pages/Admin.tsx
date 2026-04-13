@@ -37,6 +37,7 @@ import {
   Pencil,
   KeyRound,
   Smartphone,
+  ShieldAlert,
 } from "lucide-react";
 import { useAuth } from "../components/auth/AuthProvider";
 import {
@@ -115,6 +116,7 @@ import {
   type Curriculum,
 } from "../lib/curriculum";
 import { AppAccessHubPanel } from "../components/admin/AppAccessHubPanel";
+import { MobileModerationPanel } from "../components/admin/MobileModerationPanel";
 import { registerDigitalCurriculumAlumniEligible } from "../lib/expansionEligible";
 
 interface DirectMessage {
@@ -1024,6 +1026,10 @@ export function AdminPage() {
           <TabsTrigger value="app-access-hub">
             <KeyRound className="w-4 h-4 mr-2" />
             App Access Hub
+          </TabsTrigger>
+          <TabsTrigger value="expansion-mobile">
+            <ShieldAlert className="w-4 h-4 mr-2" />
+            Expansion mobile
           </TabsTrigger>
           <TabsTrigger value="messages">
             <MessageSquare className="w-4 h-4 mr-2" />
@@ -2020,6 +2026,18 @@ export function AdminPage() {
         {/* Expansion Network — eligible users & invite codes */}
         <TabsContent value="app-access-hub" className="space-y-6">
           <AppAccessHubPanel />
+        </TabsContent>
+
+        {/* Expansion Network mobile — groups_mobile + user_reports moderation */}
+        <TabsContent value="expansion-mobile" className="space-y-6">
+          <p className="text-sm text-muted-foreground max-w-4xl">
+            Create public/private mobile communities and triage member safety reports. Uses the same
+            Firebase project as this admin (see build env <code className="text-xs bg-muted px-1">VITE_FIREBASE_ENV</code>
+            ). Deploy Cloud Functions <code className="text-xs bg-muted px-1">adminCreateMobileGroup</code>,{" "}
+            <code className="text-xs bg-muted px-1">getUserModerationSnapshot</code>,{" "}
+            <code className="text-xs bg-muted px-1">moderateUserAccount</code> to this project.
+          </p>
+          <MobileModerationPanel />
         </TabsContent>
 
         {/* Shop Tab */}

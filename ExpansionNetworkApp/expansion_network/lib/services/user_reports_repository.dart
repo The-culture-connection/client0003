@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 import '../utils/content_suspension.dart';
 
@@ -28,13 +29,23 @@ class UserReportsRepository {
     if (reportedUserId.isEmpty || reportedUserId == me) {
       throw StateError('Invalid report.');
     }
-    await _col.add({
-      'reporter_id': me,
-      'reported_user_id': reportedUserId,
-      'reason': r,
-      'status': 'open',
-      'created_at': FieldValue.serverTimestamp(),
-    });
+    try {
+      await _col.add({
+        'reporter_id': me,
+        'reported_user_id': reportedUserId,
+        'reason': r,
+        'status': 'open',
+        'created_at': FieldValue.serverTimestamp(),
+      });
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') {
+        throw StateError(
+          'Could not submit report (permission denied). If this persists, ask an admin to deploy '
+          'the latest Firestore rules for this Firebase project (${Firebase.app().options.projectId}).',
+        );
+      }
+      rethrow;
+    }
   }
 
   /// Newest first; filter client-side if needed.
