@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:add_2_calendar/add_2_calendar.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -200,20 +201,49 @@ Future<void> _openGoogleCalendar(CommunityEvent event, DateTime start, DateTime 
   );
 }
 
-/// After a successful RSVP on `events_mobile`, offer Apple/device calendar (ICS + 2 alarms) or Google Calendar.
-Future<void> showPostRegisterCalendarSheet(BuildContext context, CommunityEvent event) async {
-  final start = eventLocalStart(event);
-  if (start == null) {
-    if (context.mounted) {
-      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-        const SnackBar(content: Text('This event has no date, so calendar reminders are not available.')),
-      );
-    }
-    return;
+Event _nativeAdd2Event(CommunityEvent event, DateTime start, DateTime end) {
+  final buf = StringBuffer(event.details.trim());
+  if (event.time.trim().isNotEmpty) {
+    if (buf.isNotEmpty) buf.writeln();
+    buf.write('Time: ${event.time.trim()}');
   }
-  final end = start.add(const Duration(hours: 1));
+  final desc = buf.isEmpty ? 'Mortar Alumni Network event' : buf.toString();
+  return Event(
+    title: event.title,
+    description: desc,
+    location: event.location.trim().isEmpty ? null : event.location.trim(),
+    startDate: start,
+    endDate: end,
+    iosParams: const IOSParams(
+      reminder: Duration(days: 2),
+    ),
+    androidParams: const AndroidParams(),
+  );
+}
 
-  if (!context.mounted) return;
+Future<bool> _tryOpenNativeCalendarAddUi(CommunityEvent event, DateTime start, DateTime end) async {
+  if (kIsWeb) return false;
+  if (!Platform.isIOS && !Platform.isAndroid) return false;
+  try {
+    return await Add2Calendar.addEvent2Cal(_nativeAdd2Event(event, start, end));
+  } on MissingPluginException catch (e, st) {
+    debugPrint('add_2_calendar MissingPluginException: $e\n$st');
+    return false;
+  } on PlatformException catch (e, st) {
+    debugPrint('add_2_calendar PlatformException: $e\n$st');
+    return false;
+  } catch (e, st) {
+    debugPrint('add_2_calendar: $e\n$st');
+    return false;
+  }
+}
+
+Future<void> _showLegacyCalendarChoicesBottomSheet(
+  BuildContext context,
+  CommunityEvent event,
+  DateTime start,
+  DateTime end,
+) async {
   await showModalBottomSheet<void>(
     context: context,
     showDragHandle: true,
@@ -231,12 +261,12 @@ Future<void> showPostRegisterCalendarSheet(BuildContext context, CommunityEvent 
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                'Add to calendar?',
+                'Add to calendar another way',
                 style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 8),
               Text(
-                'Add this event with reminders 2 days and 1 day before the start time.',
+                'Share an .ics file (with 2-day and 1-day alerts) or open Google Calendar in the browser.',
                 style: theme.textTheme.bodyMedium?.copyWith(color: AppColors.mutedForeground),
               ),
               const SizedBox(height: 20),
@@ -259,7 +289,7 @@ Future<void> showPostRegisterCalendarSheet(BuildContext context, CommunityEvent 
                   }
                 },
                 icon: const Icon(Icons.calendar_month_outlined, size: 22),
-                label: Text('$appleLabel · 2-day & 1-day alerts'),
+                label: Text('$appleLabel · .ics with alerts'),
               ),
               const SizedBox(height: 10),
               OutlinedButton.icon(
@@ -290,7 +320,7 @@ Future<void> showPostRegisterCalendarSheet(BuildContext context, CommunityEvent 
                   }
                 },
                 icon: Icon(Icons.open_in_new, size: 22, color: AppColors.foreground),
-                label: const Text('Google Calendar'),
+                label: const Text('Google Calendar (web)'),
               ),
               const SizedBox(height: 4),
               TextButton(
@@ -303,4 +333,30 @@ Future<void> showPostRegisterCalendarSheet(BuildContext context, CommunityEvent 
       );
     },
   );
+}
+
+/// After a successful RSVP on `events_mobile`, opens the **system** add-event UI when possible
+/// (iOS Calendar / Android’s calendar insert flow, usually Google Calendar on Android).
+/// If that fails or the user dismisses without saving, offers .ics share + Google Calendar web.
+Future<void> showPostRegisterCalendarSheet(BuildContext context, CommunityEvent event) async {
+  final start = eventLocalStart(event);
+  if (start == null) {
+    if (context.mounted) {
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        const SnackBar(content: Text('This event has no date, so calendar reminders are not available.')),
+      );
+    }
+    return;
+  }
+  final end = start.add(const Duration(hours: 1));
+
+  if (!context.mounted) return;
+
+  final nativeOk = await _tryOpenNativeCalendarAddUi(event, start, end);
+  if (nativeOk) {
+    return;
+  }
+
+  if (!context.mounted) return;
+  await _showLegacyCalendarChoicesBottomSheet(context, event, start, end);
 }
