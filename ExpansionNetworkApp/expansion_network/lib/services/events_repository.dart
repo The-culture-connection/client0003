@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../models/community_event.dart';
+import 'user_profile_repository.dart';
 
 /// Expansion app uses Firestore `events_mobile`. Curriculum web uses `events`.
 /// Admin "both" writes the same [eventId] to both; RSVP updates both when [distribution] == `both`.
@@ -9,11 +10,14 @@ class EventsRepository {
   EventsRepository({
     FirebaseFirestore? firestore,
     FirebaseAuth? auth,
+    UserProfileRepository? users,
   })  : _db = firestore ?? FirebaseFirestore.instance,
-        _auth = auth ?? FirebaseAuth.instance;
+        _auth = auth ?? FirebaseAuth.instance,
+        _users = users ?? UserProfileRepository();
 
   final FirebaseFirestore _db;
   final FirebaseAuth _auth;
+  final UserProfileRepository _users;
 
   CollectionReference<Map<String, dynamic>> get _eventsMobile =>
       _db.collection('events_mobile');
@@ -88,11 +92,15 @@ class EventsRepository {
   }) async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) throw StateError('Not signed in');
+    await _users.assertCallerNotContentSuspended();
+    if (date == null) {
+      throw StateError('Event date is required.');
+    }
 
     final ref = _eventsMobile.doc();
     await ref.set({
       'title': title,
-      if (date != null) 'date': Timestamp.fromDate(date),
+      'date': Timestamp.fromDate(date),
       'time': time,
       'location': location,
       'details': details,

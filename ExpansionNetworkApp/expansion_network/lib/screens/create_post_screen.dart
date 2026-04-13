@@ -121,6 +121,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
     setState(() => _saving = true);
     try {
+      await _users.assertCallerNotContentSuspended();
       String? imageUrl;
       if (_pickedImage != null) {
         imageUrl = await _uploadImage();

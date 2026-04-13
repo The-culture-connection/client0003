@@ -7,6 +7,7 @@ import '../models/group_thread_firestore.dart';
 import '../services/group_thread_repository.dart';
 import '../services/user_profile_repository.dart';
 import '../theme/app_theme.dart';
+import '../utils/content_action_guard.dart';
 import '../utils/staff_claims.dart';
 import '../widgets/group_thread/firestore_thread_tile.dart';
 import '../widgets/user_profile_modal.dart';
@@ -169,6 +170,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
   Future<void> _submitPost() async {
     final body = _newBody.text.trim();
     if (body.isEmpty) return;
+    if (await blockContentActionIfSuspended(context)) return;
     try {
       await _repo.createThread(
         groupId: widget.groupId,
@@ -236,7 +238,10 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                         right: 20,
                         bottom: 24,
                         child: FloatingActionButton(
-                          onPressed: () => setState(() => _showCreatePost = true),
+                          onPressed: () async {
+                            if (await blockContentActionIfSuspended(context)) return;
+                            if (mounted) setState(() => _showCreatePost = true);
+                          },
                           backgroundColor: AppColors.primary,
                           foregroundColor: AppColors.onPrimary,
                           child: const Icon(Icons.add),
@@ -450,6 +455,35 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
       );
     }
     if (!joined) {
+      if (g.isPrivateCommunity) {
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AppColors.card,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: const Column(
+                children: [
+                  Text(
+                    'Private community',
+                    style: TextStyle(color: AppColors.foreground, fontWeight: FontWeight.w600, fontSize: 16),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'You cannot join on your own. A staff member must add you to this community.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: AppColors.mutedForeground, fontSize: 13, height: 1.35),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      }
       return ListView(
         padding: const EdgeInsets.all(16),
         children: [

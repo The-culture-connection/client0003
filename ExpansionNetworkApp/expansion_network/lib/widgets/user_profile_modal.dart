@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +11,7 @@ import '../profile/profile_utils.dart';
 import '../services/events_repository.dart';
 import '../services/explore_listings_repository.dart';
 import '../services/user_profile_repository.dart';
+import '../services/user_reports_repository.dart';
 import '../theme/app_theme.dart';
 import '../utils/relative_time.dart';
 import 'profile_section_card.dart';
@@ -44,6 +46,51 @@ Future<void> showUserProfileModal(
       );
     },
   );
+}
+
+Future<void> _openReportFlow(
+  BuildContext context, {
+  required String reportedUserId,
+}) async {
+  final controller = TextEditingController();
+  final submit = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Report member'),
+      content: TextField(
+        controller: controller,
+        maxLines: 5,
+        decoration: const InputDecoration(
+          labelText: 'What should we review?',
+          hintText: 'Describe the issue…',
+          alignLabelWithHint: true,
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+        FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Submit')),
+      ],
+    ),
+  );
+  if (submit != true) {
+    controller.dispose();
+    return;
+  }
+  final reason = controller.text.trim();
+  controller.dispose();
+  if (reason.isEmpty) return;
+  try {
+    await UserReportsRepository().submitReport(reportedUserId: reportedUserId, reason: reason);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Thanks — our team will review.')),
+      );
+    }
+  } catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    }
+  }
 }
 
 class _UserProfileModalBody extends StatelessWidget {
@@ -92,7 +139,8 @@ class _UserProfileModalBody extends StatelessWidget {
         final goals = profileStringList(data['business_goals']);
         final confident = profileStringList(data['confident_skills']);
         final desired = profileStringList(data['desired_skills']);
-        final industry = profileString(data['industry']);
+        final tribe = profileString(data['tribe']) ?? profileString(data['industry']);
+        final businessLogoUrl = profileString(data['business_logo_url']);
 
         return StreamBuilder<User?>(
           stream: FirebaseAuth.instance.authStateChanges(),
@@ -124,21 +172,30 @@ class _UserProfileModalBody extends StatelessWidget {
                 if (me != null && userId.isNotEmpty && userId != me)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: FilledButton.icon(
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                          context.push('/messages/direct/$userId');
-                        },
-                        icon: const Icon(Icons.chat_bubble_outline, size: 18),
-                        label: const Text('Message'),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: AppColors.onPrimary,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton.icon(
+                          onPressed: () => _openReportFlow(context, reportedUserId: userId),
+                          icon: const Icon(Icons.flag_outlined, size: 18),
+                          label: const Text('Report'),
+                          style: TextButton.styleFrom(foregroundColor: AppColors.mutedForeground),
                         ),
-                      ),
+                        const SizedBox(width: 8),
+                        FilledButton.icon(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            context.push('/messages/direct/$userId');
+                          },
+                          icon: const Icon(Icons.chat_bubble_outline, size: 18),
+                          label: const Text('Message'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: AppColors.onPrimary,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 const Divider(height: 1, color: AppColors.border),
@@ -160,6 +217,33 @@ class _UserProfileModalBody extends StatelessWidget {
                             if (subtitle != null) ...[
                               const SizedBox(height: 4),
                               Text(subtitle, style: const TextStyle(fontSize: 13, color: AppColors.mutedForeground)),
+                            ],
+                            if (businessLogoUrl != null) ...[
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: CachedNetworkImage(
+                                      imageUrl: businessLogoUrl,
+                                      width: 44,
+                                      height: 44,
+                                      fit: BoxFit.cover,
+                                      placeholder: (_, __) => Container(
+                                        width: 44,
+                                        height: 44,
+                                        color: AppColors.secondary,
+                                      ),
+                                      errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  const Text(
+                                    'Business logo',
+                                    style: TextStyle(fontSize: 12, color: AppColors.mutedForeground),
+                                  ),
+                                ],
+                              ),
                             ],
                           ],
                         ),
@@ -249,9 +333,9 @@ class _UserProfileModalBody extends StatelessWidget {
                   const SizedBox(height: 16),
                   ProfileSectionCard(
                     step: 5,
-                    title: 'Industry',
+                    title: 'Tribe',
                     child: Text(
-                      industry ?? '—',
+                      tribe ?? '—',
                       style: const TextStyle(fontSize: 13, color: AppColors.mutedForeground),
                     ),
                   ),

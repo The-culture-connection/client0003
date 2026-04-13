@@ -226,6 +226,7 @@ class GroupThreadRepository {
   }) async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) throw StateError('Not signed in');
+    await _users.assertCallerNotContentSuspended();
     final trimmed = name.trim();
     if (trimmed.isEmpty) throw ArgumentError('Name required');
     if (trimmed.length > 120) throw ArgumentError('Name too long');
@@ -240,6 +241,7 @@ class GroupThreadRepository {
       'GroupMembers': <String>[uid],
       'PendingMembers': <String>[],
       'createdBy': uid,
+      'visibility': 'public',
       'memberCount': 1,
       'threadCount': 0,
       if (description != null && description.trim().isNotEmpty) 'description': description.trim(),
@@ -287,6 +289,7 @@ class GroupThreadRepository {
   }) async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) throw StateError('Not signed in');
+    await _users.assertCallerNotContentSuspended();
     final name = await _users.getDisplayNameForUser(uid);
     final role = await _authorRoleHint(uid);
     final ref = await _threads(groupId).add({
@@ -312,6 +315,7 @@ class GroupThreadRepository {
   }) async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) throw StateError('Not signed in');
+    await _users.assertCallerNotContentSuspended();
     final name = await _users.getDisplayNameForUser(uid);
     final ref = await _comments(groupId, threadId).add({
       'body': body.trim(),

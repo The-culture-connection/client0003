@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +11,7 @@ import '../services/events_repository.dart';
 import '../services/user_profile_repository.dart';
 import '../theme/app_theme.dart';
 import '../utils/relative_time.dart';
+import '../utils/staff_claims.dart';
 import '../widgets/profile_section_card.dart';
 import '../widgets/profile_user_blocks.dart';
 
@@ -97,7 +99,8 @@ class _ProfileBody extends StatelessWidget {
     final goals = profileStringList(data['business_goals']);
     final confident = profileStringList(data['confident_skills']);
     final desired = profileStringList(data['desired_skills']);
-    final industry = profileString(data['industry']);
+    final tribe = profileString(data['tribe']) ?? profileString(data['industry']);
+    final businessLogoUrl = profileString(data['business_logo_url']);
 
     return Scaffold(
       body: Column(
@@ -156,6 +159,33 @@ class _ProfileBody extends StatelessWidget {
                                     const SizedBox(height: 4),
                                     Text(subtitle, style: const TextStyle(fontSize: 13, color: AppColors.mutedForeground)),
                                   ],
+                                  if (businessLogoUrl != null) ...[
+                                    const SizedBox(height: 10),
+                                    Row(
+                                      children: [
+                                        ClipRRect(
+                                          borderRadius: BorderRadius.circular(8),
+                                          child: CachedNetworkImage(
+                                            imageUrl: businessLogoUrl,
+                                            width: 40,
+                                            height: 40,
+                                            fit: BoxFit.cover,
+                                            placeholder: (_, __) => Container(
+                                              width: 40,
+                                              height: 40,
+                                              color: AppColors.secondary,
+                                            ),
+                                            errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        const Text(
+                                          'Business logo',
+                                          style: TextStyle(fontSize: 12, color: AppColors.mutedForeground),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ],
                               ),
                             ),
@@ -181,6 +211,19 @@ class _ProfileBody extends StatelessWidget {
                             onPressed: () => context.push('/profile/achievements'),
                             child: const Text('View achievements'),
                           ),
+                        ),
+                        FutureBuilder<bool>(
+                          future: currentUserHasStaffClaim(),
+                          builder: (context, staffSnap) {
+                            if (staffSnap.data != true) return const SizedBox.shrink();
+                            return Align(
+                              alignment: Alignment.centerLeft,
+                              child: TextButton(
+                                onPressed: () => context.push('/admin/reports'),
+                                child: const Text('Staff: user reports'),
+                              ),
+                            );
+                          },
                         ),
                       ],
                     ),
@@ -281,10 +324,10 @@ class _ProfileBody extends StatelessWidget {
                       const SizedBox(height: 16),
                       ProfileSectionCard(
                         step: 5,
-                        title: 'Industry',
+                        title: 'Tribe',
                         onEdit: () => _pushEdit(context, ProfileEditSections.industry),
                         child: Text(
-                          industry ?? '—',
+                          tribe ?? '—',
                           style: const TextStyle(fontSize: 13, color: AppColors.mutedForeground),
                         ),
                       ),

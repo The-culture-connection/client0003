@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../theme/app_theme.dart';
 
 /// Bottom navigation matching [UI Basis/src/app/components/BottomNav.tsx]:
-/// Home, Feed, Groups, Explore, Profile.
+/// Home, Events, Groups, Explore, Profile.
 class ExpansionShell extends StatelessWidget {
   const ExpansionShell({required this.navigationShell, super.key});
 
@@ -17,7 +17,7 @@ class ExpansionShell extends StatelessWidget {
       selectedIcon: Icons.home_rounded,
     ),
     _NavSpec(
-      label: 'Feed',
+      label: 'Events',
       icon: Icons.calendar_month_outlined,
       selectedIcon: Icons.calendar_month_rounded,
     ),

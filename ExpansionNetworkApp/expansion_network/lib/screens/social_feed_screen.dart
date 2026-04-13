@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../models/feed_post.dart';
 import '../services/feed_posts_repository.dart';
 import '../theme/app_theme.dart';
+import '../utils/content_action_guard.dart';
 import '../widgets/feed_post_card.dart';
 
 /// Full community post feed (`feed_posts`), separate from the Events tab.
@@ -104,7 +105,10 @@ class SocialFeedScreen extends StatelessWidget {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push('/feed/post/create'),
+        onPressed: () async {
+          if (await blockContentActionIfSuspended(context)) return;
+          if (context.mounted) context.push('/feed/post/create');
+        },
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
         child: const Icon(Icons.add),

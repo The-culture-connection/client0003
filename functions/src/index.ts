@@ -31,6 +31,11 @@ export { runExpansionUserMatching } from "./callables/runExpansionUserMatching";
 export { getCourseFile } from "./callables/getCourseFile";
 export { importPptxDeck } from "./callables/importPptxDeck";
 export { joinGroup, leaveGroup, deleteMobileGroup } from "./callables/groupMembership";
+export {
+  adminCreateMobileGroup,
+  getUserModerationSnapshot,
+  moderateUserAccount,
+} from "./callables/adminMobileModeration";
 
 export {
   onGroupThreadVoteWrite,

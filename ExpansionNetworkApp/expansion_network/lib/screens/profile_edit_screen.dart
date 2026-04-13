@@ -116,7 +116,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
       ..clear()
       ..addAll(_stringList(d['desired_skills']));
 
-    _selectedIndustry = _s(d['industry']);
+    _selectedIndustry = _s(d['tribe']) ?? _s(d['industry']);
 
     final ws = d['work_structure'];
     if (ws is Map) {
@@ -194,7 +194,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
       return false;
     }
     if (_selectedIndustry == null || _selectedIndustry!.isEmpty) {
-      _error = 'Select your industry.';
+      _error = 'Select your tribe.';
       return false;
     }
     _error = null;
@@ -230,7 +230,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
         return true;
       case ProfileEditSections.industry:
         if (_selectedIndustry == null || _selectedIndustry!.isEmpty) {
-          _error = 'Select your industry.';
+          _error = 'Select your tribe.';
           return false;
         }
         _error = null;
@@ -266,7 +266,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
         businessGoals: _selectedGoals.toList(),
         confidentSkills: _confidentSkills.toList(),
         desiredSkills: _desiredSkills.toList(),
-        industry: _selectedIndustry!,
+        tribe: _selectedIndustry!,
         workFlexibility: _flexibility,
         weeklyHours: _weeklyHours,
         workOwnership: _ownership,
@@ -568,7 +568,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                   const SizedBox(height: 8),
                 ],
                 if (show(ProfileEditSections.industry)) ...[
-                  _blockTitle(context, 'Industry', _keyIndustry),
+                  _blockTitle(context, 'Tribe', _keyIndustry),
                   Card(
                     color: AppColors.secondary,
                     shape: RoundedRectangleBorder(

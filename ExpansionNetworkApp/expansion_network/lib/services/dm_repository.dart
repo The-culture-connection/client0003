@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../models/dm_message.dart';
+import 'user_profile_repository.dart';
 
 /// Deterministic id for a 1:1 thread between two UIDs (lexicographic order).
 String dmThreadIdForUsers(String uidA, String uidB) {
@@ -17,11 +18,14 @@ class DmRepository {
   DmRepository({
     FirebaseFirestore? firestore,
     FirebaseAuth? auth,
+    UserProfileRepository? users,
   })  : _db = firestore ?? FirebaseFirestore.instance,
-        _auth = auth ?? FirebaseAuth.instance;
+        _auth = auth ?? FirebaseAuth.instance,
+        _users = users ?? UserProfileRepository();
 
   final FirebaseFirestore _db;
   final FirebaseAuth _auth;
+  final UserProfileRepository _users;
 
   CollectionReference<Map<String, dynamic>> get _threads => _db.collection('dm_threads');
 
@@ -60,6 +64,7 @@ class DmRepository {
   }) async {
     final me = _auth.currentUser?.uid;
     if (me == null) throw StateError('Not signed in');
+    await _users.assertCallerNotContentSuspended();
     final threadId = dmThreadIdForUsers(me, partnerUid);
     final participants = _sortedParticipants(me, partnerUid);
     final threadRef = _threads.doc(threadId);

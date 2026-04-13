@@ -12,12 +12,14 @@ import {
   Award,
   UserPlus,
   KeyRound,
+  ShieldAlert,
 } from "lucide-react";
 import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { InPersonCohortCsvImport } from "@/components/admin/InPersonCohortCsvImport";
 import { EligibleUsersAdminPanel } from "@/components/admin/EligibleUsersAdminPanel";
+import { MobileModerationPanel } from "@/components/admin/MobileModerationPanel";
 
 function isAdminUser(roles: string[] | undefined) {
   const r = roles ?? [];
@@ -65,6 +67,10 @@ export default function AdminDashboard() {
           <TabsTrigger value="expansion-eligible" className="gap-1">
             <KeyRound className="w-3.5 h-3.5" />
             Expansion invites
+          </TabsTrigger>
+          <TabsTrigger value="mobile-moderation" className="gap-1">
+            <ShieldAlert className="w-3.5 h-3.5" />
+            Mobile & reports
           </TabsTrigger>
         </TabsList>
 
@@ -177,6 +183,10 @@ export default function AdminDashboard() {
 
         <TabsContent value="expansion-eligible" className="mt-4">
           <EligibleUsersAdminPanel />
+        </TabsContent>
+
+        <TabsContent value="mobile-moderation" className="mt-4">
+          <MobileModerationPanel />
         </TabsContent>
       </Tabs>
     </div>

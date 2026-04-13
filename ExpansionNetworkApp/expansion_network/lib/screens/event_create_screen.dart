@@ -5,7 +5,9 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../services/events_repository.dart';
+import '../services/user_profile_repository.dart';
 import '../theme/app_theme.dart';
+import '../utils/content_suspension.dart';
 
 class EventCreateScreen extends StatefulWidget {
   const EventCreateScreen({super.key});
@@ -28,6 +30,18 @@ class _EventCreateScreenState extends State<EventCreateScreen> {
   TimeOfDay? _eventTime;
   XFile? _pickedFlyer;
   static const int _maxFlyerBytes = 10 * 1024 * 1024;
+  bool _contentSuspended = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null || !mounted) return;
+      final s = await UserProfileRepository().isContentSuspended(uid);
+      if (mounted) setState(() => _contentSuspended = s);
+    });
+  }
 
   @override
   void dispose() {
@@ -41,13 +55,31 @@ class _EventCreateScreenState extends State<EventCreateScreen> {
     return t.format(context);
   }
 
+  /// Calendar day at local midnight (no time component).
+  static DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
+
+  /// First day tappable in the picker: today + 4 calendar days (today and the next three days are disabled).
+  static DateTime _firstSelectableEventDate() {
+    final today = _dateOnly(DateTime.now());
+    return today.add(const Duration(days: 4));
+  }
+
   Future<void> _pickDate() async {
     final now = DateTime.now();
+    final firstSelectable = _firstSelectableEventDate();
+    final lastSelectable = DateTime(now.year + 5, 12, 31);
+    DateTime initial = firstSelectable;
+    if (_eventDate != null) {
+      final chosen = _dateOnly(_eventDate!);
+      if (!chosen.isBefore(firstSelectable) && !chosen.isAfter(lastSelectable)) {
+        initial = chosen;
+      }
+    }
     final d = await showDatePicker(
       context: context,
-      initialDate: _eventDate ?? now,
-      firstDate: DateTime(now.year - 1),
-      lastDate: DateTime(now.year + 5),
+      initialDate: initial,
+      firstDate: firstSelectable,
+      lastDate: lastSelectable,
       builder: (context, child) {
         final base = Theme.of(context);
         return Theme(
@@ -140,6 +172,23 @@ class _EventCreateScreenState extends State<EventCreateScreen> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pick a time.')));
       return;
     }
+    final date = _eventDate;
+    if (date == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pick the event date.')),
+      );
+      return;
+    }
+    final startLocal = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    final minStart = DateTime.now().add(const Duration(hours: 72));
+    if (!startLocal.isAfter(minStart)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Events must start at least 72 hours from now.'),
+        ),
+      );
+      return;
+    }
     final timeStr = _formatTime(context, time);
 
     setState(() => _submitting = true);
@@ -150,7 +199,7 @@ class _EventCreateScreenState extends State<EventCreateScreen> {
       }
       await _eventsRepo.submitUserEventForApproval(
         title: _title.text.trim(),
-        date: _eventDate,
+        date: date,
         time: timeStr,
         location: _location.text.trim(),
         details: _description.text.trim(),
@@ -160,7 +209,7 @@ class _EventCreateScreenState extends State<EventCreateScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Submitted. You’ll see it on the feed once it’s reviewed in Digital Curriculum.'),
+            content: Text('Submitted. You’ll see it on Events once it’s reviewed in Digital Curriculum.'),
           ),
         );
         context.go('/feed');
@@ -176,8 +225,50 @@ class _EventCreateScreenState extends State<EventCreateScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_contentSuspended) {
+      return Scaffold(
+        body: Column(
+          children: [
+            Material(
+              color: AppColors.background,
+              child: SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back),
+                        onPressed: () => context.pop(),
+                      ),
+                      Text(
+                        'Create Event',
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const Expanded(
+              child: Center(
+                child: Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Text(
+                    kContentSuspendedUserMessage,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: AppColors.mutedForeground, height: 1.4),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     final dateLabel = _eventDate == null
-        ? 'Pick date (optional)'
+        ? 'Pick date (required)'
         : MaterialLocalizations.of(context).formatMediumDate(_eventDate!);
     final timeLabel = _eventTime == null ? 'Pick time' : _formatTime(context, _eventTime!);
 
@@ -249,7 +340,7 @@ class _EventCreateScreenState extends State<EventCreateScreen> {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Date is optional; time is required.',
+                    'Date and time are required. Events must start at least 72 hours from now.',
                     style: TextStyle(fontSize: 12, color: AppColors.mutedForeground),
                   ),
                   const SizedBox(height: 16),

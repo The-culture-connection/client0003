@@ -1,6 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../auth/auth_controller.dart';
@@ -9,7 +11,7 @@ import '../services/user_profile_repository.dart';
 import '../theme/app_theme.dart';
 import '../widgets/curriculum_skill_category_card.dart';
 
-/// Digital curriculum–aligned flow: identity → goals → skills ×2 → industry → work structure → profile links.
+/// Digital curriculum–aligned flow: identity → goals → skills ×2 → tribe → work structure → profile links.
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
 
@@ -34,6 +36,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final _instagram = TextEditingController();
   final _facebook = TextEditingController();
   final _tiktok = TextEditingController();
+  final _graduatedCityProgram = TextEditingController();
 
   bool _notInCohort = false;
 
@@ -44,7 +47,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   String? _expandedOfferedCategoryTitle;
   String? _expandedSeekingCategoryTitle;
 
-  String? _selectedIndustry;
+  String? _selectedTribe;
 
   int _flexibility = 5;
   int _weeklyHours = 40;
@@ -52,6 +55,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   bool _saving = false;
   String? _error;
+
+  final _imagePicker = ImagePicker();
+  XFile? _pickedProfilePhoto;
+  XFile? _pickedBusinessLogo;
+  static const int _maxImageBytes = 10 * 1024 * 1024;
 
   static const _minSkills = 3;
   static const _pageCount = 7;
@@ -87,10 +95,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     _instagram.dispose();
     _facebook.dispose();
     _tiktok.dispose();
+    _graduatedCityProgram.dispose();
     super.dispose();
   }
 
-  bool _validateStep1() {
+  bool _needsAlumniCityProgram(BuildContext context) {
+    final roles = context.read<AuthController>().expansionOnboardingRoles;
+    return roles.any((r) => r == 'Alumni' || r == 'Digital Curriculum Alumni');
+  }
+
+  bool _cohortIdIsBlank() => _cohortId.text.trim().isEmpty;
+
+  bool _validateStep1(BuildContext context) {
     if (_firstName.text.trim().isEmpty ||
         _lastName.text.trim().isEmpty ||
         _bio.text.trim().isEmpty ||
@@ -100,8 +116,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       _error = 'Please fill in all fields on this step.';
       return false;
     }
-    if (!_notInCohort && _cohortId.text.trim().isEmpty) {
+    if (!_notInCohort && _cohortIdIsBlank()) {
       _error = 'Enter your cohort ID or choose “Not in a cohort”.';
+      return false;
+    }
+    if (_needsAlumniCityProgram(context) && _graduatedCityProgram.text.trim().isEmpty) {
+      _error = 'Enter the city program you graduated from.';
       return false;
     }
     _error = null;
@@ -135,9 +155,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     return true;
   }
 
-  bool _validateIndustry() {
-    if (_selectedIndustry == null || _selectedIndustry!.isEmpty) {
-      _error = 'Select the industry you are in.';
+  bool _validateTribe() {
+    if (_selectedTribe == null || _selectedTribe!.isEmpty) {
+      _error = 'Select your tribe.';
       return false;
     }
     _error = null;
@@ -146,7 +166,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   void _nextStep() {
     if (_stepIndex == 0) {
-      if (!_validateStep1()) {
+      if (!_validateStep1(context)) {
         setState(() {});
         return;
       }
@@ -166,7 +186,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         return;
       }
     } else if (_stepIndex == 4) {
-      if (!_validateIndustry()) {
+      if (!_validateTribe()) {
         setState(() {});
         return;
       }
@@ -193,11 +213,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Future<void> _save() async {
-    if (!_validateStep1() ||
+    if (!_validateStep1(context) ||
         !_validateGoals() ||
         !_validateConfident() ||
         !_validateDesired() ||
-        !_validateIndustry()) {
+        !_validateTribe()) {
       setState(() {});
       return;
     }
@@ -212,6 +232,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             'Your alumni roles could not be loaded. Sign out and sign in again, or contact support.');
         return;
       }
+      final includeGraduatedCityProgram = _needsAlumniCityProgram(context);
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) throw StateError('Not signed in');
+      String? photoUrl;
+      String? logoUrl;
+      if (_pickedProfilePhoto != null) {
+        photoUrl = await _uploadProfileImage(uid, _pickedProfilePhoto!);
+      }
+      if (_pickedBusinessLogo != null) {
+        logoUrl = await _uploadProfileImage(uid, _pickedBusinessLogo!, subfolder: 'logo');
+      }
       await UserProfileRepository().saveExpansionProfile(
         roles: roles,
         firstName: _firstName.text.trim(),
@@ -225,7 +256,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         businessGoals: _selectedGoals.toList(),
         confidentSkills: _confidentSkills.toList(),
         desiredSkills: _desiredSkills.toList(),
-        industry: _selectedIndustry!,
+        tribe: _selectedTribe!,
         workFlexibility: _flexibility,
         weeklyHours: _weeklyHours,
         workOwnership: _ownership,
@@ -234,7 +265,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         instagram: _instagram.text,
         facebook: _facebook.text,
         tiktok: _tiktok.text,
+        photoUrl: photoUrl,
+        businessLogoUrl: logoUrl,
+        graduatedCityProgram:
+            includeGraduatedCityProgram ? _graduatedCityProgram.text.trim() : null,
       );
+      if (photoUrl != null && photoUrl.isNotEmpty) {
+        await FirebaseAuth.instance.currentUser?.updatePhotoURL(photoUrl);
+      }
       if (!mounted) return;
       context.read<AuthController>().markExpansionOnboardingComplete();
       context.go('/welcome-intro');
@@ -251,11 +289,80 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       'How can we help your business grow?',
       'Skills you’re confident in',
       'Skills you want to acquire',
-      'Industry',
+      'Tribe',
       'Ideal work structure',
       'Profile links',
     ];
     return 'Step ${_stepIndex + 1} of $_pageCount — ${titles[_stepIndex]}';
+  }
+
+  Future<String> _uploadProfileImage(String uid, XFile x, {String subfolder = 'avatar'}) async {
+    final safeName = x.name.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+    final objectName = '${subfolder}_${DateTime.now().millisecondsSinceEpoch}_$safeName';
+    final ref = FirebaseStorage.instance.ref().child('users/$uid/profile/$objectName');
+    final bytes = await x.readAsBytes();
+    if (bytes.length > _maxImageBytes) {
+      throw StateError('Image must be 10MB or smaller.');
+    }
+    final contentType = _guessImageContentType(safeName);
+    await ref.putData(bytes, SettableMetadata(contentType: contentType));
+    return ref.getDownloadURL();
+  }
+
+  static String _guessImageContentType(String name) {
+    final lower = name.toLowerCase();
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.webp')) return 'image/webp';
+    if (lower.endsWith('.gif')) return 'image/gif';
+    return 'image/jpeg';
+  }
+
+  Future<void> _pickProfilePhoto() async {
+    try {
+      final x = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        imageQuality: 88,
+      );
+      if (x == null) return;
+      if (await x.length() > _maxImageBytes) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Image must be 10MB or smaller.')),
+          );
+        }
+        return;
+      }
+      setState(() => _pickedProfilePhoto = x);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      }
+    }
+  }
+
+  Future<void> _pickBusinessLogo() async {
+    try {
+      final x = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        imageQuality: 88,
+      );
+      if (x == null) return;
+      if (await x.length() > _maxImageBytes) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Image must be 10MB or smaller.')),
+          );
+        }
+        return;
+      }
+      setState(() => _pickedBusinessLogo = x);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      }
+    }
   }
 
   void _toggleOfferedCategory(String title) {
@@ -371,7 +478,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 _buildStepGoals(context),
                 _buildStepConfidentSkills(context),
                 _buildStepDesiredSkills(context),
-                _buildStepIndustry(context),
+                _buildStepTribe(context),
                 _buildStepWorkStructure(context),
                 _buildStepProfileLinks(context),
               ],
@@ -426,13 +533,81 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             title: const Text('Not in a cohort'),
             value: true,
             groupValue: _notInCohort,
-            onChanged: (v) => setState(() => _notInCohort = true),
+            onChanged: (v) => setState(() {
+              _notInCohort = true;
+            }),
             contentPadding: EdgeInsets.zero,
           ),
           if (!_notInCohort) ...[
             const SizedBox(height: 4),
-            _labeledField('Cohort ID', _cohortId),
+            if (!_cohortIdIsBlank())
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Text(
+                  'Cohort ID: ${_cohortId.text.trim()}',
+                  style: const TextStyle(fontSize: 14, color: AppColors.mutedForeground),
+                ),
+              )
+            else ...[
+              _labeledField('Cohort ID', _cohortId),
+            ],
           ],
+          if (_needsAlumniCityProgram(context)) ...[
+            const SizedBox(height: 8),
+            _labeledField('What city program did you graduate from?', _graduatedCityProgram),
+          ],
+          const SizedBox(height: 8),
+          Text('Profile photo', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Icon(Icons.person_outline, size: 40, color: AppColors.mutedForeground),
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: _saving ? null : _pickProfilePhoto,
+                  child: Text(
+                    _pickedProfilePhoto == null
+                        ? 'Add profile photo (optional)'
+                        : _pickedProfilePhoto!.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ),
+              if (_pickedProfilePhoto != null)
+                IconButton(
+                  onPressed: _saving ? null : () => setState(() => _pickedProfilePhoto = null),
+                  icon: const Icon(Icons.clear),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text('Business logo', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Icon(Icons.add_photo_alternate_outlined, size: 40, color: AppColors.mutedForeground),
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: _saving ? null : _pickBusinessLogo,
+                  child: Text(
+                    _pickedBusinessLogo == null
+                        ? 'Add business logo (optional)'
+                        : _pickedBusinessLogo!.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ),
+              if (_pickedBusinessLogo != null)
+                IconButton(
+                  onPressed: _saving ? null : () => setState(() => _pickedBusinessLogo = null),
+                  icon: const Icon(Icons.clear),
+                ),
+            ],
+          ),
           _labeledField('Bio', _bio, maxLines: 4),
           _labeledField('Profession', _profession),
           const SizedBox(height: 8),
@@ -686,7 +861,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  Widget _buildStepIndustry(BuildContext context) {
+  Widget _buildStepTribe(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -697,7 +872,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  'What industry are you in?',
+                  'What tribe are you in?',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 8),
@@ -717,8 +892,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       return RadioListTile<String>(
                         title: Text(ind, style: const TextStyle(height: 1.25)),
                         value: ind,
-                        groupValue: _selectedIndustry,
-                        onChanged: (v) => setState(() => _selectedIndustry = v),
+                        groupValue: _selectedTribe,
+                        onChanged: (v) => setState(() => _selectedTribe = v),
                         contentPadding: const EdgeInsets.symmetric(horizontal: 12),
                       );
                     }).toList(),

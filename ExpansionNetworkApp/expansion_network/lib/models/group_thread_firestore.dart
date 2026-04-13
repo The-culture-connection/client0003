@@ -22,6 +22,7 @@ class FsGroup {
     this.threadCount,
     this.memberCountDenorm,
     this.createdBy,
+    this.visibility = 'public',
   });
 
   final String id;
@@ -42,6 +43,11 @@ class FsGroup {
   final int? memberCountDenorm;
   final String? createdBy;
 
+  /// `public` (default) or `private` (self-join blocked server-side).
+  final String visibility;
+
+  bool get isPrivateCommunity => visibility == 'private';
+
   bool isMember(String? uid) => uid != null && memberIds.contains(uid);
   bool isPending(String? uid) => uid != null && pendingIds.contains(uid);
 
@@ -61,6 +67,8 @@ class FsGroup {
     final pending = List<String>.from(d['PendingMembers'] as List? ?? const []);
     final isFeatured = d['isFeatured'] == true;
     final fr = d['featuredRank'];
+    final visRaw = (d['visibility'] as String?)?.toLowerCase().trim();
+    final visibility = visRaw == 'private' ? 'private' : 'public';
     return FsGroup(
       id: id,
       name: name,
@@ -79,6 +87,7 @@ class FsGroup {
       threadCount: _intOrNull(d['threadCount']),
       memberCountDenorm: _intOrNull(d['memberCount']),
       createdBy: d['createdBy'] as String?,
+      visibility: visibility,
     );
   }
 }

@@ -98,6 +98,13 @@ export const joinGroup = onCall(
       if (pending.includes(uid)) {
         return;
       }
+      const visibility = ((data.visibility as string) || "public").toLowerCase();
+      if (scope === "mobile" && visibility === "private") {
+        throw new HttpsError(
+          "permission-denied",
+          "This community is private. Ask a staff member to add you."
+        );
+      }
       const status = (data.Status as string) || "Open";
       if (status === "Open") {
         tx.update(ref, {GroupMembers: FieldValue.arrayUnion(uid)});

@@ -32,6 +32,15 @@ class AdminEventsScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 16),
+              FilledButton(
+                onPressed: () => context.push('/admin/reports'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: AppColors.onPrimary,
+                ),
+                child: const Text('Open user reports (staff)'),
+              ),
+              const SizedBox(height: 20),
               const Text(
                 'Member-submitted events are reviewed in Digital Curriculum, not in this app.',
                 style: TextStyle(fontSize: 15, height: 1.45, color: AppColors.foreground),

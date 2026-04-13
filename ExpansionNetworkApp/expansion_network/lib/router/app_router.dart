@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../auth/auth_controller.dart';
 import '../screens/admin_events_screen.dart';
+import '../screens/admin_reports_screen.dart';
 import '../screens/auth_claim_screen.dart';
 import '../screens/auth_sign_in_screen.dart';
 import '../screens/chat_room_screen.dart';
@@ -269,6 +270,11 @@ GoRouter createAppRouter(AuthController auth) {
         parentNavigatorKey: _rootNavigatorKey,
         path: '/admin/events',
         builder: (context, state) => const AdminEventsScreen(),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/admin/reports',
+        builder: (context, state) => const AdminReportsScreen(),
       ),
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,

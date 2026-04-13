@@ -37,6 +37,31 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    /** `users/{uid}.content_suspended` — staff-only to toggle; blocks new content creates. */
+    function userDoc(uid) {
+      return get(/databases/$(database)/documents/users/$(uid));
+    }
+
+    function callerContentSuspended() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && userDoc(request.auth.uid).data.get('content_suspended', false) == true;
+    }
+
+    function callerNotContentSuspended() {
+      return isSignedIn() && !callerContentSuspended();
+    }
+
+    function ownerContentSuspensionUnchanged() {
+      return request.resource.data.get('content_suspended', false)
+        == resource.data.get('content_suspended', false);
+    }
+
+    function ownerAccountBanUnchanged() {
+      return request.resource.data.get('account_banned', false)
+        == resource.data.get('account_banned', false);
+    }
+
     /** True if document data grants network admin (Firestore mirror of claims). */
     function dataHasStaffRole(data) {
       return (data.keys().hasAll(['roles'])
@@ -81,6 +106,8 @@ service cloud.firestore {
         || hasStaffClaim();
       allow update: if hasStaffClaim()
         || (isOwner(userId) && !gainedPrivilegedUserFields()
+          && ownerContentSuspensionUnchanged()
+          && ownerAccountBanUnchanged()
           && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['gamification'])
           && userBadgesEarnedUnchanged());
       allow delete: if hasStaffClaim();
@@ -119,9 +146,24 @@ service cloud.firestore {
     }
 
     // --- Community feed (Expansion app + curriculum) ---
+    match /user_reports/{reportId} {
+      allow create: if isSignedIn()
+        && request.resource.data.reporter_id == request.auth.uid
+        && request.resource.data.reported_user_id is string
+        && request.resource.data.reported_user_id.size() > 0
+        && request.resource.data.reported_user_id != request.auth.uid
+        && request.resource.data.reason is string
+        && request.resource.data.reason.size() > 0
+        && request.resource.data.reason.size() <= 4000
+        && request.resource.data.status == 'open';
+      allow read: if hasStaffClaim();
+      allow update, delete: if hasStaffClaim();
+    }
+
     match /feed_posts/{postId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn()
+        && callerNotContentSuspended()
         && request.resource.data.author_id == request.auth.uid;
       allow update, delete: if isSignedIn()
         && resource.data.author_id == request.auth.uid;
@@ -135,6 +177,7 @@ service cloud.firestore {
     match /feed_posts/{postId}/replies/{replyId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn()
+        && callerNotContentSuspended()
         && request.resource.data.author_id == request.auth.uid;
       allow update, delete: if isSignedIn()
         && resource.data.author_id == request.auth.uid;
@@ -204,7 +247,8 @@ service cloud.firestore {
     }
 
     function memberSubmittedMobileEventCreate() {
-      return request.resource.data.approval_status == 'pending'
+      return callerNotContentSuspended()
+        && request.resource.data.approval_status == 'pending'
         && request.resource.data.created_by == request.auth.uid
         && request.resource.data.registered_users is list
         && request.resource.data.registered_users.size() == 0
@@ -252,6 +296,7 @@ service cloud.firestore {
     match /expansion_jobs/{jobId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn()
+        && callerNotContentSuspended()
         && request.resource.data.author_id == request.auth.uid
         && request.resource.data.title is string
         && request.resource.data.title.size() > 0
@@ -279,6 +324,7 @@ service cloud.firestore {
     match /expansion_skills/{skillId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn()
+        && callerNotContentSuspended()
         && request.resource.data.author_id == request.auth.uid
         && request.resource.data.title is string
         && request.resource.data.title.size() > 0
@@ -317,6 +363,7 @@ service cloud.firestore {
         && resource.data.participant_ids is list
         && request.auth.uid in resource.data.participant_ids;
       allow create: if isSignedIn()
+        && callerNotContentSuspended()
         && request.resource.data.participant_ids is list
         && request.resource.data.participant_ids.size() == 2
         && request.auth.uid in request.resource.data.participant_ids
@@ -344,6 +391,7 @@ service cloud.firestore {
         && dmThreadDoc(threadId).exists
         && request.auth.uid in dmParticipantIds(threadId);
       allow create: if isSignedIn()
+        && callerNotContentSuspended()
         && dmThreadDoc(threadId).exists
         && request.auth.uid in dmParticipantIds(threadId)
         && request.resource.data.sender_id == request.auth.uid
@@ -501,6 +549,7 @@ service cloud.firestore {
     match /groups_mobile/{groupId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn()
+        && callerNotContentSuspended()
         && request.resource.data.Name is string
         && request.resource.data.Name.size() > 0
         && request.resource.data.Name.size() <= 120
@@ -525,7 +574,7 @@ service cloud.firestore {
 
     match /groups_mobile/{groupId}/threads/{threadId} {
       allow read: if isSignedIn() && (hasStaffClaim() || isMobileGroupMember(groupId));
-      allow create: if isSignedIn() && isMobileGroupMember(groupId)
+      allow create: if isSignedIn() && callerNotContentSuspended() && isMobileGroupMember(groupId)
         && request.resource.data.author_id == request.auth.uid
         && request.resource.data.body is string
         && request.resource.data.body.size() > 0
@@ -542,7 +591,7 @@ service cloud.firestore {
 
     match /groups_mobile/{groupId}/threads/{threadId}/comments/{commentId} {
       allow read: if isSignedIn() && (hasStaffClaim() || isMobileGroupMember(groupId));
-      allow create: if isSignedIn() && isMobileGroupMember(groupId)
+      allow create: if isSignedIn() && callerNotContentSuspended() && isMobileGroupMember(groupId)
         && request.resource.data.author_id == request.auth.uid
         && request.resource.data.body is string
         && request.resource.data.body.size() > 0

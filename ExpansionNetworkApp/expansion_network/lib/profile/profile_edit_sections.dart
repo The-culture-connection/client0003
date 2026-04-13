@@ -55,7 +55,7 @@ String profileEditAppBarTitle(String? normalized) {
     case ProfileEditSections.skillsDesired:
       return 'Edit skills to acquire';
     case ProfileEditSections.industry:
-      return 'Edit industry';
+      return 'Edit tribe';
     case ProfileEditSections.work:
       return 'Edit work structure';
     case ProfileEditSections.links:

@@ -48,6 +48,7 @@ class ProfileIdentitySection extends StatelessWidget {
     final location = [city, state].where((s) => s != null && s.isNotEmpty).join(', ');
     final notInCohort = data['not_in_cohort'] == true;
     final cohortId = profileString(data['cohort_id']);
+    final gradProgram = profileString(data['graduated_city_program']);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -60,6 +61,7 @@ class ProfileIdentitySection extends StatelessWidget {
         if (profession != null) _kv('Profession', profession),
         if (location.isNotEmpty) _kv('Location', location),
         _kv('Cohort', notInCohort ? 'Not in a cohort' : (cohortId ?? '—')),
+        if (gradProgram != null) _kv('City program graduated', gradProgram),
         if (showEmail) _kv('Email', email.isEmpty ? '—' : email),
       ],
     );

@@ -219,7 +219,7 @@ class _MatchingScreenState extends State<MatchingScreen> {
                             _howRow(
                               Icons.place_outlined,
                               'Light context',
-                              'Same city or industry can nudge the score slightly; most of the match is skills and goals.',
+                              'Same city or tribe can nudge the score slightly; most of the match is skills and goals.',
                             ),
                             _howRow(
                               Icons.refresh,
@@ -361,7 +361,7 @@ List<String> _whyLines(ExpansionMatch m) {
     lines.add('Mutual skill overlap boost applied');
   }
   if (m.sameCity) lines.add('Same city');
-  if (m.sameIndustry) lines.add('Same industry');
+  if (m.sameIndustry) lines.add('Same tribe');
   if (lines.isEmpty) {
     lines.add('Strong complementary fit from your profiles.');
   }
@@ -410,7 +410,9 @@ class _ExpansionMatchCard extends StatelessWidget {
                   final photoUrl = d != null ? profileString(d['photo_url']) : null;
                   final initials = d != null ? profileInitials(d) : '?';
                   final profession = d != null ? profileString(d['profession']) : null;
-                  final industry = d != null ? profileString(d['industry']) : null;
+                  final tribeLine = d != null
+                      ? (profileString(d['tribe']) ?? profileString(d['industry']))
+                      : null;
                   final city = d != null ? profileString(d['city']) : null;
                   final state = d != null ? profileString(d['state']) : null;
                   final loc = [city, state].whereType<String>().where((s) => s.isNotEmpty).join(', ');
@@ -453,10 +455,10 @@ class _ExpansionMatchCard extends StatelessWidget {
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ],
-                            if (industry != null || loc.isNotEmpty) ...[
+                            if (tribeLine != null || loc.isNotEmpty) ...[
                               const SizedBox(height: 2),
                               Text(
-                                [industry, loc.isEmpty ? null : loc].whereType<String>().join(' · '),
+                                [tribeLine, loc.isEmpty ? null : loc].whereType<String>().join(' · '),
                                 style: const TextStyle(fontSize: 12, color: AppColors.mutedForeground),
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,

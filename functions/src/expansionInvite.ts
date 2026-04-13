@@ -324,6 +324,13 @@ export const initializeUserSession = onCall(defaultCallableOptions, async (reque
   }
   const uid = request.auth.uid;
   const record = await auth.getUser(uid);
+  if (record.disabled) {
+    return {
+      state: "UNAUTHORIZED",
+      reason: "account_disabled",
+      message: "This account has been disabled.",
+    };
+  }
   const emailRaw = record.email;
   if (!emailRaw) {
     throw new HttpsError("failed-precondition", "Your account has no email.");
@@ -355,6 +362,14 @@ export const initializeUserSession = onCall(defaultCallableOptions, async (reque
   const userRef = db.collection(USERS).doc(uid);
   const userSnap = await userRef.get();
   const prev = userSnap.data() || {};
+
+  if (prev.account_banned === true) {
+    return {
+      state: "UNAUTHORIZED",
+      reason: "account_banned",
+      message: "This account is not allowed to use the network.",
+    };
+  }
 
   const patch: Record<string, unknown> = {
     uid,

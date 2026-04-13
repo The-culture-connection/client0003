@@ -10,6 +10,7 @@ import '../models/network_member_hit.dart';
 import '../services/explore_listings_repository.dart';
 import '../services/user_profile_repository.dart';
 import '../theme/app_theme.dart';
+import '../utils/content_action_guard.dart';
 import '../utils/relative_time.dart';
 import '../widgets/page_header.dart';
 import '../widgets/poster_profile_avatar.dart';
@@ -307,17 +308,19 @@ class _ExploreScreenState extends State<ExploreScreen> {
             ListTile(
               leading: const Icon(Icons.work_outline, color: AppColors.primary),
               title: const Text('Post a job'),
-              onTap: () {
+              onTap: () async {
                 Navigator.pop(ctx);
-                context.push('/explore/jobs/create');
+                if (await blockContentActionIfSuspended(context)) return;
+                if (context.mounted) context.push('/explore/jobs/create');
               },
             ),
             ListTile(
               leading: const Icon(Icons.psychology_outlined, color: AppColors.primary),
               title: const Text('Offer a skill'),
-              onTap: () {
+              onTap: () async {
                 Navigator.pop(ctx);
-                context.push('/explore/skills/create');
+                if (await blockContentActionIfSuspended(context)) return;
+                if (context.mounted) context.push('/explore/skills/create');
               },
             ),
           ],

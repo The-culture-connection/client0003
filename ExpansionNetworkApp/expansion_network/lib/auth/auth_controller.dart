@@ -109,7 +109,11 @@ class AuthController extends ChangeNotifier {
       if (state == 'UNAUTHORIZED') {
         _accessDeniedMessage = reason == 'no_network_access'
             ? kSessionNoNetworkAccessMessage
-            : kSessionNotAuthorizedMessage;
+            : reason == 'account_banned'
+                ? kSessionAccountBannedMessage
+                : reason == 'account_disabled'
+                    ? kSessionAccountDisabledMessage
+                    : kSessionNotAuthorizedMessage;
         expansionReleaseTrace('session: UNAUTHORIZED → revokeAfterDenial');
         await _revokeAfterDenial(user);
         return;

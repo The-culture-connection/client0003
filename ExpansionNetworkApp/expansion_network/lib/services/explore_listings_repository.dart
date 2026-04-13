@@ -123,6 +123,7 @@ class ExploreListingsRepository {
   }) async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) throw StateError('Not signed in');
+    await _users.assertCallerNotContentSuspended();
     _validateCurriculumSkillList(skillsSeeking);
     final name = await _users.getDisplayNameForUser(uid);
     final ref = _jobs.doc();
@@ -152,6 +153,7 @@ class ExploreListingsRepository {
   }) async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) throw StateError('Not signed in');
+    await _users.assertCallerNotContentSuspended();
     _validateCurriculumSkillList(skillsOffering);
     final name = await _users.getDisplayNameForUser(uid);
     final ref = _skills.doc();

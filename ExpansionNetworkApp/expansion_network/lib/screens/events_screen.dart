@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../models/community_event.dart';
 import '../services/events_repository.dart';
 import '../theme/app_theme.dart';
+import '../utils/content_action_guard.dart';
 import '../utils/relative_time.dart';
 import '../widgets/event_rsvp_attendee_tile.dart';
 import '../widgets/page_header.dart';
@@ -22,7 +23,10 @@ class EventsScreen extends StatelessWidget {
       floatingActionButton: Padding(
         padding: const EdgeInsets.only(bottom: 72),
         child: FloatingActionButton(
-          onPressed: () => context.push('/events/create'),
+          onPressed: () async {
+            if (await blockContentActionIfSuspended(context)) return;
+            if (context.mounted) context.push('/events/create');
+          },
           child: const Icon(Icons.add),
         ),
       ),

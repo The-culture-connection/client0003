@@ -10,6 +10,7 @@ import '../services/explore_listings_repository.dart';
 import '../services/feed_posts_repository.dart';
 import '../services/group_thread_repository.dart';
 import '../theme/app_theme.dart';
+import '../utils/content_action_guard.dart';
 import '../widgets/feed_post_card.dart';
 
 /// Port of [UI Basis/src/app/pages/Home.tsx] — group activity from `groups_mobile`, no feed posts.
@@ -20,7 +21,10 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push('/feed/post/create'),
+        onPressed: () async {
+          if (await blockContentActionIfSuspended(context)) return;
+          if (context.mounted) context.push('/feed/post/create');
+        },
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
         child: const Icon(Icons.add),
@@ -216,7 +220,10 @@ class _RecentActivityCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     TextButton(
-                      onPressed: () => context.push('/feed/post/create'),
+                      onPressed: () async {
+                        if (await blockContentActionIfSuspended(context)) return;
+                        if (context.mounted) context.push('/feed/post/create');
+                      },
                       child: const Text('Create post'),
                     ),
                   ],

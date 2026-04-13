@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../constants/alumni_network_constants.dart';
 import '../models/network_member_hit.dart';
 import '../profile/profile_utils.dart';
+import '../utils/content_suspension.dart';
 import 'alumni_access_repository.dart';
 
 /// Persists `users/{uid}` using the **digital curriculum** profile shape (snake_case fields).
@@ -76,6 +77,19 @@ class UserProfileRepository {
   Stream<DocumentSnapshot<Map<String, dynamic>>> watchUserDoc(String uid) =>
       _users.doc(uid).snapshots();
 
+  Future<bool> isContentSuspended(String uid) async {
+    final d = await getUserDoc(uid);
+    return isProfileContentSuspended(d);
+  }
+
+  Future<void> assertCallerNotContentSuspended() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) throw StateError('Not signed in');
+    if (await isContentSuspended(uid)) {
+      throw StateError(kContentSuspendedUserMessage);
+    }
+  }
+
   /// `false` if Expansion onboarding or curriculum onboarding is already complete.
   Future<bool> needsExpansionOnboarding(String uid) async {
     final data = await getUserDoc(uid);
@@ -105,7 +119,7 @@ class UserProfileRepository {
     required List<String> businessGoals,
     required List<String> confidentSkills,
     required List<String> desiredSkills,
-    required String industry,
+    required String tribe,
     required int workFlexibility,
     required int weeklyHours,
     required int workOwnership,
@@ -114,6 +128,9 @@ class UserProfileRepository {
     required String instagram,
     required String facebook,
     required String tiktok,
+    String? photoUrl,
+    String? businessLogoUrl,
+    String? graduatedCityProgram,
   }) async {
     final user = _auth.currentUser;
     if (user == null) throw StateError('Not signed in');
@@ -159,7 +176,8 @@ class UserProfileRepository {
       'business_goals': businessGoals,
       'confident_skills': confidentSkills,
       'desired_skills': desiredSkills,
-      'industry': industry,
+      'tribe': tribe,
+      'industry': tribe,
       'work_structure': workStructure,
       'profile_links': profileLinks,
       'onboarding_status': 'complete',
@@ -172,17 +190,25 @@ class UserProfileRepository {
       'expansion_app_registered': true,
       if (!alreadyAppRegistered)
         'expansion_app_registered_at': FieldValue.serverTimestamp(),
+      if (photoUrl != null && photoUrl.trim().isNotEmpty) 'photo_url': photoUrl.trim(),
+      if (businessLogoUrl != null && businessLogoUrl.trim().isNotEmpty)
+        'business_logo_url': businessLogoUrl.trim(),
     };
 
     if (!notInCohort) {
       payload['cohort_id'] = (cohortId ?? '').trim();
     }
 
+    final gcp = graduatedCityProgram?.trim();
+    if (gcp != null && gcp.isNotEmpty) {
+      payload['graduated_city_program'] = gcp;
+    }
+
     if (!existing.exists) {
       await ref.set({
         ...payload,
         'display_name': null,
-        'photo_url': null,
+        if (photoUrl == null || photoUrl.trim().isEmpty) 'photo_url': null,
         'badges': <String, dynamic>{
           'earned': <String>[],
           'visible': <String>[],
@@ -227,7 +253,7 @@ class UserProfileRepository {
     required List<String> businessGoals,
     required List<String> confidentSkills,
     required List<String> desiredSkills,
-    required String industry,
+    required String tribe,
     required int workFlexibility,
     required int weeklyHours,
     required int workOwnership,
@@ -273,7 +299,8 @@ class UserProfileRepository {
       'business_goals': businessGoals,
       'confident_skills': confidentSkills,
       'desired_skills': desiredSkills,
-      'industry': industry,
+      'tribe': tribe,
+      'industry': tribe,
       'work_structure': workStructure,
       'profile_links': profileLinks,
       'onboarding_status': 'complete',

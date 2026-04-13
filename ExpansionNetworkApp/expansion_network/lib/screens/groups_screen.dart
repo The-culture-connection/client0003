@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../models/group_thread_firestore.dart';
 import '../services/group_thread_repository.dart';
 import '../theme/app_theme.dart';
+import '../utils/content_action_guard.dart';
 import '../widgets/page_header.dart';
 
 /// Groups discovery: subreddit-style communities in `groups_mobile`, then threads inside each group.
@@ -84,7 +85,10 @@ class _GroupsScreenState extends State<GroupsScreen> {
                   subtitle: 'Communities like subreddits — posts inside each group are threads. Featured shows the two most active groups.',
                   trailing: IconButton(
                     tooltip: 'Create community',
-                    onPressed: () => context.push('/groups/create'),
+                    onPressed: () async {
+                      if (await blockContentActionIfSuspended(context)) return;
+                      if (context.mounted) context.push('/groups/create');
+                    },
                     icon: const Icon(Icons.add_circle_outline, color: AppColors.primary),
                   ),
                 ),
@@ -339,8 +343,18 @@ class _FeaturedCard extends StatelessWidget {
             Align(
               alignment: Alignment.centerRight,
               child: Text(
-                joined ? 'View' : 'Join',
-                style: const TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w500),
+                joined
+                    ? 'View'
+                    : group.isPrivateCommunity
+                        ? 'Private'
+                        : 'Join',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: group.isPrivateCommunity && !joined
+                      ? AppColors.mutedForeground
+                      : AppColors.primary,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
           ],
@@ -423,6 +437,19 @@ class _GroupListCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: const Text('Joined', style: TextStyle(fontSize: 11, color: AppColors.onPrimary)),
+                  )
+                else if (group.isPrivateCommunity)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.secondary,
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: const Text(
+                      'Private',
+                      style: TextStyle(fontSize: 11, color: AppColors.mutedForeground),
+                    ),
                   ),
                 const Icon(Icons.chevron_right, color: AppColors.mutedForeground),
               ],

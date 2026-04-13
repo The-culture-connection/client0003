@@ -9,11 +9,14 @@ class FeedPostsRepository {
   FeedPostsRepository({
     FirebaseFirestore? firestore,
     FirebaseAuth? auth,
+    UserProfileRepository? users,
   })  : _db = firestore ?? FirebaseFirestore.instance,
-        _auth = auth ?? FirebaseAuth.instance;
+        _auth = auth ?? FirebaseAuth.instance,
+        _users = users ?? UserProfileRepository();
 
   final FirebaseFirestore _db;
   final FirebaseAuth _auth;
+  final UserProfileRepository _users;
 
   CollectionReference<Map<String, dynamic>> get _posts =>
       _db.collection('feed_posts');
@@ -45,6 +48,7 @@ class FeedPostsRepository {
   }) async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) throw StateError('Not signed in');
+    await _users.assertCallerNotContentSuspended();
 
     final data = <String, dynamic>{
       'post_category': postCategory.trim(),
@@ -125,7 +129,8 @@ class FeedPostsRepository {
   }) async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) throw StateError('Not signed in');
-    final authorName = await UserProfileRepository().getDisplayNameForUser(uid);
+    await _users.assertCallerNotContentSuspended();
+    final authorName = await _users.getDisplayNameForUser(uid);
 
     final data = <String, dynamic>{
       'author_id': uid,

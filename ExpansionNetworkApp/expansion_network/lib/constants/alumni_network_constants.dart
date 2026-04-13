@@ -17,6 +17,12 @@ const String kSessionNotAuthorizedMessage =
 const String kSessionNoNetworkAccessMessage =
     'Your account is recognized, but you do not currently have alumni network access.';
 
+const String kSessionAccountBannedMessage =
+    'This account is not allowed to use the alumni network. Contact support if you believe this is a mistake.';
+
+const String kSessionAccountDisabledMessage =
+    'This account has been disabled. Contact support if you need help.';
+
 /// `expansion_cohort_emails` — legacy cohort CSV (optional migration path).
 const String kExpansionCohortEmailsCollection = 'expansion_cohort_emails';
 
