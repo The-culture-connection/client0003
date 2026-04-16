@@ -12,6 +12,8 @@ import {
   orderBy,
   serverTimestamp,
   Timestamp,
+  onSnapshot,
+  type Unsubscribe,
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -32,11 +34,14 @@ export interface SkillCertificate {
 export interface UserNotification {
   id: string;
   userId: string;
-  type: "certificate_available";
+  type: "certificate_available" | "badge_earned";
   title: string;
   body: string;
   read: boolean;
   certificateId?: string;
+  /** Phase 6 badge doc id when `type === "badge_earned"`. */
+  badgeId?: string;
+  badgeAwardDelta?: number;
   createdAt: Timestamp;
 }
 
@@ -249,10 +254,12 @@ export async function listSurveyResponses(userId: string): Promise<SurveyRespons
 export async function addNotification(
   userId: string,
   data: {
-    type: "certificate_available";
+    type: "certificate_available" | "badge_earned";
     title: string;
     body: string;
     certificateId?: string;
+    badgeId?: string;
+    badgeAwardDelta?: number;
   }
 ): Promise<string> {
   const ref = getNotificationsRef(userId);
@@ -263,6 +270,8 @@ export async function addNotification(
     body: data.body,
     read: false,
     certificateId: data.certificateId,
+    badgeId: data.badgeId,
+    badgeAwardDelta: data.badgeAwardDelta,
     createdAt: serverTimestamp(),
   });
   return docRef.id;
@@ -279,6 +288,24 @@ export async function listNotifications(userId: string): Promise<UserNotificatio
     ...d.data(),
     createdAt: (d.data().createdAt as Timestamp) || Timestamp.now(),
   })) as UserNotification[];
+}
+
+/**
+ * Live updates for header notification bell (certificates, badge earned, etc.).
+ */
+export function subscribeUserNotifications(
+  userId: string,
+  onUpdate: (notifications: UserNotification[], unreadCount: number) => void
+): Unsubscribe {
+  const ref = query(getNotificationsRef(userId), orderBy("createdAt", "desc"));
+  return onSnapshot(ref, (snapshot) => {
+    const list = snapshot.docs.map((d) => ({
+      id: d.id,
+      ...d.data(),
+      createdAt: (d.data().createdAt as Timestamp) || Timestamp.now(),
+    })) as UserNotification[];
+    onUpdate(list, list.filter((n) => !n.read).length);
+  });
 }
 
 /**

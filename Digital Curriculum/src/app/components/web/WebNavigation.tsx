@@ -3,7 +3,7 @@ import { LayoutDashboard, BookOpen, FolderOpen, Award, Users, BarChart3, LogOut,
 import { Button } from "../ui/button";
 import { useAuth } from "../auth/AuthProvider";
 import { useState, useEffect } from "react";
-import { listNotifications, markNotificationRead, getUnreadNotificationCount, type UserNotification } from "../../lib/dataroom";
+import { subscribeUserNotifications, markNotificationRead, type UserNotification } from "../../lib/dataroom";
 import { useCart } from "../../lib/cart";
 import { releaseStock } from "../../lib/shop";
 import {
@@ -60,22 +60,40 @@ export function WebNavigation() {
 
   useEffect(() => {
     if (!user?.uid) return;
-    getUnreadNotificationCount(user.uid).then(setUnreadCount);
-    listNotifications(user.uid).then(setNotifications);
+    return subscribeUserNotifications(user.uid, (list, unread) => {
+      setNotifications(list);
+      setUnreadCount(unread);
+    });
   }, [user?.uid]);
 
   const handleNotificationClick = async (n: UserNotification) => {
-    if (n.certificateId && user?.uid) {
+    if (!user?.uid) return;
+    if (n.type === "certificate_available") {
       trackEvent(WEB_ANALYTICS_EVENTS.NOTIFICATION_ITEM_CLICKED, {
         notification_id: n.id,
         notification_type: n.type,
         has_certificate_id: Boolean(n.certificateId),
+        has_badge_id: Boolean(n.badgeId),
       });
       await markNotificationRead(user.uid, n.id);
       setUnreadCount((c) => Math.max(0, c - 1));
       setNotifications((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
       setNotificationsOpen(false);
       navigate("/data-room");
+      return;
+    }
+    if (n.type === "badge_earned") {
+      trackEvent(WEB_ANALYTICS_EVENTS.NOTIFICATION_ITEM_CLICKED, {
+        notification_id: n.id,
+        notification_type: n.type,
+        has_certificate_id: false,
+        has_badge_id: Boolean(n.badgeId),
+      });
+      await markNotificationRead(user.uid, n.id);
+      setUnreadCount((c) => Math.max(0, c - 1));
+      setNotifications((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
+      setNotificationsOpen(false);
+      setBadgeSuiteOpen(true);
     }
   };
 

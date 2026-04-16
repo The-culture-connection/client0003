@@ -21,39 +21,16 @@ function previousUtcYyyyMmDd(day: string): string {
   return utcYyyyMmDd(d);
 }
 
-type CounterKey =
-  | "lessons_started"
-  | "lessons_completed"
-  | "quizzes_passed"
-  | "quizzes_failed"
-  | "discussions_created"
-  | "discussion_replies"
-  | "dms_sent"
-  | "groups_joined"
-  | "event_registrations"
-  | "event_unregistrations"
-  | "cart_add_to_cart"
-  | "cart_line_remove"
-  | "notification_item_clicked"
-  | "notification_mark_read_backend"
-  | "onboarding_nudges_sent"
-  /** Successful sign-ins (every occurrence; unlike signups, not once-per-user). */
-  | "login_sign_ins"
-  /** Curriculum browse — course card taps (distinct from lesson start counters). */
-  | "curriculum_course_card_clicks"
-  /** Community hub surface intent (preview / start discussion / hero RSVP). */
-  | "community_hub_surface_interactions"
-  /** Phase 6 — admin builder / catalog (per-user + daily rollups). */
-  | "admin_course_builder_save_clicked"
-  | "admin_lesson_deck_publish_clicked"
-  | "admin_event_create_submitted"
-  | "admin_shop_item_created";
-
 interface RollupDelta {
-  userCounter: CounterKey | null;
-  dailyCounter: CounterKey | "signups" | "onboarding_completions" | null;
-  communityCounter: CounterKey | "signups" | "onboarding_completions" | null;
+  /** Incremented on `user_analytics_summary` counts (authenticated users only). */
+  userCounter: string | null;
+  dailyCounter: string | null;
+  communityCounter: string | null;
   courseCounter: "lessons_started" | "lessons_completed" | "quizzes_passed" | "quizzes_failed" | null;
+  /** Also bump legacy aggregate used by older dashboards / funnels. */
+  alsoCommunityHubSurface?: boolean;
+  /** Also bump `cart_add_to_cart` for dashboards that predate `shop_add_to_cart_clicked`. */
+  alsoLegacyCartAdd?: boolean;
 }
 
 function rollupDeltaForEventName(eventName: string): RollupDelta | null {
@@ -75,13 +52,28 @@ function rollupDeltaForEventName(eventName: string): RollupDelta | null {
       courseCounter: null,
     };
   case WEB_ANALYTICS_EVENTS.COMMUNITY_DISCUSSION_PREVIEW_CLICKED:
+    return {
+      userCounter: "community_discussion_preview_clicked",
+      dailyCounter: "community_discussion_preview_clicked",
+      communityCounter: "community_discussion_preview_clicked",
+      courseCounter: null,
+      alsoCommunityHubSurface: true,
+    };
   case WEB_ANALYTICS_EVENTS.COMMUNITY_START_DISCUSSION_CLICKED:
+    return {
+      userCounter: "community_start_discussion_clicked",
+      dailyCounter: "community_start_discussion_clicked",
+      communityCounter: "community_start_discussion_clicked",
+      courseCounter: null,
+      alsoCommunityHubSurface: true,
+    };
   case WEB_ANALYTICS_EVENTS.COMMUNITY_HERO_RSVP_CLICKED:
     return {
-      userCounter: "community_hub_surface_interactions",
-      dailyCounter: "community_hub_surface_interactions",
-      communityCounter: "community_hub_surface_interactions",
+      userCounter: "community_hero_rsvp_clicked",
+      dailyCounter: "community_hero_rsvp_clicked",
+      communityCounter: "community_hero_rsvp_clicked",
       courseCounter: null,
+      alsoCommunityHubSurface: true,
     };
   case WEB_ANALYTICS_EVENTS.LESSON_COURSE_COMPLETED:
     return {
@@ -148,10 +140,11 @@ function rollupDeltaForEventName(eventName: string): RollupDelta | null {
     };
   case WEB_ANALYTICS_EVENTS.SHOP_ADD_TO_CART_CLICKED:
     return {
-      userCounter: "cart_add_to_cart",
-      dailyCounter: "cart_add_to_cart",
+      userCounter: "shop_add_to_cart_clicked",
+      dailyCounter: "shop_add_to_cart_clicked",
       communityCounter: null,
       courseCounter: null,
+      alsoLegacyCartAdd: true,
     };
   case WEB_ANALYTICS_EVENTS.CART_LINE_REMOVE_CLICKED:
     return {
@@ -209,6 +202,127 @@ function rollupDeltaForEventName(eventName: string): RollupDelta | null {
       communityCounter: null,
       courseCounter: null,
     };
+
+  // --- Goal-oriented rollups (B1 shop, B2 community depth, B3/B4 learning, B5 friction, B6 auth/onboarding) ---
+  case WEB_ANALYTICS_EVENTS.SHOP_FILTER_CHANGED:
+    return { userCounter: "shop_filter_changed", dailyCounter: "shop_filter_changed", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.SHOP_SIZE_CHANGED:
+    return { userCounter: "shop_size_changed", dailyCounter: "shop_size_changed", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.SHOP_ADD_TO_CART_FAILED:
+    return { userCounter: "shop_add_to_cart_failed", dailyCounter: "shop_add_to_cart_failed", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.CART_DROPDOWN_TOGGLED:
+    return { userCounter: "cart_dropdown_toggled", dailyCounter: "cart_dropdown_toggled", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.CART_CONTINUE_TO_SHOP_CLICKED:
+    return { userCounter: "cart_continue_to_shop_clicked", dailyCounter: "cart_continue_to_shop_clicked", communityCounter: null, courseCounter: null };
+
+  case WEB_ANALYTICS_EVENTS.DISCUSSION_LIKE_TOGGLED:
+    return {
+      userCounter: "discussion_like_toggled",
+      dailyCounter: "discussion_like_toggled",
+      communityCounter: "discussion_like_toggled",
+      courseCounter: null,
+    };
+  case WEB_ANALYTICS_EVENTS.GROUP_MESSAGE_SEND_CLICKED:
+    return {
+      userCounter: "group_message_send_clicked",
+      dailyCounter: "group_message_send_clicked",
+      communityCounter: "group_message_send_clicked",
+      courseCounter: null,
+    };
+  case WEB_ANALYTICS_EVENTS.DISCUSSION_CATEGORY_SELECTED:
+    return {
+      userCounter: "discussion_category_selected",
+      dailyCounter: "discussion_category_selected",
+      communityCounter: "discussion_category_selected",
+      courseCounter: null,
+    };
+  case WEB_ANALYTICS_EVENTS.DISCUSSION_DRAFT_NEXT_CLICKED:
+    return {
+      userCounter: "discussion_draft_next_clicked",
+      dailyCounter: "discussion_draft_next_clicked",
+      communityCounter: "discussion_draft_next_clicked",
+      courseCounter: null,
+    };
+  case WEB_ANALYTICS_EVENTS.MORTAR_DM_REPLY_THREAD_SELECTED:
+    return {
+      userCounter: "mortar_dm_reply_thread_selected",
+      dailyCounter: "mortar_dm_reply_thread_selected",
+      communityCounter: "mortar_dm_reply_thread_selected",
+      courseCounter: null,
+    };
+
+  case WEB_ANALYTICS_EVENTS.LESSON_SLIDE_NEXT_CLICKED:
+    return { userCounter: "lesson_slide_next_clicked", dailyCounter: "lesson_slide_next_clicked", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.LESSON_SLIDE_PREVIOUS_CLICKED:
+    return { userCounter: "lesson_slide_previous_clicked", dailyCounter: "lesson_slide_previous_clicked", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.LESSON_QUIZ_VIEW_OPENED:
+    return { userCounter: "lesson_quiz_view_opened", dailyCounter: "lesson_quiz_view_opened", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.LESSON_QUIZ_SUBMIT_CLICKED:
+    return { userCounter: "lesson_quiz_submit_clicked", dailyCounter: "lesson_quiz_submit_clicked", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.LESSON_QUIZ_TRY_AGAIN_CLICKED:
+    return { userCounter: "lesson_quiz_try_again_clicked", dailyCounter: "lesson_quiz_try_again_clicked", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.LESSON_QUIZ_EXHAUSTED_VIEWED:
+    return { userCounter: "lesson_quiz_exhausted_viewed", dailyCounter: "lesson_quiz_exhausted_viewed", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.LESSON_QUIZ_ANSWER_SELECTED:
+    return { userCounter: "lesson_quiz_answer_selected", dailyCounter: "lesson_quiz_answer_selected", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.LESSON_SURVEY_FIELD_CHANGED:
+    return { userCounter: "lesson_survey_field_changed", dailyCounter: "lesson_survey_field_changed", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.LESSON_SURVEY_SUBMIT_CLICKED:
+    return { userCounter: "lesson_survey_submit_clicked", dailyCounter: "lesson_survey_submit_clicked", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.LESSON_CLOSE_CLICKED:
+    return { userCounter: "lesson_close_clicked", dailyCounter: "lesson_close_clicked", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.LESSON_CERTIFICATE_CREATED:
+    return { userCounter: "lesson_certificate_created", dailyCounter: "lesson_certificate_created", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.COURSE_DETAIL_MODULE_EXPAND_TOGGLED:
+    return { userCounter: "course_detail_module_expand_toggled", dailyCounter: "course_detail_module_expand_toggled", communityCounter: null, courseCounter: null };
+
+  case WEB_ANALYTICS_EVENTS.AUTH_GUARD_REDIRECT_UNAUTHENTICATED:
+    return { userCounter: "auth_guard_redirect_unauthenticated", dailyCounter: "auth_guard_redirect_unauthenticated", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.ONBOARDING_GATE_REDIRECT_INCOMPLETE_PROFILE:
+    return { userCounter: "onboarding_gate_redirect_incomplete_profile", dailyCounter: "onboarding_gate_redirect_incomplete_profile", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.ROLE_GATE_REDIRECT_DENIED:
+    return { userCounter: "role_gate_redirect_denied", dailyCounter: "role_gate_redirect_denied", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.DASHBOARD_CONTINUE_URL_INVALID:
+    return { userCounter: "dashboard_continue_url_invalid", dailyCounter: "dashboard_continue_url_invalid", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.LESSON_PLAYER_MISSING_QUERY_PARAMS:
+    return { userCounter: "lesson_player_missing_query_params", dailyCounter: "lesson_player_missing_query_params", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.LESSON_PLAYER_LOAD_FAILED:
+    return { userCounter: "lesson_player_load_failed", dailyCounter: "lesson_player_load_failed", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.LESSON_PLAYER_EMPTY_CONTENT_VIEWED:
+    return { userCounter: "lesson_player_empty_content_viewed", dailyCounter: "lesson_player_empty_content_viewed", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.DISCUSSION_CREATE_FAILED:
+    return { userCounter: "discussion_create_failed", dailyCounter: "discussion_create_failed", communityCounter: "discussion_create_failed", courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.GROUP_JOIN_FAILED:
+    return { userCounter: "group_join_failed", dailyCounter: "group_join_failed", communityCounter: "group_join_failed", courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.EVENT_REGISTER_FAILED:
+    return { userCounter: "event_register_failed", dailyCounter: "event_register_failed", communityCounter: "event_register_failed", courseCounter: null };
+
+  case WEB_ANALYTICS_EVENTS.LOGIN_SUBMIT_ATTEMPTED:
+    return { userCounter: "login_submit_attempted", dailyCounter: "login_submit_attempted", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.LOGIN_SIGN_IN_FAILED:
+    return { userCounter: "login_sign_in_failed", dailyCounter: "login_sign_in_failed", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.ONBOARDING_STEP_VIEWED:
+    return { userCounter: "onboarding_step_viewed", dailyCounter: "onboarding_step_viewed", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.ONBOARDING_PARTIAL_SAVE_SUCCEEDED:
+    return { userCounter: "onboarding_partial_save_succeeded", dailyCounter: "onboarding_partial_save_succeeded", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.ONBOARDING_SKIP_CLICKED:
+    return { userCounter: "onboarding_skip_clicked", dailyCounter: "onboarding_skip_clicked", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.ONBOARDING_COMPLETION_VIEWED:
+    return { userCounter: "onboarding_completion_viewed", dailyCounter: "onboarding_completion_viewed", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.NAV_LINK_CLICKED:
+    return { userCounter: "nav_link_clicked", dailyCounter: "nav_link_clicked", communityCounter: null, courseCounter: null };
+
+  case WEB_ANALYTICS_EVENTS.SCREEN_SESSION_STARTED:
+    return { userCounter: "screen_session_started", dailyCounter: "screen_session_started", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.SCREEN_SESSION_ENDED:
+    return { userCounter: "screen_session_ended", dailyCounter: "screen_session_ended", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.DASHBOARD_PASSIVE_TIME_ON_SCREEN:
+    return { userCounter: "dashboard_passive_time_on_screen", dailyCounter: "dashboard_passive_time_on_screen", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.DATA_ROOM_FILE_SEARCH_CHANGED:
+    return { userCounter: "data_room_file_search_changed", dailyCounter: "data_room_file_search_changed", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.DISCUSSIONS_SEARCH_CHANGED:
+    return { userCounter: "discussions_search_changed", dailyCounter: "discussions_search_changed", communityCounter: null, courseCounter: null };
+
   default:
     return null;
   }

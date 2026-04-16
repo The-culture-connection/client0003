@@ -218,7 +218,7 @@ Typed helpers live in `Digital Curriculum/src/app/analytics/intents.ts` (`mortar
 | TS key | `event_name` (wire) | Wired in app |
 |--------|---------------------|----------------|
 | `ONBOARDING_NUDGE_SENT` | `onboarding_nudge_sent` | `scheduledNudgeIncompleteProfiles.ts` (backend write to `analytics_events`) |
-| `NOTIFICATION_ITEM_CLICKED` | `notification_item_clicked` | `WebNavigation.tsx` notification dropdown item click |
+| `NOTIFICATION_ITEM_CLICKED` | `notification_item_clicked` | `WebNavigation.tsx` notification dropdown item click (certificate → Data Room; **`badge_earned`** → marks read and opens badge suite) |
 | `NOTIFICATION_MARK_READ_BACKEND` | `notification_mark_read_backend` | `markNotificationReadBackend` callable (`dataroom.ts` client invokes callable) |
 
 ---
@@ -243,6 +243,8 @@ Typed helpers live in `Digital Curriculum/src/app/analytics/intents.ts` (`mortar
 ### How the feature works (learner badge suite)
 
 Signed-in learners open **Badges** from the header: click the **email** line under their display name in `WebNavigation.tsx`. That opens `UserBadgeSuiteDialog` with three tabs — **Earned**, **In progress**, and **Available** — backed by live reads of `badge_definitions`, `badge_progress/{uid}.by_badge`, `user_badges/{uid}/awarded/*`, and legacy `users/{uid}.badges.earned` when needed.
+
+**Badge earned notifications:** When `evaluateAnalyticsBadgesForUser` increases `times_awarded` for a Phase 6 rule badge, it writes `users/{uid}/notifications` with **`type: "badge_earned"`**, **`badgeId`**, title/body from the badge **`name`**, and `badgeAwardDelta` when multiple repeatable tiers unlock in one summary pass. The header bell uses a Firestore **`onSnapshot`** on that subcollection so new items appear without refresh; tapping a badge notification marks it read and opens the badge suite dialog.
 
 ### 6.2 Admin / builder web events (derived; staff)
 

@@ -80,6 +80,8 @@ function targetAwardUnits(
 
 interface BadgeDefRow {
   id: string;
+  /** From `badge_definitions.name` (or legacy `title`), else doc id. */
+  display_name: string;
   active: boolean;
   award_mode: "one_time" | "repeatable";
   rule: BadgePhase6Rule;
@@ -104,7 +106,13 @@ function parseBadgeDef(id: string, data: Record<string, unknown>): BadgeDefRow |
     return null;
   }
   const award_mode = data.award_mode === "repeatable" ? "repeatable" : "one_time";
-  return { id, active, award_mode, rule: { metric_key, operator, threshold, timeframe } };
+  const rawName =
+    typeof data.name === "string" && data.name.trim()
+      ? data.name.trim()
+      : typeof data.title === "string" && data.title.trim()
+        ? data.title.trim()
+        : id;
+  return { id, display_name: rawName, active, award_mode, rule: { metric_key, operator, threshold, timeframe } };
 }
 
 /**
@@ -153,6 +161,34 @@ export async function evaluateAnalyticsBadgesForUser(
 
     if (nextTimes === prevTimes) {
       continue;
+    }
+
+    const awardDelta = nextTimes - prevTimes;
+    if (awardDelta > 0) {
+      const notifRef = db.collection("users").doc(uid).collection("notifications").doc();
+      const label = def.display_name;
+      const title =
+        def.award_mode === "repeatable" && awardDelta > 1
+          ? `${label} — ×${awardDelta} new tiers`
+          : def.award_mode === "repeatable"
+            ? `New tier: ${label}`
+            : `Badge earned: ${label}`;
+      const body =
+        def.award_mode === "repeatable" && awardDelta > 1
+          ? `You advanced “${label}” by ${awardDelta} tiers. Open your badges from the header (click your email) to see details.`
+          : def.award_mode === "repeatable"
+            ? `You reached another tier for “${label}”.`
+            : `You earned the “${label}” badge.`;
+      batch.set(notifRef, {
+        userId: uid,
+        type: "badge_earned",
+        title,
+        body,
+        read: false,
+        badgeId: def.id,
+        badgeAwardDelta: awardDelta,
+        createdAt: FieldValue.serverTimestamp(),
+      });
     }
 
     const awardedRef = awardedRefs[i]!;
