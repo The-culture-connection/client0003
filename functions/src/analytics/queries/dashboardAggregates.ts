@@ -126,6 +126,13 @@ function aggregateDailyMetrics(docs: DailyMetricsDoc[]): {dau_sum: number; total
     for (const [k, v] of Object.entries(c)) {
       counts[k] = (counts[k] ?? 0) + toNumber(v);
     }
+    // Back-compat: older rollups wrote flattened keys like "counts.lessons_completed".
+    for (const [k, v] of Object.entries(d as Record<string, unknown>)) {
+      if (!k.startsWith("counts.")) continue;
+      const counterKey = k.slice("counts.".length);
+      if (!counterKey) continue;
+      counts[counterKey] = (counts[counterKey] ?? 0) + toNumber(v);
+    }
   }
   return {dau_sum: dau, total_web_events: total, counts};
 }
@@ -179,19 +186,21 @@ function computeDerivedMetrics(totals: {dau_sum: number; total_web_events: numbe
 
 function computeFunnels(totals: {dau_sum: number; counts: NumericMap}): Phase5Funnels {
   const c = totals.counts;
-  const login = pickCount(c, "signups");
+  /** Funnel “login” = new accounts in window plus successful sign-ins (returning users have 0 signups). */
+  const login = pickCount(c, "signups") + pickCount(c, "login_sign_ins");
   const onboarding = pickCount(c, "onboarding_completions");
+  /** Third step is summed DAU across days (user-days), not unique users — comparable to activity volume. */
   const dashboard = totals.dau_sum;
 
   const curriculumEngaged =
-    pickCount(c, "lessons_started") +
-    pickCount(c, "curriculum_continue_clicked");
+    pickCount(c, "lessons_started") + pickCount(c, "curriculum_course_card_clicks");
   const lessonStarted = pickCount(c, "lessons_started");
   const lessonCompleted = pickCount(c, "lessons_completed");
 
   const communityVisits =
     pickCount(c, "discussions_search_changed") +
-    pickCount(c, "discussion_category_selected");
+    pickCount(c, "discussion_category_selected") +
+    pickCount(c, "community_hub_surface_interactions");
   const communityEngagements =
     pickCount(c, "discussions_created") +
     pickCount(c, "discussion_replies") +
@@ -199,8 +208,10 @@ function computeFunnels(totals: {dau_sum: number; counts: NumericMap}): Phase5Fu
     pickCount(c, "groups_joined") +
     pickCount(c, "notification_item_clicked");
 
-  const shopVisits = pickCount(c, "shop_filter_changed") + pickCount(c, "shop_size_changed");
+  const shopFilterOrSize = pickCount(c, "shop_filter_changed") + pickCount(c, "shop_size_changed");
   const addToCart = pickCount(c, "cart_add_to_cart");
+  /** Users often add to cart without changing filters first — floor visits at add-to-cart so the funnel is not empty when the shop is used. */
+  const shopVisits = Math.max(shopFilterOrSize, addToCart);
 
   return {
     login_to_onboarding_to_dashboard: {

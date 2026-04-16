@@ -22,6 +22,7 @@
     "test": "npm run test --workspaces",
     "test:analytics:unit": "npm --prefix functions run test:analytics:unit",
     "test:analytics:integration": "firebase emulators:exec --only functions,auth,firestore --project mortar-dev \"node ./functions/scripts/analytics-callable-integration.mjs\"",
+    "test:analytics:phase5": "firebase emulators:exec --only functions,auth,firestore --project mortar-dev \"node ./functions/scripts/phase5-emulator-check.mjs\"",
     "test:analytics": "npm run test:analytics:unit && npm run test:analytics:integration"
   },
   "devDependencies": {

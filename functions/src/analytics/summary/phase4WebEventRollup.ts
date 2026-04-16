@@ -36,7 +36,13 @@ type CounterKey =
   | "cart_line_remove"
   | "notification_item_clicked"
   | "notification_mark_read_backend"
-  | "onboarding_nudges_sent";
+  | "onboarding_nudges_sent"
+  /** Successful sign-ins (every occurrence; unlike signups, not once-per-user). */
+  | "login_sign_ins"
+  /** Curriculum browse — course card taps (distinct from lesson start counters). */
+  | "curriculum_course_card_clicks"
+  /** Community hub surface intent (preview / start discussion / hero RSVP). */
+  | "community_hub_surface_interactions";
 
 interface RollupDelta {
   userCounter: CounterKey | null;
@@ -49,11 +55,28 @@ function rollupDeltaForEventName(eventName: string): RollupDelta | null {
   switch (eventName) {
   case WEB_ANALYTICS_EVENTS.COURSE_DETAIL_START_LESSON_CLICKED:
   case WEB_ANALYTICS_EVENTS.CURRICULUM_CONTINUE_CLICKED:
+  case WEB_ANALYTICS_EVENTS.DASHBOARD_CONTINUE_LEARNING_CLICKED:
     return {
       userCounter: "lessons_started",
       dailyCounter: "lessons_started",
       communityCounter: null,
       courseCounter: "lessons_started",
+    };
+  case WEB_ANALYTICS_EVENTS.CURRICULUM_COURSE_CARD_CLICKED:
+    return {
+      userCounter: "curriculum_course_card_clicks",
+      dailyCounter: "curriculum_course_card_clicks",
+      communityCounter: null,
+      courseCounter: null,
+    };
+  case WEB_ANALYTICS_EVENTS.COMMUNITY_DISCUSSION_PREVIEW_CLICKED:
+  case WEB_ANALYTICS_EVENTS.COMMUNITY_START_DISCUSSION_CLICKED:
+  case WEB_ANALYTICS_EVENTS.COMMUNITY_HERO_RSVP_CLICKED:
+    return {
+      userCounter: "community_hub_surface_interactions",
+      dailyCounter: "community_hub_surface_interactions",
+      communityCounter: "community_hub_surface_interactions",
+      courseCounter: null,
     };
   case WEB_ANALYTICS_EVENTS.LESSON_COURSE_COMPLETED:
     return {
@@ -163,6 +186,17 @@ function readCourseId(properties: Record<string, unknown> | undefined): string |
   return typeof v === "string" && v.length > 0 ? v : null;
 }
 
+function addIncrementCount(target: Record<string, unknown>, key: string): void {
+  const prevCounts =
+    target.counts && typeof target.counts === "object" && !Array.isArray(target.counts)
+      ? (target.counts as Record<string, unknown>)
+      : {};
+  target.counts = {
+    ...prevCounts,
+    [key]: FieldValue.increment(1),
+  };
+}
+
 /**
  * Apply rollups for one new `analytics_events` document (normalized web schema v2).
  */
@@ -214,9 +248,7 @@ export async function applyPhase4RollupsForWebEvent(
       patch.best_streak_days = newBest;
     }
 
-    if (delta?.userCounter) {
-      patch[`counts.${delta.userCounter}`] = FieldValue.increment(1);
-    }
+    if (delta?.userCounter) addIncrementCount(patch, delta.userCounter);
 
     const dailyPatch: Record<string, unknown> = {
       schema_version: 1,
@@ -232,17 +264,20 @@ export async function applyPhase4RollupsForWebEvent(
     if (eventName === WEB_ANALYTICS_EVENTS.LOGIN_SIGN_UP_SUCCEEDED) {
       if (!prev.signup_counted_at) {
         patch.signup_counted_at = FieldValue.serverTimestamp();
-        patch["counts.signups"] = FieldValue.increment(1);
-        dailyPatch["counts.signups"] = FieldValue.increment(1);
+        addIncrementCount(patch, "signups");
+        addIncrementCount(dailyPatch, "signups");
       }
+    } else if (eventName === WEB_ANALYTICS_EVENTS.LOGIN_SIGN_IN_SUCCEEDED) {
+      addIncrementCount(patch, "login_sign_ins");
+      addIncrementCount(dailyPatch, "login_sign_ins");
     } else if (eventName === WEB_ANALYTICS_EVENTS.ONBOARDING_FINAL_SAVE_SUCCEEDED) {
       if (!prev.onboarding_completed_at) {
         patch.onboarding_completed_at = FieldValue.serverTimestamp();
-        patch["counts.onboarding_completions"] = FieldValue.increment(1);
-        dailyPatch["counts.onboarding_completions"] = FieldValue.increment(1);
+        addIncrementCount(patch, "onboarding_completions");
+        addIncrementCount(dailyPatch, "onboarding_completions");
       }
     } else if (delta?.dailyCounter) {
-      dailyPatch[`counts.${delta.dailyCounter}`] = FieldValue.increment(1);
+      addIncrementCount(dailyPatch, delta.dailyCounter);
     }
 
     tx.set(userRef, patch, { merge: true });
@@ -252,8 +287,8 @@ export async function applyPhase4RollupsForWebEvent(
       const cPatch: Record<string, unknown> = {
         schema_version: 1,
         updated_at: FieldValue.serverTimestamp(),
-        [`counts.${delta.communityCounter}`]: FieldValue.increment(1),
       };
+      addIncrementCount(cPatch, delta.communityCounter);
       tx.set(communityRef, cPatch, { merge: true });
     }
 
@@ -263,8 +298,8 @@ export async function applyPhase4RollupsForWebEvent(
         schema_version: 1,
         course_id: courseId,
         updated_at: FieldValue.serverTimestamp(),
-        [`counts.${delta.courseCounter}`]: FieldValue.increment(1),
       };
+      addIncrementCount(coPatch, delta.courseCounter);
       tx.set(courseRef, coPatch, { merge: true });
     }
   });

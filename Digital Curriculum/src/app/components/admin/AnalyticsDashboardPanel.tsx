@@ -5,6 +5,18 @@ import { Card } from "../ui/card";
 import { Button } from "../ui/button";
 import { functions } from "../../lib/firebase";
 
+interface Phase5DebugPayload {
+  uid: string;
+  auth_path: "token" | "server_lookup";
+  roles_token_raw: unknown;
+  roles_token_normalized: string[];
+  roles_auth_custom_claims_normalized: string[];
+  roles_firestore_normalized: string[];
+  window: { days: number; start_date_utc: string; end_date_utc: string };
+  totals_counts: Record<string, number>;
+  totals_counts_key_count: number;
+}
+
 interface Phase5Snapshot {
   window_days: number;
   start_date_utc: string;
@@ -67,22 +79,29 @@ export function AnalyticsDashboardPanel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [snapshot, setSnapshot] = useState<Phase5Snapshot | null>(null);
+  const [debugPayload, setDebugPayload] = useState<Phase5DebugPayload | null>(null);
 
   const load = async (windowDays: number) => {
     setLoading(true);
     setError(null);
     try {
       const fn = httpsCallable(functions, "getPhase5DashboardMetrics");
-      const res = await fn({ days: windowDays });
-      const data = res.data as { success?: boolean; snapshot?: Phase5Snapshot };
+      const res = await fn({ days: windowDays, include_debug: true });
+      const data = res.data as {
+        success?: boolean;
+        snapshot?: Phase5Snapshot;
+        debug?: Phase5DebugPayload;
+      };
       if (!data?.success || !data.snapshot) {
         throw new Error("Missing analytics snapshot");
       }
       setSnapshot(data.snapshot);
+      setDebugPayload(data.debug ?? null);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to load analytics metrics";
       setError(msg);
       setSnapshot(null);
+      setDebugPayload(null);
     } finally {
       setLoading(false);
     }
@@ -114,7 +133,9 @@ export function AnalyticsDashboardPanel() {
           <div>
             <h2 className="text-xl font-semibold text-foreground">Analytics</h2>
             <p className="text-sm text-muted-foreground">
-              Phase 5 derived metrics and funnels from centralized backend calculations.
+              Phase 5 derived metrics and funnels from centralized backend calculations. A collapsible debug
+              payload (roles + aggregated <code className="text-xs">totals.counts</code>) is included for live
+              verification; remove when stable.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -175,12 +196,53 @@ export function AnalyticsDashboardPanel() {
 
           <Card className="p-6">
             <h3 className="font-semibold mb-4">Funnels</h3>
+            <p className="text-xs text-muted-foreground mb-3">
+              Counts come from rolled-up <code className="text-xs bg-muted px-1">daily_metrics.counts</code> (plus DAU sum for the third step below). After deploy, new events fill forward; historical days keep prior counters unless you backfill.
+            </p>
             <div className="space-y-3 text-sm">
-              <div className="rounded border border-border p-3">login → onboarding → dashboard: {snapshot.funnels.login_to_onboarding_to_dashboard.login} → {snapshot.funnels.login_to_onboarding_to_dashboard.onboarding_completed} → {snapshot.funnels.login_to_onboarding_to_dashboard.dashboard_active} (rates: {pct(snapshot.funnels.login_to_onboarding_to_dashboard.login_to_onboarding_rate)} / {pct(snapshot.funnels.login_to_onboarding_to_dashboard.onboarding_to_dashboard_rate)})</div>
-              <div className="rounded border border-border p-3">dashboard → curriculum → lesson: {snapshot.funnels.dashboard_to_curriculum_to_lesson.dashboard} → {snapshot.funnels.dashboard_to_curriculum_to_lesson.curriculum_engaged} → {snapshot.funnels.dashboard_to_curriculum_to_lesson.lesson_started} (rates: {pct(snapshot.funnels.dashboard_to_curriculum_to_lesson.dashboard_to_curriculum_rate)} / {pct(snapshot.funnels.dashboard_to_curriculum_to_lesson.curriculum_to_lesson_rate)})</div>
-              <div className="rounded border border-border p-3">lesson → completion: {snapshot.funnels.lesson_to_completion.lesson_started} → {snapshot.funnels.lesson_to_completion.lesson_completed} (rate: {pct(snapshot.funnels.lesson_to_completion.completion_rate)})</div>
-              <div className="rounded border border-border p-3">community → engagement: {snapshot.funnels.community_to_engagement.community_visits} → {snapshot.funnels.community_to_engagement.engagements} (rate: {pct(snapshot.funnels.community_to_engagement.engagement_rate)})</div>
-              <div className="rounded border border-border p-3">shop → add to cart: {snapshot.funnels.shop_to_add_to_cart.shop_visits} → {snapshot.funnels.shop_to_add_to_cart.add_to_cart} (rate: {pct(snapshot.funnels.shop_to_add_to_cart.add_to_cart_rate)})</div>
+              <div
+                className="rounded border border-border p-3"
+                title="Step 1: signups + login_sign_ins. Step 3: sum of daily DAU (user-days), not unique users."
+              >
+                sign-ups + sign-ins → onboarding done → active user-days (DAU Σ):{" "}
+                {snapshot.funnels.login_to_onboarding_to_dashboard.login} →{" "}
+                {snapshot.funnels.login_to_onboarding_to_dashboard.onboarding_completed} →{" "}
+                {snapshot.funnels.login_to_onboarding_to_dashboard.dashboard_active} (rates:{" "}
+                {pct(snapshot.funnels.login_to_onboarding_to_dashboard.login_to_onboarding_rate)} /{" "}
+                {pct(snapshot.funnels.login_to_onboarding_to_dashboard.onboarding_to_dashboard_rate)})
+              </div>
+              <div
+                className="rounded border border-border p-3"
+                title="Curriculum step = lesson start signals + course card clicks. Lesson = same lesson_started counter as rollup."
+              >
+                active user-days (DAU Σ) → curriculum signals → lesson starts:{" "}
+                {snapshot.funnels.dashboard_to_curriculum_to_lesson.dashboard} →{" "}
+                {snapshot.funnels.dashboard_to_curriculum_to_lesson.curriculum_engaged} →{" "}
+                {snapshot.funnels.dashboard_to_curriculum_to_lesson.lesson_started} (rates:{" "}
+                {pct(snapshot.funnels.dashboard_to_curriculum_to_lesson.dashboard_to_curriculum_rate)} /{" "}
+                {pct(snapshot.funnels.dashboard_to_curriculum_to_lesson.curriculum_to_lesson_rate)})
+              </div>
+              <div className="rounded border border-border p-3">
+                lesson starts → completions: {snapshot.funnels.lesson_to_completion.lesson_started} →{" "}
+                {snapshot.funnels.lesson_to_completion.lesson_completed} (rate:{" "}
+                {pct(snapshot.funnels.lesson_to_completion.completion_rate)})
+              </div>
+              <div
+                className="rounded border border-border p-3"
+                title="Visits include discussions search/category plus community hub preview/start/RSVP interactions."
+              >
+                community surface → deeper engagement: {snapshot.funnels.community_to_engagement.community_visits} →{" "}
+                {snapshot.funnels.community_to_engagement.engagements} (rate:{" "}
+                {pct(snapshot.funnels.community_to_engagement.engagement_rate)})
+              </div>
+              <div
+                className="rounded border border-border p-3"
+                title="Shop visits max(filter/size changes, add-to-cart) so add-to-cart without filter tweaks still counts."
+              >
+                shop visits → add to cart: {snapshot.funnels.shop_to_add_to_cart.shop_visits} →{" "}
+                {snapshot.funnels.shop_to_add_to_cart.add_to_cart} (rate:{" "}
+                {pct(snapshot.funnels.shop_to_add_to_cart.add_to_cart_rate)})
+              </div>
             </div>
           </Card>
 
@@ -195,6 +257,24 @@ export function AnalyticsDashboardPanel() {
               ))}
             </div>
           </Card>
+
+          {debugPayload ? (
+            <Card className="p-6">
+              <details className="group">
+                <summary className="cursor-pointer font-semibold text-foreground list-none [&::-webkit-details-marker]:hidden">
+                  <span className="underline-offset-2 group-open:underline">Debug payload (from callable)</span>
+                </summary>
+                <p className="text-xs text-muted-foreground mt-2 mb-2">
+                  Compare <code className="text-xs bg-muted px-1">auth_path</code>, role arrays, and{" "}
+                  <code className="text-xs bg-muted px-1">totals_counts</code> with Firestore{" "}
+                  <code className="text-xs bg-muted px-1">daily_metrics</code> for the same window.
+                </p>
+                <pre className="text-xs overflow-auto max-h-96 rounded border border-border bg-muted/30 p-3 text-foreground">
+                  {JSON.stringify(debugPayload, null, 2)}
+                </pre>
+              </details>
+            </Card>
+          ) : null}
         </>
       ) : null}
 

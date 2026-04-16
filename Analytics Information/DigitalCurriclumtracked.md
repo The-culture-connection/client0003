@@ -190,7 +190,7 @@ Typed helpers live in `Digital Curriculum/src/app/analytics/intents.ts` (`mortar
 | `course_analytics_summary` | `{courseId}` | Same trigger | Requires `properties.course_id` on the web event |
 | `community_analytics_summary` | `global` | Same trigger | Cross-user community funnel counters |
 
-**Event → counter mapping (web `event_name`):** lessons started ≈ `course_detail_start_lesson_clicked` + `curriculum_continue_clicked`; completed `lesson_course_completed`; quiz `lesson_quiz_passed` / `lesson_quiz_failed`; discussions `discussion_create_submit_clicked`; replies `discussion_reply_submit_clicked`; DMs `mortar_dm_message_sent`; groups `group_join_clicked`; events `event_register_clicked` / `event_unregister_clicked`; cart `shop_add_to_cart_clicked` / `cart_line_remove_clicked`; signups `login_sign_up_succeeded` (once per user); onboarding `onboarding_final_save_succeeded` (once per user). All other web events still refresh **last active** / **streak** / **`total_web_events`** when mapped counters are absent.
+**Event → counter mapping (web `event_name`):** lessons started ≈ `course_detail_start_lesson_clicked` + `curriculum_continue_clicked` + **`dashboard_continue_learning_clicked`**; curriculum browse (cards) → `curriculum_course_card_clicks`; completed `lesson_course_completed`; quiz `lesson_quiz_passed` / `lesson_quiz_failed`; discussions `discussion_create_submit_clicked`; replies `discussion_reply_submit_clicked`; DMs `mortar_dm_message_sent`; groups `group_join_clicked`; events `event_register_clicked` / `event_unregister_clicked`; cart `shop_add_to_cart_clicked` / `cart_line_remove_clicked`; signups `login_sign_up_succeeded` (once per user); **`login_sign_in_succeeded` → `login_sign_ins` (each sign-in)**; onboarding `onboarding_final_save_succeeded` (once per user); community hub surface → **`community_hub_surface_interactions`** (`community_discussion_preview_clicked`, `community_start_discussion_clicked`, `community_hero_rsvp_clicked`). All other web events still refresh **last active** / **streak** / **`total_web_events`** when mapped counters are absent.
 
 **Deploy:** deploy Cloud Functions so `onAnalyticsWebEventCreated` and `scheduledPhase4DerivedMetrics` are live. Firestore rules allow users to read their own `user_analytics_summary`; staff read on aggregates.
 
@@ -210,7 +210,7 @@ Typed helpers live in `Digital Curriculum/src/app/analytics/intents.ts` (`mortar
   - lesson → completion
   - community → engagement
   - shop → add to cart
-- **Dashboard callable:** `getPhase5DashboardMetrics` (Admin/superAdmin; returns window totals + derived + funnels).
+- **Dashboard callable:** `getPhase5DashboardMetrics` (Admin/superAdmin; returns window totals + derived + funnels). Optional **`include_debug: true`** returns a **`debug`** payload (`auth_path`, role sources, UTC window, full **`totals_counts`** map) for comparing against `daily_metrics` in production; the Admin Analytics panel requests it and shows JSON in a collapsible “Debug payload” block (temporary until dashboards are trusted).
 - **Admin frontend section:** `Admin.tsx` tab `analytics` renders `components/admin/AnalyticsDashboardPanel.tsx` and fetches the callable snapshot for visual cards/funnels.
 
 ### 5.1 Phase 5 notification events

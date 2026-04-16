@@ -15,11 +15,16 @@ const db = getFirestore();
 
 const schema = z.object({
   days: z.number().int().min(1).max(90).optional(),
+  /** When true, response includes a small debug object for verifying auth + aggregated counts in live env. */
+  include_debug: z.boolean().optional(),
 });
 
 function normalizeRoles(input: unknown): string[] {
   if (!Array.isArray(input)) return [];
-  return input.filter((r): r is string => typeof r === "string");
+  return input
+    .filter((r): r is string => typeof r === "string")
+    .map((r) => r.trim().toLowerCase())
+    .filter((r) => r.length > 0);
 }
 
 async function assertAnalyticsAdmin(uid: string): Promise<void> {
@@ -30,7 +35,7 @@ async function assertAnalyticsAdmin(uid: string): Promise<void> {
   const claimRoles = normalizeRoles(userRecord.customClaims?.roles);
   const docRoles = normalizeRoles(userDoc.data()?.roles);
   const merged = new Set<string>([...claimRoles, ...docRoles]);
-  if (!merged.has("Admin") && !merged.has("superAdmin")) {
+  if (!merged.has("admin") && !merged.has("superadmin")) {
     throw new HttpsError("permission-denied", "Admin or superAdmin only");
   }
 }
@@ -47,9 +52,46 @@ export const getPhase5DashboardMetrics = onCall(
       throw new HttpsError("invalid-argument", parsed.error.message);
     }
 
-    await assertAnalyticsAdmin(callerUid);
+    // First trust the verified token on this request (fast path),
+    // then fall back to server lookups for environments where claims lag.
+    const tokenRoles = normalizeRoles(request.auth?.token?.roles);
+    const tokenHasAdmin = tokenRoles.includes("admin") || tokenRoles.includes("superadmin");
+    if (!tokenHasAdmin) {
+      await assertAnalyticsAdmin(callerUid);
+    }
 
-    const snapshot = await buildPhase5DashboardSnapshot(db, parsed.data.days ?? 30);
-    return {success: true, snapshot};
+    const days = parsed.data.days ?? 30;
+    const snapshot = await buildPhase5DashboardSnapshot(db, days);
+
+    if (!parsed.data.include_debug) {
+      return {success: true, snapshot};
+    }
+
+    const [userRecord, userDoc] = await Promise.all([
+      auth.getUser(callerUid),
+      db.collection("users").doc(callerUid).get(),
+    ]);
+    const claimRoles = normalizeRoles(userRecord.customClaims?.roles);
+    const docRoles = normalizeRoles(userDoc.data()?.roles);
+
+    return {
+      success: true,
+      snapshot,
+      debug: {
+        uid: callerUid,
+        auth_path: tokenHasAdmin ? "token" : "server_lookup",
+        roles_token_raw: request.auth?.token?.roles ?? null,
+        roles_token_normalized: tokenRoles,
+        roles_auth_custom_claims_normalized: claimRoles,
+        roles_firestore_normalized: docRoles,
+        window: {
+          days: snapshot.window_days,
+          start_date_utc: snapshot.start_date_utc,
+          end_date_utc: snapshot.end_date_utc,
+        },
+        totals_counts: snapshot.totals.counts,
+        totals_counts_key_count: Object.keys(snapshot.totals.counts).length,
+      },
+    };
   }
 );
