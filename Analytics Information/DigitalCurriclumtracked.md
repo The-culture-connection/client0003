@@ -229,11 +229,20 @@ Typed helpers live in `Digital Curriculum/src/app/analytics/intents.ts` (`mortar
 
 | Collection | Path | Purpose |
 |------------|------|--------|
-| `badge_definitions` | `{badgeId}` | Staff-defined badge metadata + optional **`rule`** (metric / operator / threshold / **`timeframe: all_time`** only in v1) + **`active`**, **`award_mode`** (`one_time` \| `repeatable`). Legacy Expansion **`criteria`** (posts/comments) unchanged. |
+| `badge_definitions` | `{badgeId}` | Staff-defined badge metadata + optional **`rule`** (metric / operator / threshold / **`timeframe: all_time`** only in v1) + **`active`**, **`award_mode`** (`one_time` \| `repeatable`), optional **`image_url`**. Legacy Expansion **`criteria`** (posts/comments) unchanged. |
+| `badge_bank` | `{assetId}` | Reusable badge images: **`image_url`**, **`storage_path`**, optional **`label`**, **`created_by_uid`**. Populated from **Admin → Badges → Badge bank** uploads (`badge_bank/` in Storage). |
 | `user_badges` | `{userId}/awarded/{badgeId}` | Materialized awards: **`times_awarded`**, first/last awarded timestamps, **`rule_snapshot`**. Idempotent: counts only increase. |
 | `badge_progress` | `{userId}` | Last evaluation snapshot: **`by_badge`**: metric value + `times_awarded` per badge for dashboards. |
 
+**Admin UI:** `Admin.tsx` tab **Badges** loads `components/admin/AdminBadgesPanel.tsx` — badge bank uploads, pick-from-bank or URL or one-off image for a definition, title/description/tier/order, and Phase 6 **rule** fields. New badges use a Firestore doc id **derived from the title** (lowercase, spaces → underscores; punctuation stripped). Editing does not rename the doc id.
+
 **Trigger:** `onUserAnalyticsSummaryWritten` → `evaluateAnalyticsBadgesForUser` (`functions/src/analytics/badges/analyticsBadgeEvaluator.ts`).
+
+**Emulator test:** From repo root, `npm run test:analytics:phase6` (runs `firebase emulators:exec` and `functions/scripts/phase6-badge-emulator-check.mjs`). The script seeds two `badge_definitions` (`emulator_phase6_one_lesson` one-time, `emulator_phase6_every_two_lessons` repeatable), ingests `lesson_course_completed` via `ingestWebAnalytics`, then asserts `user_badges/{uid}/awarded/*`, `badge_progress/{uid}`, and `users.badges.earned` for the one-time badge.
+
+### How the feature works (learner badge suite)
+
+Signed-in learners open **Badges** from the header: click the **email** line under their display name in `WebNavigation.tsx`. That opens `UserBadgeSuiteDialog` with three tabs — **Earned**, **In progress**, and **Available** — backed by live reads of `badge_definitions`, `badge_progress/{uid}.by_badge`, `user_badges/{uid}/awarded/*`, and legacy `users/{uid}.badges.earned` when needed.
 
 ### 6.2 Admin / builder web events (derived; staff)
 

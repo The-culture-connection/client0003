@@ -35,6 +35,7 @@ import {
   Download,
   ShoppingBag,
   BarChart3,
+  Medal,
   Pencil,
   KeyRound,
   Smartphone,
@@ -121,6 +122,7 @@ import { AppAccessHubPanel } from "../components/admin/AppAccessHubPanel";
 import { MobileModerationPanel } from "../components/admin/MobileModerationPanel";
 import { MortarInfoAdminPanel } from "../components/admin/MortarInfoAdminPanel";
 import { AnalyticsDashboardPanel } from "../components/admin/AnalyticsDashboardPanel";
+import { AdminBadgesPanel } from "../components/admin/AdminBadgesPanel";
 import { registerDigitalCurriculumAlumniEligible } from "../lib/expansionEligible";
 import { trackEvent } from "../analytics/trackEvent";
 import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalyticsContract";
@@ -1038,6 +1040,10 @@ export function AdminPage() {
           <TabsTrigger value="analytics">
             <BarChart3 className="w-4 h-4 mr-2" />
             Analytics
+          </TabsTrigger>
+          <TabsTrigger value="badges">
+            <Medal className="w-4 h-4 mr-2" />
+            Badges
           </TabsTrigger>
           <TabsTrigger value="app-access-hub">
             <KeyRound className="w-4 h-4 mr-2" />
@@ -2045,6 +2051,10 @@ export function AdminPage() {
 
         <TabsContent value="analytics" className="space-y-6">
           <AnalyticsDashboardPanel />
+        </TabsContent>
+
+        <TabsContent value="badges" className="space-y-6">
+          <AdminBadgesPanel />
         </TabsContent>
 
         {/* Expansion Network — eligible users & invite codes */}

@@ -14,7 +14,7 @@ The Digital Curriculum app imports the contract via the Vite alias `@mortar/anal
 - **Phase 4 (summary layer):** On each new normalized doc in **`analytics_events`** (`schema_version: 2`, including `web_curriculum_vite` and backend writers such as scheduled nudges / notification-read callable), **`onAnalyticsWebEventCreated`** updates **`user_analytics_summary/{userId}`** (per-user counts, `last_active_at`, UTC **streak** fields), **`daily_metrics/{YYYY-MM-DD}`** (UTC day bucket: **DAU** on first touch per user per day, funnel counters, `total_web_events`), **`course_analytics_summary/{courseId}`** when `properties.course_id` is set, and **`community_analytics_summary/global`**. **`scheduledPhase4DerivedMetrics`** (01:30 UTC) writes **`derived_*`** fields on yesterday’s `daily_metrics` (quiz pass rate, DAU mirror; placeholders `null` for cart abandonment, lesson latency, course progress % until extended). Raw **`analytics_raw_events`** rollups remain in `onAnalyticsRawEventCreated` / `analytics_daily_summaries` — Phase 4 web summaries are separate collections as specified.
 - **Phase 5 (derived + funnels):** Central query helpers in `functions/src/analytics/queries/dashboardAggregates.ts` compute onboarding / lesson / quiz / engagement rates, churn risk indicators, and funnel conversions over a date window from `daily_metrics` + `user_analytics_summary`. Callable **`getPhase5DashboardMetrics`** exposes this to dashboards (Admin / superAdmin). Funnel step definitions align with Phase 4 counters (e.g. first step uses **signups + `login_sign_ins`**, lesson starts include **dashboard continue learning**, curriculum step adds **course card clicks**, community “surface” includes hub preview/start/RSVP rollups, shop visits use **max(filter/size signals, add-to-cart)** so carts without filter tweaks still show a sensible funnel). Optional request field **`include_debug: true`** adds a small **`debug`** object (caller `uid`, `auth_path` token vs server lookup, normalized role arrays from token / Auth custom claims / Firestore `users/{uid}.roles`, UTC window dates, and the aggregated **`totals.counts`** map) for live verification; the Admin Analytics panel currently requests it and shows it in a collapsible block—remove when no longer needed. Notification events are tracked via `notification_item_clicked` (client ingest) and `notification_mark_read_backend` (server callable write).
 - **Admin UI surface:** `Digital Curriculum/src/app/components/admin/AnalyticsDashboardPanel.tsx` renders the Phase 5 snapshot by calling `getPhase5DashboardMetrics` and is mounted in `Admin.tsx` under the **Analytics** tab.
-- **Phase 6 (badges + admin metrics):** **`badge_definitions`** with a **`rule`** drives **`onUserAnalyticsSummaryWritten`** → **`evaluateAnalyticsBadgesForUser`**, which writes **`user_badges/{uid}/awarded/{badgeId}`**, **`badge_progress/{uid}`**, and on first **one-time** award merges **`users/{uid}.badges.earned`**. Admin-only web events (**`admin_*`**) are emitted from Course Builder / Admin shop & events and roll up like other web counters.
+- **Phase 6 (badges + admin metrics):** **`badge_definitions`** with a **`rule`** drives **`onUserAnalyticsSummaryWritten`** → **`evaluateAnalyticsBadgesForUser`**, which writes **`user_badges/{uid}/awarded/{badgeId}`**, **`badge_progress/{uid}`**, and on first **one-time** award merges **`users/{uid}.badges.earned`**. Staff curate **`badge_bank`** assets and definitions in **Admin → Badges** (`Digital Curriculum/src/app/components/admin/AdminBadgesPanel.tsx`). Admin-only web events (**`admin_*`**) are emitted from Course Builder / Admin shop & events and roll up like other web counters.
 - **Server:** `ingestWebAnalytics` validates auth (or a small **anonymous allowlist** for pre-auth login/password-reset + screen session events), normalizes/strips reserved property keys, sets **`created_at`** (server timestamp) and **`user_id`** from Auth when present, and writes **`analytics_events`** documents with **`schema_version: 2`**, **`source: web_curriculum_vite`**, and **`ingested_via: callable_ingest_web_analytics`**.
 - **Registry:** Approved wire names live in `functions/src/analytics/webAnalyticsEventRegistry.ts` as **`WEB_ANALYTICS_EVENTS`** (re-exported from the contract module).
 
@@ -27,6 +27,8 @@ The Digital Curriculum app imports the contract via the Vite alias `@mortar/anal
 | `analytics_raw_events` | Append-only canonical stream (`schema_version`, `event_name`, `user_id`, `client`, `properties`, …) | Admin SDK (validated `logAnalyticsEvent` callable, system jobs) | Admin / reporting callables (not direct client) |
 | `analytics_daily_summaries` | Rollups (e.g. `counts.<event_name>`, `total_events`) | Triggers / batch on raw writes | Staff (`hasStaffClaim`) |
 | `analytics_user_badges` | Legacy / reserved materialized badge doc per user | Triggers / batch | Owner or staff |
+| `badge_definitions` | Staff-authored badges + optional **`rule`** / **`image_url`** | Staff (Admin UI / Console) | Signed-in read |
+| `badge_bank` | Reusable badge images (`image_url`, `storage_path`, …) | Staff | Signed-in read |
 | `user_badges` | Phase 6 awards: **`{uid}/awarded/{badgeId}`** (`times_awarded`, timestamps) | `onUserAnalyticsSummaryWritten` | Owner or staff |
 | `badge_progress` | Phase 6 last evaluation snapshot per user | Same | Owner or staff |
 | `user_analytics_summary` | Phase 4 per-user rollup (`counts`, streaks, …) | `onAnalyticsWebEventCreated` | Owner or staff |
@@ -168,3 +170,11 @@ Run both:
 ```bash
 npm run test:analytics
 ```
+
+### Phase 6 badge emulator
+
+```bash
+npm run test:analytics:phase6
+```
+
+Uses `functions/scripts/phase6-badge-emulator-check.mjs`: seeds `badge_definitions` with `rule`, drives rollups through `ingestWebAnalytics` (`lesson_course_completed`), and checks `user_badges`, `badge_progress`, and `users.badges.earned`.

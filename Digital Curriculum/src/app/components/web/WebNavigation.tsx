@@ -15,6 +15,7 @@ import {
 import { formatDistanceToNow } from "date-fns";
 import { trackEvent } from "../../analytics/trackEvent";
 import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalyticsContract";
+import { UserBadgeSuiteDialog } from "../badges/UserBadgeSuiteDialog";
 
 interface NavItem {
   path: string;
@@ -53,6 +54,7 @@ export function WebNavigation() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
+  const [badgeSuiteOpen, setBadgeSuiteOpen] = useState(false);
 
   const { cart, itemCount, api } = useCart(user?.uid ?? null);
 
@@ -277,10 +279,23 @@ export function WebNavigation() {
                 <p className="text-sm font-medium text-foreground">
                   {user.displayName || user.email || "User"}
                 </p>
-                {user.email && (
-                  <p className="text-xs text-muted-foreground">{user.email}</p>
-                )}
+                {user.email ? (
+                  <button
+                    type="button"
+                    onClick={() => setBadgeSuiteOpen(true)}
+                    className="text-xs text-muted-foreground hover:text-foreground hover:underline underline-offset-2 block w-full text-right mt-0.5"
+                    title="View badges"
+                  >
+                    {user.email}
+                  </button>
+                ) : null}
               </div>
+              <UserBadgeSuiteDialog
+                open={badgeSuiteOpen}
+                onOpenChange={setBadgeSuiteOpen}
+                userId={user.uid}
+                accountLabel={user.email ?? user.displayName ?? undefined}
+              />
               <Button
                 variant="outline"
                 size="sm"

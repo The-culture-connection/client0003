@@ -666,6 +666,12 @@ service cloud.firestore {
       allow write: if hasStaffClaim();
     }
 
+    // Staff-curated images for badge definitions (Digital Curriculum Admin → Badge bank)
+    match /badge_bank/{assetId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if hasStaffClaim();
+    }
+
     match /achievement_events/{eventId} {
       allow read: if hasStaffClaim();
       allow write: if false;

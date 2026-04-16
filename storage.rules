@@ -80,6 +80,14 @@ service firebase.storage {
         && request.resource.contentType.matches('image/.*');
     }
 
+    // Badge bank — staff uploads for achievement art (referenced by `badge_definitions.image_url`)
+    match /badge_bank/{fileName} {
+      allow read: if true;
+      allow write: if hasStaffClaim()
+        && request.resource.size < 6 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
     // Course builder uploads (lesson images, etc.)
     match /curriculum_content/{allPaths=**} {
       allow read: if isSignedIn();
