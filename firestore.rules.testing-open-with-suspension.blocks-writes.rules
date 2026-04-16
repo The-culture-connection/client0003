@@ -3,11 +3,6 @@ rules_version = '2';
 /**
  * Testing rules: wide open read + write until 2026-12-31, EXCEPT signed-in users whose
  * `users/{uid}` has `content_suspended: true` or `account_banned: true` cannot write.
- *
- * Paste into Firebase Console → Firestore → Rules, or deploy with:
- *   firebase deploy --only firestore:rules
- * (point `firestore.rules` in firebase.json at this file first).
- *
  * Unsigned clients: writes still allowed (matches typical “open dev” testing).
  */
 service cloud.firestore {
