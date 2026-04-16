@@ -4,8 +4,12 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Card } from "../components/ui/card";
 import { useAuth } from "../components/auth/AuthProvider";
+import { useScreenAnalytics } from "../analytics/useScreenAnalytics";
+import { trackEvent } from "../analytics/trackEvent";
+import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalyticsContract";
 
 export function JoinPage() {
+  useScreenAnalytics("join");
   const [inviteCode, setInviteCode] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -19,6 +23,8 @@ export function JoinPage() {
     setError(null);
     setLoading(true);
 
+    trackEvent(WEB_ANALYTICS_EVENTS.LOGIN_SUBMIT_ATTEMPTED, { mode: "invite_sign_up" });
+
     try {
       // Validate invite code (mock - any code works for UI)
       if (!inviteCode.trim()) {
@@ -29,9 +35,11 @@ export function JoinPage() {
 
       // Create account with invite code
       await signUp(email, password);
+      trackEvent(WEB_ANALYTICS_EVENTS.LOGIN_SIGN_UP_SUCCEEDED, { mode: "invite_sign_up" });
       // Route to dashboard (in real app, would route to onboarding for new users)
       navigate("/dashboard");
     } catch (err: any) {
+      trackEvent(WEB_ANALYTICS_EVENTS.LOGIN_SIGN_IN_FAILED, { mode: "invite_sign_up" });
       setError(err.message || "Failed to join");
       setLoading(false);
     }

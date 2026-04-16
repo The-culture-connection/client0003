@@ -33,8 +33,13 @@ import { getAllCourseProgress, calculateCourseProgress, type CourseProgress } fr
 import { getCourseSlideCounts } from "../../lib/curriculum";
 import { getCurrentUserWithRoles } from "../../lib/auth";
 import { cached, TTL_SHORT, TTL_MEDIUM } from "../../lib/cache";
+import { getLessonPlayerPath } from "../../lib/lessonPlayerUrl";
+import { useScreenAnalytics } from "../../analytics/useScreenAnalytics";
+import { trackEvent } from "../../analytics/trackEvent";
+import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalyticsContract";
 
 export function WebCurriculum() {
+  useScreenAnalytics("curriculum");
   const navigate = useNavigate();
   const { user } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
@@ -234,47 +239,6 @@ export function WebCurriculum() {
     return best;
   })();
 
-  /** Build lesson player URL for a course (start = first lesson, or resume from progress) */
-  const getLessonUrl = (course: Course, resume?: boolean): string => {
-    const mapping = course.curriculumMapping;
-    const firstModule = mapping?.modules?.[0];
-    const firstChapter = firstModule?.chapters?.[0];
-    const firstLesson = firstChapter?.lessons?.[0];
-    if (!mapping || !firstModule || !firstChapter) return `/courses/${course.id}`;
-    const params = new URLSearchParams({
-      curriculumId: mapping.curriculumId,
-      moduleId: firstModule.moduleId,
-      chapterId: firstChapter.chapterId,
-      courseId: course.id || "",
-    });
-    if (resume && course.id) {
-      const p = courseProgress[course.id];
-      const lastLessonId = p?.lastViewedLessonId;
-      const lastSlideIndex = p?.lastViewedSlideIndex ?? 0;
-      if (lastLessonId) {
-        let foundModuleId = firstModule.moduleId;
-        let foundChapterId = firstChapter.chapterId;
-        mapping.modules.forEach((mod) => {
-          mod.chapters?.forEach((ch) => {
-            ch.lessons?.forEach((l) => {
-              if (l.lessonId === lastLessonId) {
-                foundModuleId = mod.moduleId;
-                foundChapterId = ch.chapterId;
-              }
-            });
-          });
-        });
-        params.set("curriculumId", mapping.curriculumId);
-        params.set("moduleId", foundModuleId);
-        params.set("chapterId", foundChapterId);
-        params.set("slideIndex", String(lastSlideIndex));
-        return `/learn/lesson/${lastLessonId}?${params.toString()}`;
-      }
-    }
-    if (!firstLesson?.lessonId) return `/courses/${course.id}`;
-    return `/learn/lesson/${firstLesson.lessonId}?${params.toString()}`;
-  };
-
   if (loading) {
     return (
       <div className="p-6 max-w-7xl mx-auto">
@@ -332,7 +296,15 @@ export function WebCurriculum() {
                       <Button
                         size="sm"
                         className="bg-accent hover:bg-accent/90 text-accent-foreground"
-                        onClick={() => navigate(getLessonUrl(mostRecentCourse.course, true))}
+                        onClick={() =>
+                          navigate(
+                            getLessonPlayerPath(
+                              mostRecentCourse.course,
+                              mostRecentCourse.progress,
+                              true
+                            )
+                          )
+                        }
                       >
                         <Play className="w-3 h-3 mr-1" />
                         Continue
@@ -408,7 +380,12 @@ export function WebCurriculum() {
               <Card
                 key={course.id}
                 className="p-5 bg-card border-border shadow-md hover:shadow-lg transition-all cursor-pointer"
-                onClick={() => navigate(`/courses/${course.id}`)}
+                onClick={() => {
+                  trackEvent(WEB_ANALYTICS_EVENTS.CURRICULUM_COURSE_CARD_CLICKED, {
+                    course_id: course.id ?? null,
+                  });
+                  navigate(`/courses/${course.id}`);
+                }}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-4 flex-1">
@@ -463,7 +440,13 @@ export function WebCurriculum() {
                     <Button
                       onClick={(e) => {
                         e.stopPropagation();
-                        navigate(getLessonUrl(course, displayProgressValue > 0 && !completed));
+                        navigate(
+                        getLessonPlayerPath(
+                          course,
+                          course.id ? courseProgress[course.id] : undefined,
+                          displayProgressValue > 0 && !completed
+                        )
+                      );
                       }}
                       size="sm"
                       className={completed ? "bg-green-500 hover:bg-green-600" : "bg-accent hover:bg-accent/90 text-accent-foreground"}

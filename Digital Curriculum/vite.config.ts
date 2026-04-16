@@ -16,6 +16,7 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
       // Force ../../lib/auth to resolve to app lib (avoids resolution issues when build cwd differs, e.g. Railway)
       '../../lib/auth': path.resolve(__dirname, './src/app/lib/auth.ts'),
+      '@mortar/analytics-contract': path.resolve(__dirname, '../functions/src/analytics'),
     },
   },
 

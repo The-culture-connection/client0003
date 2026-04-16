@@ -22,8 +22,12 @@ import { getCourseProgress, calculateCourseProgress, type CourseProgress } from 
 import { getCourseSlideCounts } from "../../lib/curriculum";
 import { getCurrentUserWithRoles } from "../../lib/auth";
 import { Edit } from "lucide-react";
+import { useScreenAnalytics } from "../../analytics/useScreenAnalytics";
+import { trackEvent } from "../../analytics/trackEvent";
+import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalyticsContract";
 
 export function CourseDetail() {
+  useScreenAnalytics("course_detail");
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -56,9 +60,6 @@ export function CourseDetail() {
         ]);
         setCourse(courseData);
         setCourseProgress(progressData);
-        // #region agent log
-        fetch('http://127.0.0.1:7774/ingest/bfc46f72-c941-4ce4-b1bf-d233eb9d1511',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'696073'},body:JSON.stringify({sessionId:'696073',location:'CourseDetail.tsx:loadCourse',message:'progress set, slideCounts not loaded yet',data:{courseId,hasProgress:!!progressData,lessonsWithQuizNull:true,lessonsWithSurveyNull:true,courseSlideCountsNull:true},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
         if (courseData?.curriculumMapping) {
           const counts = await getCourseSlideCounts(courseData);
           setCourseSlideCounts(counts);
@@ -70,9 +71,6 @@ export function CourseDetail() {
               ]);
               setLessonsWithQuiz(q);
               setLessonsWithSurvey(s);
-              // #region agent log
-              fetch('http://127.0.0.1:7774/ingest/bfc46f72-c941-4ce4-b1bf-d233eb9d1511',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'696073'},body:JSON.stringify({sessionId:'696073',location:'CourseDetail.tsx:then',message:'slideCounts and quiz/survey set',data:{courseId,countsKeys:Object.keys(counts).length},timestamp:Date.now(),hypothesisId:'C'})}).catch(()=>{});
-              // #endregion
             } catch {
               setLessonsWithQuiz({});
               setLessonsWithSurvey({});
@@ -372,13 +370,6 @@ export function CourseDetail() {
                             const totalSlidesForLesson = hasProgressData ? (courseSlideCounts?.[lessonIdForProgress] ?? courseProgress?.totalPages?.[lessonIdForProgress] ?? 0) : 0;
                             const viewedSlides = courseProgress?.pagesViewed?.[lessonIdForProgress] ?? 0;
                             const contentComplete = hasProgressData && totalSlidesForLesson > 0 && viewedSlides >= totalSlidesForLesson;
-                            // #region agent log
-                            if (moduleIndex === 0 && lessonIndex === 0) {
-                              const totalPages = courseProgress?.totalPages?.[lessonIdForProgress] ?? 0;
-                              const contentShownComplete = ((courseProgress?.pagesViewed?.[lessonIdForProgress] ?? 0) >= totalPages && totalPages > 0) || totalPages === 0;
-                              fetch('http://127.0.0.1:7774/ingest/bfc46f72-c941-4ce4-b1bf-d233eb9d1511',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'696073'},body:JSON.stringify({sessionId:'696073',location:'CourseDetail.tsx:render',message:'first lesson completion state',data:{hasProgressData,lessonsWithQuizNull:lessonsWithQuiz==null,lessonsWithSurveyNull:lessonsWithSurvey==null,lessonIdForProgress,isCompleted,lessonsCompleted:!!courseProgress?.lessonsCompleted?.[lessonIdForProgress],hasQuizForLesson:!!hasQuizForLesson,hasSurveyForLesson:!!hasSurveyForLesson,quizPassed:!!courseProgress?.quizPassed?.[lessonIdForProgress],surveySubmitted:!!courseProgress?.surveySubmitted?.[lessonIdForProgress],totalPages,contentShownComplete},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-                            }
-                            // #endregion
 
                             return (
                             <div
@@ -485,6 +476,11 @@ export function CourseDetail() {
                                       if (isResume && lastSlideIndex >= 0) {
                                         params.set("slideIndex", String(lastSlideIndex));
                                       }
+                                      trackEvent(WEB_ANALYTICS_EVENTS.COURSE_DETAIL_START_LESSON_CLICKED, {
+                                        course_id: course.id ?? null,
+                                        lesson_id: curriculumLessonId ?? null,
+                                        resume: isResume,
+                                      });
                                       navigate(
                                         `/learn/lesson/${curriculumLessonId}?${params.toString()}`
                                       );

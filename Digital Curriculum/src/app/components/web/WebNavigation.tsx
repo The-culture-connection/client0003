@@ -13,6 +13,8 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 import { formatDistanceToNow } from "date-fns";
+import { trackEvent } from "../../analytics/trackEvent";
+import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalyticsContract";
 
 interface NavItem {
   path: string;
@@ -119,6 +121,12 @@ export function WebNavigation() {
                   <Link
                     key={item.path}
                     to={item.path}
+                    onClick={() =>
+                      trackEvent(WEB_ANALYTICS_EVENTS.NAV_LINK_CLICKED, {
+                        path: item.path,
+                        label: item.label,
+                      })
+                    }
                     className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
                       isActive
                         ? "bg-accent text-accent-foreground"
@@ -176,7 +184,13 @@ export function WebNavigation() {
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              <DropdownMenu open={cartOpen} onOpenChange={setCartOpen}>
+              <DropdownMenu
+                open={cartOpen}
+                onOpenChange={(open) => {
+                  setCartOpen(open);
+                  trackEvent(WEB_ANALYTICS_EVENTS.CART_DROPDOWN_TOGGLED, { open });
+                }}
+              >
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="relative">
                     <ShoppingCart className="w-5 h-5 text-muted-foreground" />
@@ -218,6 +232,9 @@ export function WebNavigation() {
                                   category: line.category,
                                 }).catch(console.error);
                                 api.removeLine({ itemId: line.itemId, size: line.size });
+                                trackEvent(WEB_ANALYTICS_EVENTS.CART_LINE_REMOVE_CLICKED, {
+                                  item_id: line.itemId,
+                                });
                               }}
                               title="Remove"
                             >
@@ -239,6 +256,7 @@ export function WebNavigation() {
                         <Button
                           className="w-full mt-3 bg-accent hover:bg-accent/90 text-accent-foreground"
                           onClick={() => {
+                            trackEvent(WEB_ANALYTICS_EVENTS.CART_CONTINUE_TO_SHOP_CLICKED, {});
                             setCartOpen(false);
                             navigate("/shop");
                           }}

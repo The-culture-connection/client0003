@@ -21,13 +21,16 @@ import { StartDiscussionDialog } from "../components/discussions/StartDiscussion
 import {
   getDiscussions,
   type Discussion,
-  type DiscussionCategory,
   DISCUSSION_CATEGORIES,
   incrementViews,
   getReplyCount as getReplyCountUtil,
 } from "../lib/discussions";
+import { useScreenAnalytics } from "../analytics/useScreenAnalytics";
+import { trackEvent } from "../analytics/trackEvent";
+import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalyticsContract";
 
 export function DiscussionsPage() {
+  useScreenAnalytics("discussions");
   const navigate = useNavigate();
   const [discussions, setDiscussions] = useState<Discussion[]>([]);
   const [filteredDiscussions, setFilteredDiscussions] = useState<Discussion[]>([]);
@@ -43,10 +46,9 @@ export function DiscussionsPage() {
     filterDiscussions();
   }, [discussions, selectedCategory, searchQuery]);
 
-  const loadDiscussions = () => {
-    const allDiscussions = getDiscussions();
-    // Sort by: pinned first, then by updatedAt (most recent first)
-    const sorted = allDiscussions.sort((a, b) => {
+  const loadDiscussions = async () => {
+    const allDiscussions = await getDiscussions();
+    const sorted = [...allDiscussions].sort((a, b) => {
       if (a.isPinned && !b.isPinned) return -1;
       if (!a.isPinned && b.isPinned) return 1;
       return b.updatedAt.getTime() - a.updatedAt.getTime();
@@ -76,7 +78,7 @@ export function DiscussionsPage() {
   };
 
   const handleDiscussionClick = (discussion: Discussion) => {
-    incrementViews(discussion.id);
+    void incrementViews(discussion.id);
     navigate(`/discussions/${discussion.id}`);
   };
 
@@ -120,7 +122,12 @@ export function DiscussionsPage() {
           </p>
         </div>
         <Button
-          onClick={() => setDialogOpen(true)}
+          onClick={() => {
+            trackEvent(WEB_ANALYTICS_EVENTS.COMMUNITY_START_DISCUSSION_CLICKED, {
+              surface: "discussions_list",
+            });
+            setDialogOpen(true);
+          }}
           className="bg-accent hover:bg-accent/90 text-accent-foreground"
         >
           <Send className="w-4 h-4 mr-2" />

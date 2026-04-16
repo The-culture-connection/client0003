@@ -3,7 +3,7 @@
  * Displays published lessons slide by slide
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router";
 import { getSlides, getBlocks, getLesson, getLessonImages, getLessonContent, getCourseSlideCounts, type Slide, type Block, type Lesson, type LessonImage, type LessonContentSlide, type LessonQuiz, type LessonSurvey } from "../../lib/curriculum";
 import { getCourse, getCourseLessonQuiz, getCourseLessonSurvey, getLessonsWithQuiz, getLessonsWithSurvey } from "../../lib/courses";
@@ -15,8 +15,12 @@ import { SlideRenderer } from "../../components/curriculum/SlideRenderer";
 import { YouTubeBlock } from "../../components/curriculum/YouTubeBlock";
 import { Button } from "../../components/ui/button";
 import { ChevronLeft, ChevronRight, LogOut, Loader2, X } from "lucide-react";
+import { useScreenAnalytics } from "../../analytics/useScreenAnalytics";
+import { trackEvent } from "../../analytics/trackEvent";
+import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalyticsContract";
 
 export function LessonPlayer() {
+  useScreenAnalytics("lesson_player");
   const { lessonId } = useParams<{ lessonId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -46,6 +50,7 @@ export function LessonPlayer() {
   const [surveySubmitted, setSurveySubmitted] = useState(false);
   const [isSubmittingSurvey, setIsSubmittingSurvey] = useState(false);
   const [showSurveyView, setShowSurveyView] = useState(false);
+  const loggedQuizExhausted = useRef(false);
 
   const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
   const courseId = params.get("courseId") || undefined;
@@ -64,6 +69,9 @@ export function LessonPlayer() {
   
   useEffect(() => {
     if (!lessonId) {
+      trackEvent(WEB_ANALYTICS_EVENTS.LESSON_PLAYER_MISSING_QUERY_PARAMS, {
+        reason: "no_lesson_id",
+      });
       setError("Lesson ID is required");
       setIsLoading(false);
       return;
@@ -77,6 +85,12 @@ export function LessonPlayer() {
         const chapterIdParam = params.get("chapterId");
 
         if (!curriculumIdParam || !moduleIdParam || !chapterIdParam) {
+          trackEvent(WEB_ANALYTICS_EVENTS.LESSON_PLAYER_MISSING_QUERY_PARAMS, {
+            lesson_id: lessonId ?? null,
+            has_curriculum_id: Boolean(curriculumIdParam),
+            has_module_id: Boolean(moduleIdParam),
+            has_chapter_id: Boolean(chapterIdParam),
+          });
           setError("Missing required lesson parameters");
           setIsLoading(false);
           return;
@@ -141,6 +155,9 @@ export function LessonPlayer() {
         setIsLoading(false);
       } catch (err) {
         console.error("Error loading lesson:", err);
+        trackEvent(WEB_ANALYTICS_EVENTS.LESSON_PLAYER_LOAD_FAILED, {
+          lesson_id: lessonId ?? null,
+        });
         setError("Failed to load lesson");
         setIsLoading(false);
       }
@@ -149,6 +166,16 @@ export function LessonPlayer() {
     loadLesson();
   }, [lessonId, user]);
 
+  useEffect(() => {
+    if (isLoading || error) return;
+    if (lesson && itemCount === 0) {
+      trackEvent(WEB_ANALYTICS_EVENTS.LESSON_PLAYER_EMPTY_CONTENT_VIEWED, {
+        lesson_id: lessonId ?? null,
+        course_id: courseId ?? null,
+      });
+    }
+  }, [isLoading, error, lesson, itemCount, lessonId, courseId]);
+
   const currentSlide = slides[currentSlideIndex];
   const currentBlocks = currentSlide ? slideBlocks[currentSlide.id || ""] || [] : [];
   const currentImage = isImageLesson ? lessonImages[currentSlideIndex] : null;
@@ -156,12 +183,22 @@ export function LessonPlayer() {
 
   const handlePrevious = () => {
     if (currentSlideIndex > 0) {
+      trackEvent(WEB_ANALYTICS_EVENTS.LESSON_SLIDE_PREVIOUS_CLICKED, {
+        lesson_id: lessonId ?? null,
+        course_id: courseId ?? null,
+        from_index: currentSlideIndex,
+        to_index: currentSlideIndex - 1,
+      });
       setCurrentSlideIndex(currentSlideIndex - 1);
       window.scrollTo(0, 0);
     }
   };
 
   const saveProgressAndExit = async () => {
+    trackEvent(WEB_ANALYTICS_EVENTS.LESSON_CLOSE_CLICKED, {
+      lesson_id: lessonId ?? null,
+      course_id: courseId ?? null,
+    });
     if (!user || !courseId || !lessonId) {
       navigate(courseId ? `/courses/${courseId}` : "/curriculum");
       return;
@@ -192,8 +229,14 @@ export function LessonPlayer() {
         const pct = calculateCourseProgress(course, progressAfter, totalSlidesPerLesson, lessonsWithQuiz, lessonsWithSurvey);
         if (pct >= 100) {
           await markCourseCompleted(user.uid, courseId);
+          trackEvent(WEB_ANALYTICS_EVENTS.LESSON_COURSE_COMPLETED, {
+            course_id: courseId,
+          });
           const { certificatesCreated } = await createSkillCertificatesForCompletedCourse(user.uid, course);
           if (certificatesCreated) {
+            trackEvent(WEB_ANALYTICS_EVENTS.LESSON_CERTIFICATE_CREATED, {
+              course_id: courseId,
+            });
             alert("Congratulations! You've earned new certificate(s). View them in your Data Room.");
           }
         }
@@ -216,8 +259,37 @@ export function LessonPlayer() {
   const passPct = quiz?.passPercentage ?? 70;
   const canTryAgain = hasQuiz && quizSubmitted && quizPassed === false && attemptsUsed < maxAttempts;
 
+  useEffect(() => {
+    if (showQuizView && hasQuiz) {
+      trackEvent(WEB_ANALYTICS_EVENTS.LESSON_QUIZ_VIEW_OPENED, {
+        lesson_id: lessonId ?? null,
+        course_id: courseId ?? null,
+      });
+    }
+  }, [showQuizView, hasQuiz, lessonId, courseId]);
+
+  useEffect(() => {
+    if (!hasQuiz || !quizSubmitted || quizPassed !== false || canTryAgain) {
+      loggedQuizExhausted.current = false;
+      return;
+    }
+    if (loggedQuizExhausted.current) return;
+    loggedQuizExhausted.current = true;
+    trackEvent(WEB_ANALYTICS_EVENTS.LESSON_QUIZ_EXHAUSTED_VIEWED, {
+      lesson_id: lessonId ?? null,
+      course_id: courseId ?? null,
+      attempts_used: attemptsUsed,
+    });
+  }, [hasQuiz, quizSubmitted, quizPassed, canTryAgain, lessonId, courseId, attemptsUsed]);
+
   const handleNext = () => {
     if (currentSlideIndex < itemCount - 1) {
+      trackEvent(WEB_ANALYTICS_EVENTS.LESSON_SLIDE_NEXT_CLICKED, {
+        lesson_id: lessonId ?? null,
+        course_id: courseId ?? null,
+        from_index: currentSlideIndex,
+        to_index: currentSlideIndex + 1,
+      });
       setCurrentSlideIndex(currentSlideIndex + 1);
       window.scrollTo(0, 0);
     } else if (atEnd && hasQuiz && !userPassed) {
@@ -234,6 +306,10 @@ export function LessonPlayer() {
     setIsSubmittingSurvey(true);
     try {
       await recordLessonSurveySubmission(user.uid, courseId, lessonId, answers);
+      trackEvent(WEB_ANALYTICS_EVENTS.LESSON_SURVEY_SUBMIT_CLICKED, {
+        lesson_id: lessonId,
+        course_id: courseId,
+      });
       setSurveySubmitted(true);
       setProgress((prev) => ({
         ...prev!,
@@ -270,8 +346,14 @@ export function LessonPlayer() {
         const pct = calculateCourseProgress(course, progressAfter, totalSlidesPerLesson, lessonsWithQuizMap, lessonsWithSurveyMap);
         if (pct >= 100) {
           await markCourseCompleted(user.uid, courseId);
+          trackEvent(WEB_ANALYTICS_EVENTS.LESSON_COURSE_COMPLETED, {
+            course_id: courseId,
+          });
           const { certificatesCreated } = await createSkillCertificatesForCompletedCourse(user.uid, course);
           if (certificatesCreated) {
+            trackEvent(WEB_ANALYTICS_EVENTS.LESSON_CERTIFICATE_CREATED, {
+              course_id: courseId,
+            });
             alert("Congratulations! You've earned new certificate(s). View them in your Data Room.");
           }
         }
@@ -295,10 +377,28 @@ export function LessonPlayer() {
     const passed = pct >= passPct;
     setIsSubmittingQuiz(true);
     try {
+      trackEvent(WEB_ANALYTICS_EVENTS.LESSON_QUIZ_SUBMIT_CLICKED, {
+        lesson_id: lessonId,
+        course_id: courseId,
+        score_percent: pct,
+      });
       await recordLessonQuizAttempt(user.uid, courseId, lessonId, passed);
       setQuizSubmitted(true);
       setQuizPassed(passed);
       setQuizScore({ correct, total });
+      if (passed) {
+        trackEvent(WEB_ANALYTICS_EVENTS.LESSON_QUIZ_PASSED, {
+          lesson_id: lessonId,
+          course_id: courseId,
+          score_percent: pct,
+        });
+      } else {
+        trackEvent(WEB_ANALYTICS_EVENTS.LESSON_QUIZ_FAILED, {
+          lesson_id: lessonId,
+          course_id: courseId,
+          score_percent: pct,
+        });
+      }
       setProgress((prev) => ({
         ...prev!,
         quizAttempts: { ...prev?.quizAttempts, [lessonId]: (prev?.quizAttempts?.[lessonId] ?? 0) + 1 },
@@ -311,6 +411,10 @@ export function LessonPlayer() {
   };
 
   const handleTryAgain = () => {
+    trackEvent(WEB_ANALYTICS_EVENTS.LESSON_QUIZ_TRY_AGAIN_CLICKED, {
+      lesson_id: lessonId ?? null,
+      course_id: courseId ?? null,
+    });
     setQuizAnswers({});
     setQuizSubmitted(false);
     setQuizPassed(null);

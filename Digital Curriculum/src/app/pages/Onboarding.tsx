@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "../components/auth/AuthProvider";
+import { useScreenAnalytics } from "../analytics/useScreenAnalytics";
+import { trackEvent } from "../analytics/trackEvent";
+import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalyticsContract";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { Step1Identity } from "../components/onboarding/Step1Identity";
@@ -15,12 +18,26 @@ import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 
 export function OnboardingPage() {
+  useScreenAnalytics("onboarding");
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [onboardingData, setOnboardingData] = useState<OnboardingData>({});
+
+  useEffect(() => {
+    if (loading) return;
+    if (currentStep >= 1 && currentStep <= 7) {
+      trackEvent(WEB_ANALYTICS_EVENTS.ONBOARDING_STEP_VIEWED, { step: currentStep });
+    }
+  }, [currentStep, loading]);
+
+  useEffect(() => {
+    if (currentStep === 8) {
+      trackEvent(WEB_ANALYTICS_EVENTS.ONBOARDING_COMPLETION_VIEWED, {});
+    }
+  }, [currentStep]);
 
   // Load existing onboarding data
   useEffect(() => {
@@ -101,6 +118,12 @@ export function OnboardingPage() {
       });
 
       await setDoc(userRef, dataToSave, { merge: true });
+
+      if (partial) {
+        trackEvent(WEB_ANALYTICS_EVENTS.ONBOARDING_PARTIAL_SAVE_SUCCEEDED, {});
+      } else {
+        trackEvent(WEB_ANALYTICS_EVENTS.ONBOARDING_FINAL_SAVE_SUCCEEDED, {});
+      }
 
       if (!partial) {
         // Show completion screen first, then navigate after a delay
@@ -184,6 +207,7 @@ export function OnboardingPage() {
   };
 
   const handleSkip = () => {
+    trackEvent(WEB_ANALYTICS_EVENTS.ONBOARDING_SKIP_CLICKED, {});
     // Save as partial and go to dashboard
     saveData(true);
   };

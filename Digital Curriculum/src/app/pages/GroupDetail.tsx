@@ -29,8 +29,12 @@ import {
 } from "../lib/groups";
 import { onSnapshot, collection, query, orderBy, limit, doc, getDoc } from "firebase/firestore";
 import { db } from "../lib/firebase";
+import { useScreenAnalytics } from "../analytics/useScreenAnalytics";
+import { trackEvent } from "../analytics/trackEvent";
+import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalyticsContract";
 
 export function GroupDetailPage() {
+  useScreenAnalytics("group_detail");
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -192,6 +196,7 @@ export function GroupDetailPage() {
 
   const handleJoin = async () => {
     if (!id || !user?.uid) return;
+    trackEvent(WEB_ANALYTICS_EVENTS.GROUP_JOIN_CLICKED, { group_id: id });
     setJoining(true);
     try {
       const result = await joinGroup(id, user.uid);
@@ -204,6 +209,7 @@ export function GroupDetailPage() {
       }
     } catch (error) {
       console.error("Error joining group:", error);
+      trackEvent(WEB_ANALYTICS_EVENTS.GROUP_JOIN_FAILED, { group_id: id });
       alert("Failed to join group. Please try again.");
     } finally {
       setJoining(false);
@@ -218,6 +224,7 @@ export function GroupDetailPage() {
         isAnonymous: sendAnonymous,
         senderName: myDisplayName || "User",
       });
+      trackEvent(WEB_ANALYTICS_EVENTS.GROUP_MESSAGE_SEND_CLICKED, { group_id: id });
       setMessageContent("");
       setSendAnonymous(false);
     } catch (error) {

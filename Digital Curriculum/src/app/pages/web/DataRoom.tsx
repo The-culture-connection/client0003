@@ -1,4 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import JSZip from "jszip";
+import { toast } from "sonner";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -18,6 +20,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../components/auth/AuthProvider";
 import { listCertificates, listSurveyResponses, type SkillCertificate, type SurveyResponseDocument } from "../../lib/dataroom";
+import { getStorageObjectViaFunctionsProxy } from "../../lib/storageDownloadProxy";
 import { DATAROOM_FOLDER_OPTIONS } from "../../lib/dataroomFolders";
 import {
   Dialog,
@@ -56,6 +59,7 @@ export function WebDataRoom() {
   const [surveyResponses, setSurveyResponses] = useState<SurveyResponseDocument[]>([]);
   const [surveyResponsesLoading, setSurveyResponsesLoading] = useState(true);
   const [surveyResponsesError, setSurveyResponsesError] = useState<string | null>(null);
+  const [zipBusy, setZipBusy] = useState(false);
 
   useEffect(() => {
     if (!user?.uid) {
@@ -90,6 +94,59 @@ export function WebDataRoom() {
       })
       .finally(() => setSurveyResponsesLoading(false));
   }, [user?.uid]);
+
+  const handleDownloadAllZip = useCallback(async () => {
+    if (!user?.uid) {
+      toast.error("Sign in to download.");
+      return;
+    }
+    /** Use `getCourseFile` HTTPS proxy (CORS-safe) — same pattern as `PDFViewer` for Storage PDFs. */
+    const withStoragePath = surveyResponses.filter((sr) => typeof sr.storagePath === "string" && sr.storagePath.length > 0);
+    if (withStoragePath.length === 0) {
+      toast.error("No survey PDFs available to bundle (missing storage paths). Try opening each PDF from the list.");
+      return;
+    }
+    setZipBusy(true);
+    try {
+      toast.message("Building ZIP…", { description: "Fetching PDFs through the app proxy." });
+      const zip = new JSZip();
+      let added = 0;
+      for (const sr of withStoragePath) {
+        const base = (sr.surveyTitle || sr.lessonTitle || "survey").replace(/[^\w\d\-_.]+/g, "_");
+        const name = `${base.slice(0, 80)}.pdf`;
+        try {
+          const proxyUrl = getStorageObjectViaFunctionsProxy(sr.storagePath);
+          const res = await fetch(proxyUrl);
+          if (!res.ok) throw new Error(String(res.status));
+          const blob = await res.blob();
+          zip.file(`${added + 1}-${name}`, blob);
+          added++;
+        } catch {
+          /* Proxy/network or missing file — skip individual file */
+        }
+      }
+      if (added === 0) {
+        toast.error("Could not read files for ZIP (permissions or missing files). Try opening each PDF from the list.");
+        return;
+      }
+      const out = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(out);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "data-room-surveys.zip";
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success(`Downloaded ${added} file${added === 1 ? "" : "s"} as ZIP.`);
+    } catch (e) {
+      console.error(e);
+      toast.error("ZIP build failed.");
+    } finally {
+      setZipBusy(false);
+    }
+  }, [surveyResponses, user?.uid]);
 
   const handleDownloadCertificate = (cert: SkillCertificate) => {
     const win = window.open("", "_blank");
@@ -367,9 +424,11 @@ export function WebDataRoom() {
             variant="outline"
             size="sm"
             className="border-border text-foreground"
+            disabled={zipBusy || surveyResponsesLoading || surveyResponses.length === 0}
+            onClick={() => void handleDownloadAllZip()}
           >
             <Download className="w-4 h-4 mr-2" />
-            Download All (ZIP)
+            {zipBusy ? "Building ZIP…" : "Download All (ZIP)"}
           </Button>
         </div>
 

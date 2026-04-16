@@ -3,6 +3,8 @@ import { useNavigate, useLocation } from "react-router";
 import { useAuth } from "./AuthProvider";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../../lib/firebase";
+import { trackEvent } from "../../analytics/trackEvent";
+import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalyticsContract";
 
 export function OnboardingGate({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -29,6 +31,10 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
 
         if (!userDoc.exists()) {
           // User document doesn't exist, redirect to onboarding
+          trackEvent(WEB_ANALYTICS_EVENTS.ONBOARDING_GATE_REDIRECT_INCOMPLETE_PROFILE, {
+            reason: "missing_user_doc",
+            from_path: location.pathname,
+          });
           navigate("/onboarding", { replace: true });
           setChecking(false);
           return;
@@ -71,6 +77,10 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
 
         // If required fields are missing, redirect to onboarding (unless already there)
         if (location.pathname !== "/onboarding") {
+          trackEvent(WEB_ANALYTICS_EVENTS.ONBOARDING_GATE_REDIRECT_INCOMPLETE_PROFILE, {
+            reason: "incomplete_profile",
+            from_path: location.pathname,
+          });
           navigate("/onboarding", { replace: true });
         }
       } catch (error) {

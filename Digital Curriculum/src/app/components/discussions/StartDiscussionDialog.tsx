@@ -16,6 +16,8 @@ import { DISCUSSION_CATEGORIES, type DiscussionCategory } from "../../lib/discus
 import { useAuth } from "../auth/AuthProvider";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../../lib/firebase";
+import { trackEvent } from "../../analytics/trackEvent";
+import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalyticsContract";
 
 interface StartDiscussionDialogProps {
   open: boolean;
@@ -83,15 +85,22 @@ export function StartDiscussionDialog({
     if (!category || !title.trim() || !content.trim()) {
       return;
     }
+    if (!user?.uid) {
+      alert("Sign in to start a discussion.");
+      return;
+    }
 
     setLoading(true);
     try {
       const { createDiscussion } = await import("../../lib/discussions");
-      createDiscussion(title.trim(), category, content.trim(), {
+      await createDiscussion(title.trim(), category, content.trim(), user.uid, {
         isAnonymous: postAnonymous,
-        authorName: displayName || "User",
+        authorName: displayName || undefined,
       });
-      
+      trackEvent(WEB_ANALYTICS_EVENTS.DISCUSSION_CREATE_SUBMIT_CLICKED, {
+        category,
+      });
+
       // Reset form
       setCategory(undefined);
       setTitle("");
@@ -102,6 +111,7 @@ export function StartDiscussionDialog({
       onSuccess();
     } catch (error) {
       console.error("Error creating discussion:", error);
+      trackEvent(WEB_ANALYTICS_EVENTS.DISCUSSION_CREATE_FAILED, {});
       alert("Failed to create discussion. Please try again.");
     } finally {
       setLoading(false);

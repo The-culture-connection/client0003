@@ -4,8 +4,12 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Card } from "../components/ui/card";
 import { useAuth } from "../components/auth/AuthProvider";
+import { useScreenAnalytics } from "../analytics/useScreenAnalytics";
+import { trackEvent } from "../analytics/trackEvent";
+import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalyticsContract";
 
 export function LoginPage() {
+  useScreenAnalytics("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
@@ -27,17 +31,26 @@ export function LoginPage() {
     setError(null);
     setLoading(true);
 
+    trackEvent(WEB_ANALYTICS_EVENTS.LOGIN_SUBMIT_ATTEMPTED, {
+      mode: isSignUp ? "sign_up" : "sign_in",
+    });
+
     try {
       if (isSignUp) {
         await signUp(email, password);
+        trackEvent(WEB_ANALYTICS_EVENTS.LOGIN_SIGN_UP_SUCCEEDED, { mode: "sign_up" });
         // New user - route to dashboard (in real app, would check onboarding status)
         navigate("/dashboard");
       } else {
         await signIn(email, password);
+        trackEvent(WEB_ANALYTICS_EVENTS.LOGIN_SIGN_IN_SUCCEEDED, { mode: "sign_in" });
         // Existing user - route to dashboard
         navigate("/dashboard");
       }
     } catch (err: any) {
+      trackEvent(WEB_ANALYTICS_EVENTS.LOGIN_SIGN_IN_FAILED, {
+        mode: isSignUp ? "sign_up" : "sign_in",
+      });
       setError(err.message || "Authentication failed");
       setLoading(false);
     }
@@ -52,9 +65,11 @@ export function LoginPage() {
     }
     setError(null);
     setLoading(true);
+    trackEvent(WEB_ANALYTICS_EVENTS.LOGIN_PASSWORD_RESET_SUBMITTED, {});
     try {
       const { sendPasswordReset } = await import("../lib/auth");
       await sendPasswordReset(email);
+      trackEvent(WEB_ANALYTICS_EVENTS.LOGIN_PASSWORD_RESET_SUCCEEDED, {});
       setResetEmailSent(true);
       setLoading(false);
     } catch (err: any) {

@@ -17,6 +17,8 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { db } from "../../lib/firebase";
+import { trackEvent } from "../../analytics/trackEvent";
+import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalyticsContract";
 
 interface DMReply {
   id: string;
@@ -128,6 +130,7 @@ export function MortarDMWidget() {
         created_at: serverTimestamp(),
         read: false,
       });
+      trackEvent(WEB_ANALYTICS_EVENTS.MORTAR_DM_MESSAGE_SENT, {});
 
       setMessage("");
       await loadConversations();

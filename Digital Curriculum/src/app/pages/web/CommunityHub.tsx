@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from "react-router";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
@@ -31,27 +31,52 @@ import {
   type Discussion,
   getReplyCount as getReplyCountUtil,
 } from "../../lib/discussions";
+import { useScreenAnalytics } from "../../analytics/useScreenAnalytics";
+import { trackEvent } from "../../analytics/trackEvent";
+import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalyticsContract";
 
 export function WebCommunityHub() {
+  useScreenAnalytics("community");
   const navigate = useNavigate();
-  const [discussions, setDiscussions] = useState<Discussion[]>([]);
+  const [allDiscussions, setAllDiscussions] = useState<Discussion[]>([]);
+  const [discussionSearch, setDiscussionSearch] = useState("");
+  const [discussionsLoading, setDiscussionsLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
 
+  const loadDiscussions = async () => {
+    setDiscussionsLoading(true);
+    try {
+      const raw = await getDiscussions();
+      const sorted = [...raw].sort((a, b) => {
+        if (a.isPinned && !b.isPinned) return -1;
+        if (!a.isPinned && b.isPinned) return 1;
+        return b.updatedAt.getTime() - a.updatedAt.getTime();
+      });
+      setAllDiscussions(sorted);
+    } catch (e) {
+      console.error(e);
+      setAllDiscussions([]);
+    } finally {
+      setDiscussionsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    loadDiscussions();
+    void loadDiscussions();
   }, []);
 
-  const loadDiscussions = () => {
-    const allDiscussions = getDiscussions();
-    // Sort by: pinned first, then by updatedAt (most recent first)
-    const sorted = allDiscussions.sort((a, b) => {
-      if (a.isPinned && !b.isPinned) return -1;
-      if (!a.isPinned && b.isPinned) return 1;
-      return b.updatedAt.getTime() - a.updatedAt.getTime();
-    });
-    // Show only first 4 for preview
-    setDiscussions(sorted.slice(0, 4));
-  };
+  const previewDiscussions = useMemo(() => {
+    const q = discussionSearch.trim().toLowerCase();
+    let list = allDiscussions;
+    if (q) {
+      list = list.filter(
+        (d) =>
+          d.title.toLowerCase().includes(q) ||
+          d.content.toLowerCase().includes(q)
+      );
+    }
+    return list.slice(0, 4);
+  }, [allDiscussions, discussionSearch]);
 
   const formatTimeAgo = (timestamp: any): string => {
     if (!timestamp) return "No messages";
@@ -369,17 +394,28 @@ export function WebCommunityHub() {
                 type="text"
                 placeholder="Search discussions..."
                 className="pl-10"
+                value={discussionSearch}
+                onChange={(e) => setDiscussionSearch(e.target.value)}
               />
             </div>
 
             <div className="space-y-3 mb-4">
-              {discussions.length === 0 ? (
+              {discussionsLoading ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                  <p className="text-sm">Loading discussions…</p>
+                </div>
+              ) : previewDiscussions.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <MessageSquare className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No discussions yet. Start the first one!</p>
+                  <p className="text-sm">
+                    {discussionSearch.trim()
+                      ? "No discussions match that search."
+                      : "No discussions yet. Start the first one!"}
+                  </p>
                 </div>
               ) : (
-                discussions.map((discussion) => {
+                previewDiscussions.map((discussion) => {
                   const authorLabel = discussion.isAnonymous
                     ? "Anonymous"
                     : (discussion.authorName || discussion.author || "User");
@@ -389,7 +425,12 @@ export function WebCommunityHub() {
                     <div
                       key={discussion.id}
                       className="p-3 rounded-lg border border-border hover:border-accent transition-all cursor-pointer bg-card"
-                      onClick={() => navigate(`/discussions/${discussion.id}`)}
+                      onClick={() => {
+                        trackEvent(WEB_ANALYTICS_EVENTS.COMMUNITY_DISCUSSION_PREVIEW_CLICKED, {
+                          discussion_id: discussion.id,
+                        });
+                        navigate(`/discussions/${discussion.id}`);
+                      }}
                     >
                       <div className="flex items-start gap-3">
                         {/* Avatar */}
@@ -446,13 +487,18 @@ export function WebCommunityHub() {
 
             <div className="flex gap-2">
               <Button
-                onClick={() => setDialogOpen(true)}
+                onClick={() => {
+                  trackEvent(WEB_ANALYTICS_EVENTS.COMMUNITY_START_DISCUSSION_CLICKED, {
+                    surface: "community_hub",
+                  });
+                  setDialogOpen(true);
+                }}
                 className="flex-1 bg-accent hover:bg-accent/90 text-accent-foreground"
               >
                 <Send className="w-4 h-4 mr-2" />
                 Start New Discussion
               </Button>
-              {discussions.length > 0 && (
+              {allDiscussions.length > 0 && (
                 <Button
                   variant="outline"
                   onClick={() => navigate("/discussions")}

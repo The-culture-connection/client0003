@@ -9,6 +9,7 @@ import {initializeApp, getApps} from "firebase-admin/app";
 import {getFirestore, FieldValue} from "firebase-admin/firestore";
 import {z} from "zod";
 import * as logger from "firebase-functions/logger";
+import {callableCorsAllowlist} from "../callableCorsAllowlist";
 
 if (getApps().length === 0) {
   initializeApp();
@@ -21,7 +22,9 @@ const submitQuizAttemptSchema = z.object({
   answers: z.record(z.string(), z.number()),
 });
 
-export const submitQuizAttempt = onCall(async (request) => {
+export const submitQuizAttempt = onCall(
+  {region: "us-central1", cors: callableCorsAllowlist},
+  async (request) => {
   const callerUid = request.auth?.uid;
 
   if (!callerUid) {
@@ -157,4 +160,5 @@ export const submitQuizAttempt = onCall(async (request) => {
       `Failed to submit quiz attempt: ${error instanceof Error ? error.message : "Unknown error"}`
     );
   }
-});
+  }
+);

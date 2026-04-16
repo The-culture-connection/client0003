@@ -1,7 +1,9 @@
 import { Card } from "../../components/ui/card";
 import { TrendingUp, Users, Award, Clock, ArrowUp, ArrowDown } from "lucide-react";
+import { useRecordAnalyticsDashboardViewed } from "../../analytics/hooks/useRecordAnalyticsDashboardViewed";
 
 export function WebAnalytics() {
+  useRecordAnalyticsDashboardViewed();
   const stats = [
     {
       label: "Completion Rate",

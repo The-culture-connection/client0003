@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router";
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
@@ -25,11 +25,17 @@ import {
   toggleLike,
   incrementViews,
   getReplyCount,
+  collectReplyIds,
+  getUserLikeFlagsForDiscussion,
   type Discussion,
   type DiscussionReply,
 } from "../lib/discussions";
+import { useScreenAnalytics } from "../analytics/useScreenAnalytics";
+import { trackEvent } from "../analytics/trackEvent";
+import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalyticsContract";
 
 export function DiscussionDetailPage() {
+  useScreenAnalytics("discussion_detail");
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -37,7 +43,10 @@ export function DiscussionDetailPage() {
   const [replyContent, setReplyContent] = useState("");
   const [nestedReplyContent, setNestedReplyContent] = useState<Record<string, string>>({});
   const [showNestedReply, setShowNestedReply] = useState<Record<string, boolean>>({});
-  const [loading, setLoading] = useState(false);
+  const [replyBusy, setReplyBusy] = useState(false);
+  const [discussionLoading, setDiscussionLoading] = useState(true);
+  const [threadLiked, setThreadLiked] = useState(false);
+  const [replyLiked, setReplyLiked] = useState<Record<string, boolean>>({});
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [replyAnonymous, setReplyAnonymous] = useState(false);
   const [nestedReplyAnonymous, setNestedReplyAnonymous] = useState<Record<string, boolean>>({});
@@ -74,64 +83,135 @@ export function DiscussionDetailPage() {
     };
   }, [user?.uid]);
 
-  useEffect(() => {
-    if (id) {
-      loadDiscussion();
-      incrementViews(id);
+  const loadDiscussion = useCallback(async (mode: "full" | "silent") => {
+    if (!id) return;
+    if (mode === "full") setDiscussionLoading(true);
+    try {
+      const disc = await getDiscussion(id);
+      setDiscussion(disc);
+    } catch (e) {
+      console.error(e);
+      setDiscussion(null);
+    } finally {
+      if (mode === "full") setDiscussionLoading(false);
     }
   }, [id]);
 
-  const loadDiscussion = () => {
-    if (!id) return;
-    const disc = getDiscussion(id);
-    setDiscussion(disc);
-  };
+  useEffect(() => {
+    if (!id) {
+      setDiscussionLoading(false);
+      setDiscussion(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        await incrementViews(id);
+      } catch (e) {
+        console.error(e);
+      }
+      if (cancelled) return;
+      await loadDiscussion("full");
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, loadDiscussion]);
 
-  const handleLike = (replyId?: string) => {
-    if (!id || !discussion) return;
+  useEffect(() => {
+    if (!id || !user?.uid || !discussion) {
+      if (!user?.uid) {
+        setThreadLiked(false);
+        setReplyLiked({});
+      }
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const ids = collectReplyIds(discussion.replies);
+      try {
+        const flags = await getUserLikeFlagsForDiscussion(id, user.uid, ids);
+        if (!cancelled) {
+          setThreadLiked(flags.threadLiked);
+          setReplyLiked(flags.replyLiked);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, user?.uid, discussion]);
+
+  const handleLike = async (replyId?: string) => {
+    if (!id || !discussion || !user?.uid) {
+      alert("Sign in to like posts and replies.");
+      return;
+    }
     try {
-      const result = toggleLike(id, replyId);
-      loadDiscussion(); // Reload to get updated likes
+      await toggleLike(id, user.uid, replyId);
+      trackEvent(WEB_ANALYTICS_EVENTS.DISCUSSION_LIKE_TOGGLED, {
+        discussion_id: id,
+        target: replyId ? "reply" : "thread",
+        reply_id: replyId ?? null,
+      });
+      await loadDiscussion("silent");
     } catch (error) {
       console.error("Error toggling like:", error);
     }
   };
 
   const handleReply = async () => {
-    if (!id || !replyContent.trim()) return;
-    setLoading(true);
+    if (!id || !replyContent.trim() || !user?.uid) {
+      if (!user?.uid) alert("Sign in to reply.");
+      return;
+    }
+    setReplyBusy(true);
     try {
-      addReply(id, replyContent.trim(), undefined, {
+      await addReply(id, replyContent.trim(), user.uid, undefined, {
         isAnonymous: replyAnonymous,
         authorName: displayName || "User",
       });
+      trackEvent(WEB_ANALYTICS_EVENTS.DISCUSSION_REPLY_SUBMIT_CLICKED, {
+        discussion_id: id,
+        depth: "root",
+      });
       setReplyContent("");
       setReplyAnonymous(false);
-      loadDiscussion();
+      await loadDiscussion("silent");
     } catch (error) {
       console.error("Error adding reply:", error);
       alert("Failed to add reply. Please try again.");
     } finally {
-      setLoading(false);
+      setReplyBusy(false);
     }
   };
 
   const handleNestedReply = async (parentReplyId: string) => {
-    if (!id || !nestedReplyContent[parentReplyId]?.trim()) return;
-    setLoading(true);
+    if (!id || !nestedReplyContent[parentReplyId]?.trim() || !user?.uid) {
+      if (!user?.uid) alert("Sign in to reply.");
+      return;
+    }
+    setReplyBusy(true);
     try {
-      addReply(id, nestedReplyContent[parentReplyId].trim(), parentReplyId, {
+      await addReply(id, nestedReplyContent[parentReplyId].trim(), user.uid, parentReplyId, {
         isAnonymous: nestedReplyAnonymous[parentReplyId] ?? false,
         authorName: displayName || "User",
       });
+      trackEvent(WEB_ANALYTICS_EVENTS.DISCUSSION_REPLY_SUBMIT_CLICKED, {
+        discussion_id: id,
+        depth: "nested",
+        parent_reply_id: parentReplyId,
+      });
       setNestedReplyContent({ ...nestedReplyContent, [parentReplyId]: "" });
       setShowNestedReply({ ...showNestedReply, [parentReplyId]: false });
-      loadDiscussion();
+      await loadDiscussion("silent");
     } catch (error) {
       console.error("Error adding nested reply:", error);
       alert("Failed to add reply. Please try again.");
     } finally {
-      setLoading(false);
+      setReplyBusy(false);
     }
   };
 
@@ -150,9 +230,7 @@ export function DiscussionDetailPage() {
   };
 
   const renderReply = (reply: DiscussionReply, level = 0): JSX.Element => {
-    const isLiked = reply.likedBy.includes(
-      localStorage.getItem("anonymous_user_id") || ""
-    );
+    const isLiked = Boolean(replyLiked[reply.id]);
     const authorLabel = reply.isAnonymous
       ? "Anonymous"
       : (reply.authorName || reply.author || "User");
@@ -172,7 +250,8 @@ export function DiscussionDetailPage() {
               <div className="flex items-center gap-4 text-xs text-muted-foreground">
                 <span>{authorLabel} • {formatTimeAgo(reply.createdAt)}</span>
                 <button
-                  onClick={() => handleLike(reply.id)}
+                  type="button"
+                  onClick={() => void handleLike(reply.id)}
                   className={`flex items-center gap-1 hover:text-accent transition-colors ${
                     isLiked ? "text-accent" : ""
                   }`}
@@ -233,7 +312,7 @@ export function DiscussionDetailPage() {
                   <Button
                     size="sm"
                     onClick={() => handleNestedReply(reply.id)}
-                    disabled={!nestedReplyContent[reply.id]?.trim() || loading}
+                    disabled={!nestedReplyContent[reply.id]?.trim() || replyBusy}
                     className="bg-accent hover:bg-accent/90 text-accent-foreground"
                   >
                     Post Reply
@@ -263,6 +342,20 @@ export function DiscussionDetailPage() {
     );
   };
 
+  if (discussionLoading) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto">
+        <Button variant="ghost" onClick={() => navigate("/discussions")} className="mb-4">
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to Discussions
+        </Button>
+        <Card className="p-8 text-center">
+          <p className="text-muted-foreground">Loading discussion…</p>
+        </Card>
+      </div>
+    );
+  }
+
   if (!discussion) {
     return (
       <div className="p-6 max-w-4xl mx-auto">
@@ -277,9 +370,7 @@ export function DiscussionDetailPage() {
     );
   }
 
-  const isLiked = discussion.likedBy.includes(
-    localStorage.getItem("anonymous_user_id") || ""
-  );
+  const isLiked = threadLiked;
   const discussionAuthorLabel = discussion.isAnonymous
     ? "Anonymous"
     : (discussion.authorName || discussion.author || "User");
@@ -331,7 +422,8 @@ export function DiscussionDetailPage() {
             </p>
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <button
-                onClick={() => handleLike()}
+                type="button"
+                onClick={() => void handleLike()}
                 className={`flex items-center gap-1 hover:text-accent transition-colors ${
                   isLiked ? "text-accent" : ""
                 }`}
@@ -373,12 +465,12 @@ export function DiscussionDetailPage() {
           </Label>
         </div>
         <Button
-          onClick={handleReply}
-          disabled={!replyContent.trim() || loading}
+          onClick={() => void handleReply()}
+          disabled={!replyContent.trim() || replyBusy}
           className="bg-accent hover:bg-accent/90 text-accent-foreground"
         >
           <Send className="w-4 h-4 mr-2" />
-          {loading ? "Posting..." : "Post Reply"}
+          {replyBusy ? "Posting..." : "Post Reply"}
         </Button>
       </Card>
 

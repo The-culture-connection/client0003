@@ -7,6 +7,8 @@
   "main": "lib/index.js",
   "scripts": {
     "build": "tsc",
+    "test:analytics:unit": "npm run build && node ./scripts/verify-analytics-phase.mjs",
+    "verify:analytics": "npm run test:analytics:unit",
     "lint": "node -e \"require('fs').existsSync('lib')||process.exit(0)\" && tsc --noEmit",
     "serve": "npm run build && firebase emulators:start --only functions"
   },

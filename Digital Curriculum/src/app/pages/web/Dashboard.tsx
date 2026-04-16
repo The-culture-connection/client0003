@@ -42,6 +42,10 @@ import { getUpcomingEvents, type Event } from "../../lib/events";
 import { getGroupsForUser, getLastGroupMessage, getMemberCount, type Group } from "../../lib/groups";
 import { format, formatDistanceToNow } from "date-fns";
 import { cached, TTL_SHORT, TTL_MEDIUM } from "../../lib/cache";
+import { getLessonPlayerPath } from "../../lib/lessonPlayerUrl";
+import { useScreenAnalytics } from "../../analytics/useScreenAnalytics";
+import { trackEvent } from "../../analytics/trackEvent";
+import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalyticsContract";
 
 const MOCK_BORDER = "border-2 border-red-500";
 
@@ -54,6 +58,7 @@ interface UserProfile {
 }
 
 export function WebDashboard() {
+  useScreenAnalytics("dashboard");
   const navigate = useNavigate();
   const { user } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -193,14 +198,27 @@ export function WebDashboard() {
         )
       : 0;
 
-  const lastViewedLessonId = nextStepProgress?.lastViewedLessonId;
-  const lastViewedCourseId = nextStepCourse?.id;
   const continueUrl =
-    lastViewedCourseId && lastViewedLessonId
-      ? `/learn/${lastViewedCourseId}?lesson=${lastViewedLessonId}`
-      : nextStepCourse?.id
-        ? `/courses/${nextStepCourse.id}`
-        : "/curriculum";
+    nextStepCourse && nextStepCourse.id
+      ? getLessonPlayerPath(nextStepCourse, nextStepProgress ?? undefined, Boolean(nextStepProgress?.lastViewedLessonId))
+      : "/curriculum";
+
+  const handleContinueLearningClick = () => {
+    const wantsLesson =
+      Boolean(nextStepProgress?.lastViewedLessonId) ||
+      (Boolean(nextStepCourse) && nextStepPct > 0 && nextStepPct < 100);
+    if (nextStepCourse && wantsLesson && !continueUrl.startsWith("/learn/lesson")) {
+      trackEvent(WEB_ANALYTICS_EVENTS.DASHBOARD_CONTINUE_URL_INVALID, {
+        continue_url: continueUrl,
+        course_id: nextStepCourse.id ?? null,
+      });
+    }
+    trackEvent(WEB_ANALYTICS_EVENTS.DASHBOARD_CONTINUE_LEARNING_CLICKED, {
+      has_course: Boolean(nextStepCourse),
+      target_url: nextStepCourse ? continueUrl : "/curriculum",
+    });
+    navigate(nextStepCourse ? continueUrl : "/curriculum");
+  };
 
   const totalLessonsCompleted = Object.values(progressMap).reduce(
     (sum, p) => sum + Object.values(p?.lessonsCompleted ?? {}).filter(Boolean).length,
@@ -309,7 +327,7 @@ export function WebDashboard() {
               <Button
                 size="sm"
                 className="bg-accent hover:bg-accent/90 text-accent-foreground"
-                onClick={() => navigate(nextStepCourse ? continueUrl : "/curriculum")}
+                onClick={handleContinueLearningClick}
               >
                 <PlayCircle className="w-4 h-4 mr-2" />
                 {nextStepProgress?.lastViewedLessonId

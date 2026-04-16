@@ -20,8 +20,12 @@ import { useCart } from "../../lib/cart";
 import { SHOP_SIZES, isApparelCategory, type ShopSize } from "../../lib/shop";
 import { useNavigate } from "react-router";
 import { Label } from "../../components/ui/label";
+import { useScreenAnalytics } from "../../analytics/useScreenAnalytics";
+import { trackEvent } from "../../analytics/trackEvent";
+import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalyticsContract";
 
 export function WebShop() {
+  useScreenAnalytics("shop");
   const [products, setProducts] = useState<ShopItem[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -98,7 +102,11 @@ export function WebShop() {
         <div className="text-sm text-muted-foreground">Filter:</div>
         <select
           value={shopFilter}
-          onChange={(e) => setShopFilter(e.target.value as ShopCategory | "All")}
+          onChange={(e) => {
+            const v = e.target.value as ShopCategory | "All";
+            setShopFilter(v);
+            trackEvent(WEB_ANALYTICS_EVENTS.SHOP_FILTER_CHANGED, { filter: v });
+          }}
           className="px-3 py-2 rounded-md border border-border bg-background text-foreground text-sm"
         >
           <option value="All">All</option>
@@ -148,12 +156,17 @@ export function WebShop() {
                     <Label className="text-xs text-muted-foreground">Select size</Label>
                     <select
                       value={selectedSizes[product.id] ?? SHOP_SIZES[0]}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const sz = e.target.value as ShopSize;
                         setSelectedSizes((prev) => ({
                           ...prev,
-                          [product.id]: e.target.value as ShopSize,
-                        }))
-                      }
+                          [product.id]: sz,
+                        }));
+                        trackEvent(WEB_ANALYTICS_EVENTS.SHOP_SIZE_CHANGED, {
+                          item_id: product.id,
+                          size: sz,
+                        });
+                      }}
                       className="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground text-sm"
                     >
                       {SHOP_SIZES.map((size) => {
@@ -223,7 +236,15 @@ export function WebShop() {
                               quantity: 1,
                               maxQuantity: available,
                             });
+                            trackEvent(WEB_ANALYTICS_EVENTS.SHOP_ADD_TO_CART_CLICKED, {
+                              item_id: product.id,
+                              category: product.category,
+                            });
                           } catch (e) {
+                            trackEvent(WEB_ANALYTICS_EVENTS.SHOP_ADD_TO_CART_FAILED, {
+                              item_id: product.id,
+                              category: product.category,
+                            });
                             const msg = e instanceof Error ? e.message : "Failed to add to cart.";
                             alert(msg === "Insufficient stock" || msg === "Insufficient stock for this size" ? "That item/size is out of stock." : msg);
                           } finally {

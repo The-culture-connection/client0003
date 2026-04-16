@@ -707,11 +707,79 @@ service cloud.firestore {
             .hasOnly(['sizeStocks', 'stockQuantity', 'updatedAt']));
     }
 
-    // --- Web dashboard collections (tighten further when author fields are stable) ---
-    match /discussion_threads/{docId} {
+    // --- Curriculum web discussion threads (Digital Curriculum) ---
+    match /discussion_threads/{threadId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update, delete: if hasStaffClaim();
+      allow create: if isSignedIn()
+        && callerNotContentSuspended()
+        && request.resource.data.author_uid == request.auth.uid
+        && request.resource.data.title is string
+        && request.resource.data.content is string
+        && request.resource.data.category is string;
+      allow update: if isSignedIn() && (
+        hasStaffClaim()
+        || (
+          resource.data.author_uid == request.auth.uid
+          && request.resource.data.author_uid == resource.data.author_uid
+        )
+        || (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['view_count', 'updated_at'])
+          && request.resource.data.view_count is int
+          && request.resource.data.view_count >= resource.data.get('view_count', 0)
+          && request.resource.data.view_count <= resource.data.get('view_count', 0) + 5
+        )
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes_count', 'updated_at']))
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['updated_at']))
+      );
+      allow delete: if hasStaffClaim()
+        || (isSignedIn() && resource.data.author_uid == request.auth.uid);
+    }
+
+    match /discussion_threads/{threadId}/replies/{replyId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && callerNotContentSuspended()
+        && request.resource.data.author_uid == request.auth.uid
+        && request.resource.data.content is string
+        && (!('parent_reply_id' in request.resource.data)
+          || request.resource.data.parent_reply_id == null
+          || request.resource.data.parent_reply_id is string);
+      allow update: if isSignedIn() && (
+        hasStaffClaim()
+        || (
+          resource.data.author_uid == request.auth.uid
+          && request.resource.data.author_uid == resource.data.author_uid
+        )
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes_count', 'updated_at']))
+      );
+      allow delete: if hasStaffClaim()
+        || (isSignedIn() && resource.data.author_uid == request.auth.uid);
+    }
+
+    match /discussion_threads/{threadId}/thread_likes/{likerId} {
+      allow read: if isSignedIn();
+      allow create, delete: if isSignedIn() && request.auth.uid == likerId;
+    }
+
+    match /discussion_threads/{threadId}/replies/{replyId}/reply_likes/{likerId} {
+      allow read: if isSignedIn();
+      allow create, delete: if isSignedIn() && request.auth.uid == likerId;
+    }
+
+    // Chapter quizzes (metadata readable; variants scored only via Cloud Functions)
+    match /quizzes/{quizId} {
+      allow read: if isSignedIn();
+      allow write: if hasStaffClaim();
+    }
+
+    match /quizzes/{quizId}/variants/{variantId} {
+      allow read: if false;
+      allow write: if hasStaffClaim();
+    }
+
+    match /quiz_attempts/{attemptId} {
+      allow read: if isSignedIn() && resource.data.user_id == request.auth.uid;
+      allow write: if false;
     }
 
     match /meeting_proposals/{docId} {
@@ -723,6 +791,21 @@ service cloud.firestore {
     match /certificates/{docId} {
       allow read: if isSignedIn();
       allow write: if hasStaffClaim();
+    }
+
+    // --- Canonical analytics (Admin SDK + validated callables only) ---
+    match /analytics_raw_events/{id} {
+      allow read, write: if false;
+    }
+
+    match /analytics_daily_summaries/{id} {
+      allow read: if hasStaffClaim();
+      allow write: if false;
+    }
+
+    match /analytics_user_badges/{userId} {
+      allow read: if isOwner(userId) || hasStaffClaim();
+      allow write: if false;
     }
 
     // --- Deny everything else ---

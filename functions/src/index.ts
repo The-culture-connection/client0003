@@ -13,10 +13,13 @@ export { scheduledNudgeIncompleteProfiles } from "./triggers/scheduledNudgeIncom
 
 export { setUserRole } from "./callables/setUserRole";
 export { logAnalyticsEvent } from "./callables/logAnalyticsEvent";
+export { ingestWebAnalytics } from "./callables/ingestWebAnalytics";
+export { onAnalyticsRawEventCreated } from "./analytics/triggers/onAnalyticsRawEventCreated";
 export { upsertBusinessProfile } from "./callables/upsertBusinessProfile";
 export { trackLessonTime } from "./callables/trackLessonTime";
 export { markLessonComplete } from "./callables/markLessonComplete";
 export { submitQuizAttempt } from "./callables/submitQuizAttempt";
+export { getQuizForAttempt } from "./callables/getQuizForAttempt";
 export { generateDocumentPDF } from "./callables/generateDocumentPDF";
 export { finalizeAssetDocument } from "./callables/finalizeAssetDocument";
 export { grantHiddenTrainingVideo } from "./callables/grantHiddenTrainingVideo";

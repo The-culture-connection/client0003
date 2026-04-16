@@ -19,7 +19,10 @@
     "assign-superadmin": "node infra/scripts/assign-superadmin-roles.js",
     "lint": "npm run lint --workspaces",
     "build": "npm run build --workspaces",
-    "test": "npm run test --workspaces"
+    "test": "npm run test --workspaces",
+    "test:analytics:unit": "npm --prefix functions run test:analytics:unit",
+    "test:analytics:integration": "firebase emulators:exec --only functions,auth,firestore --project mortar-dev \"node ./functions/scripts/analytics-callable-integration.mjs\"",
+    "test:analytics": "npm run test:analytics:unit && npm run test:analytics:integration"
   },
   "devDependencies": {
     "firebase-tools": "^13.0.0",

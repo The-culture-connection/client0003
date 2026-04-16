@@ -347,7 +347,7 @@ export async function createEvent(
 async function loadEventRefs(eventId: string) {
   const refE = doc(db, COLLECTION_EVENTS, eventId);
   const refM = doc(db, COLLECTION_EVENTS_MOBILE, eventId);
-  const [eSnap, mSnap] = await Promise.all([getDoc(refE), getDoc(mSnap)]);
+  const [eSnap, mSnap] = await Promise.all([getDoc(refE), getDoc(refM)]);
   return { refE, refM, eSnap, mSnap };
 }
 

@@ -1,6 +1,8 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useRef } from "react";
 import { Navigate } from "react-router";
 import { useAuth } from "./AuthProvider";
+import { trackEvent } from "../../analytics/trackEvent";
+import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalyticsContract";
 
 interface RoleGateProps {
   children: ReactNode;
@@ -23,6 +25,36 @@ export function RoleGate({
   fallbackPath = "/dashboard",
 }: RoleGateProps) {
   const { user, loading } = useAuth();
+  const loggedDenial = useRef(false);
+
+  const userRoles = user?.roles || [];
+  const hasRole = (role: string) =>
+    userRoles.some((r) => String(r).trim().toLowerCase() === role.trim().toLowerCase());
+
+  const deniedMatch =
+    deniedRoles && deniedRoles.length > 0
+      ? deniedRoles.some((role) => hasRole(role))
+      : false;
+  const allowedFail =
+    allowedRoles && allowedRoles.length > 0 ? !allowedRoles.some((role) => hasRole(role)) : false;
+
+  useEffect(() => {
+    if (loading || !user) {
+      loggedDenial.current = false;
+      return;
+    }
+    if (!deniedMatch && !allowedFail) {
+      loggedDenial.current = false;
+      return;
+    }
+    if (loggedDenial.current) return;
+    loggedDenial.current = true;
+    trackEvent(WEB_ANALYTICS_EVENTS.ROLE_GATE_REDIRECT_DENIED, {
+      denied_roles_match: deniedMatch,
+      missing_allowed_role: allowedFail,
+      fallback_path: fallbackPath,
+    });
+  }, [loading, user, deniedMatch, allowedFail, fallbackPath]);
 
   if (loading) {
     return (
@@ -38,11 +70,6 @@ export function RoleGate({
   if (!user) {
     return <Navigate to="/login" replace />;
   }
-
-  const userRoles = user.roles || [];
-
-  const hasRole = (role: string) =>
-    userRoles.some((r) => String(r).trim().toLowerCase() === role.trim().toLowerCase());
 
   // Check denied roles first (most restrictive)
   if (deniedRoles && deniedRoles.length > 0) {
