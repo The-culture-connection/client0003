@@ -312,13 +312,16 @@ export function CourseDetail() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() =>
-                      setExpandedModule(
-                        expandedModule === (module.id || module.title)
-                          ? null
-                          : module.id || module.title
-                      )
-                    }
+                    onClick={() => {
+                      const moduleKey = module.id || module.title;
+                      const wasExpanded = expandedModule === moduleKey;
+                      trackEvent(WEB_ANALYTICS_EVENTS.COURSE_DETAIL_MODULE_EXPAND_TOGGLED, {
+                        course_id: course.id ?? null,
+                        module_id: module.id ?? String(moduleKey),
+                        expanded: !wasExpanded,
+                      });
+                      setExpandedModule(wasExpanded ? null : moduleKey);
+                    }}
                   >
                     {expandedModule === (module.id || module.title) ? "Hide" : "Show"} Lessons
                   </Button>

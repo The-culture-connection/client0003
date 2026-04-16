@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import JSZip from "jszip";
 import { toast } from "sonner";
 import { Card } from "../../components/ui/card";
@@ -29,6 +29,8 @@ import {
   DialogTitle,
 } from "../../components/ui/dialog";
 import { format } from "date-fns";
+import { trackEvent } from "../../analytics/trackEvent";
+import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalyticsContract";
 
 interface FileNode {
   id: string;
@@ -149,6 +151,9 @@ export function WebDataRoom() {
   }, [surveyResponses, user?.uid]);
 
   const handleDownloadCertificate = (cert: SkillCertificate) => {
+    trackEvent(WEB_ANALYTICS_EVENTS.DATA_ROOM_CERTIFICATE_DOWNLOAD_CLICKED, {
+      certificate_id: cert.id ?? null,
+    });
     const win = window.open("", "_blank");
     if (!win) return;
     const createdAt = cert.createdAt && typeof (cert.createdAt as { toDate?: () => Date }).toDate === "function"
@@ -278,6 +283,26 @@ export function WebDataRoom() {
     item.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const fileSearchMatchCountRef = useRef(0);
+  fileSearchMatchCountRef.current = filteredItems.length;
+
+  const skipInitialFileSearchEvent = useRef(true);
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      if (skipInitialFileSearchEvent.current) {
+        skipInitialFileSearchEvent.current = false;
+        return;
+      }
+      const len = searchQuery.trim().length;
+      trackEvent(WEB_ANALYTICS_EVENTS.DATA_ROOM_FILE_SEARCH_CHANGED, {
+        query_length: len,
+        has_query: len > 0,
+        has_matches: fileSearchMatchCountRef.current > 0,
+      });
+    }, 450);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
   return (
     <div className="p-8">
       <div className="mb-8">
@@ -348,7 +373,12 @@ export function WebDataRoom() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setPreviewCertificate(cert)}
+                      onClick={() => {
+                        trackEvent(WEB_ANALYTICS_EVENTS.DATA_ROOM_CERTIFICATE_PREVIEW_OPENED, {
+                          certificate_id: cert.id ?? null,
+                        });
+                        setPreviewCertificate(cert);
+                      }}
                       className="border-border text-foreground"
                     >
                       <Eye className="w-4 h-4 mr-1" />
@@ -509,7 +539,13 @@ export function WebDataRoom() {
                         variant="ghost"
                         size="sm"
                         className="text-accent hover:text-accent/90"
-                        onClick={() => item.downloadUrl && window.open(item.downloadUrl, "_blank", "noopener")}
+                        onClick={() => {
+                          if (!item.downloadUrl) return;
+                          trackEvent(WEB_ANALYTICS_EVENTS.DATA_ROOM_SURVEY_PDF_DOWNLOAD_CLICKED, {
+                            document_id: item.id,
+                          });
+                          window.open(item.downloadUrl, "_blank", "noopener");
+                        }}
                       >
                         <Download className="w-4 h-4" />
                       </Button>

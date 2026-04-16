@@ -21,6 +21,8 @@ import {
   isUserRegistered,
   type Event,
 } from "../lib/events";
+import { trackEvent } from "../analytics/trackEvent";
+import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalyticsContract";
 
 export function EventDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -63,6 +65,7 @@ export function EventDetailPage() {
       return;
     }
 
+    trackEvent(WEB_ANALYTICS_EVENTS.EVENT_REGISTER_CLICKED, { event_id: id });
     setRegistering(true);
     try {
       await registerForEvent(id, user.uid);
@@ -84,6 +87,7 @@ export function EventDetailPage() {
       return;
     }
 
+    trackEvent(WEB_ANALYTICS_EVENTS.EVENT_UNREGISTER_CLICKED, { event_id: id });
     setRegistering(true);
     try {
       await unregisterFromEvent(id, user.uid);

@@ -1,5 +1,6 @@
 # Railway deployment config for Digital Curriculum (Vite + React SPA)
 # When linking this project, set Root Directory to "Digital Curriculum" in the service settings.
+# Build uses src/mortar-analytics-contract (not ../functions) so Docker/Nixpacks contexts without the monorepo succeed.
 # Watch Paths: from repo root, so this service only deploys when files under Digital Curriculum change.
 
 [build]

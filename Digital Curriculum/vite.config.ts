@@ -16,7 +16,9 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
       // Force ../../lib/auth to resolve to app lib (avoids resolution issues when build cwd differs, e.g. Railway)
       '../../lib/auth': path.resolve(__dirname, './src/app/lib/auth.ts'),
-      '@mortar/analytics-contract': path.resolve(__dirname, '../functions/src/analytics'),
+      // Standalone deploys (e.g. Railway root = Digital Curriculum) do not include ../functions.
+      // Committed copy: src/mortar-analytics-contract/ — refreshed by scripts/sync-analytics-contract.mjs in prebuild when monorepo exists.
+      '@mortar/analytics-contract': path.resolve(__dirname, './src/mortar-analytics-contract'),
     },
   },
 

@@ -51,9 +51,34 @@ export function LessonPlayer() {
   const [isSubmittingSurvey, setIsSubmittingSurvey] = useState(false);
   const [showSurveyView, setShowSurveyView] = useState(false);
   const loggedQuizExhausted = useRef(false);
+  const lastSurveyEngagementSig = useRef<string>("");
+
+  useEffect(() => {
+    lastSurveyEngagementSig.current = "";
+  }, [lessonId, showSurveyView]);
 
   const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
   const courseId = params.get("courseId") || undefined;
+
+  useEffect(() => {
+    if (!showSurveyView || surveySubmitted || !survey?.questions?.length) return;
+    const t = window.setTimeout(() => {
+      const nonEmpty = surveyAnswers.filter((s) => (s ?? "").trim().length > 0).length;
+      if (nonEmpty === 0) return;
+      const total = survey.questions.length;
+      const sig = `${nonEmpty}/${total}`;
+      if (sig === lastSurveyEngagementSig.current) return;
+      lastSurveyEngagementSig.current = sig;
+      trackEvent(WEB_ANALYTICS_EVENTS.LESSON_SURVEY_FIELD_CHANGED, {
+        lesson_id: lessonId ?? null,
+        course_id: courseId ?? null,
+        non_empty_field_count: nonEmpty,
+        total_fields: total,
+        field_type: "open_text",
+      });
+    }, 750);
+    return () => clearTimeout(t);
+  }, [surveyAnswers, showSurveyView, surveySubmitted, survey, lessonId, courseId]);
 
   const isMediaLesson = lesson?.content_type === "media";
   const isImageLesson = lesson?.content_type === "images";
@@ -560,9 +585,15 @@ export function LessonPlayer() {
                                 type="radio"
                                 name={`q-${i}`}
                                 checked={quizAnswers[i] === opt}
-                                onChange={() =>
-                                  setQuizAnswers((prev) => ({ ...prev, [i]: opt }))
-                                }
+                                onChange={() => {
+                                  setQuizAnswers((prev) => ({ ...prev, [i]: opt }));
+                                  trackEvent(WEB_ANALYTICS_EVENTS.LESSON_QUIZ_ANSWER_SELECTED, {
+                                    lesson_id: lessonId ?? null,
+                                    course_id: courseId ?? null,
+                                    question_index: i,
+                                    option_id: opt,
+                                  });
+                                }}
                                 className="rounded-full border-gray-600"
                               />
                               <span>{opt}. {q[`option${opt}` as keyof typeof q] as string}</span>

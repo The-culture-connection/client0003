@@ -296,15 +296,20 @@ export function WebCurriculum() {
                       <Button
                         size="sm"
                         className="bg-accent hover:bg-accent/90 text-accent-foreground"
-                        onClick={() =>
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          trackEvent(WEB_ANALYTICS_EVENTS.CURRICULUM_CONTINUE_CLICKED, {
+                            course_id: mostRecentCourse.course.id ?? null,
+                            surface: "curriculum_hero",
+                          });
                           navigate(
                             getLessonPlayerPath(
                               mostRecentCourse.course,
                               mostRecentCourse.progress,
                               true
                             )
-                          )
-                        }
+                          );
+                        }}
                       >
                         <Play className="w-3 h-3 mr-1" />
                         Continue

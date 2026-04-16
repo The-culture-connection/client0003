@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
@@ -45,6 +45,26 @@ export function DiscussionsPage() {
   useEffect(() => {
     filterDiscussions();
   }, [discussions, selectedCategory, searchQuery]);
+
+  const discussionSearchResultCountRef = useRef(0);
+  discussionSearchResultCountRef.current = filteredDiscussions.length;
+
+  const skipInitialDiscussionsSearchEvent = useRef(true);
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      if (skipInitialDiscussionsSearchEvent.current) {
+        skipInitialDiscussionsSearchEvent.current = false;
+        return;
+      }
+      const len = searchQuery.trim().length;
+      trackEvent(WEB_ANALYTICS_EVENTS.DISCUSSIONS_SEARCH_CHANGED, {
+        query_length: len,
+        has_query: len > 0,
+        has_results: discussionSearchResultCountRef.current > 0,
+      });
+    }, 450);
+    return () => clearTimeout(t);
+  }, [searchQuery, selectedCategory]);
 
   const loadDiscussions = async () => {
     const allDiscussions = await getDiscussions();

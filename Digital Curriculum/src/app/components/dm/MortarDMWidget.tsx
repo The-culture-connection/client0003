@@ -216,7 +216,14 @@ export function MortarDMWidget() {
                         {conversations.map((conv) => (
                           <button
                             key={conv.id}
-                            onClick={() => setSelectedConversation(conv.id)}
+                            onClick={() => {
+                              if (conv.id !== selectedConversation) {
+                                trackEvent(WEB_ANALYTICS_EVENTS.MORTAR_DM_REPLY_THREAD_SELECTED, {
+                                  thread_id: conv.id,
+                                });
+                              }
+                              setSelectedConversation(conv.id);
+                            }}
                             className={`w-full text-left p-3 rounded-lg transition-colors ${
                               selectedConversation === conv.id
                                 ? "bg-accent/10 border border-accent"

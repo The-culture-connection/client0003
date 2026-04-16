@@ -72,11 +72,16 @@ export function StartDiscussionDialog({
   }, [user?.uid]);
 
   const handleCategorySelect = (value: string) => {
-    setCategory(value as DiscussionCategory);
+    const next = value as DiscussionCategory;
+    if (category !== next) {
+      trackEvent(WEB_ANALYTICS_EVENTS.DISCUSSION_CATEGORY_SELECTED, { category: next });
+    }
+    setCategory(next);
   };
 
   const handleNext = () => {
     if (category) {
+      trackEvent(WEB_ANALYTICS_EVENTS.DISCUSSION_DRAFT_NEXT_CLICKED, { from_step: "category" });
       setStep("question");
     }
   };

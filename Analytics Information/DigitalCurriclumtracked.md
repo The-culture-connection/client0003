@@ -1,7 +1,7 @@
 # Digital Curriculum — tracked analytics events
 
 Canonical **web** registry (snake_case wire names + TypeScript keys):  
-`functions/src/analytics/webAnalyticsEventRegistry.ts` (re-exported from `functions/src/analytics/mortarAnalyticsContract.ts`).
+`functions/src/analytics/webAnalyticsEventRegistry.ts` (re-exported from `functions/src/analytics/mortarAnalyticsContract.ts`). The Vite app resolves `@mortar/analytics-contract` to **`Digital Curriculum/src/mortar-analytics-contract/`** (kept in sync by `Digital Curriculum/scripts/sync-analytics-contract.mjs` during `npm run build` when the monorepo is present; standalone hosts like Railway use the committed mirror).
 
 Secondary **raw** stream (`logAnalyticsEvent` → `analytics_raw_events`):  
 `ANALYTICS_EVENTS` in the same contract file, with Zod in `functions/src/analytics/inboundAnalyticsPayload.ts`.
@@ -72,6 +72,20 @@ Default metadata merged on the client (then normalized server-side): **`session_
 | `LESSON_SURVEY_SUBMIT_CLICKED` | `lesson_survey_submit_clicked` | `LessonPlayer.tsx` |
 | `LESSON_COURSE_COMPLETED` | `lesson_course_completed` | `LessonPlayer.tsx` |
 | `LESSON_CERTIFICATE_CREATED` | `lesson_certificate_created` | `LessonPlayer.tsx` |
+| `DASHBOARD_PASSIVE_TIME_ON_SCREEN` | `dashboard_passive_time_on_screen` | `useDashboardPassiveEngagement.ts` (used by `Dashboard.tsx`) — tab-visible interval, not keystrokes |
+| `CURRICULUM_CONTINUE_CLICKED` | `curriculum_continue_clicked` | `WebCurriculum.tsx` (hero **Continue**, distinct from course card navigation) |
+| `COURSE_DETAIL_MODULE_EXPAND_TOGGLED` | `course_detail_module_expand_toggled` | `CourseDetail.tsx` (`module_id`, `expanded`) |
+| `LESSON_QUIZ_ANSWER_SELECTED` | `lesson_quiz_answer_selected` | `LessonPlayer.tsx` (`question_index`, `option_id` A–D — no answer text) |
+| `LESSON_SURVEY_FIELD_CHANGED` | `lesson_survey_field_changed` | `LessonPlayer.tsx` (debounced; counts only — `non_empty_field_count`, `total_fields`, `field_type`) |
+
+### 1.5b Data Room (web)
+
+| TS key | `event_name` (wire) | Wired in app |
+|--------|---------------------|----------------|
+| `DATA_ROOM_FILE_SEARCH_CHANGED` | `data_room_file_search_changed` | `DataRoom.tsx` (debounced; `query_length`, `has_query`, `has_matches` — no query text) |
+| `DATA_ROOM_CERTIFICATE_PREVIEW_OPENED` | `data_room_certificate_preview_opened` | `DataRoom.tsx` |
+| `DATA_ROOM_CERTIFICATE_DOWNLOAD_CLICKED` | `data_room_certificate_download_clicked` | `DataRoom.tsx` (print/download flow) |
+| `DATA_ROOM_SURVEY_PDF_DOWNLOAD_CLICKED` | `data_room_survey_pdf_download_clicked` | `DataRoom.tsx` (per-row PDF download) |
 
 ### 1.6 Shop & cart
 
@@ -99,6 +113,13 @@ Default metadata merged on the client (then normalized server-side): **`session_
 | `GROUP_MESSAGE_SEND_CLICKED` | `group_message_send_clicked` | `GroupDetail.tsx` |
 | `GROUP_JOIN_CLICKED` | `group_join_clicked` | `GroupDetail.tsx` |
 | `GROUP_JOIN_FAILED` | `group_join_failed` | `GroupDetail.tsx` |
+| `DISCUSSIONS_SEARCH_CHANGED` | `discussions_search_changed` | `Discussions.tsx` (debounced; `query_length`, `has_query`, `has_results`) |
+| `DISCUSSION_CATEGORY_SELECTED` | `discussion_category_selected` | `StartDiscussionDialog.tsx` |
+| `DISCUSSION_DRAFT_NEXT_CLICKED` | `discussion_draft_next_clicked` | `StartDiscussionDialog.tsx` (**Next** from category step) |
+| `MORTAR_DM_REPLY_THREAD_SELECTED` | `mortar_dm_reply_thread_selected` | `MortarDMWidget.tsx` (sidebar thread tap; skips duplicate selection) |
+| `COMMUNITY_HERO_RSVP_CLICKED` | `community_hero_rsvp_clicked` | `CommunityHub.tsx` (hero **RSVP Now**) |
+| `EVENT_REGISTER_CLICKED` | `event_register_clicked` | `EventDetail.tsx` |
+| `EVENT_UNREGISTER_CLICKED` | `event_unregister_clicked` | `EventDetail.tsx` (after confirm) |
 
 ### 1.8 Approved but not auto-wired from `trackEvent` helpers
 

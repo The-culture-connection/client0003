@@ -44,6 +44,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import { cached, TTL_SHORT, TTL_MEDIUM } from "../../lib/cache";
 import { getLessonPlayerPath } from "../../lib/lessonPlayerUrl";
 import { useScreenAnalytics } from "../../analytics/useScreenAnalytics";
+import { useDashboardPassiveEngagement } from "../../analytics/useDashboardPassiveEngagement";
 import { trackEvent } from "../../analytics/trackEvent";
 import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalyticsContract";
 
@@ -59,6 +60,7 @@ interface UserProfile {
 
 export function WebDashboard() {
   useScreenAnalytics("dashboard");
+  useDashboardPassiveEngagement();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);

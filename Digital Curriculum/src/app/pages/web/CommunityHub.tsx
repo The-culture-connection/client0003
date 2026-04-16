@@ -332,7 +332,12 @@ export function WebCommunityHub() {
             <div className="flex items-center gap-3">
               <Button
                 className="bg-accent hover:bg-accent/90 text-accent-foreground"
-                onClick={() => navigate(`/events/${realEvents[0].id}`)}
+                onClick={() => {
+                  trackEvent(WEB_ANALYTICS_EVENTS.COMMUNITY_HERO_RSVP_CLICKED, {
+                    event_id: realEvents[0].id,
+                  });
+                  navigate(`/events/${realEvents[0].id}`);
+                }}
               >
                 RSVP Now
               </Button>
