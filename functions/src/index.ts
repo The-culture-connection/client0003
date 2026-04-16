@@ -16,6 +16,7 @@ export { logAnalyticsEvent } from "./callables/logAnalyticsEvent";
 export { ingestWebAnalytics } from "./callables/ingestWebAnalytics";
 export { markNotificationReadBackend } from "./callables/markNotificationReadBackend";
 export { getPhase5DashboardMetrics } from "./callables/getPhase5DashboardMetrics";
+export { queryAdminWebAnalyticsEvents } from "./callables/queryAdminWebAnalyticsEvents";
 export { onAnalyticsRawEventCreated } from "./analytics/triggers/onAnalyticsRawEventCreated";
 export { onAnalyticsWebEventCreated } from "./analytics/triggers/onAnalyticsWebEventCreated";
 export { onUserAnalyticsSummaryWritten } from "./analytics/triggers/onUserAnalyticsSummaryWritten";

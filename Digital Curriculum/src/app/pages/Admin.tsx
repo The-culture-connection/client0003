@@ -41,6 +41,7 @@ import {
   Smartphone,
   ShieldAlert,
   Megaphone,
+  ClipboardList,
 } from "lucide-react";
 import { useAuth } from "../components/auth/AuthProvider";
 import {
@@ -122,6 +123,7 @@ import { AppAccessHubPanel } from "../components/admin/AppAccessHubPanel";
 import { MobileModerationPanel } from "../components/admin/MobileModerationPanel";
 import { MortarInfoAdminPanel } from "../components/admin/MortarInfoAdminPanel";
 import { AnalyticsDashboardPanel } from "../components/admin/AnalyticsDashboardPanel";
+import { AdminGoalReportsPanel } from "../components/admin/AdminGoalReportsPanel";
 import { AdminBadgesPanel } from "../components/admin/AdminBadgesPanel";
 import { registerDigitalCurriculumAlumniEligible } from "../lib/expansionEligible";
 import { trackEvent } from "../analytics/trackEvent";
@@ -1040,6 +1042,10 @@ export function AdminPage() {
           <TabsTrigger value="analytics">
             <BarChart3 className="w-4 h-4 mr-2" />
             Analytics
+          </TabsTrigger>
+          <TabsTrigger value="reports">
+            <ClipboardList className="w-4 h-4 mr-2" />
+            Reports
           </TabsTrigger>
           <TabsTrigger value="badges">
             <Medal className="w-4 h-4 mr-2" />
@@ -2051,6 +2057,10 @@ export function AdminPage() {
 
         <TabsContent value="analytics" className="space-y-6">
           <AnalyticsDashboardPanel />
+        </TabsContent>
+
+        <TabsContent value="reports" className="space-y-6">
+          <AdminGoalReportsPanel />
         </TabsContent>
 
         <TabsContent value="badges" className="space-y-6">

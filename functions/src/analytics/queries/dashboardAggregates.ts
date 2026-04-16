@@ -69,6 +69,13 @@ export interface Phase5Funnels {
   };
 }
 
+export interface DailyMetricsSeriesRow {
+  date_utc: string;
+  dau: number;
+  total_web_events: number;
+  counts: NumericMap;
+}
+
 export interface Phase5DashboardSnapshot {
   window_days: number;
   start_date_utc: string;
@@ -78,6 +85,8 @@ export interface Phase5DashboardSnapshot {
     total_web_events: number;
     counts: NumericMap;
   };
+  /** Per-UTC-day rows (same window as totals) for trend charts in goal reports. */
+  daily_series: DailyMetricsSeriesRow[];
   derived: Phase5DerivedMetrics;
   funnels: Phase5Funnels;
 }
@@ -113,6 +122,26 @@ async function loadDailyMetricsWindow(db: Firestore, days: number): Promise<Dail
     .orderBy("date_utc", "asc")
     .get();
   return q.docs.map((d) => d.data() as DailyMetricsDoc);
+}
+
+function dailyRowFromDoc(d: DailyMetricsDoc): DailyMetricsSeriesRow {
+  const counts: NumericMap = {};
+  const c = (d.counts ?? {}) as Record<string, unknown>;
+  for (const [k, v] of Object.entries(c)) {
+    counts[k] = toNumber(v);
+  }
+  for (const [k, v] of Object.entries(d as Record<string, unknown>)) {
+    if (!k.startsWith("counts.")) continue;
+    const counterKey = k.slice("counts.".length);
+    if (!counterKey) continue;
+    counts[counterKey] = (counts[counterKey] ?? 0) + toNumber(v);
+  }
+  return {
+    date_utc: typeof d.date_utc === "string" ? d.date_utc : "",
+    dau: toNumber(d.dau),
+    total_web_events: toNumber(d.total_web_events),
+    counts,
+  };
 }
 
 function aggregateDailyMetrics(docs: DailyMetricsDoc[]): {dau_sum: number; total_web_events: number; counts: NumericMap} {
@@ -170,6 +199,7 @@ function computeDerivedMetrics(totals: {dau_sum: number; total_web_events: numbe
   const engagements =
     pickCount(totals.counts, "discussions_created") +
     pickCount(totals.counts, "discussion_replies") +
+    pickCount(totals.counts, "discussion_like_toggled") +
     pickCount(totals.counts, "dms_sent") +
     pickCount(totals.counts, "groups_joined") +
     pickCount(totals.counts, "event_registrations") +
@@ -200,16 +230,21 @@ function computeFunnels(totals: {dau_sum: number; counts: NumericMap}): Phase5Fu
   const communityVisits =
     pickCount(c, "discussions_search_changed") +
     pickCount(c, "discussion_category_selected") +
-    pickCount(c, "community_hub_surface_interactions");
+    pickCount(c, "community_hub_surface_interactions") +
+    pickCount(c, "community_discussion_preview_clicked") +
+    pickCount(c, "community_start_discussion_clicked") +
+    pickCount(c, "community_hero_rsvp_clicked");
   const communityEngagements =
     pickCount(c, "discussions_created") +
     pickCount(c, "discussion_replies") +
+    pickCount(c, "discussion_like_toggled") +
     pickCount(c, "dms_sent") +
     pickCount(c, "groups_joined") +
+    pickCount(c, "event_registrations") +
     pickCount(c, "notification_item_clicked");
 
   const shopFilterOrSize = pickCount(c, "shop_filter_changed") + pickCount(c, "shop_size_changed");
-  const addToCart = pickCount(c, "cart_add_to_cart");
+  const addToCart = pickCount(c, "shop_add_to_cart_clicked") + pickCount(c, "cart_add_to_cart");
   /** Users often add to cart without changing filters first — floor visits at add-to-cart so the funnel is not empty when the shop is used. */
   const shopVisits = Math.max(shopFilterOrSize, addToCart);
 
@@ -250,6 +285,7 @@ export async function buildPhase5DashboardSnapshot(db: Firestore, days: number):
   const windowDays = Math.max(1, Math.min(90, Math.floor(days)));
   const docs = await loadDailyMetricsWindow(db, windowDays);
   const totals = aggregateDailyMetrics(docs);
+  const daily_series = docs.map((d) => dailyRowFromDoc(d));
   const churn = await computeChurnRisk(db);
   const derived = computeDerivedMetrics(totals, churn);
   const funnels = computeFunnels(totals);
@@ -263,6 +299,7 @@ export async function buildPhase5DashboardSnapshot(db: Firestore, days: number):
     start_date_utc: utcDateKey(start),
     end_date_utc: utcDateKey(end),
     totals,
+    daily_series,
     derived,
     funnels,
   };

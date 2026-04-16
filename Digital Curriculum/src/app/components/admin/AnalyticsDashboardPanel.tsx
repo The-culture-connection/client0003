@@ -26,6 +26,8 @@ interface Phase5Snapshot {
     total_web_events: number;
     counts: Record<string, number>;
   };
+  /** Present when Cloud Functions snapshot includes per-day rows (goal reports / trends). */
+  daily_series?: Array<{ date_utc: string; dau: number; total_web_events: number; counts: Record<string, number> }>;
   derived: {
     onboarding_completion_rate: number | null;
     lesson_completion_rate: number | null;

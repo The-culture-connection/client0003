@@ -27,8 +27,6 @@ interface RollupDelta {
   dailyCounter: string | null;
   communityCounter: string | null;
   courseCounter: "lessons_started" | "lessons_completed" | "quizzes_passed" | "quizzes_failed" | null;
-  /** Also bump legacy aggregate used by older dashboards / funnels. */
-  alsoCommunityHubSurface?: boolean;
   /** Also bump `cart_add_to_cart` for dashboards that predate `shop_add_to_cart_clicked`. */
   alsoLegacyCartAdd?: boolean;
 }
@@ -57,7 +55,6 @@ function rollupDeltaForEventName(eventName: string): RollupDelta | null {
       dailyCounter: "community_discussion_preview_clicked",
       communityCounter: "community_discussion_preview_clicked",
       courseCounter: null,
-      alsoCommunityHubSurface: true,
     };
   case WEB_ANALYTICS_EVENTS.COMMUNITY_START_DISCUSSION_CLICKED:
     return {
@@ -65,7 +62,6 @@ function rollupDeltaForEventName(eventName: string): RollupDelta | null {
       dailyCounter: "community_start_discussion_clicked",
       communityCounter: "community_start_discussion_clicked",
       courseCounter: null,
-      alsoCommunityHubSurface: true,
     };
   case WEB_ANALYTICS_EVENTS.COMMUNITY_HERO_RSVP_CLICKED:
     return {
@@ -73,7 +69,6 @@ function rollupDeltaForEventName(eventName: string): RollupDelta | null {
       dailyCounter: "community_hero_rsvp_clicked",
       communityCounter: "community_hero_rsvp_clicked",
       courseCounter: null,
-      alsoCommunityHubSurface: true,
     };
   case WEB_ANALYTICS_EVENTS.LESSON_COURSE_COMPLETED:
     return {
@@ -396,6 +391,9 @@ export async function applyPhase4RollupsForWebEvent(
     }
 
     if (delta?.userCounter) addIncrementCount(patch, delta.userCounter);
+    if (delta?.alsoLegacyCartAdd) {
+      addIncrementCount(patch, "cart_add_to_cart");
+    }
 
     const dailyPatch: Record<string, unknown> = {
       schema_version: 1,
@@ -425,6 +423,10 @@ export async function applyPhase4RollupsForWebEvent(
       }
     } else if (delta?.dailyCounter) {
       addIncrementCount(dailyPatch, delta.dailyCounter);
+    }
+
+    if (delta?.alsoLegacyCartAdd) {
+      addIncrementCount(dailyPatch, "cart_add_to_cart");
     }
 
     tx.set(userRef, patch, { merge: true });
