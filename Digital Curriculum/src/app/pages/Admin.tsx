@@ -34,6 +34,7 @@ import {
   Award,
   Download,
   ShoppingBag,
+  BarChart3,
   Pencil,
   KeyRound,
   Smartphone,
@@ -119,6 +120,7 @@ import {
 import { AppAccessHubPanel } from "../components/admin/AppAccessHubPanel";
 import { MobileModerationPanel } from "../components/admin/MobileModerationPanel";
 import { MortarInfoAdminPanel } from "../components/admin/MortarInfoAdminPanel";
+import { AnalyticsDashboardPanel } from "../components/admin/AnalyticsDashboardPanel";
 import { registerDigitalCurriculumAlumniEligible } from "../lib/expansionEligible";
 
 interface DirectMessage {
@@ -1024,6 +1026,10 @@ export function AdminPage() {
           <TabsTrigger value="admins">
             <UserCog className="w-4 h-4 mr-2" />
             Admins
+          </TabsTrigger>
+          <TabsTrigger value="analytics">
+            <BarChart3 className="w-4 h-4 mr-2" />
+            Analytics
           </TabsTrigger>
           <TabsTrigger value="app-access-hub">
             <KeyRound className="w-4 h-4 mr-2" />
@@ -2027,6 +2033,10 @@ export function AdminPage() {
               </div>
             )}
           </Card>
+        </TabsContent>
+
+        <TabsContent value="analytics" className="space-y-6">
+          <AnalyticsDashboardPanel />
         </TabsContent>
 
         {/* Expansion Network — eligible users & invite codes */}

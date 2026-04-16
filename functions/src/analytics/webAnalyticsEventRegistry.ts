@@ -75,6 +75,10 @@ export const WEB_ANALYTICS_EVENTS = {
   DATA_ROOM_CERTIFICATE_PREVIEW_OPENED: "data_room_certificate_preview_opened",
   DATA_ROOM_CERTIFICATE_DOWNLOAD_CLICKED: "data_room_certificate_download_clicked",
   DATA_ROOM_SURVEY_PDF_DOWNLOAD_CLICKED: "data_room_survey_pdf_download_clicked",
+  /** Phase 5 — notifications + nudges */
+  ONBOARDING_NUDGE_SENT: "onboarding_nudge_sent",
+  NOTIFICATION_ITEM_CLICKED: "notification_item_clicked",
+  NOTIFICATION_MARK_READ_BACKEND: "notification_mark_read_backend",
 } as const;
 
 export type WebAnalyticsEventName = (typeof WEB_ANALYTICS_EVENTS)[keyof typeof WEB_ANALYTICS_EVENTS];

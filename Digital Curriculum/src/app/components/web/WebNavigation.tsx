@@ -64,6 +64,11 @@ export function WebNavigation() {
 
   const handleNotificationClick = async (n: UserNotification) => {
     if (n.certificateId && user?.uid) {
+      trackEvent(WEB_ANALYTICS_EVENTS.NOTIFICATION_ITEM_CLICKED, {
+        notification_id: n.id,
+        notification_type: n.type,
+        has_certificate_id: Boolean(n.certificateId),
+      });
       await markNotificationRead(user.uid, n.id);
       setUnreadCount((c) => Math.max(0, c - 1));
       setNotifications((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)));

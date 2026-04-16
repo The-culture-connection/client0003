@@ -6,8 +6,9 @@
 
 import {onSchedule} from "firebase-functions/v2/scheduler";
 import {initializeApp, getApps} from "firebase-admin/app";
-import {getFirestore, Timestamp} from "firebase-admin/firestore";
+import {getFirestore, Timestamp, FieldValue} from "firebase-admin/firestore";
 import * as logger from "firebase-functions/logger";
+import {ANALYTICS_WEB_SCHEMA_VERSION} from "../analytics/mortarAnalyticsContract";
 
 if (getApps().length === 0) {
   initializeApp();
@@ -50,18 +51,28 @@ export const scheduledNudgeIncompleteProfiles = onSchedule(
         logger.info(`[STUB] Sending nudge email to ${email} (${uid})`);
         logger.info("  Message: Complete your profile to get better matches!");
 
-        // Log analytics event
+        // Log analytics event (normalized shape used by Phase 4/5 summaries)
         await db.collection("analytics_events").add({
-          event_type: "onboarding_nudge_sent",
+          schema_version: ANALYTICS_WEB_SCHEMA_VERSION,
+          source: "backend_functions",
+          event_name: "onboarding_nudge_sent",
           user_id: uid,
-          timestamp: Timestamp.now(),
-          metadata: {
+          created_at: FieldValue.serverTimestamp(),
+          client_timestamp_ms: null,
+          client: {platform: "web"},
+          session_id: null,
+          screen_session_id: null,
+          route_path: null,
+          screen_name: "scheduled_nudge_incomplete_profiles",
+          properties: {
             onboarding_status: "partial",
             days_since_update: Math.round(
               (Date.now() - (userData.updated_at?.toMillis?.() || Date.now())) /
                 (24 * 60 * 60 * 1000)
             ),
           },
+          dedupe_key: null,
+          ingested_via: "scheduled_nudge_incomplete_profiles",
         });
 
         nudgedUsers.push(uid);

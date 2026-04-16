@@ -808,6 +808,27 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Phase 4 summaries (Admin SDK + triggers only)
+    match /user_analytics_summary/{userId} {
+      allow read: if isOwner(userId) || hasStaffClaim();
+      allow write: if false;
+    }
+
+    match /daily_metrics/{dateId} {
+      allow read: if hasStaffClaim();
+      allow write: if false;
+    }
+
+    match /course_analytics_summary/{courseId} {
+      allow read: if hasStaffClaim();
+      allow write: if false;
+    }
+
+    match /community_analytics_summary/{docId} {
+      allow read: if hasStaffClaim();
+      allow write: if false;
+    }
+
     // --- Deny everything else ---
     match /{document=**} {
       allow read, write: if false;

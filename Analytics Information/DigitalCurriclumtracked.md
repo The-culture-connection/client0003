@@ -178,3 +178,45 @@ Typed helpers live in `Digital Curriculum/src/app/analytics/intents.ts` (`mortar
 ---
 
 *When you add or rename an event, update `webAnalyticsEventRegistry.ts`, `inboundWebAnalyticsPayload.ts` (if needed), this document, and `docs/MORTAR_ANALYTICS_SCHEMA.md`.*
+
+---
+
+## 4. Phase 4 — summary layer (Firestore, server-only)
+
+| Collection | Document id | Updated by | Notes |
+|------------|-------------|------------|--------|
+| `user_analytics_summary` | `{userId}` | `onAnalyticsWebEventCreated` | `counts.*`, `last_active_at`, `streak_days`, `best_streak_days`, `last_activity_utc_date`, one-time `signup_counted_at` / `onboarding_completed_at` |
+| `daily_metrics` | `{YYYY-MM-DD}` (UTC) | Same trigger + `scheduledPhase4DerivedMetrics` | `dau`, `counts.*`, `total_web_events`; `derived.*` after scheduler runs |
+| `course_analytics_summary` | `{courseId}` | Same trigger | Requires `properties.course_id` on the web event |
+| `community_analytics_summary` | `global` | Same trigger | Cross-user community funnel counters |
+
+**Event → counter mapping (web `event_name`):** lessons started ≈ `course_detail_start_lesson_clicked` + `curriculum_continue_clicked`; completed `lesson_course_completed`; quiz `lesson_quiz_passed` / `lesson_quiz_failed`; discussions `discussion_create_submit_clicked`; replies `discussion_reply_submit_clicked`; DMs `mortar_dm_message_sent`; groups `group_join_clicked`; events `event_register_clicked` / `event_unregister_clicked`; cart `shop_add_to_cart_clicked` / `cart_line_remove_clicked`; signups `login_sign_up_succeeded` (once per user); onboarding `onboarding_final_save_succeeded` (once per user). All other web events still refresh **last active** / **streak** / **`total_web_events`** when mapped counters are absent.
+
+**Deploy:** deploy Cloud Functions so `onAnalyticsWebEventCreated` and `scheduledPhase4DerivedMetrics` are live. Firestore rules allow users to read their own `user_analytics_summary`; staff read on aggregates.
+
+---
+
+## 5. Phase 5 — derived metrics + funnels
+
+- **Derived calculations (central):** `functions/src/analytics/queries/dashboardAggregates.ts`
+  - onboarding completion rate
+  - lesson completion rate
+  - quiz pass rate
+  - engagement rate
+  - churn risk indicators (`dormant_users_7d`, `low_streak_users`, `churn_risk_ratio`)
+- **Funnel sets (central):**
+  - login → onboarding → dashboard
+  - dashboard → curriculum → lesson
+  - lesson → completion
+  - community → engagement
+  - shop → add to cart
+- **Dashboard callable:** `getPhase5DashboardMetrics` (Admin/superAdmin; returns window totals + derived + funnels).
+- **Admin frontend section:** `Admin.tsx` tab `analytics` renders `components/admin/AnalyticsDashboardPanel.tsx` and fetches the callable snapshot for visual cards/funnels.
+
+### 5.1 Phase 5 notification events
+
+| TS key | `event_name` (wire) | Wired in app |
+|--------|---------------------|----------------|
+| `ONBOARDING_NUDGE_SENT` | `onboarding_nudge_sent` | `scheduledNudgeIncompleteProfiles.ts` (backend write to `analytics_events`) |
+| `NOTIFICATION_ITEM_CLICKED` | `notification_item_clicked` | `WebNavigation.tsx` notification dropdown item click |
+| `NOTIFICATION_MARK_READ_BACKEND` | `notification_mark_read_backend` | `markNotificationReadBackend` callable (`dataroom.ts` client invokes callable) |

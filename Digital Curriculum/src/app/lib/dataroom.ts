@@ -6,17 +6,16 @@
 
 import {
   collection,
-  doc,
   addDoc,
   getDocs,
   query,
   orderBy,
-  updateDoc,
   serverTimestamp,
   Timestamp,
 } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { db, storage } from "./firebase";
+import { db, functions, storage } from "./firebase";
 import { jsPDF } from "jspdf";
 import { DEFAULT_DATAROOM_FOLDER_ID } from "./dataroomFolders";
 
@@ -289,8 +288,8 @@ export async function markNotificationRead(
   userId: string,
   notificationId: string
 ): Promise<void> {
-  const notifRef = doc(db, "users", userId, NOTIFICATIONS_SUBCOLLECTION, notificationId);
-  await updateDoc(notifRef, { read: true });
+  const fn = httpsCallable(functions, "markNotificationReadBackend");
+  await fn({ user_id: userId, notification_id: notificationId });
 }
 
 /**

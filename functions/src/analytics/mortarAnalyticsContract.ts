@@ -31,6 +31,14 @@ export const ANALYTICS_COLLECTIONS = {
    * Older mixed-shape docs may also live here; query by `schema_version` + `source`.
    */
   LEGACY_EVENTS: "analytics_events",
+  /** Phase 4 — per-user rollups (Functions triggers only; not client-writable). */
+  USER_ANALYTICS_SUMMARY: "user_analytics_summary",
+  /** Phase 4 — global daily aggregates (`{date}` = UTC `YYYY-MM-DD`). */
+  DAILY_METRICS: "daily_metrics",
+  /** Phase 4 — per-course aggregates (optional `course_id` on web events). */
+  COURSE_ANALYTICS_SUMMARY: "course_analytics_summary",
+  /** Phase 4 — single-doc community rollups (`global`). */
+  COMMUNITY_ANALYTICS_SUMMARY: "community_analytics_summary",
 } as const;
 
 /**

@@ -14,7 +14,11 @@ export { scheduledNudgeIncompleteProfiles } from "./triggers/scheduledNudgeIncom
 export { setUserRole } from "./callables/setUserRole";
 export { logAnalyticsEvent } from "./callables/logAnalyticsEvent";
 export { ingestWebAnalytics } from "./callables/ingestWebAnalytics";
+export { markNotificationReadBackend } from "./callables/markNotificationReadBackend";
+export { getPhase5DashboardMetrics } from "./callables/getPhase5DashboardMetrics";
 export { onAnalyticsRawEventCreated } from "./analytics/triggers/onAnalyticsRawEventCreated";
+export { onAnalyticsWebEventCreated } from "./analytics/triggers/onAnalyticsWebEventCreated";
+export { scheduledPhase4DerivedMetrics } from "./analytics/triggers/scheduledPhase4DerivedMetrics";
 export { upsertBusinessProfile } from "./callables/upsertBusinessProfile";
 export { trackLessonTime } from "./callables/trackLessonTime";
 export { markLessonComplete } from "./callables/markLessonComplete";
