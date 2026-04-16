@@ -220,3 +220,28 @@ Typed helpers live in `Digital Curriculum/src/app/analytics/intents.ts` (`mortar
 | `ONBOARDING_NUDGE_SENT` | `onboarding_nudge_sent` | `scheduledNudgeIncompleteProfiles.ts` (backend write to `analytics_events`) |
 | `NOTIFICATION_ITEM_CLICKED` | `notification_item_clicked` | `WebNavigation.tsx` notification dropdown item click |
 | `NOTIFICATION_MARK_READ_BACKEND` | `notification_mark_read_backend` | `markNotificationReadBackend` callable (`dataroom.ts` client invokes callable) |
+
+---
+
+## 6. Phase 6 — badge system (analytics) + admin builder metrics
+
+### 6.1 Collections (server-writes only)
+
+| Collection | Path | Purpose |
+|------------|------|--------|
+| `badge_definitions` | `{badgeId}` | Staff-defined badge metadata + optional **`rule`** (metric / operator / threshold / **`timeframe: all_time`** only in v1) + **`active`**, **`award_mode`** (`one_time` \| `repeatable`). Legacy Expansion **`criteria`** (posts/comments) unchanged. |
+| `user_badges` | `{userId}/awarded/{badgeId}` | Materialized awards: **`times_awarded`**, first/last awarded timestamps, **`rule_snapshot`**. Idempotent: counts only increase. |
+| `badge_progress` | `{userId}` | Last evaluation snapshot: **`by_badge`**: metric value + `times_awarded` per badge for dashboards. |
+
+**Trigger:** `onUserAnalyticsSummaryWritten` → `evaluateAnalyticsBadgesForUser` (`functions/src/analytics/badges/analyticsBadgeEvaluator.ts`).
+
+### 6.2 Admin / builder web events (derived; staff)
+
+| TS key | `event_name` (wire) | Wired in app |
+|--------|---------------------|----------------|
+| `ADMIN_COURSE_BUILDER_SAVE_CLICKED` | `admin_course_builder_save_clicked` | `CourseBuilder.tsx` after successful save (create or update) |
+| `ADMIN_LESSON_DECK_PUBLISH_CLICKED` | `admin_lesson_deck_publish_clicked` | `CourseBuilder.tsx` after successful publish |
+| `ADMIN_EVENT_CREATE_SUBMITTED` | `admin_event_create_submitted` | `Admin.tsx` after staff `createEvent` |
+| `ADMIN_SHOP_ITEM_CREATED` | `admin_shop_item_created` | `Admin.tsx` after `createShopItem` |
+
+These increment **`user_analytics_summary`** and **`daily_metrics`** Phase 4 counters with the same snake_case keys as the wire event names (scaling / admin activity, not learner core funnel).

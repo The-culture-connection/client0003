@@ -39,6 +39,13 @@ export const ANALYTICS_COLLECTIONS = {
   COURSE_ANALYTICS_SUMMARY: "course_analytics_summary",
   /** Phase 4 — single-doc community rollups (`global`). */
   COMMUNITY_ANALYTICS_SUMMARY: "community_analytics_summary",
+  /**
+   * Phase 6 — awarded badge instances (`user_badges/{uid}/awarded/{badgeId}`).
+   * Written only by Cloud Functions.
+   */
+  USER_BADGE_AWARDS: "user_badges",
+  /** Phase 6 — last evaluated progress snapshot per user (Functions only). */
+  BADGE_PROGRESS: "badge_progress",
 } as const;
 
 /**

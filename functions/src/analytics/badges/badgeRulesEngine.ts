@@ -1,13 +1,14 @@
 /**
  * Badge / milestone materialization from analytics (server-side only).
- * Decoupled from UI; triggers or batch jobs call into this layer.
+ * Phase 6 rules run from `onUserAnalyticsSummaryWritten` → `evaluateAnalyticsBadgesForUser`.
  */
 
 import type {DocumentSnapshot} from "firebase-admin/firestore";
 
-/**
- * Placeholder: evaluate whether a raw event should update `analytics_user_badges/{uid}`.
- */
+export { evaluateAnalyticsBadgesForUser } from "./analyticsBadgeEvaluator";
+export type { BadgePhase6Rule, BadgeRuleOperator, BadgeRuleTimeframe } from "./analyticsBadgeEvaluator";
+
+/** Raw-event hook reserved for future streaming rules; Phase 6 uses summary rollups. */
 export function evaluateBadgeRulesOnRawEvent(_snap: DocumentSnapshot): void {
-  /* no-op until badge definitions are wired */
+  /* no-op */
 }

@@ -79,6 +79,11 @@ export const WEB_ANALYTICS_EVENTS = {
   ONBOARDING_NUDGE_SENT: "onboarding_nudge_sent",
   NOTIFICATION_ITEM_CLICKED: "notification_item_clicked",
   NOTIFICATION_MARK_READ_BACKEND: "notification_mark_read_backend",
+  /** Phase 6 — admin / builder (derived metrics; staff flows) */
+  ADMIN_COURSE_BUILDER_SAVE_CLICKED: "admin_course_builder_save_clicked",
+  ADMIN_LESSON_DECK_PUBLISH_CLICKED: "admin_lesson_deck_publish_clicked",
+  ADMIN_EVENT_CREATE_SUBMITTED: "admin_event_create_submitted",
+  ADMIN_SHOP_ITEM_CREATED: "admin_shop_item_created",
 } as const;
 
 export type WebAnalyticsEventName = (typeof WEB_ANALYTICS_EVENTS)[keyof typeof WEB_ANALYTICS_EVENTS];

@@ -34,6 +34,8 @@ import {
   ClipboardList,
 } from "lucide-react";
 import { useAuth } from "../../components/auth/AuthProvider";
+import { trackEvent } from "../../analytics/trackEvent";
+import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalyticsContract";
 import {
   createCurriculum,
   createModule,
@@ -849,6 +851,10 @@ export function CourseBuilder() {
           }
         }
         alert("Course updated!");
+        trackEvent(WEB_ANALYTICS_EVENTS.ADMIN_COURSE_BUILDER_SAVE_CLICKED, {
+          course_id: createdCourseId,
+          is_update: true,
+        });
         return createdCourseId;
       } else {
         console.log("[SAVE] Creating new course with data:", cleanCourseData);
@@ -903,6 +909,10 @@ export function CourseBuilder() {
           }
         }
         alert("Course saved as draft!");
+        trackEvent(WEB_ANALYTICS_EVENTS.ADMIN_COURSE_BUILDER_SAVE_CLICKED, {
+          course_id: courseId,
+          is_update: false,
+        });
         return courseId;
       }
     } catch (error) {
@@ -964,6 +974,11 @@ export function CourseBuilder() {
 
       await updateCourse(courseIdToPublish, { status: "published" });
 
+      trackEvent(WEB_ANALYTICS_EVENTS.ADMIN_LESSON_DECK_PUBLISH_CLICKED, {
+        course_id: courseIdToPublish,
+        lessons_published: publishedCount,
+        lessons_skipped: skippedCount,
+      });
       alert(`Course published successfully! Published ${publishedCount} lessons.`);
       navigate("/admin");
     } catch (error) {

@@ -829,6 +829,22 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Phase 6 — analytics badges (Functions writes only)
+    match /user_badges/{userId} {
+      allow read: if isOwner(userId) || hasStaffClaim();
+      allow write: if false;
+
+      match /awarded/{badgeId} {
+        allow read: if isOwner(userId) || hasStaffClaim();
+        allow write: if false;
+      }
+    }
+
+    match /badge_progress/{userId} {
+      allow read: if isOwner(userId) || hasStaffClaim();
+      allow write: if false;
+    }
+
     // --- Deny everything else ---
     match /{document=**} {
       allow read, write: if false;

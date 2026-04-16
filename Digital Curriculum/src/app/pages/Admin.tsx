@@ -122,6 +122,8 @@ import { MobileModerationPanel } from "../components/admin/MobileModerationPanel
 import { MortarInfoAdminPanel } from "../components/admin/MortarInfoAdminPanel";
 import { AnalyticsDashboardPanel } from "../components/admin/AnalyticsDashboardPanel";
 import { registerDigitalCurriculumAlumniEligible } from "../lib/expansionEligible";
+import { trackEvent } from "../analytics/trackEvent";
+import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalyticsContract";
 
 interface DirectMessage {
   id: string;
@@ -635,7 +637,7 @@ export function AdminPage() {
         alert("Add a picture (upload or paste an image URL).");
         return;
       }
-      await createShopItem({
+      const created = await createShopItem({
         name,
         price,
         picture: pictureUrl,
@@ -644,6 +646,7 @@ export function AdminPage() {
         lowStockThreshold,
         sizeStocks,
       });
+      trackEvent(WEB_ANALYTICS_EVENTS.ADMIN_SHOP_ITEM_CREATED, { shop_item_id: created, category: shopItemCategory });
       setShopItemName("");
       setShopItemPrice("");
       setShopItemPictureFile(null);
@@ -956,7 +959,7 @@ export function AdminPage() {
         imageUrl = await getDownloadURL(storageRef);
       }
 
-      await createEvent(
+      const createdEvent = await createEvent(
         newEventTitle,
         eventDate,
         timeString,
@@ -969,6 +972,11 @@ export function AdminPage() {
           distribution: newEventDistribution,
         }
       );
+      trackEvent(WEB_ANALYTICS_EVENTS.ADMIN_EVENT_CREATE_SUBMITTED, {
+        event_id: createdEvent.id,
+        distribution: newEventDistribution,
+        event_type: newEventType,
+      });
 
       setNewEventTitle("");
       setNewEventDate("");

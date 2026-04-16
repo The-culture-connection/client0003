@@ -42,7 +42,12 @@ type CounterKey =
   /** Curriculum browse — course card taps (distinct from lesson start counters). */
   | "curriculum_course_card_clicks"
   /** Community hub surface intent (preview / start discussion / hero RSVP). */
-  | "community_hub_surface_interactions";
+  | "community_hub_surface_interactions"
+  /** Phase 6 — admin builder / catalog (per-user + daily rollups). */
+  | "admin_course_builder_save_clicked"
+  | "admin_lesson_deck_publish_clicked"
+  | "admin_event_create_submitted"
+  | "admin_shop_item_created";
 
 interface RollupDelta {
   userCounter: CounterKey | null;
@@ -173,6 +178,34 @@ function rollupDeltaForEventName(eventName: string): RollupDelta | null {
     return {
       userCounter: "onboarding_nudges_sent",
       dailyCounter: "onboarding_nudges_sent",
+      communityCounter: null,
+      courseCounter: null,
+    };
+  case WEB_ANALYTICS_EVENTS.ADMIN_COURSE_BUILDER_SAVE_CLICKED:
+    return {
+      userCounter: "admin_course_builder_save_clicked",
+      dailyCounter: "admin_course_builder_save_clicked",
+      communityCounter: null,
+      courseCounter: null,
+    };
+  case WEB_ANALYTICS_EVENTS.ADMIN_LESSON_DECK_PUBLISH_CLICKED:
+    return {
+      userCounter: "admin_lesson_deck_publish_clicked",
+      dailyCounter: "admin_lesson_deck_publish_clicked",
+      communityCounter: null,
+      courseCounter: null,
+    };
+  case WEB_ANALYTICS_EVENTS.ADMIN_EVENT_CREATE_SUBMITTED:
+    return {
+      userCounter: "admin_event_create_submitted",
+      dailyCounter: "admin_event_create_submitted",
+      communityCounter: null,
+      courseCounter: null,
+    };
+  case WEB_ANALYTICS_EVENTS.ADMIN_SHOP_ITEM_CREATED:
+    return {
+      userCounter: "admin_shop_item_created",
+      dailyCounter: "admin_shop_item_created",
       communityCounter: null,
       courseCounter: null,
     };

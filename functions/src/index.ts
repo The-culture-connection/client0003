@@ -18,6 +18,7 @@ export { markNotificationReadBackend } from "./callables/markNotificationReadBac
 export { getPhase5DashboardMetrics } from "./callables/getPhase5DashboardMetrics";
 export { onAnalyticsRawEventCreated } from "./analytics/triggers/onAnalyticsRawEventCreated";
 export { onAnalyticsWebEventCreated } from "./analytics/triggers/onAnalyticsWebEventCreated";
+export { onUserAnalyticsSummaryWritten } from "./analytics/triggers/onUserAnalyticsSummaryWritten";
 export { scheduledPhase4DerivedMetrics } from "./analytics/triggers/scheduledPhase4DerivedMetrics";
 export { upsertBusinessProfile } from "./callables/upsertBusinessProfile";
 export { trackLessonTime } from "./callables/trackLessonTime";
