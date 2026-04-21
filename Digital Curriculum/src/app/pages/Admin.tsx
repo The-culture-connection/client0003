@@ -42,6 +42,7 @@ import {
   ShieldAlert,
   Megaphone,
   ClipboardList,
+  LineChart,
 } from "lucide-react";
 import { useAuth } from "../components/auth/AuthProvider";
 import {
@@ -121,6 +122,7 @@ import {
 } from "../lib/curriculum";
 import { AppAccessHubPanel } from "../components/admin/AppAccessHubPanel";
 import { MobileModerationPanel } from "../components/admin/MobileModerationPanel";
+import { MobileAnalyticsSummariesPanel } from "../components/admin/MobileAnalyticsSummariesPanel";
 import { MortarInfoAdminPanel } from "../components/admin/MortarInfoAdminPanel";
 import { AnalyticsDashboardPanel } from "../components/admin/AnalyticsDashboardPanel";
 import { AdminGoalReportsPanel } from "../components/admin/AdminGoalReportsPanel";
@@ -1058,6 +1060,10 @@ export function AdminPage() {
           <TabsTrigger value="expansion-mobile">
             <ShieldAlert className="w-4 h-4 mr-2" />
             Expansion mobile
+          </TabsTrigger>
+          <TabsTrigger value="mobile-analytics">
+            <LineChart className="w-4 h-4 mr-2" />
+            Mobile analytics
           </TabsTrigger>
           <TabsTrigger value="mortar-info">
             <Megaphone className="w-4 h-4 mr-2" />
@@ -2082,6 +2088,16 @@ export function AdminPage() {
             <code className="text-xs bg-muted px-1">moderateUserAccount</code> to this project.
           </p>
           <MobileModerationPanel />
+        </TabsContent>
+
+        <TabsContent value="mobile-analytics" className="space-y-6">
+          <p className="text-sm text-muted-foreground max-w-4xl">
+            Phase 4 summaries from <code className="text-xs bg-muted px-1">expansion_analytics_events</code> (Cloud
+            Function rollups). Same callables as Mortar web Admin — deploy{" "}
+            <code className="text-xs bg-muted px-1">getAdminMobileAnalyticsDashboard</code> and{" "}
+            <code className="text-xs bg-muted px-1">queryAdminExpansionAnalyticsEvents</code> to this Firebase project.
+          </p>
+          <MobileAnalyticsSummariesPanel />
         </TabsContent>
 
         <TabsContent value="mortar-info" className="space-y-6">
