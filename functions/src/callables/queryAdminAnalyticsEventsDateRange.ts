@@ -10,7 +10,6 @@ import { getAuth } from "firebase-admin/auth";
 import { getFirestore, Timestamp } from "firebase-admin/firestore";
 import type { DocumentData } from "firebase-admin/firestore";
 import { z } from "zod";
-import { callableCorsAllowlist } from "../callableCorsAllowlist";
 import { ANALYTICS_COLLECTIONS } from "../analytics/mortarAnalyticsContract";
 
 if (getApps().length === 0) {
@@ -74,7 +73,17 @@ function serializeDoc(id: string, data: DocumentData): Record<string, unknown> {
 }
 
 export const queryAdminAnalyticsEventsDateRange = onCall(
-  { region: "us-central1", cors: callableCorsAllowlist },
+  {
+    region: "us-central1",
+    /**
+     * Reflect allowed browser Origins for credentialed callable POSTs.
+     * Use `true` so staging / alternate Railway hostnames always get a valid
+     * `Access-Control-Allow-Origin` on OPTIONS (see `callableCorsAllowlist` for
+     * the curated list we use elsewhere). Access is still enforced by Firebase Auth
+     * + admin role checks below.
+     */
+    cors: true,
+  },
   async (request) => {
     const callerUid = request.auth?.uid;
     if (!callerUid) {
