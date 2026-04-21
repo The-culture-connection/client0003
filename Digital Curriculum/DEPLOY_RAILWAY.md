@@ -39,7 +39,7 @@ If pushes to `main` don’t trigger a build and you see **“No deployment neede
 
 Railway will use `railway.toml` in this directory:
 
-- **Build:** `npm run build` (Vite builds into `dist/`).
+- **Build:** `npm ci --include=dev && npm run build` (Vite and the Tailwind/Vite plugins are **devDependencies**; image builders often run install with `NODE_ENV=production`, which would otherwise skip them and fail with **`vite: not found`** / **Build › Build image** errors).
 - **Start:** `npx serve -s dist -l $PORT` (serves the SPA and sends all routes to `index.html`).
 
 No need to set build/start commands in the dashboard unless you want to override them.

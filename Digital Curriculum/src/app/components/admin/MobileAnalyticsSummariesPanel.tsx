@@ -3,7 +3,6 @@ import { httpsCallable } from "firebase/functions";
 import { functions } from "../../lib/firebase";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
-import { ScrollArea } from "../ui/scroll-area";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 
@@ -49,6 +48,43 @@ type AdminDerivedRunResp = {
 
 function formatJson(obj: unknown): string {
   return JSON.stringify(obj, null, 2);
+}
+
+/** Large JSON is not mounted until expanded — avoids layout/stacking glitches from native `<details>` + Radix scroll views. */
+function LazyJsonDisclosure({
+  label,
+  value,
+  frameClassName = "border-t border-border pt-2",
+  preClassName = "max-h-36 text-[10px]",
+}: {
+  label: string;
+  value: unknown;
+  frameClassName?: string;
+  preClassName?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className={`text-xs ${frameClassName}`}>
+      <button
+        type="button"
+        className="flex w-full items-center gap-1.5 text-left text-muted-foreground hover:text-foreground select-none"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span className="font-mono text-[10px] text-muted-foreground/90" aria-hidden>
+          {open ? "▼" : "▶"}
+        </span>
+        <span>{label}</span>
+      </button>
+      {open ? (
+        <pre
+          className={`mt-2 overflow-auto rounded border border-border bg-background p-2 leading-relaxed whitespace-pre-wrap break-all text-foreground shadow-inner ${preClassName}`}
+        >
+          {formatJson(value)}
+        </pre>
+      ) : null}
+    </div>
+  );
 }
 
 function fmtPct(v: unknown): string {
@@ -144,7 +180,7 @@ function FriendlyDerivedMetricsReport({ days, title }: { days: DayDerived[]; tit
   }
 
   return (
-    <div className="space-y-4 isolate">
+    <div className="space-y-4">
       <p className="text-xs font-medium text-foreground">{title}</p>
       {days.map(({ date, doc }) => {
         const em = asRecord(doc.expansion_mobile);
@@ -152,7 +188,7 @@ function FriendlyDerivedMetricsReport({ days, title }: { days: DayDerived[]; tit
         const tt = asRecord(doc.time_to_first_activity) ?? asRecord(doc.time_to_first_signals);
         const fd = asRecord(doc.funnel_dropoffs_daily);
         return (
-          <Card key={date} className="p-4 border-border space-y-3 bg-card shadow-sm relative z-0 overflow-hidden">
+          <Card key={date} className="p-4 border-border space-y-3 bg-card shadow-sm">
             <h4 className="text-sm font-semibold text-foreground">UTC {date}</h4>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 text-sm">
               <MetricRow label="Onboarding conversion rate" value={fmtPct(em?.onboarding_conversion_rate)} />
@@ -172,14 +208,7 @@ function FriendlyDerivedMetricsReport({ days, title }: { days: DayDerived[]; tit
               />
             </div>
             {typeof tt?.note === "string" ? <p className="text-[11px] text-muted-foreground">{tt.note}</p> : null}
-            <details className="text-xs border-t border-border pt-2">
-              <summary className="cursor-pointer text-muted-foreground hover:text-foreground select-none">
-                Raw derived_metrics JSON (this day)
-              </summary>
-              <pre className="mt-2 max-h-36 overflow-auto rounded border border-border bg-muted/40 p-2 text-[10px] leading-relaxed whitespace-pre-wrap break-all">
-                {formatJson(doc)}
-              </pre>
-            </details>
+            <LazyJsonDisclosure label="Raw derived_metrics JSON (this day)" value={doc} />
             {fd ? (
               <div className="space-y-2 border-t border-border pt-2">
                 <p className="text-xs font-medium text-foreground">Drop-off rates (from daily summary counts)</p>
@@ -619,9 +648,9 @@ export function MobileAnalyticsSummariesPanel() {
             </dl>
             <div className="md:col-span-2">
               <p className="text-xs text-muted-foreground mb-1">Full document (JSON)</p>
-              <ScrollArea className="h-36 rounded border border-border p-2 bg-muted/30">
+              <div className="h-36 overflow-auto rounded border border-border bg-muted/30 p-2">
                 <pre className="text-[11px] leading-relaxed whitespace-pre-wrap break-all">{formatJson(userSummary)}</pre>
-              </ScrollArea>
+              </div>
             </div>
           </div>
         ) : null}
@@ -640,9 +669,9 @@ export function MobileAnalyticsSummariesPanel() {
             ))}
           </dl>
           <p className="text-xs text-muted-foreground pt-2">Raw counts bag (includes raw_event.*)</p>
-          <ScrollArea className="h-32 rounded border border-border p-2 bg-muted/30">
+          <div className="h-32 overflow-auto rounded border border-border bg-muted/30 p-2">
             <pre className="text-[11px] whitespace-pre-wrap break-all">{formatJson(todayCounts)}</pre>
-          </ScrollArea>
+          </div>
         </Card>
         <Card className="p-4 border-border space-y-2">
           <h3 className="text-sm font-semibold text-foreground">Daily metrics — yesterday (UTC)</h3>
@@ -657,9 +686,9 @@ export function MobileAnalyticsSummariesPanel() {
               <MetricRow key={k} label={k} value={String(yesterdayCounts[k] ?? "—")} />
             ))}
           </dl>
-          <ScrollArea className="h-32 rounded border border-border p-2 bg-muted/30">
+          <div className="h-32 overflow-auto rounded border border-border bg-muted/30 p-2">
             <pre className="text-[11px] whitespace-pre-wrap break-all">{formatJson(yesterdayCounts)}</pre>
-          </ScrollArea>
+          </div>
         </Card>
       </div>
 
@@ -710,14 +739,12 @@ export function MobileAnalyticsSummariesPanel() {
                         </p>
                       </div>
                     ) : null}
-                    <details className="text-xs mt-2 border-t border-border pt-2">
-                      <summary className="cursor-pointer text-muted-foreground hover:text-foreground select-none">
-                        Raw JSON (snapshot card)
-                      </summary>
-                      <pre className="mt-2 max-h-32 overflow-auto rounded border border-border bg-muted/40 p-2 text-[10px] whitespace-pre-wrap break-all">
-                        {formatJson(doc)}
-                      </pre>
-                    </details>
+                    <LazyJsonDisclosure
+                      label="Raw JSON (snapshot card)"
+                      value={doc}
+                      frameClassName="mt-2 border-t border-border pt-2"
+                      preClassName="max-h-32 text-[10px]"
+                    />
                   </>
                 )}
               </Card>
@@ -744,7 +771,7 @@ export function MobileAnalyticsSummariesPanel() {
           (not a ratio). Pair with daily <code className="text-xs">counts.raw_event.*</code> or the event export for
           context.
         </p>
-        <ScrollArea className="h-64 rounded border border-border">
+        <div className="max-h-64 overflow-auto rounded border border-border">
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-border text-left">
@@ -763,7 +790,7 @@ export function MobileAnalyticsSummariesPanel() {
               ))}
             </tbody>
           </table>
-        </ScrollArea>
+        </div>
       </Card>
 
       {/* Date range + export */}
@@ -804,7 +831,7 @@ export function MobileAnalyticsSummariesPanel() {
             {derivedRunBusy ? "Running…" : "Run Phase 4 + 5 derived for range"}
           </Button>
         </div>
-        <div className="rounded-md border border-border bg-muted/20 p-3 space-y-3 overflow-hidden">
+        <div className="rounded-md border border-border bg-muted/20 p-3 space-y-3">
           <p className="text-xs text-muted-foreground">
             After <strong>Run Phase 4 + 5</strong>, metrics below reflect the job output (or load range summaries).
             “Time-to-first” style rows count users whose <strong>first-ever</strong> Expansion DM / match-message click was
@@ -812,7 +839,7 @@ export function MobileAnalyticsSummariesPanel() {
           </p>
           {derivedRunError ? <p className="text-sm text-destructive">{derivedRunError}</p> : null}
           {derivedDaysToShow.length > 0 ? (
-            <div className="max-h-[min(28rem,70vh)] min-h-0 overflow-y-auto overflow-x-hidden rounded-md border border-border bg-background pr-1">
+            <div className="relative isolate z-0 max-h-[min(28rem,70vh)] min-h-0 overflow-y-auto overflow-x-hidden rounded-md border border-border bg-background pr-1">
               <div className="p-2">
                 <FriendlyDerivedMetricsReport
                   days={derivedDaysToShow}
@@ -826,12 +853,12 @@ export function MobileAnalyticsSummariesPanel() {
             </div>
           ) : null}
           {derivedRunResult ? (
-            <details className="text-xs">
-              <summary className="cursor-pointer text-muted-foreground hover:text-foreground">Technical job response</summary>
-              <pre className="text-[11px] leading-relaxed whitespace-pre-wrap break-all rounded border border-border bg-background p-2 mt-2 max-h-32 overflow-auto">
-                {formatJson(derivedRunResult)}
-              </pre>
-            </details>
+            <LazyJsonDisclosure
+              label="Technical job response"
+              value={derivedRunResult}
+              frameClassName=""
+              preClassName="max-h-32 text-[11px]"
+            />
           ) : null}
         </div>
         <div>
@@ -873,24 +900,20 @@ export function MobileAnalyticsSummariesPanel() {
         {rangeError ? <p className="text-sm text-destructive">{rangeError}</p> : null}
         {exportStatus ? <p className="text-sm text-muted-foreground">{exportStatus}</p> : null}
         {rangeSummaries?.daily_metrics_by_date ? (
-          <details className="rounded-md border border-border bg-muted/10 p-2">
-            <summary className="cursor-pointer text-xs font-medium text-foreground select-none">
-              Raw JSON — daily_metrics by date (collapsed)
-            </summary>
-            <pre className="mt-2 max-h-52 overflow-auto rounded border border-border bg-background p-2 text-[11px] whitespace-pre-wrap break-all">
-              {formatJson(rangeSummaries.daily_metrics_by_date)}
-            </pre>
-          </details>
+          <LazyJsonDisclosure
+            label="Raw JSON — daily_metrics by date (click to expand)"
+            value={rangeSummaries.daily_metrics_by_date}
+            frameClassName="rounded-md border border-border bg-muted/10 p-2"
+            preClassName="max-h-[min(24rem,55vh)] text-[11px]"
+          />
         ) : null}
         {rangeSummaries?.derived_metrics_by_date ? (
-          <details className="rounded-md border border-border bg-muted/10 p-2">
-            <summary className="cursor-pointer text-xs font-medium text-foreground select-none">
-              Raw JSON — derived_metrics by date (collapsed)
-            </summary>
-            <pre className="mt-2 max-h-52 overflow-auto rounded border border-border bg-background p-2 text-[11px] whitespace-pre-wrap break-all">
-              {formatJson(rangeSummaries.derived_metrics_by_date)}
-            </pre>
-          </details>
+          <LazyJsonDisclosure
+            label="Raw JSON — derived_metrics by date (click to expand)"
+            value={rangeSummaries.derived_metrics_by_date}
+            frameClassName="rounded-md border border-border bg-muted/10 p-2"
+            preClassName="max-h-[min(24rem,55vh)] text-[11px]"
+          />
         ) : null}
       </Card>
     </div>
