@@ -17,6 +17,7 @@ export { ingestWebAnalytics } from "./callables/ingestWebAnalytics";
 export { markNotificationReadBackend } from "./callables/markNotificationReadBackend";
 export { getPhase5DashboardMetrics } from "./callables/getPhase5DashboardMetrics";
 export { queryAdminWebAnalyticsEvents } from "./callables/queryAdminWebAnalyticsEvents";
+export { queryAdminAnalyticsEventsDateRange } from "./callables/queryAdminAnalyticsEventsDateRange";
 export { getAdminMobileAnalyticsDashboard } from "./callables/getAdminMobileAnalyticsDashboard";
 export { getAdminMobileAnalyticsRangeSummaries } from "./callables/getAdminMobileAnalyticsRangeSummaries";
 export { getAdminUserAnalyticsSummary } from "./callables/getAdminUserAnalyticsSummary";

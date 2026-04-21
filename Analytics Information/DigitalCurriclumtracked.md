@@ -216,6 +216,7 @@ Typed helpers live in `Digital Curriculum/src/app/analytics/intents.ts` (`mortar
   - shop → add to cart
 - **Dashboard callable:** `getPhase5DashboardMetrics` (Admin/superAdmin; returns window totals + derived + funnels + **`daily_series`** per UTC day for trend charts). Optional **`include_debug: true`** returns a **`debug`** payload (`auth_path`, role sources, UTC window, full **`totals_counts`** map) for comparing against `daily_metrics` in production; the Admin Analytics panel requests it and shows JSON in a collapsible “Debug payload” block (temporary until dashboards are trusted).
 - **Raw explorer callable:** `queryAdminWebAnalyticsEvents` (Admin/superAdmin; recent normalized rows from `analytics_events` for QA).
+- **Date-range raw export callable:** `queryAdminAnalyticsEventsDateRange` (Admin/superAdmin; paginated `analytics_events` by inclusive UTC bounds on **`created_at`** then **`timestamp`**, max 92-day window per invocation, 500 rows per page). Wired from **Admin → Analytics → Raw Firestore export** in `AnalyticsDashboardPanel.tsx` (client loops both streams and downloads one JSON bundle).
 - **Admin frontend section:** `Admin.tsx` tab `analytics` renders `components/admin/AnalyticsDashboardPanel.tsx`. Tab **`reports`** renders `components/admin/AdminGoalReportsPanel.tsx` (goal buckets: overview, conversion counters, learning, community, shop, friction, users/segments headline, admin activity, raw event table).
 
 ### 5.1 Phase 5 notification events

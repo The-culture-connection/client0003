@@ -1,9 +1,30 @@
 import { useEffect, useMemo, useState } from "react";
 import { httpsCallable } from "firebase/functions";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Loader2, RefreshCw, Download } from "lucide-react";
 import { Card } from "../ui/card";
 import { Button } from "../ui/button";
+import { Label } from "../ui/label";
 import { functions } from "../../lib/firebase";
+
+const RAW_EXPORT_PAGE = 500;
+const MAX_RAW_EXPORT_ROWS = 100_000;
+
+function utcDateStringShiftDays(from: Date, deltaDays: number): string {
+  const d = new Date(from.getTime());
+  d.setUTCDate(d.getUTCDate() + deltaDays);
+  return d.toISOString().slice(0, 10);
+}
+
+function utcRangeInclusiveBounds(
+  startDay: string,
+  endDay: string
+): { afterMs: number; beforeMs: number } {
+  const [sy, sm, sd] = startDay.split("-").map(Number);
+  const [ey, em, ed] = endDay.split("-").map(Number);
+  const afterMs = Date.UTC(sy, sm - 1, sd, 0, 0, 0, 0);
+  const beforeMs = Date.UTC(ey, em - 1, ed, 23, 59, 59, 999);
+  return { afterMs, beforeMs };
+}
 
 interface Phase5DebugPayload {
   uid: string;
@@ -83,6 +104,12 @@ export function AnalyticsDashboardPanel() {
   const [snapshot, setSnapshot] = useState<Phase5Snapshot | null>(null);
   const [debugPayload, setDebugPayload] = useState<Phase5DebugPayload | null>(null);
 
+  const [rawStart, setRawStart] = useState(() => utcDateStringShiftDays(new Date(), -7));
+  const [rawEnd, setRawEnd] = useState(() => new Date().toISOString().slice(0, 10));
+  const [rawExporting, setRawExporting] = useState(false);
+  const [rawError, setRawError] = useState<string | null>(null);
+  const [rawProgress, setRawProgress] = useState<string | null>(null);
+
   const load = async (windowDays: number) => {
     setLoading(true);
     setError(null);
@@ -113,6 +140,90 @@ export function AnalyticsDashboardPanel() {
     void load(days);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [days]);
+
+  const downloadRawAnalyticsEvents = async () => {
+    setRawError(null);
+    setRawProgress(null);
+    const { afterMs, beforeMs } = utcRangeInclusiveBounds(rawStart, rawEnd);
+    if (Number.isNaN(afterMs) || Number.isNaN(beforeMs)) {
+      setRawError("Use valid YYYY-MM-DD dates.");
+      return;
+    }
+    if (beforeMs < afterMs) {
+      setRawError("End date must be on or after start date.");
+      return;
+    }
+    setRawExporting(true);
+    try {
+      const fn = httpsCallable(functions, "queryAdminAnalyticsEventsDateRange");
+      const normalized: Record<string, unknown>[] = [];
+      const legacy: Record<string, unknown>[] = [];
+
+      for (const stream of ["normalized", "legacy"] as const) {
+        let cursor: string | undefined;
+        let page = 0;
+        do {
+          page += 1;
+          setRawProgress(`${stream}… page ${page}`);
+          const res = await fn({
+            stream,
+            created_after_ms: afterMs,
+            created_before_ms: beforeMs,
+            limit: RAW_EXPORT_PAGE,
+            ...(cursor ? { start_after_id: cursor } : {}),
+          });
+          const d = res.data as {
+            success?: boolean;
+            events?: Record<string, unknown>[];
+            next_cursor?: string | null;
+          };
+          if (!d.success || !Array.isArray(d.events)) {
+            throw new Error("Invalid server response");
+          }
+          const bucket = stream === "normalized" ? normalized : legacy;
+          bucket.push(...d.events);
+          if (normalized.length + legacy.length > MAX_RAW_EXPORT_ROWS) {
+            throw new Error(`Export exceeds ${MAX_RAW_EXPORT_ROWS} rows; narrow the date range.`);
+          }
+          if (!d.next_cursor || d.events.length === 0) break;
+          cursor = d.next_cursor ?? undefined;
+        } while (true);
+      }
+
+      const payload = {
+        export_label: "analytics_events_raw_range",
+        range: {
+          start_date_utc: rawStart,
+          end_date_utc: rawEnd,
+          created_after_ms: afterMs,
+          created_before_ms: beforeMs,
+        },
+        analytics_events_normalized_created_at: normalized,
+        analytics_events_legacy_timestamp: legacy,
+        counts: { normalized_created_at: normalized.length, legacy_timestamp: legacy.length },
+      };
+
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `analytics_events_raw_${rawStart}_${rawEnd}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setRawProgress(`Done — ${normalized.length} normalized + ${legacy.length} legacy rows.`);
+    } catch (e: unknown) {
+      const msg =
+        e && typeof e === "object" && "message" in e
+          ? String((e as { message: unknown }).message)
+          : e instanceof Error
+            ? e.message
+            : "Export failed";
+      setRawError(msg);
+      setRawProgress(null);
+    } finally {
+      setRawExporting(false);
+    }
+  };
 
   const topCounters = useMemo(() => {
     const c = snapshot?.totals.counts ?? {};
@@ -163,6 +274,68 @@ export function AnalyticsDashboardPanel() {
             </Button>
           </div>
         </div>
+
+        <div className="mt-6 pt-6 border-t border-border">
+          <h3 className="text-sm font-semibold text-foreground mb-1">Raw Firestore export</h3>
+          <p className="text-xs text-muted-foreground mb-3 max-w-3xl">
+            Download JSON for <code className="text-[11px] bg-muted px-1 rounded">analytics_events</code> using
+            inclusive UTC calendar days. The file includes two passes: documents with{" "}
+            <code className="text-[11px] bg-muted px-1 rounded">created_at</code> in range (web + normalized server
+            writes), then documents with <code className="text-[11px] bg-muted px-1 rounded">timestamp</code> in range
+            (older <code className="text-[11px] bg-muted px-1 rounded">event_type</code> rows). Callable{" "}
+            <code className="text-[11px] bg-muted px-1 rounded">queryAdminAnalyticsEventsDateRange</code> (max 92 days
+            per request; client pages until each stream is exhausted).
+          </p>
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="space-y-1">
+              <Label htmlFor="raw-export-start" className="text-xs text-muted-foreground">
+                Start (UTC date)
+              </Label>
+              <input
+                id="raw-export-start"
+                type="date"
+                value={rawStart}
+                onChange={(e) => setRawStart(e.target.value)}
+                disabled={rawExporting}
+                className="px-3 py-2 rounded-md border border-border bg-background text-foreground text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="raw-export-end" className="text-xs text-muted-foreground">
+                End (UTC date)
+              </Label>
+              <input
+                id="raw-export-end"
+                type="date"
+                value={rawEnd}
+                onChange={(e) => setRawEnd(e.target.value)}
+                disabled={rawExporting}
+                className="px-3 py-2 rounded-md border border-border bg-background text-foreground text-sm"
+              />
+            </div>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => void downloadRawAnalyticsEvents()}
+              disabled={rawExporting}
+            >
+              {rawExporting ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : (
+                <Download className="w-4 h-4 mr-2" />
+              )}
+              Download raw JSON
+            </Button>
+          </div>
+          {rawError ? (
+            <p className="text-xs text-destructive mt-2" role="alert">
+              {rawError}
+            </p>
+          ) : null}
+          {rawProgress ? <p className="text-xs text-muted-foreground mt-2">{rawProgress}</p> : null}
+        </div>
+
         {snapshot ? (
           <p className="text-xs text-muted-foreground mt-3">
             Window: {snapshot.start_date_utc} to {snapshot.end_date_utc} ({snapshot.window_days} days)
