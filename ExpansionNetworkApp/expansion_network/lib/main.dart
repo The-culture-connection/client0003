@@ -4,6 +4,9 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import 'analytics/analytics_error_hooks.dart';
+import 'analytics/analytics_navigation_binding.dart';
+import 'analytics/analytics_service.dart';
 import 'auth/auth_controller.dart';
 import 'expansion_release_trace.dart';
 import 'firebase_options.dart';
@@ -19,6 +22,8 @@ Future<void> main() async {
     runApp(const _FirebaseBridgeLostApp());
     return;
   }
+
+  installAnalyticsGlobalErrorHooks(AnalyticsService.instance);
 
   final authController = AuthController();
   final router = createAppRouter(authController);
@@ -133,15 +138,30 @@ class ExpansionNetworkApp extends StatefulWidget {
 }
 
 class _ExpansionNetworkAppState extends State<ExpansionNetworkApp> {
+  VoidCallback? _detachAnalyticsNavigation;
+
   @override
   void initState() {
     super.initState();
+    _detachAnalyticsNavigation = attachAnalyticsToGoRouter(
+      widget.router,
+      AnalyticsService.instance,
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      syncAnalyticsNavigationOnce(widget.router, AnalyticsService.instance);
+    });
     // Profile / Release: subscribing in [AuthController]'s constructor runs in the same
     // synchronous startup window as native Firebase + Keychain; defer one frame so Swift
     // concurrency / Auth keychain work is less likely to overlap (see ApplicationNotes).
     WidgetsBinding.instance.addPostFrameCallback((_) {
       widget.authController.attachAuthListener();
     });
+  }
+
+  @override
+  void dispose() {
+    _detachAnalyticsNavigation?.call();
+    super.dispose();
   }
 
   @override
