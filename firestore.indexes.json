@@ -141,6 +141,14 @@
         { "fieldPath": "created_at", "order": "DESCENDING" },
         { "fieldPath": "__name__", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "expansion_analytics_events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "ingested_at", "order": "DESCENDING" },
+        { "fieldPath": "__name__", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

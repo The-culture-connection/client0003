@@ -18,9 +18,15 @@ if (getApps().length === 0) {
 const db = getFirestore();
 const auth = getAuth();
 
+const MAX_RANGE_MS = 92 * 24 * 60 * 60 * 1000;
+
 const schema = z.object({
   limit: z.number().int().min(1).max(500).default(200),
   start_after_id: z.string().optional(),
+  /** Inclusive lower bound on `ingested_at` (epoch ms). */
+  ingested_after_ms: z.number().int().optional(),
+  /** Inclusive upper bound on `ingested_at` (epoch ms). */
+  ingested_before_ms: z.number().int().optional(),
 });
 
 function normalizeRoles(input: unknown): string[] {
@@ -50,6 +56,8 @@ function millis(ts: unknown): number | null {
 }
 
 function toRow(id: string, data: DocumentData) {
+  const ce = data.client_emitted_at;
+  const ing = data.ingested_at;
   return {
     id,
     event_name: data.event_name ?? null,
@@ -57,8 +65,10 @@ function toRow(id: string, data: DocumentData) {
     session_id: data.session_id ?? null,
     screen: data.screen ?? null,
     route: data.route ?? null,
-    client_emitted_at_ms: millis(data.client_emitted_at),
-    ingested_at_ms: millis(data.ingested_at),
+    client_emitted_at_ms: millis(ce),
+    ingested_at_ms: millis(ing),
+    client_emitted_at_iso: ce instanceof Timestamp ? ce.toDate().toISOString() : null,
+    ingested_at_iso: ing instanceof Timestamp ? ing.toDate().toISOString() : null,
     properties: data.properties ?? null,
   };
 }
@@ -83,11 +93,31 @@ export const queryAdminExpansionAnalyticsEvents = onCall(
 
     const limit = parsed.data.limit;
     const startAfterId = parsed.data.start_after_id;
+    const afterMs = parsed.data.ingested_after_ms;
+    const beforeMs = parsed.data.ingested_before_ms;
+
+    if (afterMs != null && beforeMs != null && beforeMs < afterMs) {
+      throw new HttpsError("invalid-argument", "ingested_before_ms must be >= ingested_after_ms");
+    }
+    if (afterMs != null && beforeMs != null && beforeMs - afterMs > MAX_RANGE_MS) {
+      throw new HttpsError(
+        "invalid-argument",
+        "ingested time window too large (max 92 days); narrow the range or export in chunks"
+      );
+    }
 
     let q = db
       .collection(ANALYTICS_COLLECTIONS.EXPANSION_ANALYTICS_EVENTS)
-      .orderBy("ingested_at", "desc")
-      .limit(limit);
+      .orderBy("ingested_at", "desc");
+
+    if (afterMs != null) {
+      q = q.where("ingested_at", ">=", Timestamp.fromMillis(afterMs));
+    }
+    if (beforeMs != null) {
+      q = q.where("ingested_at", "<=", Timestamp.fromMillis(beforeMs));
+    }
+
+    q = q.limit(limit);
 
     if (startAfterId) {
       const cursor = await db.collection(ANALYTICS_COLLECTIONS.EXPANSION_ANALYTICS_EVENTS).doc(startAfterId).get();

@@ -18,6 +18,9 @@ export { markNotificationReadBackend } from "./callables/markNotificationReadBac
 export { getPhase5DashboardMetrics } from "./callables/getPhase5DashboardMetrics";
 export { queryAdminWebAnalyticsEvents } from "./callables/queryAdminWebAnalyticsEvents";
 export { getAdminMobileAnalyticsDashboard } from "./callables/getAdminMobileAnalyticsDashboard";
+export { getAdminMobileAnalyticsRangeSummaries } from "./callables/getAdminMobileAnalyticsRangeSummaries";
+export { getAdminUserAnalyticsSummary } from "./callables/getAdminUserAnalyticsSummary";
+export { batchGetUserAnalyticsSummaries } from "./callables/batchGetUserAnalyticsSummaries";
 export { queryAdminExpansionAnalyticsEvents } from "./callables/queryAdminExpansionAnalyticsEvents";
 export { onAnalyticsRawEventCreated } from "./analytics/triggers/onAnalyticsRawEventCreated";
 export { onExpansionAnalyticsEventCreated } from "./analytics/triggers/onExpansionAnalyticsEventCreated";

@@ -1,5 +1,5 @@
 /**
- * Admin-only: read Phase-4 mobile summary docs (daily_metrics, funnels, friction) for the dashboard tab.
+ * Admin-only: read one `user_analytics_summary/{userId}` (Phase 4 mobile + web rollups).
  */
 
 import { onCall, HttpsError } from "firebase-functions/v2/https";
@@ -9,7 +9,6 @@ import { getFirestore } from "firebase-admin/firestore";
 import { z } from "zod";
 import { callableCorsAllowlist } from "../callableCorsAllowlist";
 import { ANALYTICS_COLLECTIONS } from "../analytics/mortarAnalyticsContract";
-import { previousUtcYyyyMmDd, utcYyyyMmDd } from "../analytics/summary/phase4WebEventRollup";
 import { serializeFirestoreValue } from "./adminAnalyticsSerialize";
 
 if (getApps().length === 0) {
@@ -19,7 +18,9 @@ if (getApps().length === 0) {
 const db = getFirestore();
 const auth = getAuth();
 
-const schema = z.object({}).strict();
+const schema = z.object({
+  user_id: z.string().min(1).max(200),
+});
 
 function normalizeRoles(input: unknown): string[] {
   if (!Array.isArray(input)) return [];
@@ -42,7 +43,7 @@ async function assertAnalyticsAdmin(uid: string): Promise<void> {
   }
 }
 
-export const getAdminMobileAnalyticsDashboard = onCall(
+export const getAdminUserAnalyticsSummary = onCall(
   { region: "us-central1", cors: callableCorsAllowlist },
   async (request) => {
     const callerUid = request.auth?.uid;
@@ -60,43 +61,15 @@ export const getAdminMobileAnalyticsDashboard = onCall(
       await assertAnalyticsAdmin(callerUid);
     }
 
-    const todayKey = utcYyyyMmDd(new Date());
-    const yesterdayKey = previousUtcYyyyMmDd(todayKey);
-
-    const [todaySnap, yesterdaySnap] = await Promise.all([
-      db.collection(ANALYTICS_COLLECTIONS.DAILY_METRICS).doc(todayKey).get(),
-      db.collection(ANALYTICS_COLLECTIONS.DAILY_METRICS).doc(yesterdayKey).get(),
-    ]);
-
-    const funnelIds = ["auth", "onboarding", "matching", "job_to_message", "event_to_rsvp"] as const;
-    const funnelSnaps = await Promise.all(
-      funnelIds.map((id) => db.collection(ANALYTICS_COLLECTIONS.FUNNEL_SUMMARY).doc(id).get())
-    );
-
-    const frictionSnap = await db.collection(ANALYTICS_COLLECTIONS.FRICTION_SUMMARY).limit(500).get();
-
-    const funnels: Record<string, unknown> = {};
-    funnelIds.forEach((id, i) => {
-      funnels[id] = funnelSnaps[i].exists ? serializeFirestoreValue(funnelSnaps[i].data()) : null;
-    });
-
-    const friction = frictionSnap.docs.map((d) => ({
-      id: d.id,
-      ...(serializeFirestoreValue(d.data()) as Record<string, unknown>),
-    }));
-
+    const uid = parsed.data.user_id;
+    const snap = await db.collection(ANALYTICS_COLLECTIONS.USER_ANALYTICS_SUMMARY).doc(uid).get();
+    if (!snap.exists) {
+      return { success: true, user_id: uid, summary: null };
+    }
     return {
       success: true,
-      date_utc_today: todayKey,
-      date_utc_yesterday: yesterdayKey,
-      daily_metrics_today: todaySnap.exists ? serializeFirestoreValue(todaySnap.data()) : null,
-      daily_metrics_yesterday: yesterdaySnap.exists ? serializeFirestoreValue(yesterdaySnap.data()) : null,
-      funnel_summary: funnels,
-      friction_summary: friction,
-      notes: {
-        funnel_and_friction:
-          "Funnel and friction documents are cumulative since they were first written (not reset per day). Use daily_metrics_by_date from getAdminMobileAnalyticsRangeSummaries for per-day rollups.",
-      },
+      user_id: uid,
+      summary: serializeFirestoreValue(snap.data()) as Record<string, unknown>,
     };
   }
 );

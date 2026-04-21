@@ -194,6 +194,8 @@ Typed helpers live in `Digital Curriculum/src/app/analytics/intents.ts` (`mortar
 
 **Deploy:** deploy Cloud Functions so `onAnalyticsWebEventCreated` and `scheduledPhase4DerivedMetrics` are live. Firestore rules allow users to read their own `user_analytics_summary`; staff read on aggregates.
 
+**Expansion mobile (same Phase 4 pattern, different stream):** `onExpansionAnalyticsEventCreated` rolls `expansion_analytics_events` into `user_analytics_summary`, `daily_metrics`, `funnel_summary`, `friction_summary`, `community_summary`, `matching_summary`, and `job_summary` (see `Analytics Information/Mobileappevents.md`). **Admin → Mobile analytics** (`MobileAnalyticsSummariesPanel.tsx`) shows full **daily** rollups (today/yesterday + optional UTC date range), per-funnel step counts, friction rows, **per-user summary lookup**, and a **JSON bundle download** for a chosen UTC range: range `daily_metrics`, cumulative funnel/friction snapshots, all raw events with `ingested_at` in the window (paginated, capped), and `user_analytics_summary` for distinct `user_id`s seen in those events (batched). Callables: `getAdminMobileAnalyticsDashboard`, `getAdminMobileAnalyticsRangeSummaries`, `getAdminUserAnalyticsSummary`, `batchGetUserAnalyticsSummaries`, `queryAdminExpansionAnalyticsEvents` (optional `ingested_after_ms` / `ingested_before_ms`).
+
 ---
 
 ## 5. Phase 5 — derived metrics + funnels
