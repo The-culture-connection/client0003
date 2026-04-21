@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../profile/profile_edit_sections.dart';
 import '../profile/profile_utils.dart';
 import '../theme/app_theme.dart';
+import 'earned_badges_strip.dart';
 
 class ProfileAvatar extends StatelessWidget {
   const ProfileAvatar({super.key, required this.photoUrl, required this.initials});
@@ -181,6 +182,8 @@ class ProfileAchievementsCard extends StatelessWidget {
             'From your curriculum activity',
             style: TextStyle(fontSize: 12, color: AppColors.mutedForeground.withValues(alpha: 0.9)),
           ),
+          const SizedBox(height: 12),
+          EarnedBadgesStrip(profileData: data),
           const SizedBox(height: 16),
           GridView.count(
             shrinkWrap: true,

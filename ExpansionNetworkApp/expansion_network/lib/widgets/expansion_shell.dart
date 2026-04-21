@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../analytics/expansion_analytics.dart';
 import '../theme/app_theme.dart';
+import 'badge_earned_session_listener.dart';
 
 /// Bottom navigation matching [UI Basis/src/app/components/BottomNav.tsx]:
 /// Home, Events, Groups, Explore, Profile.
@@ -46,7 +47,9 @@ class ExpansionShell extends StatelessWidget {
     return Scaffold(
       body: SafeArea(
         bottom: false,
-        child: navigationShell,
+        child: BadgeEarnedSessionListener(
+          child: navigationShell,
+        ),
       ),
       bottomNavigationBar: SafeArea(
         top: false,

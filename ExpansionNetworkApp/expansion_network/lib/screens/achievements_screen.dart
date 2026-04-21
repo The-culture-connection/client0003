@@ -1,10 +1,12 @@
 import 'dart:async';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../analytics/expansion_analytics.dart';
+import '../badge/badge_platform_utils.dart';
 import '../models/badge_definition.dart';
 import '../services/badge_repository.dart';
 import '../services/user_profile_repository.dart';
@@ -63,7 +65,7 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
               if (defSnap.connectionState == ConnectionState.waiting && !defSnap.hasData) {
                 return const Center(child: CircularProgressIndicator(color: AppColors.primary));
               }
-              final defs = defSnap.data ?? [];
+              final defs = (defSnap.data ?? []).where((d) => badgeVisibleOnExpansionMobile(d.platform)).toList();
               if (defs.isEmpty) {
                 if (!_emptyDefinitionsEventLogged) {
                   _emptyDefinitionsEventLogged = true;
@@ -147,6 +149,8 @@ class _BadgeTile extends StatelessWidget {
       if (mc is num) hint = '${hint != null ? '$hint · ' : ''}Requires ${mc.toInt()}+ comments';
     }
 
+    final img = definition.imageUrl;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Container(
@@ -159,10 +163,31 @@ class _BadgeTile extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              unlocked ? Icons.military_tech : Icons.lock_outline,
-              color: unlocked ? AppColors.primary : AppColors.mutedForeground,
-            ),
+            if (img != null && img.isNotEmpty)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: CachedNetworkImage(
+                  imageUrl: img,
+                  width: 48,
+                  height: 48,
+                  fit: BoxFit.cover,
+                  placeholder: (_, __) => const SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))),
+                  ),
+                  errorWidget: (_, __, ___) => Icon(
+                    unlocked ? Icons.military_tech : Icons.lock_outline,
+                    color: unlocked ? AppColors.primary : AppColors.mutedForeground,
+                    size: 40,
+                  ),
+                ),
+              )
+            else
+              Icon(
+                unlocked ? Icons.military_tech : Icons.lock_outline,
+                color: unlocked ? AppColors.primary : AppColors.mutedForeground,
+              ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(

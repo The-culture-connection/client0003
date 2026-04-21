@@ -28,6 +28,8 @@ interface BadgeDefinitionDoc {
   name?: string;
   description?: string;
   image_url?: string;
+  /** `digital_curriculum` | `expansion_mobile` | `both` — missing = both (legacy). */
+  platform?: string;
   active?: boolean;
   award_mode?: AwardMode;
   rule?: RuleShape | null;
@@ -53,6 +55,18 @@ function hasPhase6Rule(d: BadgeDefinitionDoc): boolean {
 
 function isActiveDef(d: BadgeDefinitionDoc): boolean {
   return d.active !== false;
+}
+
+function effectivePlatform(d: BadgeDefinitionDoc): string {
+  const p = (d.platform ?? "").trim();
+  if (p === "digital_curriculum" || p === "expansion_mobile" || p === "both") return p;
+  return "both";
+}
+
+/** Digital Curriculum badge dialog: hide Expansion-only definitions from lists. */
+function visibleOnDigitalCurriculum(d: BadgeDefinitionDoc): boolean {
+  const p = effectivePlatform(d);
+  return p === "digital_curriculum" || p === "both";
 }
 
 function nextGoalThreshold(def: BadgeDefinitionDoc, timesAwarded: number): number {
@@ -171,6 +185,7 @@ export function UserBadgeSuiteDialog({ open, onOpenChange, userId, accountLabel 
 
     for (const def of definitions) {
       if (!isActiveDef(def)) continue;
+      if (!visibleOnDigitalCurriculum(def)) continue;
 
       const aw = awardedMap[def.id];
       const pr = progressByBadge[def.id];

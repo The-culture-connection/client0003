@@ -13,7 +13,10 @@ import { Loader2, Trash2, Upload, ImageIcon, Check, Info } from "lucide-react";
 const BADGE_DEFINITIONS = "badge_definitions";
 const BADGE_BANK = "badge_bank";
 
-/** Counters available on `user_analytics_summary.counts` for Phase 6 rules (v1). */
+/** Where this badge is intended to surface (client filtering + admin metric presets). */
+export type BadgeDefinitionPlatform = "digital_curriculum" | "expansion_mobile" | "both";
+
+/** Counters from web curriculum rollups on `user_analytics_summary.counts`. */
 const METRIC_KEY_OPTIONS = [
   "lessons_completed",
   "lessons_started",
@@ -35,6 +38,25 @@ const METRIC_KEY_OPTIONS = [
   "admin_shop_item_created",
 ] as const;
 
+/** Counters incremented by Expansion mobile Phase-4 rollups (`expansionMobileEventRollup`). */
+const EXPANSION_METRIC_KEY_OPTIONS = [
+  "total_posts_created",
+  "total_comments",
+  "total_messages_sent",
+  "total_groups_joined",
+  "total_events_registered",
+  "total_jobs_created",
+  "total_skills_created",
+  "total_matches_messaged",
+  "onboarding_completed",
+] as const;
+
+function metricKeysForPlatform(platform: BadgeDefinitionPlatform): readonly string[] {
+  if (platform === "expansion_mobile") return EXPANSION_METRIC_KEY_OPTIONS;
+  if (platform === "digital_curriculum") return METRIC_KEY_OPTIONS;
+  return Array.from(new Set([...METRIC_KEY_OPTIONS, ...EXPANSION_METRIC_KEY_OPTIONS]));
+}
+
 const OPERATORS = ["gte", "gt", "lte", "lt", "eq"] as const;
 
 export interface BadgeBankAsset {
@@ -50,6 +72,8 @@ export interface BadgeDefinitionRow {
   name?: string;
   description?: string;
   image_url?: string;
+  /** `digital_curriculum` | `expansion_mobile` | `both` — defaults to `both` when missing (legacy). */
+  platform?: BadgeDefinitionPlatform | string;
   display_order?: number;
   tier?: string;
   active?: boolean;
@@ -81,7 +105,8 @@ function BadgeOperatorReference() {
         The rule compares the current <strong>metric</strong> value (from{" "}
         <code className="rounded bg-muted px-1 py-0.5 text-[11px]">user_analytics_summary.counts</code>) to your{" "}
         <strong>threshold</strong>. Timeframe is <code className="rounded bg-muted px-1 py-0.5 text-[11px]">all_time</code>{" "}
-        in v1.
+        in v1. <strong>Platform</strong> chooses preset metrics and where the badge appears (Digital Curriculum admin vs
+        Expansion mobile); awards still use the same summary document.
       </p>
       <div className="overflow-x-auto rounded-md border border-border bg-background/60">
         <table className="w-full text-left text-xs">
@@ -121,6 +146,11 @@ function BadgeOperatorReference() {
   );
 }
 
+function normalizePlatformFromDoc(p: unknown): BadgeDefinitionPlatform {
+  if (p === "digital_curriculum" || p === "expansion_mobile" || p === "both") return p;
+  return "both";
+}
+
 /** Firestore doc id from badge title: lowercase, spaces → underscores, then non [a-z0-9_] → _. */
 function slugifyBadgeId(raw: string): string {
   return raw
@@ -152,6 +182,7 @@ export function AdminBadgesPanel() {
   const [tier, setTier] = useState("");
   const [active, setActive] = useState(true);
   const [awardMode, setAwardMode] = useState<"one_time" | "repeatable">("one_time");
+  const [platform, setPlatform] = useState<BadgeDefinitionPlatform>("digital_curriculum");
   const [metricKey, setMetricKey] = useState<string>(METRIC_KEY_OPTIONS[0]);
   const [operator, setOperator] = useState<string>("gte");
   const [threshold, setThreshold] = useState("1");
@@ -212,6 +243,14 @@ export function AdminBadgesPanel() {
 
   const derivedBadgeId = useMemo(() => slugifyBadgeId(title), [title]);
 
+  const metricKeyChoices = useMemo(() => metricKeysForPlatform(platform), [platform]);
+
+  useEffect(() => {
+    if (!metricKeyChoices.includes(metricKey)) {
+      setMetricKey(metricKeyChoices[0] ?? METRIC_KEY_OPTIONS[0]);
+    }
+  }, [metricKeyChoices, metricKey]);
+
   const resetBadgeForm = useCallback(() => {
     setEditingId(null);
     setTitle("");
@@ -220,6 +259,7 @@ export function AdminBadgesPanel() {
     setTier("");
     setActive(true);
     setAwardMode("one_time");
+    setPlatform("digital_curriculum");
     setMetricKey(METRIC_KEY_OPTIONS[0]);
     setOperator("gte");
     setThreshold("1");
@@ -237,6 +277,7 @@ export function AdminBadgesPanel() {
     setTier(b.tier ?? "");
     setActive(b.active !== false);
     setAwardMode(b.award_mode === "repeatable" ? "repeatable" : "one_time");
+    setPlatform(normalizePlatformFromDoc(b.platform));
     const r = b.rule;
     setMetricKey(typeof r?.metric_key === "string" ? r.metric_key : METRIC_KEY_OPTIONS[0]);
     setOperator(typeof r?.operator === "string" ? r.operator : "gte");
@@ -357,6 +398,7 @@ export function AdminBadgesPanel() {
       const payload: Record<string, unknown> = {
         name: title.trim(),
         description: description.trim(),
+        platform,
         display_order: Math.max(0, parseInt(displayOrder, 10) || 0),
         tier: tier.trim() || null,
         active,
@@ -480,7 +522,9 @@ export function AdminBadgesPanel() {
             <p className="text-sm text-muted-foreground mt-1">
               Rules read <code className="text-xs bg-muted px-1">user_analytics_summary</code> counters (
               <code className="text-xs bg-muted px-1">all_time</code> only in v1). One-time badges also sync to{" "}
-              <code className="text-xs bg-muted px-1">users.badges.earned</code> on first award.
+              <code className="text-xs bg-muted px-1">users.badges.earned</code> on first award. Choose{" "}
+              <strong>platform</strong> so the right metric presets and in-app surfaces apply (Expansion vs Digital
+              Curriculum).
             </p>
           </div>
           <Button type="button" variant="outline" size="sm" onClick={resetBadgeForm}>
@@ -538,6 +582,22 @@ export function AdminBadgesPanel() {
               Active
             </label>
             <div className="space-y-2">
+              <Label className="text-foreground">Platform</Label>
+              <select
+                value={platform}
+                onChange={(e) => setPlatform(e.target.value as BadgeDefinitionPlatform)}
+                className="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground text-sm"
+              >
+                <option value="digital_curriculum">Digital Curriculum (web curriculum metrics)</option>
+                <option value="expansion_mobile">Expansion mobile (network activity metrics)</option>
+                <option value="both">Both apps</option>
+              </select>
+              <p className="text-xs text-muted-foreground">
+                Metric dropdown below follows this choice. Server awards still read the same{" "}
+                <code className="rounded bg-muted px-1 py-0.5 text-[11px]">user_analytics_summary</code> document.
+              </p>
+            </div>
+            <div className="space-y-2">
               <Label className="text-foreground">Award mode</Label>
               <select
                 value={awardMode}
@@ -558,7 +618,7 @@ export function AdminBadgesPanel() {
                   onChange={(e) => setMetricKey(e.target.value)}
                   className="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground text-sm"
                 >
-                  {METRIC_KEY_OPTIONS.map((k) => (
+                  {metricKeyChoices.map((k) => (
                     <option key={k} value={k}>
                       {k}
                     </option>
@@ -671,6 +731,11 @@ export function AdminBadgesPanel() {
                     <div className="min-w-0 flex-1">
                       <p className="font-medium text-foreground truncate">{b.name || b.id}</p>
                       <p className="text-xs text-muted-foreground font-mono">{b.id}</p>
+                      <p className="text-xs text-muted-foreground">
+                        <span className="rounded bg-muted/80 px-1 py-0.5 font-mono">
+                          {normalizePlatformFromDoc(b.platform)}
+                        </span>
+                      </p>
                       {b.rule?.metric_key ? (
                         <p className="text-xs text-muted-foreground">
                           {b.rule.metric_key} {b.rule.operator} {b.rule.threshold} · {b.award_mode || "one_time"}
