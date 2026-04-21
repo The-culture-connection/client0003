@@ -22,6 +22,7 @@ import { InPersonCohortCsvImport } from "@/components/admin/InPersonCohortCsvImp
 import { EligibleUsersAdminPanel } from "@/components/admin/EligibleUsersAdminPanel";
 import { MobileModerationPanel } from "@/components/admin/MobileModerationPanel";
 import { MobileAnalyticsSummariesPanel } from "@/components/admin/MobileAnalyticsSummariesPanel";
+import { AdminBadgesPanel } from "@/components/admin/AdminBadgesPanel";
 
 function isAdminUser(roles: string[] | undefined) {
   const r = roles ?? [];
@@ -77,6 +78,10 @@ export default function AdminDashboard() {
           <TabsTrigger value="mobile-analytics" className="gap-1">
             <LineChart className="w-3.5 h-3.5" />
             Mobile analytics
+          </TabsTrigger>
+          <TabsTrigger value="badges" className="gap-1">
+            <Award className="w-3.5 h-3.5" />
+            Badges
           </TabsTrigger>
         </TabsList>
 
@@ -201,6 +206,16 @@ export default function AdminDashboard() {
             Function rollups). Download merges paginated raw rows for backup / spreadsheet import.
           </p>
           <MobileAnalyticsSummariesPanel />
+        </TabsContent>
+
+        <TabsContent value="badges" className="mt-4">
+          <p className="text-sm text-muted-foreground mb-4 max-w-3xl">
+            Create and edit <code className="text-xs bg-muted px-1 rounded">badge_definitions</code> in Firestore.
+            Use <strong>Where this badge applies</strong> to switch between <strong>Digital Curriculum</strong> metrics
+            (lessons, quizzes, shop, …) and <strong>Expansion app</strong> metrics (posts, DMs, jobs, groups, …). Awards
+            still read <code className="text-xs bg-muted px-1 rounded">user_analytics_summary</code> on the server.
+          </p>
+          <AdminBadgesPanel />
         </TabsContent>
       </Tabs>
     </div>
