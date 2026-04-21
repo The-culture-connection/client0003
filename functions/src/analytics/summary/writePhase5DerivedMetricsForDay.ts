@@ -175,6 +175,38 @@ export async function writePhase5DerivedMetricsForDay(db: Firestore, dateUtc: st
   const matchingCallableStarted = raw(counts, "matching_callable_started");
   const matchingCallableFailed = raw(counts, "matching_callable_failed");
 
+  function utcDayBounds(ymd: string): { start: Timestamp; end: Timestamp } {
+    const [y, mo, da] = ymd.split("-").map((x) => parseInt(x, 10));
+    const start = Timestamp.fromDate(new Date(Date.UTC(y, mo - 1, da, 0, 0, 0, 0)));
+    const end = Timestamp.fromDate(new Date(Date.UTC(y, mo - 1, da, 23, 59, 59, 999)));
+    return { start, end };
+  }
+
+  const { start: dayStart, end: dayEnd } = utcDayBounds(dateUtc);
+  let firstDmUsersThisDay: number | null = null;
+  let firstMatchClickUsersThisDay: number | null = null;
+  try {
+    const [dmCount, matchCount] = await Promise.all([
+      db
+        .collection(ANALYTICS_COLLECTIONS.USER_ANALYTICS_SUMMARY)
+        .where("expansion_first_direct_message_at", ">=", dayStart)
+        .where("expansion_first_direct_message_at", "<=", dayEnd)
+        .count()
+        .get(),
+      db
+        .collection(ANALYTICS_COLLECTIONS.USER_ANALYTICS_SUMMARY)
+        .where("expansion_first_match_message_click_at", ">=", dayStart)
+        .where("expansion_first_match_message_click_at", "<=", dayEnd)
+        .count()
+        .get(),
+    ]);
+    firstDmUsersThisDay = dmCount.data().count;
+    firstMatchClickUsersThisDay = matchCount.data().count;
+  } catch {
+    firstDmUsersThisDay = null;
+    firstMatchClickUsersThisDay = null;
+  }
+
   const funnelDropoffs = {
     expansion_onboarding: {
       onboarding_screen_started: onboardingStarted,
@@ -248,9 +280,11 @@ export async function writePhase5DerivedMetricsForDay(db: Firestore, dateUtc: st
         onboarding_completion_over_signups: webOnboardingRate,
       },
       funnel_dropoffs_daily: funnelDropoffs,
-      time_to_first_signals: {
+      time_to_first_activity: {
+        users_first_direct_message_logged_this_utc_day: firstDmUsersThisDay,
+        users_first_match_message_click_logged_this_utc_day: firstMatchClickUsersThisDay,
         note:
-          "Per-user first-touch timestamps (e.g. expansion_first_direct_message_at) are maintained on user_analytics_summary for drill-down; aggregate latency histograms are not computed in this doc.",
+          "Counts users whose first-ever Expansion mobile DM (or match message click) timestamp falls on this UTC day. For latency from signup, join user_analytics_summary with Auth user metadata separately.",
       },
       derived_computed_at: Timestamp.now(),
     },

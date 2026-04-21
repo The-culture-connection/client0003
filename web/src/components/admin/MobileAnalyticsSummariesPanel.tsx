@@ -63,6 +63,15 @@ function fmtNum(v: unknown, digits = 2): string {
   return v.toFixed(digits);
 }
 
+function asRecord(v: unknown): Record<string, unknown> | null {
+  return v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
+}
+
+function fmtDrop(v: unknown): string {
+  if (v == null || typeof v !== "number" || Number.isNaN(v)) return "—";
+  return `${(v * 100).toFixed(1)}% drop-off`;
+}
+
 function utcYmd(d: Date): string {
   const y = d.getUTCFullYear();
   const m = String(d.getUTCMonth() + 1).padStart(2, "0");
@@ -124,6 +133,75 @@ function MetricRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+type DayDerived = { date: string; doc: Record<string, unknown> };
+
+function FriendlyDerivedMetricsReport({ days, title }: { days: DayDerived[]; title: string }) {
+  if (days.length === 0) {
+    return (
+      <p className="text-xs text-muted-foreground">
+        No <code className="text-xs">derived_metrics</code> rows for this range yet. Run the job for dates that have{" "}
+        <code className="text-xs">daily_metrics</code>.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs font-medium text-foreground">{title}</p>
+      {days.map(({ date, doc }) => {
+        const em = asRecord(doc.expansion_mobile);
+        const density = asRecord(doc.per_user_density);
+        const tt = asRecord(doc.time_to_first_activity) ?? asRecord(doc.time_to_first_signals);
+        const fd = asRecord(doc.funnel_dropoffs_daily);
+        return (
+          <Card key={date} className="p-4 border-border space-y-3">
+            <h4 className="text-sm font-semibold text-foreground">UTC {date}</h4>
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 text-sm">
+              <MetricRow label="Onboarding conversion rate" value={fmtPct(em?.onboarding_conversion_rate)} />
+              <MetricRow label="Event RSVP rate" value={fmtPct(em?.event_rsvp_rate)} />
+              <MetricRow label="Group join rate" value={fmtPct(em?.group_join_rate)} />
+              <MetricRow label="Job → message rate" value={fmtPct(em?.job_to_message_rate)} />
+              <MetricRow label="Match → message rate" value={fmtPct(em?.match_to_message_rate)} />
+              <MetricRow label="Posts per user (÷ DAU)" value={fmtNum(density?.posts_per_dau)} />
+              <MetricRow label="Messages per user (÷ DAU)" value={fmtNum(density?.messages_per_dau)} />
+              <MetricRow
+                label="First DM logged this UTC day (users)"
+                value={String(tt?.users_first_direct_message_logged_this_utc_day ?? "—")}
+              />
+              <MetricRow
+                label="First match msg click logged this UTC day (users)"
+                value={String(tt?.users_first_match_message_click_logged_this_utc_day ?? "—")}
+              />
+            </div>
+            {typeof tt?.note === "string" ? <p className="text-[11px] text-muted-foreground">{tt.note}</p> : null}
+            {fd ? (
+              <div className="space-y-2 border-t border-border pt-2">
+                <p className="text-xs font-medium text-foreground">Drop-off rates (from daily summary counts)</p>
+                {Object.entries(fd).map(([funnelKey, section]) => {
+                  const sec = asRecord(section);
+                  if (!sec) return null;
+                  const drops = Object.entries(sec).filter(([k]) => k.startsWith("drop_"));
+                  if (drops.length === 0) return null;
+                  return (
+                    <div key={funnelKey} className="rounded border border-border/80 p-2 bg-muted/20">
+                      <p className="text-[11px] font-mono text-muted-foreground mb-1">{funnelKey}</p>
+                      <dl className="space-y-0.5">
+                        {drops.map(([k, v]) => (
+                          <MetricRow key={k} label={k.replace(/^drop_/, "")} value={fmtDrop(v)} />
+                        ))}
+                      </dl>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
+
 function FunnelCard({ id, data }: { id: string; data: unknown }) {
   const doc = data && typeof data === "object" && !Array.isArray(data) ? (data as Record<string, unknown>) : null;
   const counts = readCounts(doc);
@@ -161,6 +239,9 @@ export function MobileAnalyticsSummariesPanel() {
   const [derivedRunBusy, setDerivedRunBusy] = useState(false);
   const [derivedRunError, setDerivedRunError] = useState<string | null>(null);
   const [derivedRunResult, setDerivedRunResult] = useState<AdminDerivedRunResp | null>(null);
+  const [highlightDerivedDays, setHighlightDerivedDays] = useState<string[] | null>(null);
+  const [phaseDownloadBusy, setPhaseDownloadBusy] = useState<null | "raw" | "p4" | "p5">(null);
+  const [phaseDownloadStatus, setPhaseDownloadStatus] = useState<string | null>(null);
 
   const loadDashboard = useCallback(async () => {
     setLoading(true);
@@ -182,6 +263,38 @@ export function MobileAnalyticsSummariesPanel() {
 
   const todayCounts = useMemo(() => readCounts(dashboard?.daily_metrics_today ?? null), [dashboard]);
   const yesterdayCounts = useMemo(() => readCounts(dashboard?.daily_metrics_yesterday ?? null), [dashboard]);
+
+  const derivedDaysToShow = useMemo((): DayDerived[] => {
+    const by = rangeSummaries?.derived_metrics_by_date;
+    if (!by || typeof by !== "object") return [];
+    const map = by as Record<string, unknown>;
+    let keys = Object.keys(map).filter((k) => map[k] != null);
+    if (highlightDerivedDays && highlightDerivedDays.length > 0) {
+      const hi = new Set(highlightDerivedDays);
+      keys = keys.filter((k) => hi.has(k));
+    }
+    keys.sort();
+    return keys.map((date) => ({ date, doc: map[date] as Record<string, unknown> }));
+  }, [rangeSummaries?.derived_metrics_by_date, highlightDerivedDays]);
+
+  const fetchRangePack = useCallback(async (): Promise<RangeSummariesResp> => {
+    const rangeFn = httpsCallable(functions, "getAdminMobileAnalyticsRangeSummaries");
+    const rangeRes = await rangeFn({
+      start_date_utc: rangeDates.start,
+      end_date_utc: rangeDates.end,
+    });
+    return rangeRes.data as RangeSummariesResp;
+  }, [rangeDates.start, rangeDates.end]);
+
+  function triggerJsonDownload(payload: unknown, filename: string) {
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   const loadRangeSummaries = async () => {
     setRangeLoading(true);
@@ -212,6 +325,7 @@ export function MobileAnalyticsSummariesPanel() {
       });
       const data = res.data as AdminDerivedRunResp;
       setDerivedRunResult(data);
+      setHighlightDerivedDays(data.phase5_derived_metrics_days ?? []);
       await loadDashboard();
       await loadRangeSummaries();
     } catch (e) {
@@ -320,6 +434,97 @@ export function MobileAnalyticsSummariesPanel() {
       setExportStatus(e instanceof Error ? e.message : String(e));
     } finally {
       setExportBusy(false);
+    }
+  };
+
+  const downloadPhase23RawOnly = async () => {
+    setPhaseDownloadBusy("raw");
+    setPhaseDownloadStatus(null);
+    const { afterMs, beforeMs } = utcRangeMillis(rangeDates.start, rangeDates.end);
+    try {
+      const events: Array<Record<string, unknown>> = [];
+      let cursor: string | null = null;
+      const queryFn = httpsCallable(functions, "queryAdminExpansionAnalyticsEvents");
+      const MAX_EVENTS = 120_000;
+      for (let page = 0; page < 400; page++) {
+        const res = await queryFn({
+          limit: 500,
+          ingested_after_ms: afterMs,
+          ingested_before_ms: beforeMs,
+          ...(cursor ? { start_after_id: cursor } : {}),
+        });
+        const d = res.data as RawPage;
+        if (!d?.success || !Array.isArray(d.events)) break;
+        events.push(...d.events);
+        if (events.length >= MAX_EVENTS) break;
+        if (!d.next_cursor || d.events.length === 0) break;
+        cursor = d.next_cursor;
+      }
+      triggerJsonDownload(
+        {
+          export_label: "phase_2_3_expansion_analytics_events",
+          generated_at: new Date().toISOString(),
+          ingested_range_utc: {
+            start_date: rangeDates.start,
+            end_date: rangeDates.end,
+            after_ms: afterMs,
+            before_ms: beforeMs,
+          },
+          expansion_analytics_events: events,
+        },
+        `phase_2_3_raw_events_${rangeDates.start}_to_${rangeDates.end}.json`
+      );
+      setPhaseDownloadStatus(`Phase 2–3 raw: ${events.length} events (cap ${MAX_EVENTS}).`);
+    } catch (e) {
+      setPhaseDownloadStatus(e instanceof Error ? e.message : String(e));
+    } finally {
+      setPhaseDownloadBusy(null);
+    }
+  };
+
+  const downloadPhase4DerivedPack = async () => {
+    setPhaseDownloadBusy("p4");
+    setPhaseDownloadStatus(null);
+    try {
+      const pack = await fetchRangePack();
+      triggerJsonDownload(
+        {
+          export_label: "phase_4_summaries",
+          generated_at: new Date().toISOString(),
+          range: { start_date_utc: pack.start_date_utc, end_date_utc: pack.end_date_utc },
+          daily_metrics_by_date: pack.daily_metrics_by_date,
+          funnel_summary: pack.funnel_summary,
+          friction_summary: pack.friction_summary,
+        },
+        `phase_4_summaries_${rangeDates.start}_to_${rangeDates.end}.json`
+      );
+      setPhaseDownloadStatus("Phase 4 summary export downloaded.");
+    } catch (e) {
+      setPhaseDownloadStatus(e instanceof Error ? e.message : String(e));
+    } finally {
+      setPhaseDownloadBusy(null);
+    }
+  };
+
+  const downloadPhase5DerivedPack = async () => {
+    setPhaseDownloadBusy("p5");
+    setPhaseDownloadStatus(null);
+    try {
+      const pack = await fetchRangePack();
+      triggerJsonDownload(
+        {
+          export_label: "phase_5_derived_metrics",
+          generated_at: new Date().toISOString(),
+          range: { start_date_utc: pack.start_date_utc, end_date_utc: pack.end_date_utc },
+          derived_metrics_by_date: pack.derived_metrics_by_date,
+        },
+        `phase_5_derived_metrics_${rangeDates.start}_to_${rangeDates.end}.json`
+      );
+      setPhaseDownloadStatus("Phase 5 derived_metrics export downloaded.");
+    } catch (e) {
+      setPhaseDownloadStatus(e instanceof Error ? e.message : String(e));
+    } finally {
+      setPhaseDownloadBusy(null);
     }
   };
 
@@ -554,41 +759,20 @@ export function MobileAnalyticsSummariesPanel() {
       <Card className="p-4 border-border space-y-4">
         <h3 className="text-sm font-semibold text-foreground">Date range (UTC) — summaries + export</h3>
         <p className="text-xs text-muted-foreground max-w-3xl">
-          Loads one <code className="text-xs">daily_metrics</code> document per UTC day. Export merges range summaries, all
-          raw events whose <code className="text-xs">ingested_at</code> falls in that window (paginated, max 120k), and{" "}
-          <code className="text-xs">user_analytics_summary</code> for distinct user_ids seen (up to 5k users, 200 per
-          batch call).
+          Loads one <code className="text-xs">daily_metrics</code> document per UTC day. Full bundle export merges range
+          summaries, raw events in the <code className="text-xs">ingested_at</code> window, and batched{" "}
+          <code className="text-xs">user_analytics_summary</code>. Use the split downloads below for Phase 2–3 / 4 / 5 only.
         </p>
-        <div className="rounded-md border border-border bg-muted/20 p-3 space-y-2">
-          <p className="text-xs font-medium text-foreground">Recompute derived (admin)</p>
-          <p className="text-xs text-muted-foreground">
-            Runs the same writers as the nightly job for each UTC day in the range:{" "}
-            <code className="text-xs">daily_metrics.derived</code> (Phase 4) then <code className="text-xs">derived_metrics</code>{" "}
-            (Phase 5). Days with no <code className="text-xs">daily_metrics</code> doc are skipped. Max 62 days.
-          </p>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            disabled={derivedRunBusy}
-            onClick={() => void runDerivedMetricsForRange()}
-          >
-            {derivedRunBusy ? "Running…" : "Run Phase 4 + 5 derived for range"}
-          </Button>
-          {derivedRunError ? <p className="text-sm text-destructive">{derivedRunError}</p> : null}
-          {derivedRunResult ? (
-            <pre className="text-[11px] leading-relaxed whitespace-pre-wrap break-all rounded border border-border bg-background p-2 max-h-40 overflow-auto">
-              {formatJson(derivedRunResult)}
-            </pre>
-          ) : null}
-        </div>
         <div className="flex flex-wrap items-end gap-3">
           <div className="space-y-1">
             <Label className="text-xs">Start (YYYY-MM-DD)</Label>
             <Input
               className="w-40 font-mono text-sm"
               value={rangeDates.start}
-              onChange={(e) => setRangeDates((r) => ({ ...r, start: e.target.value }))}
+              onChange={(e) => {
+                setHighlightDerivedDays(null);
+                setRangeDates((r) => ({ ...r, start: e.target.value }));
+              }}
             />
           </div>
           <div className="space-y-1">
@@ -596,15 +780,82 @@ export function MobileAnalyticsSummariesPanel() {
             <Input
               className="w-40 font-mono text-sm"
               value={rangeDates.end}
-              onChange={(e) => setRangeDates((r) => ({ ...r, end: e.target.value }))}
+              onChange={(e) => {
+                setHighlightDerivedDays(null);
+                setRangeDates((r) => ({ ...r, end: e.target.value }));
+              }}
             />
           </div>
           <Button size="sm" variant="secondary" disabled={rangeLoading} onClick={() => void loadRangeSummaries()}>
             {rangeLoading ? "Loading…" : "Load range summaries"}
           </Button>
-          <Button size="sm" disabled={exportBusy} onClick={() => void downloadFullBundle()}>
-            {exportBusy ? "Building…" : "Download JSON bundle (summaries + events + user snapshots)"}
+          <Button size="sm" variant="outline" disabled={derivedRunBusy} onClick={() => void runDerivedMetricsForRange()}>
+            {derivedRunBusy ? "Running…" : "Run Phase 4 + 5 derived for range"}
           </Button>
+        </div>
+        <div className="rounded-md border border-border bg-muted/20 p-3 space-y-3">
+          <p className="text-xs text-muted-foreground">
+            After <strong>Run Phase 4 + 5</strong>, metrics below reflect the job output (or load range summaries).
+            “Time-to-first” style rows count users whose <strong>first-ever</strong> Expansion DM / match-message click was
+            logged on that UTC day (not average latency from signup).
+          </p>
+          {derivedRunError ? <p className="text-sm text-destructive">{derivedRunError}</p> : null}
+          {derivedDaysToShow.length > 0 ? (
+            <ScrollArea className="max-h-[28rem] pr-2">
+              <FriendlyDerivedMetricsReport
+                days={derivedDaysToShow}
+                title={
+                  highlightDerivedDays && highlightDerivedDays.length > 0
+                    ? "Derived metrics — days processed in the last admin run"
+                    : "Derived metrics — all days with data in the loaded range"
+                }
+              />
+            </ScrollArea>
+          ) : null}
+          {derivedRunResult ? (
+            <details className="text-xs">
+              <summary className="cursor-pointer text-muted-foreground hover:text-foreground">Technical job response</summary>
+              <pre className="text-[11px] leading-relaxed whitespace-pre-wrap break-all rounded border border-border bg-background p-2 mt-2 max-h-32 overflow-auto">
+                {formatJson(derivedRunResult)}
+              </pre>
+            </details>
+          ) : null}
+        </div>
+        <div>
+          <p className="text-xs font-medium text-foreground mb-2">Download by phase (uses range above)</p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={phaseDownloadBusy !== null}
+              onClick={() => void downloadPhase23RawOnly()}
+            >
+              {phaseDownloadBusy === "raw" ? "Downloading…" : "Phase 2–3 raw (events)"}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={phaseDownloadBusy !== null}
+              onClick={() => void downloadPhase4DerivedPack()}
+            >
+              {phaseDownloadBusy === "p4" ? "Downloading…" : "Phase 4 summaries"}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={phaseDownloadBusy !== null}
+              onClick={() => void downloadPhase5DerivedPack()}
+            >
+              {phaseDownloadBusy === "p5" ? "Downloading…" : "Phase 5 derived"}
+            </Button>
+            <Button size="sm" disabled={exportBusy || phaseDownloadBusy !== null} onClick={() => void downloadFullBundle()}>
+              {exportBusy ? "Building…" : "Full bundle (all layers)"}
+            </Button>
+          </div>
+          {phaseDownloadStatus ? <p className="text-sm text-muted-foreground mt-2">{phaseDownloadStatus}</p> : null}
         </div>
         {rangeError ? <p className="text-sm text-destructive">{rangeError}</p> : null}
         {exportStatus ? <p className="text-sm text-muted-foreground">{exportStatus}</p> : null}
