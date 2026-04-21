@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../analytics/expansion_analytics.dart';
 import '../models/explore_job.dart';
 import '../models/explore_skill_listing.dart';
 import '../models/network_member_hit.dart';
@@ -34,9 +35,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
   final _profileRepo = UserProfileRepository();
   final _networkSearchController = TextEditingController();
   Timer? _networkDebounce;
+  Timer? _searchQueryAnalyticsDebounce;
   String _networkQuery = '';
   List<NetworkMemberHit> _networkHits = [];
   bool _networkLoading = false;
+  bool _exploreStreamErrorLogged = false;
+  String? _lastNoResultsKey;
+  int _lastNoResultsAtMs = 0;
 
   static _ExploreFilter _filterFromParam(String? raw) {
     final p = raw?.toLowerCase().trim() ?? '';
@@ -63,13 +68,51 @@ class _ExploreScreenState extends State<ExploreScreen> {
   @override
   void dispose() {
     _networkDebounce?.cancel();
+    _searchQueryAnalyticsDebounce?.cancel();
     _networkSearchController.dispose();
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(ExpansionAnalytics.log('explore_screen_started', sourceScreen: 'explore'));
+    });
   }
 
   void _onNetworkSearchChanged(String value) {
     _networkDebounce?.cancel();
     _networkDebounce = Timer(const Duration(milliseconds: 400), () => _runNetworkSearch(value));
+
+    _searchQueryAnalyticsDebounce?.cancel();
+    _searchQueryAnalyticsDebounce = Timer(const Duration(milliseconds: 550), () {
+      final q = value.trim();
+      if (q.length < 2) return;
+      unawaited(
+        ExpansionAnalytics.log(
+          'explore_network_search_query_updated',
+          sourceScreen: 'explore',
+          extra: <String, Object?>{'query_len': q.length},
+        ),
+      );
+    });
+  }
+
+  void _maybeLogNetworkSearchNoResults(String q) {
+    if (q.length < 2) return;
+    final key = q.toLowerCase();
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (_lastNoResultsKey == key && now - _lastNoResultsAtMs < 90000) return;
+    _lastNoResultsKey = key;
+    _lastNoResultsAtMs = now;
+    unawaited(
+      ExpansionAnalytics.log(
+        'explore_network_search_no_results',
+        sourceScreen: 'explore',
+        extra: <String, Object?>{'query_len': q.length},
+      ),
+    );
   }
 
   Future<void> _runNetworkSearch(String raw) async {
@@ -93,6 +136,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
         _networkHits = hits;
         _networkLoading = false;
       });
+      if (hits.isEmpty && q.length >= 2) {
+        _maybeLogNetworkSearchNoResults(q);
+      }
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -152,25 +198,67 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   _FilterChip(
                     label: 'All',
                     selected: filter == _ExploreFilter.all,
-                    onTap: () => context.go('/explore'),
+                    onTap: () {
+                      if (filter != _ExploreFilter.all) {
+                        unawaited(
+                          ExpansionAnalytics.log(
+                            'explore_filter_changed',
+                            sourceScreen: 'explore',
+                            extra: <String, Object?>{'from': filter.name, 'to': _ExploreFilter.all.name},
+                          ),
+                        );
+                      }
+                      context.go('/explore');
+                    },
                   ),
                   const SizedBox(width: 8),
                   _FilterChip(
                     label: 'Jobs',
                     selected: filter == _ExploreFilter.jobs,
-                    onTap: () => context.go('/explore?filter=jobs'),
+                    onTap: () {
+                      if (filter != _ExploreFilter.jobs) {
+                        unawaited(
+                          ExpansionAnalytics.log(
+                            'explore_filter_changed',
+                            sourceScreen: 'explore',
+                            extra: <String, Object?>{'from': filter.name, 'to': _ExploreFilter.jobs.name},
+                          ),
+                        );
+                      }
+                      context.go('/explore?filter=jobs');
+                    },
                   ),
                   const SizedBox(width: 8),
                   _FilterChip(
                     label: 'Skills',
                     selected: filter == _ExploreFilter.skills,
-                    onTap: () => context.go('/explore?filter=skills'),
+                    onTap: () {
+                      if (filter != _ExploreFilter.skills) {
+                        unawaited(
+                          ExpansionAnalytics.log(
+                            'explore_filter_changed',
+                            sourceScreen: 'explore',
+                            extra: <String, Object?>{'from': filter.name, 'to': _ExploreFilter.skills.name},
+                          ),
+                        );
+                      }
+                      context.go('/explore?filter=skills');
+                    },
                   ),
                   const SizedBox(width: 8),
                   _FilterChip(
                     label: 'Network Search',
                     selected: filter == _ExploreFilter.networkSearch,
                     onTap: () {
+                      if (filter != _ExploreFilter.networkSearch) {
+                        unawaited(
+                          ExpansionAnalytics.log(
+                            'explore_filter_changed',
+                            sourceScreen: 'explore',
+                            extra: <String, Object?>{'from': filter.name, 'to': _ExploreFilter.networkSearch.name},
+                          ),
+                        );
+                      }
                       context.go('/explore?filter=network');
                       if (_networkSearchController.text.trim().length >= 2) {
                         _runNetworkSearch(_networkSearchController.text);
@@ -189,6 +277,19 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 stream: _repo.watchSkillListings(),
                 builder: (context, skillSnap) {
                   if (jobSnap.hasError || skillSnap.hasError) {
+                    if (!_exploreStreamErrorLogged) {
+                      _exploreStreamErrorLogged = true;
+                      final err = jobSnap.error ?? skillSnap.error;
+                      if (err != null) {
+                        unawaited(
+                          ExpansionAnalytics.log(
+                            'explore_stream_error',
+                            sourceScreen: 'explore',
+                            extra: ExpansionAnalytics.errorExtras(err, code: 'explore_jobs_skills_streams'),
+                          ),
+                        );
+                      }
+                    }
                     return SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.all(24),
@@ -298,6 +399,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   void _openPostMenu(BuildContext context) {
+    unawaited(ExpansionAnalytics.log('explore_post_menu_opened', sourceScreen: 'explore'));
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -310,7 +412,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
               title: const Text('Post a job'),
               onTap: () async {
                 Navigator.pop(ctx);
-                if (await blockContentActionIfSuspended(context)) return;
+                unawaited(ExpansionAnalytics.log('explore_post_job_nav_started', sourceScreen: 'explore'));
+                if (await blockContentActionIfSuspended(context, blockedSurfaceEvent: 'explore_post_job_blocked_suspended')) {
+                  return;
+                }
                 if (context.mounted) context.push('/explore/jobs/create');
               },
             ),
@@ -319,7 +424,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
               title: const Text('Offer a skill'),
               onTap: () async {
                 Navigator.pop(ctx);
-                if (await blockContentActionIfSuspended(context)) return;
+                if (await blockContentActionIfSuspended(context, blockedSurfaceEvent: 'explore_post_job_blocked_suspended')) {
+                  return;
+                }
                 if (context.mounted) context.push('/explore/skills/create');
               },
             ),
@@ -456,7 +563,17 @@ class _JobCard extends StatelessWidget {
                 OutlinedButton.icon(
                   onPressed: job.authorId.isEmpty
                       ? null
-                      : () => context.push('/messages/direct/${job.authorId}?attach=job&id=${job.id}'),
+                      : () {
+                          unawaited(
+                            ExpansionAnalytics.log(
+                              'explore_job_message_author_clicked',
+                              entityId: job.id,
+                              sourceScreen: 'explore',
+                              attachmentType: 'job',
+                            ),
+                          );
+                          context.push('/messages/direct/${job.authorId}?attach=job&id=${job.id}');
+                        },
                   icon: const Icon(Icons.chat_bubble_outline, size: 18),
                   label: const Text('Message'),
                 ),
@@ -535,9 +652,19 @@ class _ExploreSkillRow extends StatelessWidget {
                 OutlinedButton.icon(
                   onPressed: listing.authorId.isEmpty
                       ? null
-                      : () => context.push(
+                      : () {
+                          unawaited(
+                            ExpansionAnalytics.log(
+                              'explore_skill_message_author_clicked',
+                              entityId: listing.id,
+                              sourceScreen: 'explore',
+                              attachmentType: 'skill',
+                            ),
+                          );
+                          context.push(
                             '/messages/direct/${listing.authorId}?attach=skill&id=${listing.id}',
-                          ),
+                          );
+                        },
                   icon: const Icon(Icons.chat_bubble_outline, size: 18),
                   label: const Text('Message'),
                 ),
@@ -648,7 +775,16 @@ class _NetworkMemberCard extends StatelessWidget {
         color: AppColors.card,
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
-          onTap: () => showUserProfileModal(context, userId: hit.uid),
+          onTap: () {
+          unawaited(
+            ExpansionAnalytics.log(
+              'explore_network_member_profile_opened',
+              entityId: hit.uid,
+              sourceScreen: 'explore',
+            ),
+          );
+          showUserProfileModal(context, userId: hit.uid);
+        },
           borderRadius: BorderRadius.circular(12),
           child: Container(
             padding: const EdgeInsets.all(16),
@@ -709,7 +845,17 @@ class _NetworkMemberCard extends StatelessWidget {
                   )
                 else
                   OutlinedButton.icon(
-                    onPressed: () => context.push('/messages/direct/${hit.uid}'),
+                    onPressed: () {
+                      unawaited(
+                        ExpansionAnalytics.log(
+                          'explore_network_member_message_clicked',
+                          entityId: hit.uid,
+                          sourceScreen: 'explore',
+                          attachmentType: 'dm',
+                        ),
+                      );
+                      context.push('/messages/direct/${hit.uid}');
+                    },
                     icon: const Icon(Icons.chat_bubble_outline, size: 18),
                     label: const Text('Message'),
                   ),

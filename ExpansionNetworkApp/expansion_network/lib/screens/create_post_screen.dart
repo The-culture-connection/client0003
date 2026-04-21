@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:firebase_auth/firebase_auth.dart';
@@ -6,10 +7,12 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../analytics/expansion_analytics.dart';
 import '../router/feed_post_navigation.dart';
 import '../services/feed_posts_repository.dart';
 import '../services/user_profile_repository.dart';
 import '../theme/app_theme.dart';
+import '../utils/content_action_guard.dart';
 
 /// Create a community feed post: description and optional image (no separate title/category in UI).
 class CreatePostScreen extends StatefulWidget {
@@ -30,6 +33,14 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   bool _saving = false;
   XFile? _pickedImage;
   Uint8List? _pickedPreviewBytes;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(ExpansionAnalytics.log('feed_post_compose_started', sourceScreen: 'feed_post_compose'));
+    });
+  }
 
   @override
   void dispose() {
@@ -119,6 +130,11 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
 
+    if (await blockContentActionIfSuspended(context, blockedSurfaceEvent: 'feed_post_create_blocked_suspended')) {
+      return;
+    }
+
+    unawaited(ExpansionAnalytics.log('feed_post_create_submitted', sourceScreen: 'feed_post_compose'));
     setState(() => _saving = true);
     try {
       await _users.assertCallerNotContentSuspended();
@@ -144,6 +160,11 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         postDetails: details,
         authorName: authorName,
         imageUrl: imageUrl,
+      );
+      await ExpansionAnalytics.log(
+        'feed_post_create_succeeded',
+        entityId: id,
+        sourceScreen: 'feed_post_compose',
       );
       if (!mounted) return;
       context.pop();

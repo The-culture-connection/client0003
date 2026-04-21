@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../analytics/expansion_analytics.dart';
 import '../data/group_categories.dart';
 import '../services/group_thread_repository.dart';
 import '../theme/app_theme.dart';
@@ -22,6 +25,14 @@ class _GroupCreateScreenState extends State<GroupCreateScreen> {
   bool _submitting = false;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(ExpansionAnalytics.log('group_create_started', sourceScreen: 'group_create'));
+    });
+  }
+
+  @override
   void dispose() {
     _name.dispose();
     _description.dispose();
@@ -35,6 +46,7 @@ class _GroupCreateScreenState extends State<GroupCreateScreen> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enter a community name.')));
       return;
     }
+    unawaited(ExpansionAnalytics.log('group_create_submitted', sourceScreen: 'group_create'));
     setState(() => _submitting = true);
     try {
       final id = await _repo.createGroup(
@@ -44,8 +56,21 @@ class _GroupCreateScreenState extends State<GroupCreateScreen> {
         category: _category,
       );
       if (!mounted) return;
+      await ExpansionAnalytics.log(
+        'group_create_succeeded',
+        entityId: id,
+        sourceScreen: 'group_create',
+      );
+      if (!mounted) return;
       context.go('/groups/$id');
     } catch (e) {
+      unawaited(
+        ExpansionAnalytics.log(
+          'group_create_failed',
+          sourceScreen: 'group_create',
+          extra: ExpansionAnalytics.errorExtras(e, code: 'create_group'),
+        ),
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
       }

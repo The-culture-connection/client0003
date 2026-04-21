@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:go_router/go_router.dart';
 
+import '../analytics/expansion_analytics.dart';
 import '../models/community_event.dart';
 import '../services/events_repository.dart';
 import '../theme/app_theme.dart';
@@ -14,8 +18,15 @@ import '../widgets/event_source_badge.dart';
 import '../widgets/page_header.dart';
 
 /// Events list driven by Firestore `events_mobile`.
-class EventsScreen extends StatelessWidget {
+class EventsScreen extends StatefulWidget {
   const EventsScreen({super.key});
+
+  @override
+  State<EventsScreen> createState() => _EventsScreenState();
+}
+
+class _EventsScreenState extends State<EventsScreen> {
+  bool _eventsStreamErrorLogged = false;
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +38,9 @@ class EventsScreen extends StatelessWidget {
         padding: const EdgeInsets.only(bottom: 72),
         child: FloatingActionButton(
           onPressed: () async {
-            if (await blockContentActionIfSuspended(context)) return;
+            if (await blockContentActionIfSuspended(context, blockedSurfaceEvent: 'events_feed_create_blocked_suspended')) {
+              return;
+            }
             if (context.mounted) context.push('/events/create');
           },
           child: const Icon(Icons.add),
@@ -49,6 +62,19 @@ class EventsScreen extends StatelessWidget {
                 stream: repo.watchPublishedEvents(),
                 builder: (context, snap) {
                   if (snap.hasError) {
+                    if (!_eventsStreamErrorLogged) {
+                      _eventsStreamErrorLogged = true;
+                      final err = snap.error!;
+                      SchedulerBinding.instance.addPostFrameCallback((_) {
+                        unawaited(
+                          ExpansionAnalytics.log(
+                            'events_feed_stream_error',
+                            sourceScreen: 'events_list',
+                            extra: ExpansionAnalytics.errorExtras(err, code: 'watchPublishedEvents'),
+                          ),
+                        );
+                      });
+                    }
                     return SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.all(24),

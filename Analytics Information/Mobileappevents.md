@@ -876,13 +876,13 @@ Columns: **event_name** | **screen / flow** | **event_type** | **goal_buckets** 
 
 **Events:** `achievements_*`, `feed_post_like_toggled`, `group_thread_comment_submitted`, `content_action_blocked_suspended`, `user_profile_modal_report_submitted`, `admin_*`, `explore_network_search_query_updated`, badge-related profile fields, `profile_staff_reports_clicked`.
 
-**Gaps:** **No client analytics today** in repo (grep shows no `FirebaseAnalytics` usage) — all events above are **specification**. No **session replay** / automatic scroll depth.
+**Gaps:** Core Phase 2 events are now emitted from the Flutter app via `ExpansionAnalytics` / `AnalyticsService` (see **How the feature works** below). Remaining gaps: **session replay** / automatic scroll depth, and many **optional** event names in this dossier that are not yet wired.
 
 ---
 
 ## 4. Missing or weak tracking opportunities (repo-specific)
 
-1. **No Firebase Analytics (or other SDK) wired** in `expansion_network` — Step 3 should add a thin `AnalyticsService.logEvent(name, params)` wrapper.
+1. **Client analytics (Phase 2 done):** `expansion_network` uses `AnalyticsService.logEvent` → Firestore `expansion_analytics_events` with schema validation. Pre–sign-in events are skipped for Firestore when `skipFirestoreWhenLoggedOut` is true unless rules allow anonymous writes (see `AnalyticsService` in the app).
 2. **`/messages/:id` mock `ChatRoomScreen`** — misleading for real comms; instrument separately or remove from router for production analytics purity.
 3. **Group thread “Share”** row is visual-only in `FirestoreThreadTile` — either implement share or remove to avoid false expectations.
 4. **Job “fulfillment”** only measurable via **DM threads** and optional **attachment metadata** — add server-side milestones if hires matter.
@@ -988,6 +988,31 @@ Each bullet is an **`event_name`** assigned to that bucket (events can appear un
 - `user_profile_modal_opened`, `user_profile_modal_report_submitted`
 - `profile_staff_reports_clicked`, `admin_reports_opened`, `admin_reports_access_denied`, `admin_report_expanded`, `admin_report_snapshot_load_succeeded`, `admin_report_ban_finalized`, `admin_report_unsuspend_finalized`
 - `matching_zero_results_prompted`, `matching_callable_failed`, `legacy_chat_room_opened`
+
+---
+
+### How the feature works (Phase 2 — Expansion mobile client analytics)
+
+- **Helper:** `ExpansionNetworkApp/expansion_network/lib/analytics/expansion_analytics.dart` exposes `ExpansionAnalytics.log(eventName, { entityId, sourceScreen, attachmentType, extra })`. Dart uses camelCase; documents store **`entity_id`**, **`source_screen`**, and **`attachment_type`** under `properties` (plus any `extra` keys) for funnel queries.
+- **Delivery:** `AnalyticsService.instance.logEvent` (Phase 1) validates, merges `screen` / `route` / `session_id`, and writes to **`expansion_analytics_events`** when the user is signed in (configurable skip when logged out).
+- **Coverage:** Phase 2 wires the conversion and core action names listed in the user’s B6–B7 checklist: session gate + `initializeUserSession` outcomes, landing/auth/claim/onboarding/welcome/shell tab selection, home/events/groups/explore/matching/messages/DMs/social feed/mortar info, jobs/skills/events/groups/thread and post flows, matching callable + message CTAs, shop + external newsletter links, profile tab + sign out. **Conversion deduping:** examples include `onboarding_completed` (once per screen state) and distinct success vs click events for events and group join.
+- **How to verify:** Run the app signed in, perform flows in the Phase 2 test plan, and query **`expansion_analytics_events`** in Firebase Console (or export). Pre-auth funnel steps may appear only in debug logs until rules or auth strategy allow logged-out writes.
+
+### How the feature works (Phase 3 — validation, friction, behavior depth)
+
+- **Errors (`error_code` / `error_message`):** `ExpansionAnalytics.errorExtras(Object e, {String? code})` attaches compact payloads to failure events (for example `session_initialize_backend_failed`, callable/stream/send failures, invite validation/flow failures, onboarding save failures).
+- **Suspension surfaces:** `blockContentActionIfSuspended(context, blockedSurfaceEvent: ...)` emits the **surface-specific** blocked event when supplied; otherwise it logs `content_action_blocked_suspended`.
+- **Streams (no spam):** Home cards, events list/feed stream, group directory, group watch, explore jobs/skills streams, and DM messages log at most **one** error event per widget/session via local flags and/or a post-frame callback.
+- **Engagement depth:** Post/reply like toggles and confirmed post delete, thread/comment votes, group leave after confirm, events feed subtab changes, post-RSVP calendar prompt + native add success, explore filter/search (search query debounced ~550ms; no-results throttled per query ~90s).
+- **Onboarding depth:** Step validation failures, save failure, abandon-on-dispose unless profile save completed, confident/desired skill toggles (counts without raw skill strings in PII-sensitive paths), goal toggles, `onChangeEnd` work sliders (throttled naturally by release), business logo picked.
+- **Staff / moderation / achievements:** Admin reports opened/denied/expand/snapshot loaded/ban-unsuspend finalized; profile staff CTA; achievements screen started + empty-definitions shown once; user profile modal opened + report submitted.
+
+### How the feature works (Phase 4 — summary layer & admin visibility)
+
+- **Trigger:** `onExpansionAnalyticsEventCreated` runs once per new document in **`expansion_analytics_events`** and calls `applyExpansionMobileRollupsForEvent` in a **single Firestore transaction** (no double counting from retries unless the event doc is recreated).
+- **Rollups:** Updates **`user_analytics_summary/{userId}`** (per-event counters, `last_active_at`, UTC-day streak fields), **`daily_metrics/{YYYY-MM-DD}`** (DAU first touch that UTC day, `new_users` on `invite_account_create_succeeded`, posts/messages/jobs/skills/RSVPs, per-`event_name` tallies under `counts`), **`funnel_summary`** (`auth`, `onboarding`, `matching`, `job_to_message`, `event_to_rsvp`), **`friction_summary/{event_name}`** for error-style names, **`community_summary/{groupId}`**, **`matching_summary/{userId}`**, **`job_summary/{jobId}`** when `properties.entity_id` is present for job create / job message CTA.
+- **Client IDs for job summaries:** `job_create_succeeded` logs **`entity_id`** as the new job document id so **`job_summary/{jobId}`** updates; `explore_job_message_author_clicked` should also pass the job id as **`entity_id`**. `skill_listing_create_succeeded` logs **`entity_id`** as the skill listing id for raw queries and future listing-level rollups (not written to `job_summary` today).
+- **Admin web:** Dashboard tab **Mobile analytics** loads summary snapshots via callable **`getAdminMobileAnalyticsDashboard`** and can export all raw rows via paginated **`queryAdminExpansionAnalyticsEvents`** (merged JSON download).
 
 ---
 

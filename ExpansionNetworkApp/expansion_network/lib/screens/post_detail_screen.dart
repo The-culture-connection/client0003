@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../analytics/expansion_analytics.dart';
 import '../models/feed_post.dart';
 import '../services/feed_posts_repository.dart';
 import '../services/user_profile_repository.dart';
@@ -39,6 +42,15 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(
+        ExpansionAnalytics.log(
+          'post_detail_started',
+          entityId: widget.postId,
+          sourceScreen: 'post_detail',
+        ),
+      );
+    });
     _load();
   }
 
@@ -78,6 +90,15 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         _loading = false;
         if (p == null) _error = 'Post not found.';
       });
+      if (p == null) {
+        unawaited(
+          ExpansionAnalytics.log(
+            'post_detail_not_found',
+            entityId: widget.postId,
+            sourceScreen: 'post_detail',
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -147,11 +168,25 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         text,
         parentReplyId: _replyParentId,
       );
+      await ExpansionAnalytics.log(
+        'post_reply_submitted',
+        entityId: widget.postId,
+        sourceScreen: 'post_detail',
+        extra: <String, Object?>{'parent_reply_id': _replyParentId ?? ''},
+      );
       _replyBody.clear();
       _replyParentId = null;
       if (mounted) FocusScope.of(context).unfocus();
       if (mounted) setState(() {});
     } catch (e) {
+      unawaited(
+        ExpansionAnalytics.log(
+          'post_reply_failed',
+          entityId: widget.postId,
+          sourceScreen: 'post_detail',
+          extra: ExpansionAnalytics.errorExtras(e, code: 'add_reply'),
+        ),
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Reply failed: $e')));
       }
@@ -503,6 +538,14 @@ class _PostLikeRow extends StatelessWidget {
                       : () async {
                           try {
                             await repo.togglePostLike(postId);
+                            unawaited(
+                              ExpansionAnalytics.log(
+                                'feed_post_like_toggled',
+                                entityId: postId,
+                                sourceScreen: 'post_detail',
+                                extra: const <String, Object?>{'target': 'post'},
+                              ),
+                            );
                           } catch (e) {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
@@ -609,6 +652,14 @@ class _ReplyTile extends StatelessWidget {
                             : () async {
                                 try {
                                   await repo.toggleReplyLike(postId, reply.id);
+                                  unawaited(
+                                    ExpansionAnalytics.log(
+                                      'feed_post_like_toggled',
+                                      entityId: postId,
+                                      sourceScreen: 'post_detail',
+                                      extra: <String, Object?>{'target': 'reply', 'reply_id': reply.id},
+                                    ),
+                                  );
                                 } catch (e) {
                                   if (context.mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:add_2_calendar/add_2_calendar.dart';
@@ -9,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../analytics/expansion_analytics.dart';
 import '../models/community_event.dart';
 import '../theme/app_theme.dart';
 
@@ -352,8 +354,24 @@ Future<void> showPostRegisterCalendarSheet(BuildContext context, CommunityEvent 
 
   if (!context.mounted) return;
 
+  unawaited(
+    ExpansionAnalytics.log(
+      'event_post_register_calendar_prompt_shown',
+      entityId: event.id,
+      sourceScreen: 'event_calendar',
+    ),
+  );
+
   final nativeOk = await _tryOpenNativeCalendarAddUi(event, start, end);
   if (nativeOk) {
+    unawaited(
+      ExpansionAnalytics.log(
+        'event_post_register_calendar_added',
+        entityId: event.id,
+        sourceScreen: 'event_calendar',
+        extra: const <String, Object?>{'via': 'native'},
+      ),
+    );
     return;
   }
 

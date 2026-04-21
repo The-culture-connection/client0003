@@ -39,6 +39,18 @@ export const ANALYTICS_COLLECTIONS = {
   COURSE_ANALYTICS_SUMMARY: "course_analytics_summary",
   /** Phase 4 — single-doc community rollups (`global`). */
   COMMUNITY_ANALYTICS_SUMMARY: "community_analytics_summary",
+  /** Expansion mobile raw stream (Flutter `ExpansionAnalytics` → Firestore). */
+  EXPANSION_ANALYTICS_EVENTS: "expansion_analytics_events",
+  /** Per-group mobile activity (Functions triggers only). */
+  COMMUNITY_SUMMARY: "community_summary",
+  /** Per-user matching funnel depth (Functions triggers only). */
+  MATCHING_SUMMARY: "matching_summary",
+  /** Per-job listing engagement (Functions triggers only). */
+  JOB_SUMMARY: "job_summary",
+  /** Funnel step counters (`auth`, `onboarding`, `matching`, …). */
+  FUNNEL_SUMMARY: "funnel_summary",
+  /** Friction / error tallies keyed by analytics `event_name`. */
+  FRICTION_SUMMARY: "friction_summary",
   /**
    * Phase 6 — awarded badge instances (`user_badges/{uid}/awarded/{badgeId}`).
    * Written only by Cloud Functions.

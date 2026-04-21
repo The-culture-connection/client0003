@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:go_router/go_router.dart';
 
+import '../analytics/expansion_analytics.dart';
 import '../models/group_thread_firestore.dart';
 import '../services/group_thread_repository.dart';
 import '../theme/app_theme.dart';
@@ -20,6 +24,15 @@ class GroupsScreen extends StatefulWidget {
 class _GroupsScreenState extends State<GroupsScreen> {
   final _repo = GroupThreadRepository();
   final _search = TextEditingController();
+  bool _groupsStreamErrorLogged = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(ExpansionAnalytics.log('groups_directory_started', sourceScreen: 'groups_directory'));
+    });
+  }
 
   @override
   void dispose() {
@@ -68,6 +81,19 @@ class _GroupsScreenState extends State<GroupsScreen> {
         stream: _repo.watchGroups(),
         builder: (context, snap) {
           if (snap.hasError) {
+            if (!_groupsStreamErrorLogged) {
+              _groupsStreamErrorLogged = true;
+              final err = snap.error!;
+              SchedulerBinding.instance.addPostFrameCallback((_) {
+                unawaited(
+                  ExpansionAnalytics.log(
+                    'groups_stream_error',
+                    sourceScreen: 'groups_directory',
+                    extra: ExpansionAnalytics.errorExtras(err, code: 'watch_groups'),
+                  ),
+                );
+              });
+            }
             return Center(child: Text('Could not load groups.\n${snap.error}', textAlign: TextAlign.center));
           }
           final all = snap.data ?? [];
@@ -86,7 +112,12 @@ class _GroupsScreenState extends State<GroupsScreen> {
                   trailing: IconButton(
                     tooltip: 'Create community',
                     onPressed: () async {
-                      if (await blockContentActionIfSuspended(context)) return;
+                      unawaited(
+                        ExpansionAnalytics.log('groups_create_community_clicked', sourceScreen: 'groups_directory'),
+                      );
+                      if (await blockContentActionIfSuspended(context, blockedSurfaceEvent: 'groups_create_blocked_suspended')) {
+                        return;
+                      }
                       if (context.mounted) context.push('/groups/create');
                     },
                     icon: const Icon(Icons.add_circle_outline, color: AppColors.primary),

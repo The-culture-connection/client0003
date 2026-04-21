@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../analytics/expansion_analytics.dart';
 import '../models/expansion_match.dart';
 import '../profile/profile_utils.dart';
 import '../services/expansion_matching_repository.dart';
@@ -25,8 +28,17 @@ class _MatchingScreenState extends State<MatchingScreen> {
   final _users = UserProfileRepository();
   bool _busy = false;
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(ExpansionAnalytics.log('matching_screen_started', sourceScreen: 'matching'));
+    });
+  }
+
   Future<void> _runMatching() async {
     if (_busy) return;
+    unawaited(ExpansionAnalytics.log('matching_start_clicked', sourceScreen: 'matching'));
     setState(() => _busy = true);
     if (!mounted) return;
     showDialog<void>(
@@ -66,7 +78,15 @@ class _MatchingScreenState extends State<MatchingScreen> {
       ),
     );
     try {
+      await ExpansionAnalytics.log('matching_callable_started', sourceScreen: 'matching');
       final data = await _matchingRepo.runSelfMatching();
+      await ExpansionAnalytics.log(
+        'matching_callable_succeeded',
+        sourceScreen: 'matching',
+        extra: <String, Object?>{
+          'match_documents_written': data['matchDocumentsWritten'],
+        },
+      );
       final written = data['matchDocumentsWritten'];
       if (mounted && written is num && written == 0) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -74,6 +94,13 @@ class _MatchingScreenState extends State<MatchingScreen> {
         );
       }
     } catch (e) {
+      unawaited(
+        ExpansionAnalytics.log(
+          'matching_callable_failed',
+          sourceScreen: 'matching',
+          extra: ExpansionAnalytics.errorExtras(e, code: 'runExpansionUserMatching'),
+        ),
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(userMessageForFirebaseCallableError(e))),
@@ -282,8 +309,27 @@ class _MatchingScreenState extends State<MatchingScreen> {
                             child: _ExpansionMatchCard(
                               match: m,
                               users: _users,
-                              onOpenProfile: () => showUserProfileModal(context, userId: m.matchedUserId),
-                              onMessage: () => context.push('/messages/direct/${m.matchedUserId}'),
+                              onOpenProfile: () {
+                                unawaited(
+                                  ExpansionAnalytics.log(
+                                    'matching_match_profile_opened',
+                                    entityId: m.matchedUserId,
+                                    sourceScreen: 'matching',
+                                  ),
+                                );
+                                showUserProfileModal(context, userId: m.matchedUserId);
+                              },
+                              onMessage: () {
+                                unawaited(
+                                  ExpansionAnalytics.log(
+                                    'matching_match_message_clicked',
+                                    entityId: m.matchedUserId,
+                                    sourceScreen: 'matching',
+                                    attachmentType: 'dm',
+                                  ),
+                                );
+                                context.push('/messages/direct/${m.matchedUserId}');
+                              },
                             ),
                           ),
                         ),

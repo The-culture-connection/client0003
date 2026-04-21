@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../analytics/expansion_analytics.dart';
 import '../theme/app_theme.dart';
 
 class AuthSignInScreen extends StatefulWidget {
@@ -19,6 +22,16 @@ class _AuthSignInScreenState extends State<AuthSignInScreen> {
   String? _error;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(
+        ExpansionAnalytics.log('auth_sign_in_screen_started', sourceScreen: 'auth_sign_in'),
+      );
+    });
+  }
+
+  @override
   void dispose() {
     _email.dispose();
     _password.dispose();
@@ -27,6 +40,7 @@ class _AuthSignInScreenState extends State<AuthSignInScreen> {
 
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
+    await ExpansionAnalytics.log('auth_sign_in_submitted', sourceScreen: 'auth_sign_in');
     setState(() {
       _busy = true;
       _error = null;
@@ -37,11 +51,23 @@ class _AuthSignInScreenState extends State<AuthSignInScreen> {
         password: _password.text,
       );
       if (mounted) {
+        await ExpansionAnalytics.log('auth_sign_in_succeeded', sourceScreen: 'auth_sign_in');
+        if (!mounted) return;
         context.go('/session');
       }
     } on FirebaseAuthException catch (e) {
+      await ExpansionAnalytics.log(
+        'auth_sign_in_failed',
+        sourceScreen: 'auth_sign_in',
+        extra: <String, Object?>{'code': e.code},
+      );
       setState(() => _error = e.message ?? e.code);
     } catch (e) {
+      await ExpansionAnalytics.log(
+        'auth_sign_in_failed',
+        sourceScreen: 'auth_sign_in',
+        extra: <String, Object?>{'code': 'unknown'},
+      );
       setState(() => _error = e.toString());
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -54,7 +80,12 @@ class _AuthSignInScreenState extends State<AuthSignInScreen> {
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/'),
+          onPressed: () {
+            unawaited(
+              ExpansionAnalytics.log('auth_sign_in_back_to_landing', sourceScreen: 'auth_sign_in'),
+            );
+            context.go('/');
+          },
         ),
         title: const Text('Sign in'),
       ),
@@ -101,7 +132,12 @@ class _AuthSignInScreenState extends State<AuthSignInScreen> {
                       : const Text('Sign in'),
                 ),
                 TextButton(
-                  onPressed: () => context.push('/auth/claim'),
+                  onPressed: () {
+                    unawaited(
+                      ExpansionAnalytics.log('auth_sign_in_navigate_to_claim', sourceScreen: 'auth_sign_in'),
+                    );
+                    context.push('/auth/claim');
+                  },
                   child: const Text('Have an invite? Claim account'),
                 ),
               ],

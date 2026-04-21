@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
+import '../analytics/expansion_analytics.dart';
 import '../models/mortar_info_post.dart';
 import '../theme/app_theme.dart';
 import '../utils/safe_launch_url.dart';
@@ -139,6 +142,7 @@ class MortarInfoFeedTile extends StatelessWidget {
             if (post.hasNewsletterLink) ...[
               const SizedBox(height: 10),
               _NewsletterLinkCard(
+                postId: post.id,
                 url: post.newsletterUrl!.trim(),
                 label: post.newsletterLabel,
                 compact: compact,
@@ -169,11 +173,13 @@ class MortarInfoFeedTile extends StatelessWidget {
 
 class _NewsletterLinkCard extends StatelessWidget {
   const _NewsletterLinkCard({
+    required this.postId,
     required this.url,
     this.label,
     required this.compact,
   });
 
+  final String postId;
   final String url;
   final String? label;
   final bool compact;
@@ -181,11 +187,19 @@ class _NewsletterLinkCard extends StatelessWidget {
   Future<void> _open(BuildContext context) async {
     final uri = Uri.tryParse(url);
     if (uri == null) return;
-    await safeLaunchExternalUrl(
+    final ok = await safeLaunchExternalUrl(
       uri,
       messengerContext: context,
       userFailureMessage: 'Could not open newsletter link',
     );
+    if (ok && context.mounted) {
+      await ExpansionAnalytics.log(
+        'mortar_info_external_link_opened',
+        entityId: postId,
+        sourceScreen: 'mortar_info',
+        extra: <String, Object?>{'link_host': _linkHost(url) ?? ''},
+      );
+    }
   }
 
   @override

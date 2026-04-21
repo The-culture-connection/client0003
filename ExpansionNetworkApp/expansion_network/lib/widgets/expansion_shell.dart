@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../analytics/expansion_analytics.dart';
 import '../theme/app_theme.dart';
 
 /// Bottom navigation matching [UI Basis/src/app/components/BottomNav.tsx]:
@@ -54,7 +57,19 @@ class ExpansionShell extends StatelessWidget {
               ),
           child: NavigationBar(
             selectedIndex: navigationShell.currentIndex,
-            onDestinationSelected: navigationShell.goBranch,
+            onDestinationSelected: (i) {
+              unawaited(
+                ExpansionAnalytics.log(
+                  'main_tab_selected',
+                  sourceScreen: 'main_shell',
+                  extra: <String, Object?>{
+                    'tab_index': i,
+                    'tab_label': _destinations[i].label,
+                  },
+                ),
+              );
+              navigationShell.goBranch(i);
+            },
             backgroundColor: AppColors.card,
             indicatorColor: AppColors.primary.withValues(alpha: 0.2),
             labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,

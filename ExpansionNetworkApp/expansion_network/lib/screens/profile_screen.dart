@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../analytics/expansion_analytics.dart';
 import '../models/community_event.dart';
 import '../profile/profile_edit_sections.dart';
 import '../profile/profile_utils.dart';
@@ -16,8 +19,23 @@ import '../widgets/profile_section_card.dart';
 import '../widgets/profile_user_blocks.dart';
 
 /// Profile tab — `users/{uid}` fields grouped like onboarding (steps 1–7).
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (FirebaseAuth.instance.currentUser != null) {
+        unawaited(ExpansionAnalytics.log('profile_tab_started', sourceScreen: 'profile'));
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -119,6 +137,9 @@ class _ProfileBody extends StatelessWidget {
                   const Spacer(),
                   TextButton(
                     onPressed: () async {
+                      unawaited(
+                        ExpansionAnalytics.log('profile_sign_out_clicked', sourceScreen: 'profile'),
+                      );
                       await FirebaseAuth.instance.signOut();
                       if (context.mounted) context.go('/');
                     },
@@ -219,7 +240,15 @@ class _ProfileBody extends StatelessWidget {
                             return Align(
                               alignment: Alignment.centerLeft,
                               child: TextButton(
-                                onPressed: () => context.push('/admin/reports'),
+                                onPressed: () {
+                                  unawaited(
+                                    ExpansionAnalytics.log(
+                                      'profile_staff_reports_clicked',
+                                      sourceScreen: 'profile',
+                                    ),
+                                  );
+                                  context.push('/admin/reports');
+                                },
                                 child: const Text('Staff: user reports'),
                               ),
                             );

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
@@ -5,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
+import '../analytics/expansion_analytics.dart';
 import '../auth/auth_controller.dart';
 import '../data/curriculum_onboarding_data.dart';
 import '../services/user_profile_repository.dart';
@@ -55,6 +58,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   bool _saving = false;
   String? _error;
+  bool _onboardingCompletionEventSent = false;
+  bool _profileSaveSucceeded = false;
 
   final _imagePicker = ImagePicker();
   XFile? _pickedProfilePhoto;
@@ -67,6 +72,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(
+        ExpansionAnalytics.log('onboarding_screen_started', sourceScreen: 'onboarding'),
+      );
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final auth = context.read<AuthController>();
@@ -82,6 +92,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   void dispose() {
+    if (!_profileSaveSucceeded) {
+      unawaited(
+        ExpansionAnalytics.log(
+          'onboarding_abandoned',
+          sourceScreen: 'onboarding',
+          extra: <String, Object?>{'step_index': _stepIndex},
+        ),
+      );
+    }
     _pageController.dispose();
     _firstName.dispose();
     _lastName.dispose();
@@ -167,26 +186,61 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   void _nextStep() {
     if (_stepIndex == 0) {
       if (!_validateStep1(context)) {
+        unawaited(
+          ExpansionAnalytics.log(
+            'onboarding_step_validation_failed',
+            sourceScreen: 'onboarding',
+            extra: const <String, Object?>{'step_key': 'identity'},
+          ),
+        );
         setState(() {});
         return;
       }
     } else if (_stepIndex == 1) {
       if (!_validateGoals()) {
+        unawaited(
+          ExpansionAnalytics.log(
+            'onboarding_step_validation_failed',
+            sourceScreen: 'onboarding',
+            extra: const <String, Object?>{'step_key': 'goals'},
+          ),
+        );
         setState(() {});
         return;
       }
     } else if (_stepIndex == 2) {
       if (!_validateConfident()) {
+        unawaited(
+          ExpansionAnalytics.log(
+            'onboarding_step_validation_failed',
+            sourceScreen: 'onboarding',
+            extra: const <String, Object?>{'step_key': 'confident_skills'},
+          ),
+        );
         setState(() {});
         return;
       }
     } else if (_stepIndex == 3) {
       if (!_validateDesired()) {
+        unawaited(
+          ExpansionAnalytics.log(
+            'onboarding_step_validation_failed',
+            sourceScreen: 'onboarding',
+            extra: const <String, Object?>{'step_key': 'desired_skills'},
+          ),
+        );
         setState(() {});
         return;
       }
     } else if (_stepIndex == 4) {
       if (!_validateTribe()) {
+        unawaited(
+          ExpansionAnalytics.log(
+            'onboarding_step_validation_failed',
+            sourceScreen: 'onboarding',
+            extra: const <String, Object?>{'step_key': 'tribe'},
+          ),
+        );
         setState(() {});
         return;
       }
@@ -225,6 +279,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       _saving = true;
       _error = null;
     });
+    unawaited(ExpansionAnalytics.log('onboarding_save_submitted', sourceScreen: 'onboarding'));
     try {
       final roles = context.read<AuthController>().expansionOnboardingRoles;
       if (roles.isEmpty) {
@@ -274,9 +329,26 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         await FirebaseAuth.instance.currentUser?.updatePhotoURL(photoUrl);
       }
       if (!mounted) return;
+      if (!_onboardingCompletionEventSent) {
+        _onboardingCompletionEventSent = true;
+        await ExpansionAnalytics.log(
+          'onboarding_completed',
+          entityId: uid,
+          sourceScreen: 'onboarding',
+        );
+      }
+      if (!mounted) return;
       context.read<AuthController>().markExpansionOnboardingComplete();
+      _profileSaveSucceeded = true;
       context.go('/welcome-intro');
     } catch (e) {
+      unawaited(
+        ExpansionAnalytics.log(
+          'onboarding_save_failed',
+          sourceScreen: 'onboarding',
+          extra: ExpansionAnalytics.errorExtras(e, code: 'save_expansion_profile'),
+        ),
+      );
       setState(() => _error = e.toString());
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -358,6 +430,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         return;
       }
       setState(() => _pickedBusinessLogo = x);
+      unawaited(
+        ExpansionAnalytics.log(
+          'onboarding_business_logo_picked',
+          sourceScreen: 'onboarding',
+        ),
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
@@ -380,33 +458,57 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _toggleConfidentSkill(String skill) {
+    final wasSelected = _confidentSkills.contains(skill);
     setState(() {
-      if (_confidentSkills.contains(skill)) {
+      if (wasSelected) {
         _confidentSkills.remove(skill);
       } else {
         _confidentSkills.add(skill);
       }
     });
+    unawaited(
+      ExpansionAnalytics.log(
+        'onboarding_confident_skill_toggled',
+        sourceScreen: 'onboarding',
+        extra: <String, Object?>{'selected': !wasSelected},
+      ),
+    );
   }
 
   void _toggleDesiredSkill(String skill) {
+    final wasSelected = _desiredSkills.contains(skill);
     setState(() {
-      if (_desiredSkills.contains(skill)) {
+      if (wasSelected) {
         _desiredSkills.remove(skill);
       } else {
         _desiredSkills.add(skill);
       }
     });
+    unawaited(
+      ExpansionAnalytics.log(
+        'onboarding_desired_skill_toggled',
+        sourceScreen: 'onboarding',
+        extra: <String, Object?>{'selected': !wasSelected},
+      ),
+    );
   }
 
   void _toggleGoal(String goal) {
+    final wasSelected = _selectedGoals.contains(goal);
     setState(() {
-      if (_selectedGoals.contains(goal)) {
+      if (wasSelected) {
         _selectedGoals.remove(goal);
       } else {
         _selectedGoals.add(goal);
       }
     });
+    unawaited(
+      ExpansionAnalytics.log(
+        'onboarding_goal_toggled',
+        sourceScreen: 'onboarding',
+        extra: <String, Object?>{'selected': !wasSelected},
+      ),
+    );
   }
 
   static String _flexibilityLabel(int v) {
@@ -981,6 +1083,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           divisions: 9,
                           label: '$_flexibility',
                           onChanged: (v) => setState(() => _flexibility = v.round()),
+                          onChangeEnd: (v) {
+                            unawaited(
+                              ExpansionAnalytics.log(
+                                'onboarding_work_structure_changed',
+                                sourceScreen: 'onboarding',
+                                extra: <String, Object?>{'axis': 'flexibility', 'value': v.round()},
+                              ),
+                            );
+                          },
                         ),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1007,6 +1118,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           divisions: 12,
                           label: '$_weeklyHours',
                           onChanged: (v) => setState(() => _weeklyHours = (v / 5).round() * 5),
+                          onChangeEnd: (v) {
+                            unawaited(
+                              ExpansionAnalytics.log(
+                                'onboarding_work_structure_changed',
+                                sourceScreen: 'onboarding',
+                                extra: <String, Object?>{'axis': 'weekly_hours', 'value': (v / 5).round() * 5},
+                              ),
+                            );
+                          },
                         ),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1033,6 +1153,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           divisions: 9,
                           label: '$_ownership',
                           onChanged: (v) => setState(() => _ownership = v.round()),
+                          onChangeEnd: (v) {
+                            unawaited(
+                              ExpansionAnalytics.log(
+                                'onboarding_work_structure_changed',
+                                sourceScreen: 'onboarding',
+                                extra: <String, Object?>{'axis': 'ownership', 'value': v.round()},
+                              ),
+                            );
+                          },
                         ),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,

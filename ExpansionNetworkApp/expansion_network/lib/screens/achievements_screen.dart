@@ -1,15 +1,33 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../analytics/expansion_analytics.dart';
 import '../models/badge_definition.dart';
 import '../services/badge_repository.dart';
 import '../services/user_profile_repository.dart';
 import '../theme/app_theme.dart';
 
 /// Reads `badge_definitions` + current user `badges.earned` / `gamification`.
-class AchievementsScreen extends StatelessWidget {
+class AchievementsScreen extends StatefulWidget {
   const AchievementsScreen({super.key});
+
+  @override
+  State<AchievementsScreen> createState() => _AchievementsScreenState();
+}
+
+class _AchievementsScreenState extends State<AchievementsScreen> {
+  bool _emptyDefinitionsEventLogged = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(ExpansionAnalytics.log('achievements_screen_started', sourceScreen: 'achievements'));
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,6 +65,17 @@ class AchievementsScreen extends StatelessWidget {
               }
               final defs = defSnap.data ?? [];
               if (defs.isEmpty) {
+                if (!_emptyDefinitionsEventLogged) {
+                  _emptyDefinitionsEventLogged = true;
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    unawaited(
+                      ExpansionAnalytics.log(
+                        'achievements_definitions_empty_shown',
+                        sourceScreen: 'achievements',
+                      ),
+                    );
+                  });
+                }
                 return ListView(
                   padding: const EdgeInsets.all(24),
                   children: [

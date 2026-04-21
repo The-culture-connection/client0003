@@ -13,6 +13,7 @@ import {
   UserPlus,
   KeyRound,
   ShieldAlert,
+  LineChart,
 } from "lucide-react";
 import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -20,6 +21,7 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import { InPersonCohortCsvImport } from "@/components/admin/InPersonCohortCsvImport";
 import { EligibleUsersAdminPanel } from "@/components/admin/EligibleUsersAdminPanel";
 import { MobileModerationPanel } from "@/components/admin/MobileModerationPanel";
+import { MobileAnalyticsSummariesPanel } from "@/components/admin/MobileAnalyticsSummariesPanel";
 
 function isAdminUser(roles: string[] | undefined) {
   const r = roles ?? [];
@@ -71,6 +73,10 @@ export default function AdminDashboard() {
           <TabsTrigger value="mobile-moderation" className="gap-1">
             <ShieldAlert className="w-3.5 h-3.5" />
             Mobile & reports
+          </TabsTrigger>
+          <TabsTrigger value="mobile-analytics" className="gap-1">
+            <LineChart className="w-3.5 h-3.5" />
+            Mobile analytics
           </TabsTrigger>
         </TabsList>
 
@@ -187,6 +193,14 @@ export default function AdminDashboard() {
 
         <TabsContent value="mobile-moderation" className="mt-4">
           <MobileModerationPanel />
+        </TabsContent>
+
+        <TabsContent value="mobile-analytics" className="mt-4">
+          <p className="text-sm text-muted-foreground mb-4">
+            Phase 4 summaries driven by <code className="text-xs">expansion_analytics_events</code> (Cloud
+            Function rollups). Download merges paginated raw rows for backup / spreadsheet import.
+          </p>
+          <MobileAnalyticsSummariesPanel />
         </TabsContent>
       </Tabs>
     </div>

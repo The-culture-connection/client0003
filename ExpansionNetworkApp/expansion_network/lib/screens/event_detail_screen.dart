@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../analytics/expansion_analytics.dart';
 import '../models/community_event.dart';
 import '../services/events_repository.dart';
 import '../theme/app_theme.dart';
@@ -31,6 +34,15 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(
+        ExpansionAnalytics.log(
+          'event_detail_screen_started',
+          entityId: widget.eventId,
+          sourceScreen: 'event_detail',
+        ),
+      );
+    });
     _load();
   }
 
@@ -61,6 +73,13 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
     final wasRegistered = e.isRegistered(uid);
+    if (!wasRegistered) {
+      await ExpansionAnalytics.log(
+        'event_register_clicked',
+        entityId: widget.eventId,
+        sourceScreen: 'event_detail',
+      );
+    }
     setState(() => _busy = true);
     try {
       if (wasRegistered) {
@@ -70,6 +89,23 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       }
       await _load();
       if (!mounted) return;
+      final evAfter = _event;
+      if (evAfter != null) {
+        if (!wasRegistered && evAfter.isRegistered(uid)) {
+          await ExpansionAnalytics.log(
+            'event_registered',
+            entityId: widget.eventId,
+            sourceScreen: 'event_detail',
+          );
+        }
+        if (wasRegistered && !evAfter.isRegistered(uid)) {
+          await ExpansionAnalytics.log(
+            'event_unregistered',
+            entityId: widget.eventId,
+            sourceScreen: 'event_detail',
+          );
+        }
+      }
       if (!wasRegistered) {
         final ev = _event;
         if (ev != null && ev.date != null && ev.isRegistered(uid) && mounted) {
@@ -77,6 +113,14 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         }
       }
     } catch (err) {
+      unawaited(
+        ExpansionAnalytics.log(
+          'event_register_failed',
+          entityId: widget.eventId,
+          sourceScreen: 'event_detail',
+          extra: ExpansionAnalytics.errorExtras(err, code: 'toggle_register'),
+        ),
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$err')));
       }

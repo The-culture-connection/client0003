@@ -835,6 +835,42 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Expansion mobile raw analytics (Flutter client → Firestore)
+    match /expansion_analytics_events/{eventId} {
+      allow create: if isSignedIn()
+        && request.resource.data.user_id == request.auth.uid
+        && request.resource.data.event_name is string
+        && request.resource.data.session_id is string;
+      allow read: if hasStaffClaim();
+      allow update, delete: if false;
+    }
+
+    // Phase 4 — Expansion mobile summaries (Cloud Functions triggers only)
+    match /community_summary/{groupId} {
+      allow read: if hasStaffClaim();
+      allow write: if false;
+    }
+
+    match /matching_summary/{userId} {
+      allow read: if hasStaffClaim();
+      allow write: if false;
+    }
+
+    match /job_summary/{jobId} {
+      allow read: if hasStaffClaim();
+      allow write: if false;
+    }
+
+    match /funnel_summary/{funnelId} {
+      allow read: if hasStaffClaim();
+      allow write: if false;
+    }
+
+    match /friction_summary/{eventName} {
+      allow read: if hasStaffClaim();
+      allow write: if false;
+    }
+
     // Phase 6 — analytics badges (Functions writes only)
     match /user_badges/{userId} {
       allow read: if isOwner(userId) || hasStaffClaim();

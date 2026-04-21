@@ -14,7 +14,7 @@ export function utcYyyyMmDd(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-function previousUtcYyyyMmDd(day: string): string {
+export function previousUtcYyyyMmDd(day: string): string {
   const [y, mo, da] = day.split("-").map((n) => parseInt(n, 10));
   const d = new Date(Date.UTC(y, mo - 1, da));
   d.setUTCDate(d.getUTCDate() - 1);

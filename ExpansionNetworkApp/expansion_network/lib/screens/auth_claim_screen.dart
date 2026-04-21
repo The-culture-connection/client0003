@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../analytics/expansion_analytics.dart';
 import '../constants/alumni_network_constants.dart';
 import '../services/expansion_session_service.dart';
 import '../theme/app_theme.dart';
@@ -37,6 +40,16 @@ class _AuthClaimScreenState extends State<AuthClaimScreen> {
   _ClaimStep _step = _ClaimStep.emailAndCode;
   bool _busy = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(
+        ExpansionAnalytics.log('auth_claim_screen_started', sourceScreen: 'auth_claim'),
+      );
+    });
+  }
 
   @override
   void dispose() {
@@ -89,6 +102,7 @@ class _AuthClaimScreenState extends State<AuthClaimScreen> {
       _busy = true;
       _error = null;
     });
+    await ExpansionAnalytics.log('invite_code_validation_submitted', sourceScreen: 'auth_claim');
     try {
       final data = await _session.validateInviteCode(
         email: _email.text,
@@ -97,9 +111,15 @@ class _AuthClaimScreenState extends State<AuthClaimScreen> {
       final valid = data['valid'] == true;
       if (!valid) {
         final code = data['code'] as String?;
+        await ExpansionAnalytics.log(
+          'invite_code_validation_failed',
+          sourceScreen: 'auth_claim',
+          extra: <String, Object?>{'error_code': code ?? 'unknown'},
+        );
         setState(() => _error = _mapValidateCode(code));
         return;
       }
+      await ExpansionAnalytics.log('invite_code_validation_succeeded', sourceScreen: 'auth_claim');
       final existing = data['authAccountExists'] == true;
       setState(() {
         _password.clear();
@@ -109,6 +129,11 @@ class _AuthClaimScreenState extends State<AuthClaimScreen> {
             : _ClaimStep.passwordNewAccount;
       });
     } catch (e) {
+      await ExpansionAnalytics.log(
+        'invite_code_validation_failed',
+        sourceScreen: 'auth_claim',
+        extra: ExpansionAnalytics.errorExtras(e, code: 'validate_invite_callable'),
+      );
       setState(() => _error = userMessageForFirebaseCallableError(e));
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -121,6 +146,7 @@ class _AuthClaimScreenState extends State<AuthClaimScreen> {
       _busy = true;
       _error = null;
     });
+    await ExpansionAnalytics.log('invite_account_create_submitted', sourceScreen: 'auth_claim');
     try {
       final data = await _session.claimInviteAndCreateAccount(
         email: _email.text,
@@ -137,6 +163,11 @@ class _AuthClaimScreenState extends State<AuthClaimScreen> {
           });
           return;
         }
+        await ExpansionAnalytics.log(
+          'invite_flow_failed',
+          sourceScreen: 'auth_claim',
+          extra: <String, Object?>{'step': 'create_account', 'error_code': code ?? 'unknown'},
+        );
         setState(() => _error = _mapClaimError(code));
         return;
       }
@@ -149,12 +180,21 @@ class _AuthClaimScreenState extends State<AuthClaimScreen> {
       } else {
         final token = data['customToken'] as String?;
         if (token == null || token.isEmpty) {
+          await ExpansionAnalytics.log(
+            'invite_flow_failed',
+            sourceScreen: 'auth_claim',
+            extra: const <String, Object?>{'step': 'create_account', 'error_code': 'missing_custom_token'},
+          );
           setState(() => _error = 'Claim succeeded but no session token returned.');
           return;
         }
         await FirebaseAuth.instance.signInWithCustomToken(token);
       }
-      if (mounted) context.go('/session');
+      if (mounted) {
+        await ExpansionAnalytics.log('invite_account_create_succeeded', sourceScreen: 'auth_claim');
+        if (!mounted) return;
+        context.go('/session');
+      }
     } catch (e) {
       if (e is FirebaseFunctionsException && e.code == 'already-exists') {
         setState(() {
@@ -165,6 +205,11 @@ class _AuthClaimScreenState extends State<AuthClaimScreen> {
         });
         return;
       }
+      await ExpansionAnalytics.log(
+        'invite_flow_failed',
+        sourceScreen: 'auth_claim',
+        extra: ExpansionAnalytics.errorExtras(e, code: 'create_account'),
+      );
       setState(() => _error = userMessageForFirebaseCallableError(e));
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -183,6 +228,7 @@ class _AuthClaimScreenState extends State<AuthClaimScreen> {
       _busy = true;
       _error = null;
     });
+    await ExpansionAnalytics.log('invite_account_create_submitted', sourceScreen: 'auth_claim');
     try {
       final email = _email.text.trim();
       await FirebaseAuth.instance.signInWithEmailAndPassword(
@@ -194,18 +240,37 @@ class _AuthClaimScreenState extends State<AuthClaimScreen> {
         await FirebaseAuth.instance.signOut();
         final msg = fin['message'] as String?;
         final code = fin['code'] as String?;
+        await ExpansionAnalytics.log(
+          'invite_flow_failed',
+          sourceScreen: 'auth_claim',
+          extra: <String, Object?>{'step': 'finalize_invite', 'error_code': code ?? 'unknown', 'message': msg ?? ''},
+        );
         setState(() {
           _error = msg ?? _mapClaimError(code);
         });
         return;
       }
-      if (mounted) context.go('/session');
+      if (mounted) {
+        await ExpansionAnalytics.log('invite_account_create_succeeded', sourceScreen: 'auth_claim');
+        if (!mounted) return;
+        context.go('/session');
+      }
     } on FirebaseAuthException catch (e) {
+      await ExpansionAnalytics.log(
+        'invite_flow_failed',
+        sourceScreen: 'auth_claim',
+        extra: ExpansionAnalytics.errorExtras(e, code: e.code),
+      );
       setState(() {
         _error = e.message ?? 'Sign-in failed. Check your password.';
       });
     } catch (e) {
       await FirebaseAuth.instance.signOut();
+      await ExpansionAnalytics.log(
+        'invite_flow_failed',
+        sourceScreen: 'auth_claim',
+        extra: ExpansionAnalytics.errorExtras(e, code: 'finalize_invite'),
+      );
       setState(() => _error = userMessageForFirebaseCallableError(e));
     } finally {
       if (mounted) setState(() => _busy = false);

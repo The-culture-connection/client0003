@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../analytics/expansion_analytics.dart';
 import '../auth/auth_controller.dart';
 
 /// Post–profile-completion welcome: **`assets/Welcome.gif`**, then **Home**.
@@ -49,6 +50,11 @@ class _WelcomeMortarverseIntroScreenState extends State<WelcomeMortarverseIntroS
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(
+        ExpansionAnalytics.log('welcome_intro_screen_started', sourceScreen: 'welcome_intro'),
+      );
+    });
     imageCache.evict(AssetImage(kWelcomeGifAsset));
     _bootstrap();
   }
@@ -69,6 +75,13 @@ class _WelcomeMortarverseIntroScreenState extends State<WelcomeMortarverseIntroS
       codec = await ui.instantiateImageCodec(load.bytes!);
     } catch (e, st) {
       debugPrint('Welcome GIF codec failed: $e\n$st');
+      unawaited(
+        ExpansionAnalytics.log(
+          'welcome_intro_decode_failed',
+          sourceScreen: 'welcome_intro',
+          extra: ExpansionAnalytics.errorExtras(e, code: 'instantiateImageCodec'),
+        ),
+      );
       if (!mounted || _disposed) return;
       setState(() {
         _loading = false;
@@ -112,6 +125,13 @@ class _WelcomeMortarverseIntroScreenState extends State<WelcomeMortarverseIntroS
         } catch (e, st) {
           if (_disposed || !mounted) return;
           debugPrint('Welcome GIF getNextFrame failed: $e\n$st');
+          unawaited(
+            ExpansionAnalytics.log(
+              'welcome_intro_decode_failed',
+              sourceScreen: 'welcome_intro',
+              extra: ExpansionAnalytics.errorExtras(e, code: 'getNextFrame'),
+            ),
+          );
           break;
         }
         if (!mounted || _disposed) return;
@@ -218,6 +238,9 @@ class _WelcomeMortarverseIntroScreenState extends State<WelcomeMortarverseIntroS
       context.go('/session');
       return;
     }
+    unawaited(
+      ExpansionAnalytics.log('welcome_intro_navigated_home', sourceScreen: 'welcome_intro'),
+    );
     context.go('/home');
   }
 

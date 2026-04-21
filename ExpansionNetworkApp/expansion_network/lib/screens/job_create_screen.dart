@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../analytics/expansion_analytics.dart';
 import '../data/explore_posting_industries.dart';
 import '../services/explore_listings_repository.dart';
 import '../services/user_profile_repository.dart';
@@ -30,6 +33,14 @@ class _JobCreateScreenState extends State<JobCreateScreen> {
   String? _expandedSeekingCategory;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(ExpansionAnalytics.log('job_create_started', sourceScreen: 'job_create'));
+    });
+  }
+
+  @override
   void dispose() {
     _title.dispose();
     _company.dispose();
@@ -47,9 +58,23 @@ class _JobCreateScreenState extends State<JobCreateScreen> {
   void _toggleSeekingSkill(String skill) {
     if (_skillsSeeking.contains(skill)) {
       setState(() => _skillsSeeking.remove(skill));
+      unawaited(
+        ExpansionAnalytics.log(
+          'job_skills_seeking_toggled',
+          sourceScreen: 'job_create',
+          extra: <String, Object?>{'skill': skill, 'selected': false},
+        ),
+      );
       return;
     }
     if (_skillsSeeking.length >= ExploreListingsRepository.maxSkillsPerListing) {
+      unawaited(
+        ExpansionAnalytics.log(
+          'job_skills_cap_reached',
+          sourceScreen: 'job_create',
+          extra: <String, Object?>{'cap': ExploreListingsRepository.maxSkillsPerListing},
+        ),
+      );
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('At most ${ExploreListingsRepository.maxSkillsPerListing} skills per job.'),
@@ -58,6 +83,13 @@ class _JobCreateScreenState extends State<JobCreateScreen> {
       return;
     }
     setState(() => _skillsSeeking.add(skill));
+    unawaited(
+      ExpansionAnalytics.log(
+        'job_skills_seeking_toggled',
+        sourceScreen: 'job_create',
+        extra: <String, Object?>{'skill': skill, 'selected': true},
+      ),
+    );
   }
 
   Future<void> _onLocationModeChanged(Set<bool> selected) async {
@@ -97,9 +129,10 @@ class _JobCreateScreenState extends State<JobCreateScreen> {
       return;
     }
 
+    unawaited(ExpansionAnalytics.log('job_create_submitted', sourceScreen: 'job_create'));
     setState(() => _busy = true);
     try {
-      await _repo.createJob(
+      final jobId = await _repo.createJob(
         title: _title.text.trim(),
         skillsSeeking: _skillsSeeking.toList(),
         company: _company.text.trim().isEmpty ? null : _company.text.trim(),
@@ -109,10 +142,23 @@ class _JobCreateScreenState extends State<JobCreateScreen> {
         description: _description.text.trim().isEmpty ? null : _description.text.trim(),
       );
       if (mounted) {
+        await ExpansionAnalytics.log(
+          'job_create_succeeded',
+          entityId: jobId,
+          sourceScreen: 'job_create',
+        );
+        if (!mounted) return;
         context.pop();
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Job posted.')));
       }
     } catch (e) {
+      unawaited(
+        ExpansionAnalytics.log(
+          'job_create_failed',
+          sourceScreen: 'job_create',
+          extra: ExpansionAnalytics.errorExtras(e, code: 'create_job'),
+        ),
+      );
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
     } finally {
       if (mounted) setState(() => _busy = false);

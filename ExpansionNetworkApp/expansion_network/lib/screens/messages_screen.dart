@@ -1,25 +1,41 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../analytics/expansion_analytics.dart';
 import '../services/dm_repository.dart';
 import '../services/user_profile_repository.dart';
 import '../theme/app_theme.dart';
 import '../widgets/user_profile_modal.dart';
 
+String? _dmOtherParticipant(List<dynamic>? ids, String me) {
+  if (ids == null || ids.length != 2) return null;
+  final a = ids[0];
+  final b = ids[1];
+  if (a is! String || b is! String) return null;
+  if (a == me) return b;
+  if (b == me) return a;
+  return null;
+}
+
 /// Lists 1:1 threads from `dm_threads`.
-class MessagesScreen extends StatelessWidget {
+class MessagesScreen extends StatefulWidget {
   const MessagesScreen({super.key});
 
-  String? _otherParticipant(List<dynamic>? ids, String me) {
-    if (ids == null || ids.length != 2) return null;
-    final a = ids[0];
-    final b = ids[1];
-    if (a is! String || b is! String) return null;
-    if (a == me) return b;
-    if (b == me) return a;
-    return null;
+  @override
+  State<MessagesScreen> createState() => _MessagesScreenState();
+}
+
+class _MessagesScreenState extends State<MessagesScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(ExpansionAnalytics.log('messages_inbox_started', sourceScreen: 'messages_inbox'));
+    });
   }
 
   @override
@@ -91,13 +107,23 @@ class MessagesScreen extends StatelessWidget {
                         final d = docs[index];
                         final data = d.data();
                         final ids = data?['participant_ids'] as List<dynamic>?;
-                        final other = _otherParticipant(ids, me);
+                        final other = _dmOtherParticipant(ids, me);
                         final preview = data?['last_preview'] as String? ?? '';
                         if (other == null) return const SizedBox.shrink();
                         return Material(
                           color: AppColors.background,
                           child: InkWell(
-                            onTap: () => context.push('/messages/direct/$other'),
+                            onTap: () {
+                              unawaited(
+                                ExpansionAnalytics.log(
+                                  'messages_thread_opened',
+                                  entityId: other,
+                                  sourceScreen: 'messages_inbox',
+                                  attachmentType: 'dm',
+                                ),
+                              );
+                              context.push('/messages/direct/$other');
+                            },
                             child: Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                               child: Row(

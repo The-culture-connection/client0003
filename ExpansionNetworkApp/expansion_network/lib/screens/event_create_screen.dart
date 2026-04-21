@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../analytics/expansion_analytics.dart';
 import '../services/events_repository.dart';
 import '../services/user_profile_repository.dart';
 import '../theme/app_theme.dart';
@@ -35,6 +38,11 @@ class _EventCreateScreenState extends State<EventCreateScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(
+        ExpansionAnalytics.log('event_create_screen_started', sourceScreen: 'event_create'),
+      );
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final uid = FirebaseAuth.instance.currentUser?.uid;
       if (uid == null || !mounted) return;
@@ -191,6 +199,7 @@ class _EventCreateScreenState extends State<EventCreateScreen> {
     }
     final timeStr = _formatTime(context, time);
 
+    await ExpansionAnalytics.log('event_create_submitted', sourceScreen: 'event_create');
     setState(() => _submitting = true);
     try {
       String? imageUrl;
@@ -206,15 +215,22 @@ class _EventCreateScreenState extends State<EventCreateScreen> {
         eventType: _online ? 'Online' : 'In-person',
         imageUrl: imageUrl,
       );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Submitted. You’ll see it on Events once it’s reviewed in Digital Curriculum.'),
-          ),
-        );
-        context.go('/feed');
-      }
+      await ExpansionAnalytics.log('event_create_succeeded', sourceScreen: 'event_create');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Submitted. You’ll see it on Events once it’s reviewed in Digital Curriculum.'),
+        ),
+      );
+      context.go('/feed');
     } catch (e) {
+      unawaited(
+        ExpansionAnalytics.log(
+          'event_create_failed',
+          sourceScreen: 'event_create',
+          extra: ExpansionAnalytics.errorExtras(e, code: 'submit_user_event'),
+        ),
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
       }

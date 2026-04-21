@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../analytics/expansion_analytics.dart';
 import '../models/feed_post.dart';
 import '../profile/profile_utils.dart';
 import '../services/feed_posts_repository.dart';
@@ -219,6 +222,13 @@ class FeedPostCard extends StatelessWidget {
                                 : () async {
                                     try {
                                       await repo.togglePostLike(post.id);
+                                      unawaited(
+                                        ExpansionAnalytics.log(
+                                          'feed_post_like_toggled',
+                                          entityId: post.id,
+                                          sourceScreen: 'feed_post_card',
+                                        ),
+                                      );
                                     } catch (e) {
                                       if (context.mounted) {
                                         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
@@ -278,6 +288,13 @@ class FeedPostCard extends StatelessWidget {
                         if (ok == true && context.mounted) {
                           try {
                             await repo.deletePost(post.id);
+                            unawaited(
+                              ExpansionAnalytics.log(
+                                'feed_post_delete_confirmed',
+                                entityId: post.id,
+                                sourceScreen: 'feed_post_card',
+                              ),
+                            );
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(content: Text('Post deleted')),

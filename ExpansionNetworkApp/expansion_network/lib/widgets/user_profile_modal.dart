@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../analytics/expansion_analytics.dart';
 import '../models/community_event.dart';
 import '../models/explore_job.dart';
 import '../models/explore_skill_listing.dart';
@@ -43,6 +46,13 @@ Future<void> showUserProfileModal(
   required String userId,
 }) async {
   if (userId.isEmpty) return;
+  unawaited(
+    ExpansionAnalytics.log(
+      'user_profile_modal_opened',
+      entityId: userId,
+      sourceScreen: 'user_profile_modal',
+    ),
+  );
   await showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -152,6 +162,13 @@ Future<void> _openReportFlow(
   if (reason == null || reason.isEmpty) return;
   try {
     await UserReportsRepository().submitReport(reportedUserId: reportedUserId, reason: reason);
+    unawaited(
+      ExpansionAnalytics.log(
+        'user_profile_modal_report_submitted',
+        entityId: reportedUserId,
+        sourceScreen: 'user_profile_modal',
+      ),
+    );
     if (!context.mounted) return;
     ScaffoldMessenger.maybeOf(context)?.showSnackBar(
       const SnackBar(content: Text('Thanks — our team will review.')),
@@ -253,6 +270,14 @@ class _UserProfileModalBody extends StatelessWidget {
                         const SizedBox(width: 8),
                         FilledButton.icon(
                           onPressed: () {
+                            unawaited(
+                              ExpansionAnalytics.log(
+                                'user_profile_modal_message_clicked',
+                                entityId: userId,
+                                sourceScreen: 'user_profile_modal',
+                                attachmentType: 'dm',
+                              ),
+                            );
                             Navigator.of(context).pop();
                             context.push('/messages/direct/$userId');
                           },

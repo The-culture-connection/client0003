@@ -1,14 +1,30 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../analytics/expansion_analytics.dart';
 import '../models/mortar_info_post.dart';
 import '../services/mortar_info_repository.dart';
 import '../theme/app_theme.dart';
 import '../widgets/mortar_info_feed_tile.dart';
 
 /// Full list of published Mortar announcements (`mortar_info_posts`).
-class MortarFeedScreen extends StatelessWidget {
+class MortarFeedScreen extends StatefulWidget {
   const MortarFeedScreen({super.key});
+
+  @override
+  State<MortarFeedScreen> createState() => _MortarFeedScreenState();
+}
+
+class _MortarFeedScreenState extends State<MortarFeedScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(ExpansionAnalytics.log('mortar_feed_started', sourceScreen: 'mortar_feed'));
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -62,7 +78,16 @@ class MortarFeedScreen extends StatelessWidget {
               return MortarInfoFeedTile(
                 post: p,
                 compact: true,
-                onOpenDetail: () => context.push('/mortar-info/${p.id}'),
+                onOpenDetail: () {
+                  unawaited(
+                    ExpansionAnalytics.log(
+                      'mortar_feed_item_opened',
+                      entityId: p.id,
+                      sourceScreen: 'mortar_feed',
+                    ),
+                  );
+                  context.push('/mortar-info/${p.id}');
+                },
               );
             },
           );

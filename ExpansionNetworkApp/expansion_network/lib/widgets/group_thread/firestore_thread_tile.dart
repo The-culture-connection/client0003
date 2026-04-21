@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../../analytics/expansion_analytics.dart';
 import '../../models/group_thread_firestore.dart';
 import '../../services/group_thread_repository.dart';
 import '../../theme/app_theme.dart';
@@ -22,6 +25,14 @@ Future<void> showGroupThreadDetailSheet(
   required FsGroupThread thread,
   required GroupThreadRepository repo,
 }) {
+  unawaited(
+    ExpansionAnalytics.log(
+      'group_thread_opened',
+      entityId: thread.id,
+      sourceScreen: 'group_thread',
+      extra: <String, Object?>{'group_id': groupId},
+    ),
+  );
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -135,6 +146,14 @@ class _FirestoreThreadTileState extends State<FirestoreThreadTile> {
   Future<void> _vote(int direction) async {
     try {
       await widget.repo.setThreadVote(widget.groupId, widget.thread.id, direction);
+      unawaited(
+        ExpansionAnalytics.log(
+          direction >= 0 ? 'group_thread_upvoted' : 'group_thread_downvoted',
+          entityId: widget.thread.id,
+          sourceScreen: 'group_thread',
+          extra: <String, Object?>{'group_id': widget.groupId},
+        ),
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
@@ -145,6 +164,14 @@ class _FirestoreThreadTileState extends State<FirestoreThreadTile> {
   Future<void> _voteComment(String commentId, int direction) async {
     try {
       await widget.repo.setCommentVote(widget.groupId, widget.thread.id, commentId, direction);
+      unawaited(
+        ExpansionAnalytics.log(
+          direction >= 0 ? 'group_comment_upvoted' : 'group_comment_downvoted',
+          entityId: widget.thread.id,
+          sourceScreen: 'group_thread',
+          extra: <String, Object?>{'group_id': widget.groupId, 'comment_id': commentId},
+        ),
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
@@ -161,6 +188,12 @@ class _FirestoreThreadTileState extends State<FirestoreThreadTile> {
         threadId: widget.thread.id,
         body: text,
         parentCommentId: parentId,
+      );
+      await ExpansionAnalytics.log(
+        'group_thread_comment_submitted',
+        entityId: widget.thread.id,
+        sourceScreen: 'group_thread',
+        extra: <String, Object?>{'group_id': widget.groupId},
       );
       if (mounted) {
         setState(() {

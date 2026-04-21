@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:go_router/go_router.dart';
 
+import '../analytics/expansion_analytics.dart';
 import '../models/dm_message.dart';
 import '../services/dm_repository.dart';
 import '../services/user_profile_repository.dart';
@@ -32,12 +36,23 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
   String? _pendingAttachType;
   String? _pendingAttachId;
   bool _sending = false;
+  bool _messagesStreamErrorLogged = false;
 
   @override
   void initState() {
     super.initState();
     _pendingAttachType = widget.initialAttachmentType;
     _pendingAttachId = widget.initialAttachmentId;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(
+        ExpansionAnalytics.log(
+          'direct_chat_started',
+          entityId: widget.userId,
+          sourceScreen: 'direct_chat',
+          attachmentType: widget.initialAttachmentType,
+        ),
+      );
+    });
   }
 
   @override
@@ -59,6 +74,13 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
         attachmentType: _pendingAttachType,
         attachmentId: _pendingAttachId,
       );
+      await ExpansionAnalytics.log(
+        'direct_chat_message_sent',
+        entityId: widget.userId,
+        sourceScreen: 'direct_chat',
+        attachmentType: _pendingAttachType,
+        extra: <String, Object?>{'attachment_id': _pendingAttachId ?? ''},
+      );
       _controller.clear();
       if (mounted) {
         setState(() {
@@ -67,6 +89,14 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
         });
       }
     } catch (e) {
+      unawaited(
+        ExpansionAnalytics.log(
+          'direct_chat_message_send_failed',
+          entityId: widget.userId,
+          sourceScreen: 'direct_chat',
+          extra: ExpansionAnalytics.errorExtras(e, code: 'send_message'),
+        ),
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
       }
@@ -172,6 +202,20 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
               stream: _dm.watchMessages(threadId),
               builder: (context, snap) {
                 if (snap.hasError) {
+                  if (!_messagesStreamErrorLogged) {
+                    _messagesStreamErrorLogged = true;
+                    final err = snap.error!;
+                    SchedulerBinding.instance.addPostFrameCallback((_) {
+                      unawaited(
+                        ExpansionAnalytics.log(
+                          'direct_chat_messages_stream_error',
+                          entityId: widget.userId,
+                          sourceScreen: 'direct_chat',
+                          extra: ExpansionAnalytics.errorExtras(err, code: 'watch_messages'),
+                        ),
+                      );
+                    });
+                  }
                   return Center(child: Text('${snap.error}', textAlign: TextAlign.center));
                 }
                 final list = snap.data ?? [];

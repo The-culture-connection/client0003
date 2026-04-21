@@ -1,14 +1,36 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
+import '../analytics/expansion_analytics.dart';
 import '../models/mortar_info_post.dart';
 import '../services/mortar_info_repository.dart';
 import '../theme/app_theme.dart';
 import '../widgets/mortar_info_feed_tile.dart';
 
-class MortarInfoDetailScreen extends StatelessWidget {
+class MortarInfoDetailScreen extends StatefulWidget {
   const MortarInfoDetailScreen({super.key, required this.postId});
 
   final String postId;
+
+  @override
+  State<MortarInfoDetailScreen> createState() => _MortarInfoDetailScreenState();
+}
+
+class _MortarInfoDetailScreenState extends State<MortarInfoDetailScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(
+        ExpansionAnalytics.log(
+          'mortar_info_detail_started',
+          entityId: widget.postId,
+          sourceScreen: 'mortar_info_detail',
+        ),
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -17,7 +39,7 @@ class MortarInfoDetailScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Mortar')),
       body: FutureBuilder<MortarInfoPost?>(
-        future: repo.getPost(postId),
+        future: repo.getPost(widget.postId),
         builder: (context, snap) {
           if (snap.connectionState != ConnectionState.done) {
             return const Center(child: CircularProgressIndicator(color: AppColors.primary));

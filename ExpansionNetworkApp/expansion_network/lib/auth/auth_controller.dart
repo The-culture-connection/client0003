@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart'
     show ChangeNotifier, TargetPlatform, debugPrint, defaultTargetPlatform;
 
+import '../analytics/expansion_analytics.dart';
 import '../constants/alumni_network_constants.dart';
 import '../expansion_release_trace.dart';
 import '../services/expansion_session_service.dart';
@@ -89,6 +90,11 @@ class AuthController extends ChangeNotifier {
   }
 
   Future<void> _applySessionForUser(User user) async {
+    await ExpansionAnalytics.log(
+      'session_initialize_backend_started',
+      entityId: user.uid,
+      sourceScreen: 'session',
+    );
     try {
       if (defaultTargetPlatform == TargetPlatform.iOS &&
           _iosSessionSettleUid != user.uid) {
@@ -115,6 +121,12 @@ class AuthController extends ChangeNotifier {
                     ? kSessionAccountDisabledMessage
                     : kSessionNotAuthorizedMessage;
         expansionReleaseTrace('session: UNAUTHORIZED → revokeAfterDenial');
+        await ExpansionAnalytics.log(
+          'session_initialize_backend_unauthorized',
+          entityId: user.uid,
+          sourceScreen: 'session',
+          extra: <String, Object?>{'reason': reason ?? ''},
+        );
         await _revokeAfterDenial(user);
         return;
       }
@@ -149,9 +161,21 @@ class AuthController extends ChangeNotifier {
           _needsExpansionOnboarding = true;
         }
       }
+
+      await ExpansionAnalytics.log(
+        'session_initialize_backend_succeeded',
+        entityId: user.uid,
+        sourceScreen: 'session',
+      );
     } catch (e, st) {
       debugPrint('AuthController: initializeUserSession failed: $e\n$st');
       expansionReleaseTrace('session: initializeUserSession error → revokeAfterDenial');
+      await ExpansionAnalytics.log(
+        'session_initialize_backend_failed',
+        entityId: user.uid,
+        sourceScreen: 'session',
+        extra: ExpansionAnalytics.errorExtras(e, code: 'initializeUserSession'),
+      );
       _accessDeniedMessage = firebaseNativeBridgeLostUserMessage(e) ??
           'Could not verify alumni network access. Check your connection, or '
           'ensure Cloud Functions are deployed (initializeUserSession).';

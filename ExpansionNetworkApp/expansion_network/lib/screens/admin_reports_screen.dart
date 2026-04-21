@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../analytics/expansion_analytics.dart';
 import '../services/admin_moderation_repository.dart';
 import '../services/user_reports_repository.dart';
 import '../services/expansion_session_service.dart';
@@ -9,8 +12,15 @@ import '../theme/app_theme.dart';
 import '../utils/staff_claims.dart';
 
 /// Staff-only: triage `user_reports` with Ban / Unsuspend and structured profile snapshot.
-class AdminReportsScreen extends StatelessWidget {
+class AdminReportsScreen extends StatefulWidget {
   const AdminReportsScreen({super.key});
+
+  @override
+  State<AdminReportsScreen> createState() => _AdminReportsScreenState();
+}
+
+class _AdminReportsScreenState extends State<AdminReportsScreen> {
+  bool _accessDeniedLogged = false;
 
   @override
   Widget build(BuildContext context) {
@@ -23,6 +33,14 @@ class AdminReportsScreen extends StatelessWidget {
           );
         }
         if (snap.data != true) {
+          if (!_accessDeniedLogged) {
+            _accessDeniedLogged = true;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              unawaited(
+                ExpansionAnalytics.log('admin_reports_access_denied', sourceScreen: 'admin_reports'),
+              );
+            });
+          }
           return Scaffold(
             appBar: AppBar(title: const Text('User reports')),
             body: const Center(
@@ -247,6 +265,14 @@ class _AdminReportsBodyState extends State<_AdminReportsBody> {
   final _reports = UserReportsRepository();
   final _moderation = AdminModerationRepository();
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(ExpansionAnalytics.log('admin_reports_opened', sourceScreen: 'admin_reports'));
+    });
+  }
+
   String? _expandedId;
   final Map<String, Map<String, dynamic>> _snapshots = {};
   final Set<String> _snapshotLoading = {};
@@ -262,6 +288,14 @@ class _AdminReportsBodyState extends State<_AdminReportsBody> {
         _snapshots[reportId] = data;
         _snapshotLoading.remove(reportId);
       });
+      unawaited(
+        ExpansionAnalytics.log(
+          'admin_report_snapshot_load_succeeded',
+          entityId: reportId,
+          sourceScreen: 'admin_reports',
+          extra: <String, Object?>{'reported_uid': reportedUid},
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() => _snapshotLoading.remove(reportId));
@@ -272,16 +306,27 @@ class _AdminReportsBodyState extends State<_AdminReportsBody> {
   }
 
   void _toggleExpanded(String reportId, String? reportedUid) {
+    var opened = false;
     setState(() {
       if (_expandedId == reportId) {
         _expandedId = null;
       } else {
         _expandedId = reportId;
+        opened = true;
         if (reportedUid != null && reportedUid.isNotEmpty) {
           _loadSnapshot(reportId, reportedUid);
         }
       }
     });
+    if (opened) {
+      unawaited(
+        ExpansionAnalytics.log(
+          'admin_report_expanded',
+          entityId: reportId,
+          sourceScreen: 'admin_reports',
+        ),
+      );
+    }
   }
 
   Future<void> _finalize(String reportId, String reportedUid, {required bool ban}) async {
@@ -289,6 +334,14 @@ class _AdminReportsBodyState extends State<_AdminReportsBody> {
     setState(() => _actionLoading.add(key));
     try {
       await _reports.finalizeStaffModeration(reportId: reportId, reportedUserId: reportedUid, ban: ban);
+      unawaited(
+        ExpansionAnalytics.log(
+          ban ? 'admin_report_ban_finalized' : 'admin_report_unsuspend_finalized',
+          entityId: reportId,
+          sourceScreen: 'admin_reports',
+          extra: <String, Object?>{'reported_uid': reportedUid},
+        ),
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(ban ? 'Ban recorded on this report.' : 'Unsuspend recorded on this report.')),

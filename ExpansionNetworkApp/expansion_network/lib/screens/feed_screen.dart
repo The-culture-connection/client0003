@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:go_router/go_router.dart';
 
+import '../analytics/expansion_analytics.dart';
 import '../models/community_event.dart';
 import '../services/events_repository.dart';
 import '../theme/app_theme.dart';
@@ -24,6 +28,15 @@ class FeedScreen extends StatefulWidget {
 class _FeedScreenState extends State<FeedScreen> {
   /// 0 = All Events, 1 = Registered Events
   int _tabIndex = 0;
+  bool _eventsStreamErrorLogged = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(ExpansionAnalytics.log('events_feed_tab_started', sourceScreen: 'events_feed'));
+    });
+  }
 
   List<CommunityEvent> _visibleEvents(List<CommunityEvent> all, String? uid) {
     if (_tabIndex == 0) return all;
@@ -41,7 +54,12 @@ class _FeedScreenState extends State<FeedScreen> {
         padding: const EdgeInsets.only(bottom: 72),
         child: FloatingActionButton(
           onPressed: () async {
-            if (await blockContentActionIfSuspended(context)) return;
+            unawaited(
+              ExpansionAnalytics.log('events_feed_create_event_fab_clicked', sourceScreen: 'events_feed'),
+            );
+            if (await blockContentActionIfSuspended(context, blockedSurfaceEvent: 'events_feed_create_blocked_suspended')) {
+              return;
+            }
             if (context.mounted) context.push('/events/create');
           },
           child: const Icon(Icons.add),
@@ -65,7 +83,17 @@ class _FeedScreenState extends State<FeedScreen> {
                 ],
                 selected: {_tabIndex},
                 onSelectionChanged: (Set<int> next) {
-                  setState(() => _tabIndex = next.first);
+                  final to = next.first;
+                  if (to != _tabIndex) {
+                    unawaited(
+                      ExpansionAnalytics.log(
+                        'events_feed_subtab_changed',
+                        sourceScreen: 'events_feed',
+                        extra: <String, Object?>{'from_tab': _tabIndex, 'to_tab': to},
+                      ),
+                    );
+                  }
+                  setState(() => _tabIndex = to);
                 },
                 style: SegmentedButton.styleFrom(
                   selectedBackgroundColor: AppColors.primary,
@@ -83,6 +111,19 @@ class _FeedScreenState extends State<FeedScreen> {
               stream: repo.watchPublishedEvents(),
               builder: (context, evSnap) {
                 if (evSnap.hasError) {
+                  if (!_eventsStreamErrorLogged) {
+                    _eventsStreamErrorLogged = true;
+                    final err = evSnap.error!;
+                    SchedulerBinding.instance.addPostFrameCallback((_) {
+                      unawaited(
+                        ExpansionAnalytics.log(
+                          'events_feed_stream_error',
+                          sourceScreen: 'events_feed',
+                          extra: ExpansionAnalytics.errorExtras(err, code: 'watchPublishedEvents'),
+                        ),
+                      );
+                    });
+                  }
                   return SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.all(24),
@@ -139,7 +180,16 @@ class _FeedScreenState extends State<FeedScreen> {
                         child: _EventListTile(
                           event: e,
                           uid: uid,
-                          onTap: () => context.push('/events/${e.id}'),
+                          onTap: () {
+                            unawaited(
+                              ExpansionAnalytics.log(
+                                'events_feed_event_tile_opened',
+                                entityId: e.id,
+                                sourceScreen: 'events_feed',
+                              ),
+                            );
+                            context.push('/events/${e.id}');
+                          },
                         ),
                       );
                     },

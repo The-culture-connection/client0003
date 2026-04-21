@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../analytics/expansion_analytics.dart';
 import '../auth/auth_controller.dart';
 import '../theme/app_theme.dart';
 
@@ -20,7 +23,10 @@ class _LandingScreenState extends State<LandingScreen> {
     super.initState();
     _auth = context.read<AuthController>();
     _auth!.addListener(_onAuthChanged);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _showAccessDeniedIfNeeded());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(ExpansionAnalytics.log('landing_screen_started', sourceScreen: 'landing'));
+      _showAccessDeniedIfNeeded();
+    });
   }
 
   @override
@@ -35,6 +41,14 @@ class _LandingScreenState extends State<LandingScreen> {
     final auth = context.read<AuthController>();
     final msg = auth.takeAccessDeniedMessage();
     if (!mounted || msg == null) return;
+    final preview = msg.length > 160 ? '${msg.substring(0, 157)}…' : msg;
+    unawaited(
+      ExpansionAnalytics.log(
+        'landing_access_denied_dialog_shown',
+        sourceScreen: 'landing',
+        extra: <String, Object?>{'message_preview': preview},
+      ),
+    );
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -82,7 +96,12 @@ class _LandingScreenState extends State<LandingScreen> {
                   backgroundColor: AppColors.primary,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                onPressed: () => context.push('/auth/claim'),
+                onPressed: () {
+                  unawaited(
+                    ExpansionAnalytics.log('landing_claim_invite_clicked', sourceScreen: 'landing'),
+                  );
+                  context.push('/auth/claim');
+                },
                 child: const Text('Claim with invite'),
               ),
               const SizedBox(height: 12),
@@ -92,7 +111,12 @@ class _LandingScreenState extends State<LandingScreen> {
                   side: const BorderSide(color: AppColors.border),
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                onPressed: () => context.push('/auth/sign-in'),
+                onPressed: () {
+                  unawaited(
+                    ExpansionAnalytics.log('landing_sign_in_clicked', sourceScreen: 'landing'),
+                  );
+                  context.push('/auth/sign-in');
+                },
                 child: const Text('Sign in'),
               ),
               const SizedBox(height: 32),

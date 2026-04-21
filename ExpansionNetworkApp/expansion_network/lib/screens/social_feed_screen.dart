@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../analytics/expansion_analytics.dart';
 import '../models/feed_post.dart';
 import '../services/feed_posts_repository.dart';
 import '../theme/app_theme.dart';
@@ -8,8 +11,21 @@ import '../utils/content_action_guard.dart';
 import '../widgets/feed_post_card.dart';
 
 /// Full community post feed (`feed_posts`), separate from the Events tab.
-class SocialFeedScreen extends StatelessWidget {
+class SocialFeedScreen extends StatefulWidget {
   const SocialFeedScreen({super.key});
+
+  @override
+  State<SocialFeedScreen> createState() => _SocialFeedScreenState();
+}
+
+class _SocialFeedScreenState extends State<SocialFeedScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(ExpansionAnalytics.log('social_feed_started', sourceScreen: 'social_feed'));
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -94,7 +110,16 @@ class SocialFeedScreen extends StatelessWidget {
                       child: FeedPostCard(
                         post: p,
                         compact: false,
-                        onOpenPost: () => context.push('/feed/post/${p.id}'),
+                        onOpenPost: () {
+                          unawaited(
+                            ExpansionAnalytics.log(
+                              'social_feed_post_opened',
+                              entityId: p.id,
+                              sourceScreen: 'social_feed',
+                            ),
+                          );
+                          context.push('/feed/post/${p.id}');
+                        },
                       ),
                     );
                   },
@@ -106,7 +131,9 @@ class SocialFeedScreen extends StatelessWidget {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          if (await blockContentActionIfSuspended(context)) return;
+          if (await blockContentActionIfSuspended(context, blockedSurfaceEvent: 'feed_post_create_blocked_suspended')) {
+            return;
+          }
           if (context.mounted) context.push('/feed/post/create');
         },
         backgroundColor: AppColors.primary,

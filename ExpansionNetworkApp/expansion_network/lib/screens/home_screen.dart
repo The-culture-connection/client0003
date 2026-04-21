@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:go_router/go_router.dart';
 
+import '../analytics/expansion_analytics.dart';
 import '../models/explore_job.dart';
 import '../models/explore_skill_listing.dart';
 import '../models/group_thread_firestore.dart';
@@ -22,15 +26,33 @@ import '../widgets/mortar_info_feed_tile.dart' show mortarInfoRelativeTime;
 const _kMortarShopUrl = 'https://brick-walnut-hills.square.site/s/shop';
 
 /// Port of [UI Basis/src/app/pages/Home.tsx] — group activity from `groups_mobile`, no feed posts.
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(ExpansionAnalytics.log('home_screen_started', sourceScreen: 'home'));
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          if (await blockContentActionIfSuspended(context)) return;
+          unawaited(
+            ExpansionAnalytics.log('home_create_post_fab_clicked', sourceScreen: 'home'),
+          );
+          if (await blockContentActionIfSuspended(context, blockedSurfaceEvent: 'home_create_post_blocked_suspended')) {
+            return;
+          }
           if (context.mounted) context.push('/feed/post/create');
         },
         backgroundColor: AppColors.primary,
@@ -62,11 +84,18 @@ class HomeScreen extends StatelessWidget {
                     label: const Text('Mortar shop'),
                     onPressed: () async {
                       final u = Uri.parse(_kMortarShopUrl);
-                      await safeLaunchExternalUrl(
+                      final ok = await safeLaunchExternalUrl(
                         u,
                         messengerContext: context,
                         userFailureMessage: 'Could not open Mortar shop',
                       );
+                      if (ok && context.mounted) {
+                        await ExpansionAnalytics.log(
+                          'home_mortar_shop_opened',
+                          entityId: 'mortar_shop_square',
+                          sourceScreen: 'home',
+                        );
+                      }
                     },
                   ),
                   const SizedBox(height: 12),
@@ -87,8 +116,15 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-class _MyCommunitiesMessagesCard extends StatelessWidget {
+class _MyCommunitiesMessagesCard extends StatefulWidget {
   const _MyCommunitiesMessagesCard();
+
+  @override
+  State<_MyCommunitiesMessagesCard> createState() => _MyCommunitiesMessagesCardState();
+}
+
+class _MyCommunitiesMessagesCardState extends State<_MyCommunitiesMessagesCard> {
+  bool _streamErrorLogged = false;
 
   @override
   Widget build(BuildContext context) {
@@ -99,6 +135,22 @@ class _MyCommunitiesMessagesCard extends StatelessWidget {
       stream: repo.watchGroups(),
       builder: (context, snap) {
         if (snap.hasError) {
+          if (!_streamErrorLogged) {
+            _streamErrorLogged = true;
+            final err = snap.error!;
+            SchedulerBinding.instance.addPostFrameCallback((_) {
+              unawaited(
+                ExpansionAnalytics.log(
+                  'home_stream_load_error',
+                  sourceScreen: 'home',
+                  extra: <String, Object?>{
+                    'stream_key': 'groups_list',
+                    ...ExpansionAnalytics.errorExtras(err, code: 'groups_stream'),
+                  },
+                ),
+              );
+            });
+          }
           return _CardShell(
             title: 'Your communities',
             child: Text(
@@ -195,8 +247,15 @@ class _MyCommunitiesMessagesCard extends StatelessWidget {
   }
 }
 
-class _RecentActivityCard extends StatelessWidget {
+class _RecentActivityCard extends StatefulWidget {
   const _RecentActivityCard();
+
+  @override
+  State<_RecentActivityCard> createState() => _RecentActivityCardState();
+}
+
+class _RecentActivityCardState extends State<_RecentActivityCard> {
+  bool _streamErrorLogged = false;
 
   @override
   Widget build(BuildContext context) {
@@ -206,6 +265,22 @@ class _RecentActivityCard extends StatelessWidget {
       stream: repo.watchPosts(limit: 2),
       builder: (context, snap) {
         if (snap.hasError) {
+          if (!_streamErrorLogged) {
+            _streamErrorLogged = true;
+            final err = snap.error!;
+            SchedulerBinding.instance.addPostFrameCallback((_) {
+              unawaited(
+                ExpansionAnalytics.log(
+                  'home_stream_load_error',
+                  sourceScreen: 'home',
+                  extra: <String, Object?>{
+                    'stream_key': 'recent_activity_posts',
+                    ...ExpansionAnalytics.errorExtras(err, code: 'feed_posts'),
+                  },
+                ),
+              );
+            });
+          }
           return _CardShell(
             title: 'Recent Activity',
             actionLabel: 'View All',
@@ -249,7 +324,9 @@ class _RecentActivityCard extends StatelessWidget {
                     const SizedBox(height: 8),
                     TextButton(
                       onPressed: () async {
-                        if (await blockContentActionIfSuspended(context)) return;
+                        if (await blockContentActionIfSuspended(context, blockedSurfaceEvent: 'home_create_post_blocked_suspended')) {
+                          return;
+                        }
                         if (context.mounted) context.push('/feed/post/create');
                       },
                       child: const Text('Create post'),
@@ -264,7 +341,16 @@ class _RecentActivityCard extends StatelessWidget {
                         post: posts[i],
                         compact: true,
                         showImage: false,
-                        onOpenPost: () => context.push('/feed/post/${posts[i].id}'),
+                        onOpenPost: () {
+                          unawaited(
+                            ExpansionAnalytics.log(
+                              'home_feed_post_preview_opened',
+                              entityId: posts[i].id,
+                              sourceScreen: 'home',
+                            ),
+                          );
+                          context.push('/feed/post/${posts[i].id}');
+                        },
                       ),
                     ],
                   ],
@@ -275,8 +361,15 @@ class _RecentActivityCard extends StatelessWidget {
   }
 }
 
-class _MortarInfoHomeCard extends StatelessWidget {
+class _MortarInfoHomeCard extends StatefulWidget {
   const _MortarInfoHomeCard();
+
+  @override
+  State<_MortarInfoHomeCard> createState() => _MortarInfoHomeCardState();
+}
+
+class _MortarInfoHomeCardState extends State<_MortarInfoHomeCard> {
+  bool _streamErrorLogged = false;
 
   @override
   Widget build(BuildContext context) {
@@ -288,6 +381,22 @@ class _MortarInfoHomeCard extends StatelessWidget {
         stream: repo.watchPublishedPosts(limit: 1),
         builder: (context, snap) {
           if (snap.hasError) {
+            if (!_streamErrorLogged) {
+              _streamErrorLogged = true;
+              final err = snap.error!;
+              SchedulerBinding.instance.addPostFrameCallback((_) {
+                unawaited(
+                  ExpansionAnalytics.log(
+                    'home_stream_load_error',
+                    sourceScreen: 'home',
+                    extra: <String, Object?>{
+                      'stream_key': 'mortar_info_posts',
+                      ...ExpansionAnalytics.errorExtras(err, code: 'mortar_info'),
+                    },
+                  ),
+                );
+              });
+            }
             return Text(
               'Could not load updates.\n${_shortError(snap.error)}',
               style: const TextStyle(fontSize: 12, color: AppColors.mutedForeground),
@@ -613,8 +722,16 @@ class _MortarThumbPlaceholder extends StatelessWidget {
   }
 }
 
-class _HomeLatestJobSkillRow extends StatelessWidget {
+class _HomeLatestJobSkillRow extends StatefulWidget {
   const _HomeLatestJobSkillRow();
+
+  @override
+  State<_HomeLatestJobSkillRow> createState() => _HomeLatestJobSkillRowState();
+}
+
+class _HomeLatestJobSkillRowState extends State<_HomeLatestJobSkillRow> {
+  bool _jobsStreamErrorLogged = false;
+  bool _skillsStreamErrorLogged = false;
 
   @override
   Widget build(BuildContext context) {
@@ -632,6 +749,22 @@ class _HomeLatestJobSkillRow extends StatelessWidget {
                 stream: exploreRepo.watchJobs(),
                 builder: (context, snap) {
                   if (snap.hasError) {
+                    if (!_jobsStreamErrorLogged) {
+                      _jobsStreamErrorLogged = true;
+                      final err = snap.error!;
+                      SchedulerBinding.instance.addPostFrameCallback((_) {
+                        unawaited(
+                          ExpansionAnalytics.log(
+                            'home_stream_load_error',
+                            sourceScreen: 'home',
+                            extra: <String, Object?>{
+                              'stream_key': 'explore_jobs_preview',
+                              ...ExpansionAnalytics.errorExtras(err, code: 'explore_jobs'),
+                            },
+                          ),
+                        );
+                      });
+                    }
                     return _LatestListingPane(
                       icon: Icons.work_outline,
                       label: 'Job',
@@ -667,6 +800,22 @@ class _HomeLatestJobSkillRow extends StatelessWidget {
                 stream: exploreRepo.watchSkillListings(),
                 builder: (context, snap) {
                   if (snap.hasError) {
+                    if (!_skillsStreamErrorLogged) {
+                      _skillsStreamErrorLogged = true;
+                      final err = snap.error!;
+                      SchedulerBinding.instance.addPostFrameCallback((_) {
+                        unawaited(
+                          ExpansionAnalytics.log(
+                            'home_stream_load_error',
+                            sourceScreen: 'home',
+                            extra: <String, Object?>{
+                              'stream_key': 'explore_skills_preview',
+                              ...ExpansionAnalytics.errorExtras(err, code: 'explore_skills'),
+                            },
+                          ),
+                        );
+                      });
+                    }
                     return _LatestListingPane(
                       icon: Icons.psychology_outlined,
                       label: 'Skill',

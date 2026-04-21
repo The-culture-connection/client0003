@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:go_router/go_router.dart';
 
+import '../analytics/expansion_analytics.dart';
 import '../models/group_thread_firestore.dart';
 import '../services/group_thread_repository.dart';
 import '../services/user_profile_repository.dart';
@@ -41,10 +45,21 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
   final _newBody = TextEditingController();
   bool _busyJoin = false;
   bool _communityAboutExpanded = false;
+  bool _groupDetailNotFoundLogged = false;
+  bool _groupWatchStreamErrorLogged = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(
+        ExpansionAnalytics.log(
+          'group_detail_started',
+          entityId: widget.groupId,
+          sourceScreen: 'group_detail',
+        ),
+      );
+    });
     _scroll.addListener(_onScroll);
     _loadFirstPage();
   }
@@ -125,9 +140,40 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
 
   Future<void> _join(FsGroup g) async {
     if (_busyJoin) return;
+    await ExpansionAnalytics.log(
+      'group_join_clicked',
+      entityId: widget.groupId,
+      sourceScreen: 'group_detail',
+    );
     setState(() => _busyJoin = true);
     try {
       final r = await _repo.joinGroup(widget.groupId);
+      if (!mounted) return;
+      if (!r.success) {
+        unawaited(
+          ExpansionAnalytics.log(
+            'group_join_failed',
+            entityId: widget.groupId,
+            sourceScreen: 'group_detail',
+            extra: const <String, Object?>{'error_code': 'join_callable_not_success'},
+          ),
+        );
+      }
+      if (r.success) {
+        if (r.pending) {
+          await ExpansionAnalytics.log(
+            'group_join_pending_review',
+            entityId: widget.groupId,
+            sourceScreen: 'group_detail',
+          );
+        } else {
+          await ExpansionAnalytics.log(
+            'group_join_succeeded_instant',
+            entityId: widget.groupId,
+            sourceScreen: 'group_detail',
+          );
+        }
+      }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -137,6 +183,14 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
         ),
       );
     } catch (e) {
+      unawaited(
+        ExpansionAnalytics.log(
+          'group_join_failed',
+          entityId: widget.groupId,
+          sourceScreen: 'group_detail',
+          extra: ExpansionAnalytics.errorExtras(e, code: 'join_group'),
+        ),
+      );
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
     } finally {
       if (mounted) setState(() => _busyJoin = false);
@@ -158,6 +212,13 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
     if (ok != true || !mounted) return;
     try {
       await _repo.leaveGroup(widget.groupId);
+      unawaited(
+        ExpansionAnalytics.log(
+          'group_leave_confirmed',
+          entityId: widget.groupId,
+          sourceScreen: 'group_detail',
+        ),
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('You left the group.')));
         context.pop();
@@ -170,12 +231,20 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
   Future<void> _submitPost() async {
     final body = _newBody.text.trim();
     if (body.isEmpty) return;
-    if (await blockContentActionIfSuspended(context)) return;
+    if (await blockContentActionIfSuspended(context, blockedSurfaceEvent: 'group_create_thread_blocked_suspended')) {
+      return;
+    }
     try {
-      await _repo.createThread(
+      final threadId = await _repo.createThread(
         groupId: widget.groupId,
         title: _newTitle.text.trim().isEmpty ? null : _newTitle.text.trim(),
         body: body,
+      );
+      await ExpansionAnalytics.log(
+        'group_thread_created',
+        entityId: threadId,
+        sourceScreen: 'group_detail',
+        extra: <String, Object?>{'group_id': widget.groupId},
       );
       if (!mounted) return;
       setState(() {
@@ -185,6 +254,14 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
       });
       await _loadFirstPage();
     } catch (e) {
+      unawaited(
+        ExpansionAnalytics.log(
+          'group_create_failed',
+          entityId: widget.groupId,
+          sourceScreen: 'group_detail',
+          extra: ExpansionAnalytics.errorExtras(e, code: 'create_thread'),
+        ),
+      );
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
     }
   }
@@ -196,11 +273,41 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
     return StreamBuilder<FsGroup?>(
       stream: _repo.watchGroup(widget.groupId),
       builder: (context, snap) {
+        if (snap.hasError) {
+          if (!_groupWatchStreamErrorLogged) {
+            _groupWatchStreamErrorLogged = true;
+            final err = snap.error!;
+            SchedulerBinding.instance.addPostFrameCallback((_) {
+              unawaited(
+                ExpansionAnalytics.log(
+                  'groups_stream_error',
+                  entityId: widget.groupId,
+                  sourceScreen: 'group_detail',
+                  extra: ExpansionAnalytics.errorExtras(err, code: 'watch_group'),
+                ),
+              );
+            });
+          }
+          return Scaffold(
+            appBar: AppBar(title: const Text('Group')),
+            body: Center(child: Text('Could not load group.\n${snap.error}')),
+          );
+        }
         final g = snap.data;
         if (snap.connectionState == ConnectionState.waiting && g == null) {
           return const Scaffold(body: Center(child: CircularProgressIndicator(color: AppColors.primary)));
         }
         if (g == null) {
+          if (!_groupDetailNotFoundLogged) {
+            _groupDetailNotFoundLogged = true;
+            unawaited(
+              ExpansionAnalytics.log(
+                'group_detail_not_found',
+                entityId: widget.groupId,
+                sourceScreen: 'group_detail',
+              ),
+            );
+          }
           return Scaffold(
             appBar: AppBar(title: const Text('Group')),
             body: const Center(child: Text('Group not found or you cannot view it.')),
@@ -239,7 +346,16 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                         bottom: 24,
                         child: FloatingActionButton(
                           onPressed: () async {
-                            if (await blockContentActionIfSuspended(context)) return;
+                            unawaited(
+                              ExpansionAnalytics.log(
+                                'group_create_thread_opened',
+                                entityId: widget.groupId,
+                                sourceScreen: 'group_detail',
+                              ),
+                            );
+                            if (await blockContentActionIfSuspended(context, blockedSurfaceEvent: 'group_create_thread_blocked_suspended')) {
+                              return;
+                            }
                             if (mounted) setState(() => _showCreatePost = true);
                           },
                           backgroundColor: AppColors.primary,
@@ -670,7 +786,17 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                     TextButton(
                       onPressed: memberUid == FirebaseAuth.instance.currentUser?.uid
                           ? null
-                          : () => context.push('/messages/direct/$memberUid'),
+                          : () {
+                              unawaited(
+                                ExpansionAnalytics.log(
+                                  'group_member_message_clicked',
+                                  entityId: memberUid,
+                                  sourceScreen: 'group_detail',
+                                  attachmentType: 'dm',
+                                ),
+                              );
+                              context.push('/messages/direct/$memberUid');
+                            },
                       child: const Text('Message'),
                     ),
                     const Icon(Icons.chevron_right, color: AppColors.mutedForeground, size: 20),
