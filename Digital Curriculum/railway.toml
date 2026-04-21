@@ -5,9 +5,11 @@
 
 [build]
 builder = "nixpacks"
-# Railpack/Nixpacks often set NODE_ENV=production during install, so a plain `npm ci` skips
-# devDependencies — but Vite lives there. Re-install with dev deps, then build.
-buildCommand = "npm ci --include=dev && npm run build"
+# 1) Builders often install with NODE_ENV=production first, so Vite (a devDependency) is missing.
+# 2) Do NOT run a second `npm ci` here: it tries to rmdir the whole tree and can hit EBUSY on
+#    `node_modules/.cache` when an install layer already ran. `npm install --include=dev` only
+#    adds devDependencies on top of the existing tree, then we build.
+buildCommand = "npm install --include=dev --no-audit --no-fund && npm run build"
 watchPatterns = ["Digital Curriculum", "Digital Curriculum/**"]
 
 [deploy]
