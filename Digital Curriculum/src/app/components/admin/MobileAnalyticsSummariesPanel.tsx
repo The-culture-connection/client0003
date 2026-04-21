@@ -1,3 +1,4 @@
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { httpsCallable } from "firebase/functions";
 import { functions } from "../../lib/firebase";
@@ -13,9 +14,11 @@ type DashboardResp = {
   date_utc_yesterday: string;
   daily_metrics_today: Record<string, unknown> | null;
   daily_metrics_yesterday: Record<string, unknown> | null;
+  derived_metrics_today: Record<string, unknown> | null;
+  derived_metrics_yesterday: Record<string, unknown> | null;
   funnel_summary: Record<string, unknown>;
   friction_summary: Array<Record<string, unknown>>;
-  notes?: { funnel_and_friction?: string };
+  notes?: { funnel_and_friction?: string; derived_metrics?: string };
 };
 
 type RawPage = {
@@ -29,13 +32,24 @@ type RangeSummariesResp = {
   start_date_utc: string;
   end_date_utc: string;
   daily_metrics_by_date: Record<string, unknown>;
+  derived_metrics_by_date: Record<string, unknown>;
   funnel_summary: Record<string, unknown>;
   friction_summary: Array<Record<string, unknown>>;
-  notes?: { funnel_and_friction?: string };
+  notes?: { funnel_and_friction?: string; derived_metrics?: string };
 };
 
 function formatJson(obj: unknown): string {
   return JSON.stringify(obj, null, 2);
+}
+
+function fmtPct(v: unknown): string {
+  if (v == null || typeof v !== "number" || Number.isNaN(v)) return "—";
+  return `${(v * 100).toFixed(1)}%`;
+}
+
+function fmtNum(v: unknown, digits = 2): string {
+  if (v == null || typeof v !== "number" || Number.isNaN(v)) return "—";
+  return v.toFixed(digits);
 }
 
 function utcYmd(d: Date): string {
@@ -296,7 +310,10 @@ export function MobileAnalyticsSummariesPanel() {
     <div className="space-y-8">
       <p className="text-sm text-muted-foreground max-w-4xl">
         {dashboard?.notes?.funnel_and_friction ??
-          "Funnel and friction Firestore docs are cumulative since first write. Per-day activity lives in daily_metrics and in raw expansion_analytics_events."}
+          "Funnel and friction Firestore docs are cumulative since first write. Per-day activity lives in daily_metrics and in raw expansion_analytics_events."}{" "}
+        {dashboard?.notes?.derived_metrics ? (
+          <span className="block mt-2">{dashboard.notes.derived_metrics}</span>
+        ) : null}
       </p>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -339,6 +356,14 @@ export function MobileAnalyticsSummariesPanel() {
               <MetricRow label="last_activity_utc_date" value={String(userSummary.last_activity_utc_date ?? "—")} />
               <MetricRow label="streak_days" value={String(userSummary.streak_days ?? "—")} />
               <MetricRow label="best_streak_days" value={String(userSummary.best_streak_days ?? "—")} />
+              <MetricRow
+                label="expansion_first_direct_message_at"
+                value={String(userSummary.expansion_first_direct_message_at ?? "—")}
+              />
+              <MetricRow
+                label="expansion_first_match_message_click_at"
+                value={String(userSummary.expansion_first_match_message_click_at ?? "—")}
+              />
             </dl>
             <dl className="space-y-1">
               {USER_COUNT_KEYS.map((k) => {
@@ -390,6 +415,64 @@ export function MobileAnalyticsSummariesPanel() {
             <pre className="text-[11px] whitespace-pre-wrap break-all">{formatJson(yesterdayCounts)}</pre>
           </ScrollArea>
         </Card>
+      </div>
+
+      {/* Phase 5 derived_metrics */}
+      <div>
+        <h3 className="text-sm font-semibold text-foreground mb-2">Phase 5 — derived metrics (from daily_metrics)</h3>
+        <p className="text-xs text-muted-foreground mb-3 max-w-3xl">
+          Stored in <code className="text-xs">derived_metrics/{"{YYYY-MM-DD}"}</code>. Nightly job fills{" "}
+          <strong>yesterday</strong> after 01:30 UTC; &quot;today&quot; may be empty until then.
+        </p>
+        <div className="grid gap-4 lg:grid-cols-2">
+          {(["yesterday", "today"] as const).map((which) => {
+            const doc =
+              which === "yesterday"
+                ? (dashboard?.derived_metrics_yesterday as Record<string, unknown> | null | undefined)
+                : (dashboard?.derived_metrics_today as Record<string, unknown> | null | undefined);
+            const label = which === "yesterday" ? dashboard?.date_utc_yesterday : dashboard?.date_utc_today;
+            const em = doc?.expansion_mobile as Record<string, unknown> | undefined;
+            const density = doc?.per_user_density as Record<string, unknown> | undefined;
+            const blend = doc?.web_curriculum_blend as Record<string, unknown> | undefined;
+            return (
+              <Card key={which} className="p-4 border-border space-y-2">
+                <h4 className="text-xs font-semibold text-foreground capitalize">
+                  derived_metrics — {which} ({label})
+                </h4>
+                {!doc ? (
+                  <p className="text-xs text-muted-foreground">No document yet.</p>
+                ) : (
+                  <>
+                    <dl className="space-y-1 text-sm">
+                      <MetricRow label="Onboarding conversion" value={fmtPct(em?.onboarding_conversion_rate)} />
+                      <MetricRow label="Status" value={String(em?.onboarding_status ?? "—")} />
+                      <MetricRow label="Event RSVP rate" value={fmtPct(em?.event_rsvp_rate)} />
+                      <MetricRow label="Group join rate" value={fmtPct(em?.group_join_rate)} />
+                      <MetricRow label="Job → message rate" value={fmtPct(em?.job_to_message_rate)} />
+                      <MetricRow label="Match → message rate" value={fmtPct(em?.match_to_message_rate)} />
+                      <MetricRow label="Posts / DAU" value={fmtNum(density?.posts_per_dau)} />
+                      <MetricRow label="Messages / DAU" value={fmtNum(density?.messages_per_dau)} />
+                      <MetricRow label="Web onboarding / signups" value={fmtPct(blend?.onboarding_completion_over_signups)} />
+                    </dl>
+                    {em?.onboarding_insight ? (
+                      <div className="text-xs border-t border-border pt-2 space-y-1">
+                        <p>
+                          <span className="text-muted-foreground">Insight:</span> {String(em.onboarding_insight)}
+                        </p>
+                        <p>
+                          <span className="text-muted-foreground">Action:</span> {String(em.onboarding_action)}
+                        </p>
+                      </div>
+                    ) : null}
+                    <ScrollArea className="h-28 rounded border border-border p-2 bg-muted/30 mt-2">
+                      <pre className="text-[10px] whitespace-pre-wrap break-all">{formatJson(doc)}</pre>
+                    </ScrollArea>
+                  </>
+                )}
+              </Card>
+            );
+          })}
+        </div>
       </div>
 
       {/* Funnels */}
@@ -471,6 +554,16 @@ export function MobileAnalyticsSummariesPanel() {
           <ScrollArea className="h-48 rounded border border-border p-2 bg-muted/30">
             <pre className="text-[11px] whitespace-pre-wrap break-all">{formatJson(rangeSummaries.daily_metrics_by_date)}</pre>
           </ScrollArea>
+        ) : null}
+        {rangeSummaries?.derived_metrics_by_date ? (
+          <>
+            <p className="text-xs text-muted-foreground mt-3 mb-1">derived_metrics (same range)</p>
+            <ScrollArea className="h-40 rounded border border-border p-2 bg-muted/30">
+              <pre className="text-[11px] whitespace-pre-wrap break-all">
+                {formatJson(rangeSummaries.derived_metrics_by_date)}
+              </pre>
+            </ScrollArea>
+          </>
         ) : null}
       </Card>
     </div>

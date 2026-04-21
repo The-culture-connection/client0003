@@ -1014,6 +1014,13 @@ Each bullet is an **`event_name`** assigned to that bucket (events can appear un
 - **Client IDs for job summaries:** `job_create_succeeded` logs **`entity_id`** as the new job document id so **`job_summary/{jobId}`** updates; `explore_job_message_author_clicked` should also pass the job id as **`entity_id`**. `skill_listing_create_succeeded` logs **`entity_id`** as the skill listing id for raw queries and future listing-level rollups (not written to `job_summary` today).
 - **Admin UI:** **Digital Curriculum → Admin Panel → Mobile analytics** and **Mortar Next.js → Admin → Mobile analytics** (`MobileAnalyticsSummariesPanel.tsx` in each app) call **`getAdminMobileAnalyticsDashboard`** (today/yesterday + funnels + friction), **`getAdminMobileAnalyticsRangeSummaries`** (one `daily_metrics` doc per UTC day in a range, max 62 days), **`getAdminUserAnalyticsSummary`** / **`batchGetUserAnalyticsSummaries`** (per-user lifetime `user_analytics_summary`), and **`queryAdminExpansionAnalyticsEvents`** with optional **`ingested_after_ms`** / **`ingested_before_ms`** (max 92-day window per query). **Download JSON bundle** merges range summaries, all raw events in the UTC window (cap 120k events), and batched user summaries for distinct `user_id`s in those events (up to 5k users). **Note:** `funnel_summary` and `friction_summary` are **cumulative** Firestore counters, not recomputed per calendar day; per-day behavior is in **`daily_metrics`** and raw events.
 
+### How the feature works (Phase 5 — derived metrics & funnels, Expansion-facing)
+
+- **Collection:** **`derived_metrics/{YYYY-MM-DD}`** (UTC), staff-read only. Written from **`daily_metrics/{date}`** only (no raw `expansion_analytics_events` reads in the job).
+- **Scheduler:** **`scheduledPhase4DerivedMetrics`** (01:30 UTC) runs **`writePhase4DerivedMetricsForDay`** then **`writePhase5DerivedMetricsForDay`** for the **previous** UTC calendar day so the day’s counters are complete.
+- **Metrics:** Per-day onboarding conversion (mobile `raw_event` steps), event RSVP rate, group join rate, job→message and match→message rates, posts/messages per DAU, web blend `onboarding_completions` / `signups`, funnel drop-off objects (`funnel_dropoffs_daily`), plus **status / insight / action** strings for dashboard cards.
+- **First-touch timestamps (for drill-down):** On first **`direct_chat_message_sent`** / **`matching_match_message_clicked`**, **`user_analytics_summary`** sets **`expansion_first_direct_message_at`** / **`expansion_first_match_message_click_at`** (ISO in admin exports). Aggregate “time to first message” distributions are not in `derived_metrics` v1.
+
 ---
 
 *End of Step 2 deliverable for Expansion mobile (`ExpansionNetworkApp/expansion_network`).*

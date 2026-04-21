@@ -226,6 +226,13 @@ export async function applyExpansionMobileRollupsForEvent(
         }
       }
 
+      if (eventName === "direct_chat_message_sent" && !prev.expansion_first_direct_message_at) {
+        userPatch.expansion_first_direct_message_at = FieldValue.serverTimestamp();
+      }
+      if (eventName === "matching_match_message_clicked" && !prev.expansion_first_match_message_click_at) {
+        userPatch.expansion_first_match_message_click_at = FieldValue.serverTimestamp();
+      }
+
       tx.set(userRef, userPatch, { merge: true });
     }
 

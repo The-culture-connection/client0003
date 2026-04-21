@@ -98,11 +98,17 @@ export const getAdminMobileAnalyticsRangeSummaries = onCall(
     const dailySnaps = await Promise.all(
       dayKeys.map((k) => db.collection(ANALYTICS_COLLECTIONS.DAILY_METRICS).doc(k).get())
     );
+    const derivedSnaps = await Promise.all(
+      dayKeys.map((k) => db.collection(ANALYTICS_COLLECTIONS.DERIVED_METRICS).doc(k).get())
+    );
 
     const daily_metrics_by_date: Record<string, unknown> = {};
+    const derived_metrics_by_date: Record<string, unknown> = {};
     dayKeys.forEach((k, i) => {
       const s = dailySnaps[i];
       daily_metrics_by_date[k] = s.exists ? serializeFirestoreValue(s.data()) : null;
+      const dr = derivedSnaps[i];
+      derived_metrics_by_date[k] = dr.exists ? serializeFirestoreValue(dr.data()) : null;
     });
 
     const funnelIds = ["auth", "onboarding", "matching", "job_to_message", "event_to_rsvp"] as const;
@@ -125,11 +131,14 @@ export const getAdminMobileAnalyticsRangeSummaries = onCall(
       start_date_utc,
       end_date_utc,
       daily_metrics_by_date,
+      derived_metrics_by_date,
       funnel_summary,
       friction_summary,
       notes: {
         funnel_and_friction:
           "funnel_summary and friction_summary documents are cumulative counters (not sliced per calendar day). daily_metrics_by_date is one document per UTC day.",
+        derived_metrics:
+          "derived_metrics/{date} is produced nightly from daily_metrics for that UTC date (see scheduledPhase4DerivedMetrics).",
       },
     };
   }

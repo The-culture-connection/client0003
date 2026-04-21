@@ -35,6 +35,8 @@ export const ANALYTICS_COLLECTIONS = {
   USER_ANALYTICS_SUMMARY: "user_analytics_summary",
   /** Phase 4 — global daily aggregates (`{date}` = UTC `YYYY-MM-DD`). */
   DAILY_METRICS: "daily_metrics",
+  /** Phase 5 — decision metrics derived from `daily_metrics` only (`{date}` = UTC `YYYY-MM-DD`). */
+  DERIVED_METRICS: "derived_metrics",
   /** Phase 4 — per-course aggregates (optional `course_id` on web events). */
   COURSE_ANALYTICS_SUMMARY: "course_analytics_summary",
   /** Phase 4 — single-doc community rollups (`global`). */

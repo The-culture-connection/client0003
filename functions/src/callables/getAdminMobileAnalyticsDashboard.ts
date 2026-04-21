@@ -63,9 +63,11 @@ export const getAdminMobileAnalyticsDashboard = onCall(
     const todayKey = utcYyyyMmDd(new Date());
     const yesterdayKey = previousUtcYyyyMmDd(todayKey);
 
-    const [todaySnap, yesterdaySnap] = await Promise.all([
+    const [todaySnap, yesterdaySnap, derivedTodaySnap, derivedYesterdaySnap] = await Promise.all([
       db.collection(ANALYTICS_COLLECTIONS.DAILY_METRICS).doc(todayKey).get(),
       db.collection(ANALYTICS_COLLECTIONS.DAILY_METRICS).doc(yesterdayKey).get(),
+      db.collection(ANALYTICS_COLLECTIONS.DERIVED_METRICS).doc(todayKey).get(),
+      db.collection(ANALYTICS_COLLECTIONS.DERIVED_METRICS).doc(yesterdayKey).get(),
     ]);
 
     const funnelIds = ["auth", "onboarding", "matching", "job_to_message", "event_to_rsvp"] as const;
@@ -91,11 +93,17 @@ export const getAdminMobileAnalyticsDashboard = onCall(
       date_utc_yesterday: yesterdayKey,
       daily_metrics_today: todaySnap.exists ? serializeFirestoreValue(todaySnap.data()) : null,
       daily_metrics_yesterday: yesterdaySnap.exists ? serializeFirestoreValue(yesterdaySnap.data()) : null,
+      derived_metrics_today: derivedTodaySnap.exists ? serializeFirestoreValue(derivedTodaySnap.data()) : null,
+      derived_metrics_yesterday: derivedYesterdaySnap.exists
+        ? serializeFirestoreValue(derivedYesterdaySnap.data())
+        : null,
       funnel_summary: funnels,
       friction_summary: friction,
       notes: {
         funnel_and_friction:
           "Funnel and friction documents are cumulative since they were first written (not reset per day). Use daily_metrics_by_date from getAdminMobileAnalyticsRangeSummaries for per-day rollups.",
+        derived_metrics:
+          "Phase 5 `derived_metrics/{date}` is written by the nightly job from `daily_metrics` only (UTC yesterday after 01:30 UTC). Today's row may be empty until the scheduler runs.",
       },
     };
   }

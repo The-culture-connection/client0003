@@ -825,6 +825,11 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /derived_metrics/{dateId} {
+      allow read: if hasStaffClaim();
+      allow write: if false;
+    }
+
     match /course_analytics_summary/{courseId} {
       allow read: if hasStaffClaim();
       allow write: if false;
