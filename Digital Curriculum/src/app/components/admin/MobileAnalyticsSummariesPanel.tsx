@@ -1,4 +1,3 @@
-
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { httpsCallable } from "firebase/functions";
 import { functions } from "../../lib/firebase";
@@ -36,6 +35,16 @@ type RangeSummariesResp = {
   funnel_summary: Record<string, unknown>;
   friction_summary: Array<Record<string, unknown>>;
   notes?: { funnel_and_friction?: string; derived_metrics?: string };
+};
+
+type AdminDerivedRunResp = {
+  success: boolean;
+  start_date_utc: string;
+  end_date_utc: string;
+  days_requested: number;
+  phase4_derived_days: string[];
+  phase5_derived_metrics_days: string[];
+  skipped_no_daily_metrics: string[];
 };
 
 function formatJson(obj: unknown): string {
@@ -147,6 +156,9 @@ export function MobileAnalyticsSummariesPanel() {
   const [userSummary, setUserSummary] = useState<Record<string, unknown> | null | undefined>(undefined);
   const [userSummaryLoading, setUserSummaryLoading] = useState(false);
   const [userSummaryError, setUserSummaryError] = useState<string | null>(null);
+  const [derivedRunBusy, setDerivedRunBusy] = useState(false);
+  const [derivedRunError, setDerivedRunError] = useState<string | null>(null);
+  const [derivedRunResult, setDerivedRunResult] = useState<AdminDerivedRunResp | null>(null);
 
   const loadDashboard = useCallback(async () => {
     setLoading(true);
@@ -183,6 +195,27 @@ export function MobileAnalyticsSummariesPanel() {
       setRangeError(e instanceof Error ? e.message : String(e));
     } finally {
       setRangeLoading(false);
+    }
+  };
+
+  const runDerivedMetricsForRange = async () => {
+    setDerivedRunBusy(true);
+    setDerivedRunError(null);
+    setDerivedRunResult(null);
+    try {
+      const fn = httpsCallable(functions, "adminRunDerivedMetricsForUtcRange");
+      const res = await fn({
+        start_date_utc: rangeDates.start,
+        end_date_utc: rangeDates.end,
+      });
+      const data = res.data as AdminDerivedRunResp;
+      setDerivedRunResult(data);
+      await loadDashboard();
+      await loadRangeSummaries();
+    } catch (e) {
+      setDerivedRunError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setDerivedRunBusy(false);
     }
   };
 
@@ -524,6 +557,29 @@ export function MobileAnalyticsSummariesPanel() {
           <code className="text-xs">user_analytics_summary</code> for distinct user_ids seen (up to 5k users, 200 per
           batch call).
         </p>
+        <div className="rounded-md border border-border bg-muted/20 p-3 space-y-2">
+          <p className="text-xs font-medium text-foreground">Recompute derived (admin)</p>
+          <p className="text-xs text-muted-foreground">
+            Runs the same writers as the nightly job for each UTC day in the range:{" "}
+            <code className="text-xs">daily_metrics.derived</code> (Phase 4) then <code className="text-xs">derived_metrics</code>{" "}
+            (Phase 5). Days with no <code className="text-xs">daily_metrics</code> doc are skipped. Max 62 days.
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={derivedRunBusy}
+            onClick={() => void runDerivedMetricsForRange()}
+          >
+            {derivedRunBusy ? "Running…" : "Run Phase 4 + 5 derived for range"}
+          </Button>
+          {derivedRunError ? <p className="text-sm text-destructive">{derivedRunError}</p> : null}
+          {derivedRunResult ? (
+            <pre className="text-[11px] leading-relaxed whitespace-pre-wrap break-all rounded border border-border bg-background p-2 max-h-40 overflow-auto">
+              {formatJson(derivedRunResult)}
+            </pre>
+          ) : null}
+        </div>
         <div className="flex flex-wrap items-end gap-3">
           <div className="space-y-1">
             <Label className="text-xs">Start (YYYY-MM-DD)</Label>

@@ -21,6 +21,7 @@ export { getAdminMobileAnalyticsDashboard } from "./callables/getAdminMobileAnal
 export { getAdminMobileAnalyticsRangeSummaries } from "./callables/getAdminMobileAnalyticsRangeSummaries";
 export { getAdminUserAnalyticsSummary } from "./callables/getAdminUserAnalyticsSummary";
 export { batchGetUserAnalyticsSummaries } from "./callables/batchGetUserAnalyticsSummaries";
+export { adminRunDerivedMetricsForUtcRange } from "./callables/adminRunDerivedMetricsForUtcRange";
 export { queryAdminExpansionAnalyticsEvents } from "./callables/queryAdminExpansionAnalyticsEvents";
 export { onAnalyticsRawEventCreated } from "./analytics/triggers/onAnalyticsRawEventCreated";
 export { onExpansionAnalyticsEventCreated } from "./analytics/triggers/onExpansionAnalyticsEventCreated";
