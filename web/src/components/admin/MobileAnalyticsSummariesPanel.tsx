@@ -146,7 +146,7 @@ function FriendlyDerivedMetricsReport({ days, title }: { days: DayDerived[]; tit
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 isolate">
       <p className="text-xs font-medium text-foreground">{title}</p>
       {days.map(({ date, doc }) => {
         const em = asRecord(doc.expansion_mobile);
@@ -154,7 +154,7 @@ function FriendlyDerivedMetricsReport({ days, title }: { days: DayDerived[]; tit
         const tt = asRecord(doc.time_to_first_activity) ?? asRecord(doc.time_to_first_signals);
         const fd = asRecord(doc.funnel_dropoffs_daily);
         return (
-          <Card key={date} className="p-4 border-border space-y-3">
+          <Card key={date} className="p-4 border-border space-y-3 bg-card shadow-sm relative z-0 overflow-hidden">
             <h4 className="text-sm font-semibold text-foreground">UTC {date}</h4>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 text-sm">
               <MetricRow label="Onboarding conversion rate" value={fmtPct(em?.onboarding_conversion_rate)} />
@@ -174,6 +174,14 @@ function FriendlyDerivedMetricsReport({ days, title }: { days: DayDerived[]; tit
               />
             </div>
             {typeof tt?.note === "string" ? <p className="text-[11px] text-muted-foreground">{tt.note}</p> : null}
+            <details className="text-xs border-t border-border pt-2">
+              <summary className="cursor-pointer text-muted-foreground hover:text-foreground select-none">
+                Raw derived_metrics JSON (this day)
+              </summary>
+              <pre className="mt-2 max-h-36 overflow-auto rounded border border-border bg-muted/40 p-2 text-[10px] leading-relaxed whitespace-pre-wrap break-all">
+                {formatJson(doc)}
+              </pre>
+            </details>
             {fd ? (
               <div className="space-y-2 border-t border-border pt-2">
                 <p className="text-xs font-medium text-foreground">Drop-off rates (from daily summary counts)</p>
@@ -704,9 +712,14 @@ export function MobileAnalyticsSummariesPanel() {
                         </p>
                       </div>
                     ) : null}
-                    <ScrollArea className="h-28 rounded border border-border p-2 bg-muted/30 mt-2">
-                      <pre className="text-[10px] whitespace-pre-wrap break-all">{formatJson(doc)}</pre>
-                    </ScrollArea>
+                    <details className="text-xs mt-2 border-t border-border pt-2">
+                      <summary className="cursor-pointer text-muted-foreground hover:text-foreground select-none">
+                        Raw JSON (snapshot card)
+                      </summary>
+                      <pre className="mt-2 max-h-32 overflow-auto rounded border border-border bg-muted/40 p-2 text-[10px] whitespace-pre-wrap break-all">
+                        {formatJson(doc)}
+                      </pre>
+                    </details>
                   </>
                 )}
               </Card>
@@ -793,7 +806,7 @@ export function MobileAnalyticsSummariesPanel() {
             {derivedRunBusy ? "Running…" : "Run Phase 4 + 5 derived for range"}
           </Button>
         </div>
-        <div className="rounded-md border border-border bg-muted/20 p-3 space-y-3">
+        <div className="rounded-md border border-border bg-muted/20 p-3 space-y-3 overflow-hidden">
           <p className="text-xs text-muted-foreground">
             After <strong>Run Phase 4 + 5</strong>, metrics below reflect the job output (or load range summaries).
             “Time-to-first” style rows count users whose <strong>first-ever</strong> Expansion DM / match-message click was
@@ -801,16 +814,18 @@ export function MobileAnalyticsSummariesPanel() {
           </p>
           {derivedRunError ? <p className="text-sm text-destructive">{derivedRunError}</p> : null}
           {derivedDaysToShow.length > 0 ? (
-            <ScrollArea className="max-h-[28rem] pr-2">
-              <FriendlyDerivedMetricsReport
-                days={derivedDaysToShow}
-                title={
-                  highlightDerivedDays && highlightDerivedDays.length > 0
-                    ? "Derived metrics — days processed in the last admin run"
-                    : "Derived metrics — all days with data in the loaded range"
-                }
-              />
-            </ScrollArea>
+            <div className="max-h-[min(28rem,70vh)] min-h-0 overflow-y-auto overflow-x-hidden rounded-md border border-border bg-background pr-1">
+              <div className="p-2">
+                <FriendlyDerivedMetricsReport
+                  days={derivedDaysToShow}
+                  title={
+                    highlightDerivedDays && highlightDerivedDays.length > 0
+                      ? "Derived metrics — days processed in the last admin run"
+                      : "Derived metrics — all days with data in the loaded range"
+                  }
+                />
+              </div>
+            </div>
           ) : null}
           {derivedRunResult ? (
             <details className="text-xs">
@@ -860,19 +875,24 @@ export function MobileAnalyticsSummariesPanel() {
         {rangeError ? <p className="text-sm text-destructive">{rangeError}</p> : null}
         {exportStatus ? <p className="text-sm text-muted-foreground">{exportStatus}</p> : null}
         {rangeSummaries?.daily_metrics_by_date ? (
-          <ScrollArea className="h-48 rounded border border-border p-2 bg-muted/30">
-            <pre className="text-[11px] whitespace-pre-wrap break-all">{formatJson(rangeSummaries.daily_metrics_by_date)}</pre>
-          </ScrollArea>
+          <details className="rounded-md border border-border bg-muted/10 p-2">
+            <summary className="cursor-pointer text-xs font-medium text-foreground select-none">
+              Raw JSON — daily_metrics by date (collapsed)
+            </summary>
+            <pre className="mt-2 max-h-52 overflow-auto rounded border border-border bg-background p-2 text-[11px] whitespace-pre-wrap break-all">
+              {formatJson(rangeSummaries.daily_metrics_by_date)}
+            </pre>
+          </details>
         ) : null}
         {rangeSummaries?.derived_metrics_by_date ? (
-          <>
-            <p className="text-xs text-muted-foreground mt-3 mb-1">derived_metrics (same range)</p>
-            <ScrollArea className="h-40 rounded border border-border p-2 bg-muted/30">
-              <pre className="text-[11px] whitespace-pre-wrap break-all">
-                {formatJson(rangeSummaries.derived_metrics_by_date)}
-              </pre>
-            </ScrollArea>
-          </>
+          <details className="rounded-md border border-border bg-muted/10 p-2">
+            <summary className="cursor-pointer text-xs font-medium text-foreground select-none">
+              Raw JSON — derived_metrics by date (collapsed)
+            </summary>
+            <pre className="mt-2 max-h-52 overflow-auto rounded border border-border bg-background p-2 text-[11px] whitespace-pre-wrap break-all">
+              {formatJson(rangeSummaries.derived_metrics_by_date)}
+            </pre>
+          </details>
         ) : null}
       </Card>
     </div>
