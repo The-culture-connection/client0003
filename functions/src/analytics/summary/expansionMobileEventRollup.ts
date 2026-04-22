@@ -59,6 +59,8 @@ function userCounterDelta(eventName: string): Record<string, number> | null {
   case "feed_post_create_succeeded":
     return { total_posts_created: 1 };
   case "group_thread_comment_submitted":
+    // Group thread replies (still roll into total_comments for legacy dashboards).
+    return { total_comments: 1, total_group_thread_messages_sent: 1 };
   case "post_reply_submitted":
     return { total_comments: 1 };
   case "direct_chat_message_sent":
@@ -74,6 +76,10 @@ function userCounterDelta(eventName: string): Record<string, number> | null {
     return { total_skills_created: 1 };
   case "matching_match_message_clicked":
     return { total_matches_messaged: 1 };
+  case "matching_callable_started":
+    return { total_matching_runs_started: 1 };
+  case "matching_callable_succeeded":
+    return { total_matching_runs_succeeded: 1 };
   default:
     return null;
   }

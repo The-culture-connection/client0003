@@ -44,11 +44,14 @@ const EXPANSION_METRIC_KEY_OPTIONS = [
   "total_posts_created",
   "total_comments",
   "total_messages_sent",
+  "total_group_thread_messages_sent",
   "total_groups_joined",
   "total_events_registered",
   "total_jobs_created",
   "total_skills_created",
   "total_matches_messaged",
+  "total_matching_runs_started",
+  "total_matching_runs_succeeded",
   "onboarding_completed",
 ] as const;
 
