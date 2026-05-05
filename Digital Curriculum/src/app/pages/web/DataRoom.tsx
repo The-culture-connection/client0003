@@ -214,8 +214,8 @@ export function WebDataRoom() {
   };
 
   const handleAddToLinkedIn = async (cert: SkillCertificate) => {
+    let shareUrl: string | null = cert.certificatePdfUrl ?? null;
     try {
-      let shareUrl = cert.certificatePdfUrl ?? null;
       if (!shareUrl && user?.uid) {
         const ensured = await ensureCertificatePublicPdfUrl(user.uid, cert);
         shareUrl = ensured.pdfUrl;
@@ -239,9 +239,14 @@ export function WebDataRoom() {
           "To add a certificate to your LinkedIn profile, navigate to your profile page, click Add profile section, select Recommended, and then click Add licenses & certifications.",
       });
     } catch {
-      toast.error("Could not copy link. Please copy it manually:", {
-        description: shareUrl,
-      });
+      toast.error(
+        shareUrl
+          ? "Could not copy link. Please copy it manually:"
+          : "Could not prepare a public certificate link yet.",
+        {
+          description: shareUrl ?? undefined,
+        }
+      );
     }
   };
 
