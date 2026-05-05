@@ -6,7 +6,7 @@ import { Separator } from "../components/ui/separator";
 import { Crown, BookOpen, Sparkles } from "lucide-react";
 import { adminPanelPath, type AdminPanelTabSlug } from "../lib/adminHubNavigation";
 import { ADMIN_PANEL_TAB_SCOPE } from "../lib/mortarPlatformScope";
-import { PlatformScopeBadge } from "../components/admin/MortarPlatformScope";
+import { PlatformScopeBadge, PlatformScopeKey } from "../components/admin/MortarPlatformScope";
 import { useAdminViewMode } from "../contexts/AdminViewModeContext";
 
 const panelLinks: { label: string; tab: AdminPanelTabSlug }[] = [
