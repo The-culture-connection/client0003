@@ -38,6 +38,11 @@ export interface Module {
   price: number; // Price for this module
   durationMonths?: number; // Duration in months to complete this module
   skills?: string[]; // Optional skill labels (e.g. from onboarding taxonomy)
+  skillCertificates?: Array<{
+    skill: string;
+    pdfUrl: string;
+    storagePath?: string;
+  }>;
   lessons: Lesson[];
 }
 
@@ -98,6 +103,45 @@ export async function uploadCourseFile(
     console.error("Error uploading course file:", error);
     throw error;
   }
+}
+
+/**
+ * Upload a skill certificate PDF template for a module skill.
+ */
+export async function uploadSkillCertificatePdf(
+  file: File,
+  opts: {
+    courseTitle: string;
+    moduleTitle: string;
+    skill: string;
+    uploadedByUid: string;
+  }
+): Promise<{ pdfUrl: string; storagePath: string }> {
+  if (!file.type.includes("pdf")) {
+    throw new Error("Certificate file must be a PDF.");
+  }
+  const safe = (value: string) =>
+    value
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "")
+      .slice(0, 80) || "untitled";
+  const ext = file.name.toLowerCase().endsWith(".pdf") ? "pdf" : "pdf";
+  const storagePath = [
+    "course_skill_certificates",
+    safe(opts.uploadedByUid),
+    safe(opts.courseTitle),
+    safe(opts.moduleTitle),
+    `${safe(opts.skill)}_${Date.now()}.${ext}`,
+  ].join("/");
+  const storageRef = ref(storage, storagePath);
+  await uploadBytes(storageRef, file, {
+    contentType: "application/pdf",
+    contentDisposition: `inline; filename="${file.name}"`,
+  });
+  const pdfUrl = await getDownloadURL(storageRef);
+  return { pdfUrl, storagePath };
 }
 
 /**

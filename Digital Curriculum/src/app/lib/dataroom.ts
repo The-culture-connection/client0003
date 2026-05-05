@@ -27,6 +27,8 @@ export interface SkillCertificate {
   courseId: string;
   courseTitle: string;
   skill: string;
+  certificatePdfUrl?: string;
+  certificateStoragePath?: string;
   type: "skill";
   createdAt: Timestamp;
 }
@@ -85,7 +87,8 @@ export async function createSkillCertificate(
   userId: string,
   courseId: string,
   courseTitle: string,
-  skill: string
+  skill: string,
+  certTemplate?: { pdfUrl?: string; storagePath?: string }
 ): Promise<string | null> {
   const certsRef = getCertificatesRef(userId);
   const existing = await getDocs(
@@ -104,6 +107,8 @@ export async function createSkillCertificate(
     courseId,
     courseTitle,
     skill,
+    certificatePdfUrl: certTemplate?.pdfUrl ?? null,
+    certificateStoragePath: certTemplate?.storagePath ?? null,
     type: "skill",
     createdAt: serverTimestamp(),
   });
@@ -116,23 +121,42 @@ export async function createSkillCertificate(
  */
 export async function createSkillCertificatesForCompletedCourse(
   userId: string,
-  course: { id?: string; title: string; modules: Array<{ skills?: string[] }> }
+  course: {
+    id?: string;
+    title: string;
+    modules: Array<{
+      skills?: string[];
+      skillCertificates?: Array<{ skill: string; pdfUrl: string; storagePath?: string }>;
+    }>;
+  }
 ): Promise<{ certificatesCreated: boolean; skills: string[] }> {
   const courseId = course.id;
   const courseTitle = course.title || "Course";
   if (!courseId) return { certificatesCreated: false, skills: [] };
 
   const allSkills = new Set<string>();
+  const certBySkill = new Map<string, { pdfUrl?: string; storagePath?: string }>();
   for (const mod of course.modules || []) {
     for (const skill of mod.skills || []) {
       if (skill?.trim()) allSkills.add(skill.trim());
+    }
+    for (const cert of mod.skillCertificates || []) {
+      const skill = cert.skill?.trim();
+      if (!skill) continue;
+      certBySkill.set(skill, { pdfUrl: cert.pdfUrl, storagePath: cert.storagePath });
     }
   }
   if (allSkills.size === 0) return { certificatesCreated: false, skills: [] };
 
   const createdIds: string[] = [];
   for (const skill of allSkills) {
-    const id = await createSkillCertificate(userId, courseId, courseTitle, skill);
+    const id = await createSkillCertificate(
+      userId,
+      courseId,
+      courseTitle,
+      skill,
+      certBySkill.get(skill)
+    );
     if (id) createdIds.push(id);
   }
   if (createdIds.length === 0) return { certificatesCreated: false, skills: [] };

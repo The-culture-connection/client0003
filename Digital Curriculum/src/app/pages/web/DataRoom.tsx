@@ -154,6 +154,10 @@ export function WebDataRoom() {
     trackEvent(WEB_ANALYTICS_EVENTS.DATA_ROOM_CERTIFICATE_DOWNLOAD_CLICKED, {
       certificate_id: cert.id ?? null,
     });
+    if (cert.certificatePdfUrl) {
+      window.open(cert.certificatePdfUrl, "_blank", "noopener");
+      return;
+    }
     const win = window.open("", "_blank");
     if (!win) return;
     const createdAt = cert.createdAt && typeof (cert.createdAt as { toDate?: () => Date }).toDate === "function"
@@ -182,6 +186,25 @@ export function WebDataRoom() {
       win.print();
       win.close();
     }, 250);
+  };
+
+  const handleAddToLinkedIn = async (cert: SkillCertificate) => {
+    const shareUrl = cert.certificatePdfUrl;
+    if (!shareUrl) {
+      toast.error("This certificate does not have a public PDF link yet.");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success("Certificate link copied.", {
+        description:
+          "To add a certificate to your LinkedIn profile, navigate to your profile page, click Add profile section, select Recommended, and then click Add licenses & certifications.",
+      });
+    } catch {
+      toast.error("Could not copy link. Please copy it manually:", {
+        description: shareUrl,
+      });
+    }
   };
 
   const fileSystem: FileNode[] = mockFileSystem.map((folder) => {
@@ -393,6 +416,14 @@ export function WebDataRoom() {
                       <Download className="w-4 h-4 mr-1" />
                       Download
                     </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void handleAddToLinkedIn(cert)}
+                      className="border-border text-foreground"
+                    >
+                      Add to LinkedIn
+                    </Button>
                   </div>
                 </div>
               );
@@ -431,7 +462,15 @@ export function WebDataRoom() {
                 }}
               >
                 <Download className="w-4 h-4 mr-2" />
-                Download / Print
+                Download
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-2"
+                onClick={() => void handleAddToLinkedIn(previewCertificate)}
+              >
+                Add to LinkedIn
               </Button>
             </div>
           )}

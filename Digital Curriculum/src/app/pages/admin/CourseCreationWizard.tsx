@@ -17,15 +17,16 @@ import {
   ChevronLeft,
   Check,
   Plus,
-  Trash2,
   X,
   Loader2,
   Upload,
+  FileText,
 } from "lucide-react";
 import { useAuth } from "../../components/auth/AuthProvider";
 import {
   createCourse,
   type Course,
+  uploadSkillCertificatePdf,
 } from "../../lib/courses";
 import {
   createCurriculum,
@@ -52,6 +53,7 @@ interface ModuleData {
   price: string;
   durationMonths: string;
   skills?: string[];
+  skillCertificateFiles?: Record<string, File | null>;
   lessonCount: number;
   lessons: Array<{ title: string }>;
 }
@@ -70,7 +72,7 @@ export function CourseCreationWizard() {
   // Step 2: Modules
   const [moduleCount, setModuleCount] = useState(1);
   const [modules, setModules] = useState<ModuleData[]>([
-    { title: "", description: "", price: "", durationMonths: "", skills: [], lessonCount: 1, lessons: [{ title: "" }] },
+    { title: "", description: "", price: "", durationMonths: "", skills: [], skillCertificateFiles: {}, lessonCount: 1, lessons: [{ title: "" }] },
   ]);
   
   // Step 3: Lessons (will be populated based on modules)
@@ -114,7 +116,8 @@ export function CourseCreationWizard() {
           (m) =>
             m.title.trim().length > 0 &&
             m.price.trim().length > 0 &&
-            m.durationMonths.trim().length > 0
+            m.durationMonths.trim().length > 0 &&
+            (m.skills ?? []).every((skill) => !!m.skillCertificateFiles?.[skill])
         );
       case "lessons":
         return modules.every((m) =>
@@ -165,6 +168,7 @@ export function CourseCreationWizard() {
           price: "",
           durationMonths: "",
           skills: [],
+          skillCertificateFiles: {},
           lessonCount: 1,
           lessons: [{ title: "" }],
         });
@@ -262,19 +266,45 @@ export function CourseCreationWizard() {
 
       setCurriculumMapping(mapping);
 
-      // Step 3: Create course in old system (for backward compatibility)
-      const courseModules = modules.map((moduleData, index) => ({
-        title: moduleData.title,
-        order: index + 1,
-        price: parseFloat(moduleData.price),
-        durationMonths: parseFloat(moduleData.durationMonths),
-        description: moduleData.description || undefined,
-        skills: moduleData.skills ?? [],
-        lessons: moduleData.lessons.map((lesson, lessonIndex) => ({
-          title: lesson.title,
-          order: lessonIndex + 1,
-        })),
-      }));
+      // Step 3: Upload certificate PDFs + create course in old system (for backward compatibility)
+      const courseModules: Course["modules"] = [];
+      for (let index = 0; index < modules.length; index++) {
+        const moduleData = modules[index];
+        const skills = moduleData.skills ?? [];
+        const skillCertificates: NonNullable<Course["modules"][number]["skillCertificates"]> = [];
+        for (const skill of skills) {
+          const certFile = moduleData.skillCertificateFiles?.[skill];
+          if (!certFile) {
+            throw new Error(
+              `Please upload a PDF certificate for "${skill}" in module "${moduleData.title || `Module ${index + 1}`}".`
+            );
+          }
+          const uploaded = await uploadSkillCertificatePdf(certFile, {
+            courseTitle: courseTitle || "course",
+            moduleTitle: moduleData.title || `module_${index + 1}`,
+            skill,
+            uploadedByUid: user.uid,
+          });
+          skillCertificates.push({
+            skill,
+            pdfUrl: uploaded.pdfUrl,
+            storagePath: uploaded.storagePath,
+          });
+        }
+        courseModules.push({
+          title: moduleData.title,
+          order: index + 1,
+          price: parseFloat(moduleData.price),
+          durationMonths: parseFloat(moduleData.durationMonths),
+          description: moduleData.description || undefined,
+          skills,
+          skillCertificates,
+          lessons: moduleData.lessons.map((lesson, lessonIndex) => ({
+            title: lesson.title,
+            order: lessonIndex + 1,
+          })),
+        });
+      }
 
       const courseData: any = {
         title: courseTitle,
@@ -560,9 +590,14 @@ export function CourseCreationWizard() {
                                           onCheckedChange={() => {
                                             const updated = [...modules];
                                             const current = updated[index].skills ?? [];
-                                            updated[index].skills = current.includes(skill)
-                                              ? current.filter((s) => s !== skill)
-                                              : [...current, skill];
+                                            const files = { ...(updated[index].skillCertificateFiles ?? {}) };
+                                            if (current.includes(skill)) {
+                                              updated[index].skills = current.filter((s) => s !== skill);
+                                              delete files[skill];
+                                            } else {
+                                              updated[index].skills = [...current, skill];
+                                            }
+                                            updated[index].skillCertificateFiles = files;
                                             setModules(updated);
                                           }}
                                         />
@@ -580,6 +615,52 @@ export function CourseCreationWizard() {
                             })}
                           </div>
                         </div>
+                        {(module.skills ?? []).length > 0 && (
+                          <div className="space-y-2">
+                            <Label>Certificate PDF per selected skill *</Label>
+                            <p className="text-xs text-muted-foreground">
+                              Upload one PDF for each selected skill. These certificates are used in the course flow, not the badge flow.
+                            </p>
+                            <div className="rounded border border-border bg-muted/10 p-3 space-y-2">
+                              {(module.skills ?? []).map((skill) => (
+                                <div
+                                  key={skill}
+                                  className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between"
+                                >
+                                  <p className="text-sm text-foreground">{skill}</p>
+                                  <div className="flex items-center gap-2">
+                                    <Input
+                                      type="file"
+                                      accept="application/pdf,.pdf"
+                                      className="max-w-xs"
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0] ?? null;
+                                        if (file && !file.type.includes("pdf")) {
+                                          alert("Please upload a PDF file.");
+                                          return;
+                                        }
+                                        const updated = [...modules];
+                                        updated[index].skillCertificateFiles = {
+                                          ...(updated[index].skillCertificateFiles ?? {}),
+                                          [skill]: file,
+                                        };
+                                        setModules(updated);
+                                      }}
+                                    />
+                                    {module.skillCertificateFiles?.[skill] ? (
+                                      <span className="inline-flex items-center gap-1 text-xs text-emerald-600">
+                                        <FileText className="w-3 h-3" />
+                                        {module.skillCertificateFiles[skill]?.name}
+                                      </span>
+                                    ) : (
+                                      <span className="text-xs text-muted-foreground">Required</span>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </Card>
                   ))}

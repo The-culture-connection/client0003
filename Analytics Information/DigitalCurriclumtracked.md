@@ -84,8 +84,14 @@ Default metadata merged on the client (then normalized server-side): **`session_
 |--------|---------------------|----------------|
 | `DATA_ROOM_FILE_SEARCH_CHANGED` | `data_room_file_search_changed` | `DataRoom.tsx` (debounced; `query_length`, `has_query`, `has_matches` — no query text) |
 | `DATA_ROOM_CERTIFICATE_PREVIEW_OPENED` | `data_room_certificate_preview_opened` | `DataRoom.tsx` |
-| `DATA_ROOM_CERTIFICATE_DOWNLOAD_CLICKED` | `data_room_certificate_download_clicked` | `DataRoom.tsx` (print/download flow) |
+| `DATA_ROOM_CERTIFICATE_DOWNLOAD_CLICKED` | `data_room_certificate_download_clicked` | `DataRoom.tsx` (opens uploaded skill-certificate PDF URL when available; falls back to legacy print view) |
 | `DATA_ROOM_SURVEY_PDF_DOWNLOAD_CLICKED` | `data_room_survey_pdf_download_clicked` | `DataRoom.tsx` (per-row PDF download) |
+
+### How the feature works (course skill certificates as PDFs)
+
+Staff upload certificate PDFs in the **course creation flow** (`CourseCreationWizard.tsx`) per selected module skill (`skills[]`), and each selected skill now requires one PDF upload before the module step can proceed. The wizard uploads those files to Storage (`course_skill_certificates/...`) and saves each module’s `skillCertificates[]` metadata (`skill`, `pdfUrl`, `storagePath`) on the course document.
+
+When a learner completes a course, `createSkillCertificatesForCompletedCourse` reads `modules[].skills` and `modules[].skillCertificates` and creates `users/{uid}/certificates` docs that include the skill plus the uploaded `certificatePdfUrl`. In **Data Room**, learners can download/open that PDF directly and use **Add to LinkedIn** to copy the public certificate URL, then follow the in-app instruction: “To add a certificate to your LinkedIn profile, navigate to your profile page, click Add profile section, select Recommended, and then click Add licenses & certifications.”
 
 ### 1.6 Shop & cart
 
