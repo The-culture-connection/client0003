@@ -19,7 +19,13 @@ import {
   Eye,
 } from "lucide-react";
 import { useAuth } from "../../components/auth/AuthProvider";
-import { listCertificates, listSurveyResponses, type SkillCertificate, type SurveyResponseDocument } from "../../lib/dataroom";
+import {
+  listCertificates,
+  listSurveyResponses,
+  ensureCertificatePublicPdfUrl,
+  type SkillCertificate,
+  type SurveyResponseDocument,
+} from "../../lib/dataroom";
 import { getStorageObjectViaFunctionsProxy } from "../../lib/storageDownloadProxy";
 import { DATAROOM_FOLDER_OPTIONS } from "../../lib/dataroomFolders";
 import {
@@ -150,13 +156,27 @@ export function WebDataRoom() {
     }
   }, [surveyResponses, user?.uid]);
 
-  const handleDownloadCertificate = (cert: SkillCertificate) => {
+  const handleDownloadCertificate = async (cert: SkillCertificate) => {
     trackEvent(WEB_ANALYTICS_EVENTS.DATA_ROOM_CERTIFICATE_DOWNLOAD_CLICKED, {
       certificate_id: cert.id ?? null,
     });
-    if (cert.certificatePdfUrl) {
-      window.open(cert.certificatePdfUrl, "_blank", "noopener");
-      return;
+    try {
+      if (user?.uid) {
+        const ensured = await ensureCertificatePublicPdfUrl(user.uid, cert);
+        if (ensured.pdfUrl) {
+          setCertificates((prev) =>
+            prev.map((c) =>
+              c.id === cert.id
+                ? { ...c, certificatePdfUrl: ensured.pdfUrl, certificateStoragePath: ensured.storagePath ?? c.certificateStoragePath }
+                : c
+            )
+          );
+          window.open(ensured.pdfUrl, "_blank", "noopener");
+          return;
+        }
+      }
+    } catch (e) {
+      console.error("Data Room: failed to prepare certificate PDF link", e);
     }
     const win = window.open("", "_blank");
     if (!win) return;
@@ -194,12 +214,25 @@ export function WebDataRoom() {
   };
 
   const handleAddToLinkedIn = async (cert: SkillCertificate) => {
-    const shareUrl = cert.certificatePdfUrl;
-    if (!shareUrl) {
-      toast.error("This certificate does not have a public PDF link yet.");
-      return;
-    }
     try {
+      let shareUrl = cert.certificatePdfUrl ?? null;
+      if (!shareUrl && user?.uid) {
+        const ensured = await ensureCertificatePublicPdfUrl(user.uid, cert);
+        shareUrl = ensured.pdfUrl;
+        if (shareUrl) {
+          setCertificates((prev) =>
+            prev.map((c) =>
+              c.id === cert.id
+                ? { ...c, certificatePdfUrl: shareUrl, certificateStoragePath: ensured.storagePath ?? c.certificateStoragePath }
+                : c
+            )
+          );
+        }
+      }
+      if (!shareUrl) {
+        toast.error("Could not generate a public certificate link yet.");
+        return;
+      }
       await navigator.clipboard.writeText(shareUrl);
       toast.success("Certificate link copied.", {
         description:
@@ -415,7 +448,7 @@ export function WebDataRoom() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleDownloadCertificate(cert)}
+                      onClick={() => void handleDownloadCertificate(cert)}
                       className="border-border text-foreground"
                     >
                       <Download className="w-4 h-4 mr-1" />
@@ -462,7 +495,7 @@ export function WebDataRoom() {
                 size="sm"
                 className="mt-6"
                 onClick={() => {
-                  handleDownloadCertificate(previewCertificate);
+                  void handleDownloadCertificate(previewCertificate);
                   setPreviewCertificate(null);
                 }}
               >

@@ -16,11 +16,13 @@ import {
   Timestamp,
   onSnapshot,
   type Unsubscribe,
+  updateDoc,
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, functions, storage } from "./firebase";
 import { jsPDF } from "jspdf";
+import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { DEFAULT_DATAROOM_FOLDER_ID } from "./dataroomFolders";
 
 export interface SkillCertificate {
@@ -69,6 +71,7 @@ export interface SurveyResponseDocument {
 const CERTIFICATES_SUBCOLLECTION = "certificates";
 const NOTIFICATIONS_SUBCOLLECTION = "notifications";
 const SURVEY_RESPONSES_SUBCOLLECTION = "surveyResponses";
+const CERTIFICATE_TEMPLATE_URL = new URL("../../../Certificate template.pdf", import.meta.url).href;
 
 function getCertificatesRef(userId: string) {
   return collection(db, "users", userId, CERTIFICATES_SUBCOLLECTION);
@@ -80,6 +83,76 @@ function getNotificationsRef(userId: string) {
 
 function getSurveyResponsesRef(userId: string) {
   return collection(db, "users", userId, SURVEY_RESPONSES_SUBCOLLECTION);
+}
+
+async function generateTemplateCertificatePdfUpload(
+  userId: string,
+  courseId: string,
+  recipientName: string,
+  skill: string
+): Promise<{ pdfUrl: string; storagePath: string }> {
+  const templateBytes = await fetch(CERTIFICATE_TEMPLATE_URL).then((res) => {
+    if (!res.ok) throw new Error("Failed to load certificate template PDF.");
+    return res.arrayBuffer();
+  });
+  const pdfDoc = await PDFDocument.load(templateBytes);
+  const pages = pdfDoc.getPages();
+  const page = pages[0];
+  if (!page) throw new Error("Certificate template PDF has no pages.");
+
+  const { width, height } = page.getSize();
+  const nameFont = await pdfDoc.embedFont(StandardFonts.TimesRomanItalic);
+  const skillFont = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
+  const color = rgb(0.91, 0.86, 0.69);
+
+  const cleanName = (recipientName || "Learner").trim();
+  const cleanSkill = (skill || "Skill").trim();
+
+  const maxNameWidth = width * 0.76;
+  let nameSize = 76;
+  while (nameSize > 40 && nameFont.widthOfTextAtSize(cleanName, nameSize) > maxNameWidth) {
+    nameSize -= 2;
+  }
+  const nameWidth = nameFont.widthOfTextAtSize(cleanName, nameSize);
+  page.drawText(cleanName, {
+    x: (width - nameWidth) / 2,
+    y: height * 0.45,
+    size: nameSize,
+    font: nameFont,
+    color,
+  });
+
+  const maxSkillWidth = width * 0.72;
+  let skillSize = 58;
+  while (skillSize > 26 && skillFont.widthOfTextAtSize(cleanSkill.toUpperCase(), skillSize) > maxSkillWidth) {
+    skillSize -= 2;
+  }
+  const skillText = cleanSkill.toUpperCase();
+  const skillWidth = skillFont.widthOfTextAtSize(skillText, skillSize);
+  page.drawText(skillText, {
+    x: (width - skillWidth) / 2,
+    y: height * 0.18,
+    size: skillSize,
+    font: skillFont,
+    color,
+  });
+
+  const bytes = await pdfDoc.save();
+  const safe = (value: string) =>
+    value
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "")
+      .slice(0, 80) || "certificate";
+  const storagePath = `users/${userId}/certificates/${safe(courseId)}_${safe(cleanSkill)}_${Date.now()}.pdf`;
+  const storageRef = ref(storage, storagePath);
+  await uploadBytes(storageRef, new Blob([bytes], { type: "application/pdf" }), {
+    contentType: "application/pdf",
+    contentDisposition: `inline; filename="${safe(cleanName)}_${safe(cleanSkill)}_certificate.pdf"`,
+  });
+  const pdfUrl = await getDownloadURL(storageRef);
+  return { pdfUrl, storagePath };
 }
 
 /**
@@ -106,14 +179,28 @@ export async function createSkillCertificate(
   );
   if (alreadyExists) return null;
 
+  let resolvedCertTemplate = certTemplate;
+  if (!resolvedCertTemplate?.pdfUrl) {
+    try {
+      resolvedCertTemplate = await generateTemplateCertificatePdfUpload(
+        userId,
+        courseId,
+        recipientName || "Learner",
+        skill
+      );
+    } catch (e) {
+      console.error("Failed to generate template certificate PDF:", e);
+    }
+  }
+
   const docRef = await addDoc(certsRef, {
     userId,
     courseId,
     courseTitle,
     skill,
     recipientName: recipientName?.trim() || null,
-    certificatePdfUrl: certTemplate?.pdfUrl ?? null,
-    certificateStoragePath: certTemplate?.storagePath ?? null,
+    certificatePdfUrl: resolvedCertTemplate?.pdfUrl ?? null,
+    certificateStoragePath: resolvedCertTemplate?.storagePath ?? null,
     type: "skill",
     createdAt: serverTimestamp(),
   });
@@ -143,7 +230,13 @@ export async function createSkillCertificatesForCompletedCourse(
     const userSnap = await getDoc(doc(db, "users", userId));
     if (userSnap.exists()) {
       const userData = userSnap.data() as Record<string, unknown>;
+      const firstName =
+        typeof userData.first_name === "string" ? userData.first_name.trim() : "";
+      const lastName =
+        typeof userData.last_name === "string" ? userData.last_name.trim() : "";
+      const fullNameFromParts = [firstName, lastName].filter(Boolean).join(" ").trim();
       recipientName =
+        fullNameFromParts ||
         (typeof userData.display_name === "string" && userData.display_name.trim()) ||
         (typeof userData.name === "string" && userData.name.trim()) ||
         recipientName;
@@ -201,6 +294,27 @@ export async function listCertificates(userId: string): Promise<SkillCertificate
     ...d.data(),
     createdAt: d.data().createdAt || Timestamp.now(),
   })) as SkillCertificate[];
+}
+
+/**
+ * Ensure a certificate has a public PDF URL by generating one from the template when missing.
+ */
+export async function ensureCertificatePublicPdfUrl(
+  userId: string,
+  cert: Pick<SkillCertificate, "id" | "courseId" | "skill" | "recipientName" | "certificatePdfUrl">
+): Promise<{ pdfUrl: string | null; storagePath?: string }> {
+  if (cert.certificatePdfUrl) return { pdfUrl: cert.certificatePdfUrl };
+  const generated = await generateTemplateCertificatePdfUpload(
+    userId,
+    cert.courseId,
+    cert.recipientName?.trim() || "Learner",
+    cert.skill
+  );
+  await updateDoc(doc(db, "users", userId, CERTIFICATES_SUBCOLLECTION, cert.id), {
+    certificatePdfUrl: generated.pdfUrl,
+    certificateStoragePath: generated.storagePath,
+  });
+  return generated;
 }
 
 /**
