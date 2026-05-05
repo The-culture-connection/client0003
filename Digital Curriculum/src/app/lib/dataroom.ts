@@ -71,7 +71,7 @@ export interface SurveyResponseDocument {
 const CERTIFICATES_SUBCOLLECTION = "certificates";
 const NOTIFICATIONS_SUBCOLLECTION = "notifications";
 const SURVEY_RESPONSES_SUBCOLLECTION = "surveyResponses";
-const CERTIFICATE_TEMPLATE_URL = new URL("../../../Certificate template.pdf", import.meta.url).href;
+const CERTIFICATE_TEMPLATE_URL = new URL("../../../Certificate Template.pdf", import.meta.url).href;
 
 function getCertificatesRef(userId: string) {
   return collection(db, "users", userId, CERTIFICATES_SUBCOLLECTION);
@@ -108,30 +108,30 @@ async function generateTemplateCertificatePdfUpload(
   const cleanName = (recipientName || "Learner").trim();
   const cleanSkill = (skill || "Skill").trim();
 
-  const maxNameWidth = width * 0.76;
-  let nameSize = 76;
-  while (nameSize > 40 && nameFont.widthOfTextAtSize(cleanName, nameSize) > maxNameWidth) {
+  const maxNameWidth = width * 0.72;
+  let nameSize = 62;
+  while (nameSize > 32 && nameFont.widthOfTextAtSize(cleanName, nameSize) > maxNameWidth) {
     nameSize -= 2;
   }
   const nameWidth = nameFont.widthOfTextAtSize(cleanName, nameSize);
   page.drawText(cleanName, {
     x: (width - nameWidth) / 2,
-    y: height * 0.45,
+    y: height * 0.50,
     size: nameSize,
     font: nameFont,
     color,
   });
 
-  const maxSkillWidth = width * 0.72;
-  let skillSize = 58;
-  while (skillSize > 26 && skillFont.widthOfTextAtSize(cleanSkill.toUpperCase(), skillSize) > maxSkillWidth) {
+  const maxSkillWidth = width * 0.78;
+  let skillSize = 44;
+  while (skillSize > 22 && skillFont.widthOfTextAtSize(cleanSkill.toUpperCase(), skillSize) > maxSkillWidth) {
     skillSize -= 2;
   }
   const skillText = cleanSkill.toUpperCase();
   const skillWidth = skillFont.widthOfTextAtSize(skillText, skillSize);
   page.drawText(skillText, {
     x: (width - skillWidth) / 2,
-    y: height * 0.18,
+    y: height * 0.08,
     size: skillSize,
     font: skillFont,
     color,
