@@ -145,7 +145,8 @@ async function generateTemplateCertificatePdfUpload(
       .replace(/[^a-z0-9]+/g, "_")
       .replace(/^_+|_+$/g, "")
       .slice(0, 80) || "certificate";
-  const storagePath = `users/${userId}/certificates/${safe(courseId)}_${safe(cleanSkill)}_${Date.now()}.pdf`;
+  // Must stay under /users/{uid}/dataroom/... to satisfy Storage rules.
+  const storagePath = `users/${userId}/dataroom/certificates/${safe(courseId)}_${safe(cleanSkill)}_${Date.now()}.pdf`;
   const storageRef = ref(storage, storagePath);
   await uploadBytes(storageRef, new Blob([bytes], { type: "application/pdf" }), {
     contentType: "application/pdf",
