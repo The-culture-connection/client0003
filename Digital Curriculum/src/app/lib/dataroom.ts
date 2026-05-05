@@ -17,6 +17,7 @@ import {
   onSnapshot,
   type Unsubscribe,
   updateDoc,
+  setDoc,
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -34,6 +35,8 @@ export interface SkillCertificate {
   recipientName?: string;
   certificatePdfUrl?: string;
   certificateStoragePath?: string;
+  publicShareId?: string;
+  publicShareUrl?: string;
   type: "skill";
   createdAt: Timestamp;
 }
@@ -71,6 +74,7 @@ export interface SurveyResponseDocument {
 const CERTIFICATES_SUBCOLLECTION = "certificates";
 const NOTIFICATIONS_SUBCOLLECTION = "notifications";
 const SURVEY_RESPONSES_SUBCOLLECTION = "surveyResponses";
+const CERTIFICATE_PUBLIC_LINKS_COLLECTION = "certificate_public_links";
 const CERTIFICATE_TEMPLATE_URLS = [
   // dataroom.ts is in src/app/lib, so project-root assets are ../../../../
   new URL("../../../../Certificate Template.pdf", import.meta.url).href,
@@ -379,6 +383,56 @@ export async function ensureCertificatePublicPdfUrl(
     console.warn("Could not persist generated certificate link:", e);
   }
   return generated;
+}
+
+/**
+ * Ensure a branded website share URL exists for a certificate.
+ */
+export async function ensureCertificatePublicShareUrl(
+  userId: string,
+  cert: Pick<
+    SkillCertificate,
+    "id" | "courseId" | "courseTitle" | "skill" | "recipientName" | "certificatePdfUrl" | "publicShareId" | "publicShareUrl"
+  >
+): Promise<{ shareUrl: string | null; shareId?: string; pdfUrl?: string | null }> {
+  const ensuredPdf = await ensureCertificatePublicPdfUrl(userId, cert);
+  const pdfUrl = ensuredPdf.pdfUrl;
+  if (!pdfUrl) return {shareUrl: null, pdfUrl: null};
+
+  const shareId = cert.publicShareId?.trim() || `${userId}_${cert.id}`;
+  const shareUrl = `${window.location.origin}/certificate/${encodeURIComponent(shareId)}`;
+  const shareRef = doc(db, CERTIFICATE_PUBLIC_LINKS_COLLECTION, shareId);
+
+  await setDoc(
+    shareRef,
+    {
+      shareId,
+      ownerUid: userId,
+      certificateId: cert.id,
+      courseId: cert.courseId,
+      courseTitle: cert.courseTitle ?? "",
+      skill: cert.skill,
+      recipientName: cert.recipientName?.trim() || "Learner",
+      certificatePdfUrl: pdfUrl,
+      issuedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      active: true,
+    },
+    {merge: true}
+  );
+
+  try {
+    await updateDoc(doc(db, "users", userId, CERTIFICATES_SUBCOLLECTION, cert.id), {
+      publicShareId: shareId,
+      publicShareUrl: shareUrl,
+      certificatePdfUrl: pdfUrl,
+      certificateStoragePath: ensuredPdf.storagePath,
+    });
+  } catch (e) {
+    console.warn("Could not persist certificate share metadata:", e);
+  }
+
+  return {shareUrl, shareId, pdfUrl};
 }
 
 /**

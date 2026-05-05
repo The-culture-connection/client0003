@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -43,6 +43,8 @@ import {
   Megaphone,
   ClipboardList,
   LineChart,
+  ChevronLeft,
+  Crown,
 } from "lucide-react";
 import { useAuth } from "../components/auth/AuthProvider";
 import {
@@ -130,6 +132,7 @@ import { AdminBadgesPanel } from "../components/admin/AdminBadgesPanel";
 import { registerDigitalCurriculumAlumniEligible } from "../lib/expansionEligible";
 import { trackEvent } from "../analytics/trackEvent";
 import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalyticsContract";
+import { adminPanelPath, isAdminPanelTab, type AdminPanelTabSlug } from "../lib/adminHubNavigation";
 
 interface DirectMessage {
   id: string;
@@ -148,11 +151,19 @@ interface DMReply {
 
 export function AdminPage() {
   const navigate = useNavigate();
+  const { tab: tabFromRoute } = useParams<{ tab: string }>();
   const { user } = useAuth();
   const [groups, setGroups] = useState<Group[]>([]);
   const [dms, setDms] = useState<DirectMessage[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("groups");
+  const activeTab: AdminPanelTabSlug =
+    tabFromRoute && isAdminPanelTab(tabFromRoute) ? tabFromRoute : "groups";
+
+  useEffect(() => {
+    if (tabFromRoute !== undefined && !isAdminPanelTab(tabFromRoute)) {
+      navigate(adminPanelPath("groups"), { replace: true });
+    }
+  }, [tabFromRoute, navigate]);
   const [selectedDM, setSelectedDM] = useState<string | null>(null);
   const [replyMessage, setReplyMessage] = useState("");
   const [replying, setReplying] = useState(false);
@@ -1017,14 +1028,26 @@ export function AdminPage() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-foreground mb-2">Admin Panel</h1>
-        <p className="text-muted-foreground">Manage groups, approve members, and view messages</p>
+    <div className="p-6 max-w-7xl mx-auto w-full">
+      <div className="mb-6 space-y-3">
+        <Button variant="outline" size="sm" className="gap-2" onClick={() => navigate("/admin")}>
+          <ChevronLeft className="w-4 h-4" />
+          <Crown className="w-4 h-4 text-accent" />
+          Admin command center
+        </Button>
+        <div>
+          <h1 className="text-3xl font-bold text-foreground mb-2">Admin tools</h1>
+          <p className="text-muted-foreground">Manage groups, events, analytics, badges, courses, shop, and more.</p>
+        </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="flex flex-wrap h-auto gap-1">
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => navigate(adminPanelPath(v as AdminPanelTabSlug))}
+        className="space-y-6"
+      >
+        {/* Tab targets kept for Radix; visible strip removed — use Admin layout sidebar / URLs */}
+        <TabsList className="hidden" aria-hidden="true">
           <TabsTrigger value="groups">
             <Users className="w-4 h-4 mr-2" />
             Groups

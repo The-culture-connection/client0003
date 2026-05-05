@@ -79,8 +79,11 @@ import {
   getDoc,
   doc,
   onSnapshot,
+  setDoc,
+  serverTimestamp,
 } from "firebase/firestore";
-import { db } from "../../lib/firebase";
+import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import { db, storage } from "../../lib/firebase";
 import { SlideRenderer } from "../../components/curriculum/SlideRenderer";
 import { YouTubeBlock } from "../../components/curriculum/YouTubeBlock";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../components/ui/dialog";
@@ -119,6 +122,7 @@ interface ModuleData {
   price: string;
   durationMonths: string;
   skills?: string[];
+  completionBadgeIds?: string[];
   lessonCount: number;
   lessons: Array<{
     title: string;
@@ -141,6 +145,17 @@ interface ModuleData {
     /** Required when generatePdfOnComplete is enabled */
     dataroomFolderId?: string;
   }>;
+}
+
+function slugifyBadgeId(raw: string): string {
+  return raw
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_")
+    .replace(/[^a-z0-9_]+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 64);
 }
 
 export function CourseBuilder() {
@@ -168,6 +183,7 @@ export function CourseBuilder() {
       price: "",
       durationMonths: "",
       skills: [],
+      completionBadgeIds: [],
       lessonCount: 1,
       lessons: [
         {
@@ -206,6 +222,11 @@ export function CourseBuilder() {
   const [previewLessonTitle, setPreviewLessonTitle] = useState<string>("");
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [expandedSkillsModuleIndex, setExpandedSkillsModuleIndex] = useState<number | null>(null);
+  const [newBadgeNamesByModule, setNewBadgeNamesByModule] = useState<Record<number, string>>({});
+  const [newBadgeDescriptionsByModule, setNewBadgeDescriptionsByModule] = useState<Record<number, string>>({});
+  const [newBadgeImageUrlsByModule, setNewBadgeImageUrlsByModule] = useState<Record<number, string>>({});
+  const [newBadgeImageFilesByModule, setNewBadgeImageFilesByModule] = useState<Record<number, File | null>>({});
+  const [creatingBadgeByModule, setCreatingBadgeByModule] = useState<Record<number, boolean>>({});
 
   // Initialize curriculum structure (create new only when not editing)
   useEffect(() => {
@@ -363,6 +384,7 @@ export function CourseBuilder() {
             price: String(mod.price ?? 0),
             durationMonths: String(mod.durationMonths ?? 0),
             skills: mod.skills ?? [],
+            completionBadgeIds: mod.completionBadgeIds ?? [],
             lessonCount: lessons.length,
             lessons,
           });
@@ -396,6 +418,7 @@ export function CourseBuilder() {
           price: "",
           durationMonths: "",
           skills: [],
+          completionBadgeIds: [],
           lessonCount: 1,
           lessons: [
             {
@@ -750,6 +773,7 @@ export function CourseBuilder() {
           price: parseFloat(moduleData.price || "0"),
           durationMonths: parseFloat(moduleData.durationMonths || "0"),
           skills: moduleData.skills ?? [],
+          completionBadgeIds: moduleData.completionBadgeIds ?? [],
           lessons: moduleLessons,
         };
         
@@ -1040,6 +1064,85 @@ export function CourseBuilder() {
     setAssignedUsers((prev) => prev.filter((u) => u.userId !== userId));
   };
 
+  const handleCreateModuleBadge = async (moduleIndex: number) => {
+    if (!user) return;
+    const name = (newBadgeNamesByModule[moduleIndex] ?? "").trim();
+    const description = (newBadgeDescriptionsByModule[moduleIndex] ?? "").trim();
+    const imageUrlInput = (newBadgeImageUrlsByModule[moduleIndex] ?? "").trim();
+    const imageFile = newBadgeImageFilesByModule[moduleIndex] ?? null;
+    if (!name) {
+      alert("Enter a badge name first.");
+      return;
+    }
+
+    const baseId = slugifyBadgeId(name);
+    if (!baseId) {
+      alert("Badge name must include letters or numbers.");
+      return;
+    }
+
+    setCreatingBadgeByModule((prev) => ({ ...prev, [moduleIndex]: true }));
+    try {
+      let badgeId = baseId;
+      let suffix = 2;
+      while (true) {
+        const snap = await getDoc(doc(db, "badge_definitions", badgeId));
+        if (!snap.exists()) break;
+        badgeId = `${baseId}_${suffix}`;
+        suffix += 1;
+      }
+
+      let imageUrl = imageUrlInput || "";
+      if (imageFile) {
+        if (!imageFile.type.startsWith("image/")) {
+          alert("Please upload a valid image file for the badge.");
+          return;
+        }
+        const safe = imageFile.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+        const storagePath = `badge_bank/${Date.now()}_${safe}`;
+        const storageRef = ref(storage, storagePath);
+        await uploadBytes(storageRef, imageFile, {
+          contentType: imageFile.type || "image/jpeg",
+        });
+        imageUrl = await getDownloadURL(storageRef);
+      }
+
+      await setDoc(
+        doc(db, "badge_definitions", badgeId),
+        {
+          name,
+          description: description || "",
+          platform: "digital_curriculum",
+          active: true,
+          award_mode: "one_time",
+          tier: "module_completion",
+          updated_at: serverTimestamp(),
+          created_at: serverTimestamp(),
+          created_by_uid: user.uid,
+          image_url: imageUrl || undefined,
+        },
+        { merge: true }
+      );
+      setModules((prev) => {
+        const updated = [...prev];
+        const current = updated[moduleIndex].completionBadgeIds ?? [];
+        if (!current.includes(badgeId)) {
+          updated[moduleIndex].completionBadgeIds = [...current, badgeId];
+        }
+        return updated;
+      });
+      setNewBadgeNamesByModule((prev) => ({ ...prev, [moduleIndex]: "" }));
+      setNewBadgeDescriptionsByModule((prev) => ({ ...prev, [moduleIndex]: "" }));
+      setNewBadgeImageUrlsByModule((prev) => ({ ...prev, [moduleIndex]: "" }));
+      setNewBadgeImageFilesByModule((prev) => ({ ...prev, [moduleIndex]: null }));
+    } catch (e) {
+      console.error("Failed to create module badge:", e);
+      alert("Could not create badge. Please try again.");
+    } finally {
+      setCreatingBadgeByModule((prev) => ({ ...prev, [moduleIndex]: false }));
+    }
+  };
+
   const handleDeleteCourse = async () => {
     if (!editingCourseId) return;
     setIsDeleting(true);
@@ -1270,6 +1373,94 @@ export function CourseBuilder() {
                       })}
                     </div>
                   )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Module completion badges (optional)</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Create badges only for this module. These badges are only awarded when this module is completed.
+                  </p>
+                  <div className="rounded border border-border bg-muted/10 p-3 space-y-2">
+                    <Label className="text-xs text-muted-foreground">Create new badge for this module</Label>
+                    <Input
+                      placeholder="Badge name (required)"
+                      value={newBadgeNamesByModule[moduleIndex] ?? ""}
+                      onChange={(e) =>
+                        setNewBadgeNamesByModule((prev) => ({ ...prev, [moduleIndex]: e.target.value }))
+                      }
+                    />
+                    <Input
+                      placeholder="Badge description (optional)"
+                      value={newBadgeDescriptionsByModule[moduleIndex] ?? ""}
+                      onChange={(e) =>
+                        setNewBadgeDescriptionsByModule((prev) => ({ ...prev, [moduleIndex]: e.target.value }))
+                      }
+                    />
+                    <Input
+                      placeholder="Badge image URL (optional)"
+                      value={newBadgeImageUrlsByModule[moduleIndex] ?? ""}
+                      onChange={(e) =>
+                        setNewBadgeImageUrlsByModule((prev) => ({ ...prev, [moduleIndex]: e.target.value }))
+                      }
+                    />
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) =>
+                        setNewBadgeImageFilesByModule((prev) => ({
+                          ...prev,
+                          [moduleIndex]: e.target.files?.[0] ?? null,
+                        }))
+                      }
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Optional image: upload a file or paste a URL (upload takes priority if both are provided).
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void handleCreateModuleBadge(moduleIndex)}
+                      disabled={creatingBadgeByModule[moduleIndex] === true}
+                    >
+                      {creatingBadgeByModule[moduleIndex] ? (
+                        <>
+                          <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                          Creating...
+                        </>
+                      ) : (
+                        "Create and attach badge"
+                      )}
+                    </Button>
+                  </div>
+                  <div className="rounded border border-border bg-muted/20 p-3 space-y-2">
+                    <Label className="text-xs text-muted-foreground">Badges attached to this module</Label>
+                    {(module.completionBadgeIds ?? []).length === 0 ? (
+                      <p className="text-xs text-muted-foreground">No badges attached yet.</p>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {(module.completionBadgeIds ?? []).map((badgeId) => (
+                          <Badge key={badgeId} variant="outline" className="flex items-center gap-1">
+                            {badgeId}
+                            <button
+                              type="button"
+                              className="ml-1"
+                              onClick={() => {
+                                const updated = [...modules];
+                                updated[moduleIndex].completionBadgeIds = (updated[moduleIndex].completionBadgeIds ?? []).filter(
+                                  (id) => id !== badgeId
+                                );
+                                setModules(updated);
+                              }}
+                              aria-label={`Remove ${badgeId}`}
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <Separator />

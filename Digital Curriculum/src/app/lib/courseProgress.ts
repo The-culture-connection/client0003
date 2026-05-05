@@ -383,6 +383,27 @@ export async function markCourseCompleted(
 }
 
 /**
+ * Persist module completion map for a course progress document.
+ */
+export async function updateModulesCompletionMap(
+  userId: string,
+  courseId: string,
+  modulesCompleted: Record<string, boolean>
+): Promise<void> {
+  try {
+    const progressRef = doc(db, "courseProgress", `${userId}_${courseId}`);
+    await updateDoc(progressRef, {
+      modulesCompleted,
+      updatedAt: serverTimestamp(),
+    });
+    invalidateCache(`progress:${userId}`);
+  } catch (error) {
+    console.error("Error updating module completion map:", error);
+    throw error;
+  }
+}
+
+/**
  * Calculate course progress percentage based on pages/slides viewed.
  * When totalSlidesPerLesson is provided, uses it as the denominator.
  * When lessonsWithQuiz and/or lessonsWithSurvey are provided, each counts as +1 "slide" for that lesson;

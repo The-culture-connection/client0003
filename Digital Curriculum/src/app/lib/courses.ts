@@ -38,6 +38,7 @@ export interface Module {
   price: number; // Price for this module
   durationMonths?: number; // Duration in months to complete this module
   skills?: string[]; // Optional skill labels (e.g. from onboarding taxonomy)
+  completionBadgeIds?: string[]; // Optional badge ids to award on module completion
   skillCertificates?: Array<{
     skill: string;
     pdfUrl: string;

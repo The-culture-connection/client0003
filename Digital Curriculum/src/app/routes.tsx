@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { createBrowserRouter, redirect } from "react-router";
 import { Root } from "./pages/Root";
 import { LoginPage } from "./pages/Login";
@@ -30,11 +31,25 @@ import { AdminAuthPage } from "./pages/AdminAuth";
 import { LessonDeckBuilder } from "./pages/admin/LessonDeckBuilder";
 import { LessonPlayer } from "./pages/learn/LessonPlayer";
 import { CourseCreationWizard } from "./pages/admin/CourseCreationWizard";
-import { PptxImportPage } from "./pages/admin/PptxImportPage";
 import { CourseBuilder } from "./pages/admin/CourseBuilder";
+import { AdminCommandCenter } from "./pages/admin/AdminCommandCenter";
+import { AdminLayout } from "./layouts/AdminLayout";
+import { PublicCertificatePage } from "./pages/PublicCertificate";
 import { AuthGuard } from "./components/auth/AuthGuard";
 import { OnboardingGate } from "./components/auth/OnboardingGate";
 import { RoleGate } from "./components/auth/RoleGate";
+
+function StaffAdminGate({ children }: { children: ReactNode }) {
+  return <RoleGate allowedRoles={["superAdmin", "Admin"]}>{children}</RoleGate>;
+}
+
+function AdminRoutesLayout() {
+  return (
+    <StaffAdminGate>
+      <AdminLayout />
+    </StaffAdminGate>
+  );
+}
 
 // Wrapper component for protected routes
 function ProtectedRoot() {
@@ -63,6 +78,10 @@ export const router = createBrowserRouter([
   {
     path: "/verify-email",
     Component: VerifyEmailPage,
+  },
+  {
+    path: "/certificate/:shareId",
+    Component: PublicCertificatePage,
   },
   {
     path: "/onboarding",
@@ -102,50 +121,25 @@ export const router = createBrowserRouter([
       {
         path: "admin/auth",
         Component: () => (
-          <RoleGate allowedRoles={["superAdmin", "Admin"]}>
+          <StaffAdminGate>
             <AdminAuthPage />
-          </RoleGate>
+          </StaffAdminGate>
         ),
       },
       {
         path: "admin",
-        Component: () => (
-          <RoleGate allowedRoles={["superAdmin", "Admin"]}>
-            <AdminPage />
-          </RoleGate>
-        ),
-      },
-      {
-        path: "admin/courses/create",
-        Component: () => (
-          <RoleGate allowedRoles={["superAdmin", "Admin"]}>
-            <CourseCreationWizard />
-          </RoleGate>
-        ),
-      },
-      {
-        path: "admin/courses/builder",
-        Component: () => (
-          <RoleGate allowedRoles={["superAdmin", "Admin"]}>
-            <CourseBuilder />
-          </RoleGate>
-        ),
-      },
-      {
-        path: "admin/courses/:courseId",
-        Component: () => (
-          <RoleGate allowedRoles={["superAdmin", "Admin"]}>
-            <CourseBuilder />
-          </RoleGate>
-        ),
-      },
-      {
-        path: "admin/curriculum/:curriculumId/module/:moduleId/chapter/:chapterId/lesson/:lessonId/builder",
-        Component: () => (
-          <RoleGate allowedRoles={["superAdmin", "Admin"]}>
-            <LessonDeckBuilder />
-          </RoleGate>
-        ),
+        Component: AdminRoutesLayout,
+        children: [
+          { index: true, Component: AdminCommandCenter },
+          { path: "panel/:tab", Component: AdminPage },
+          { path: "courses/create", Component: CourseCreationWizard },
+          { path: "courses/builder", Component: CourseBuilder },
+          { path: "courses/:courseId", Component: CourseBuilder },
+          {
+            path: "curriculum/:curriculumId/module/:moduleId/chapter/:chapterId/lesson/:lessonId/builder",
+            Component: LessonDeckBuilder,
+          },
+        ],
       },
       {
         path: "learn/lesson/:lessonId",

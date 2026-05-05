@@ -23,6 +23,7 @@ import {
   listCertificates,
   listSurveyResponses,
   ensureCertificatePublicPdfUrl,
+  ensureCertificatePublicShareUrl,
   type SkillCertificate,
   type SurveyResponseDocument,
 } from "../../lib/dataroom";
@@ -214,16 +215,21 @@ export function WebDataRoom() {
   };
 
   const handleAddToLinkedIn = async (cert: SkillCertificate) => {
-    let shareUrl: string | null = cert.certificatePdfUrl ?? null;
+    let shareUrl: string | null = cert.publicShareUrl ?? null;
     try {
-      if (!shareUrl && user?.uid) {
-        const ensured = await ensureCertificatePublicPdfUrl(user.uid, cert);
-        shareUrl = ensured.pdfUrl;
+      if (user?.uid) {
+        const ensuredShare = await ensureCertificatePublicShareUrl(user.uid, cert);
+        shareUrl = ensuredShare.shareUrl;
         if (shareUrl) {
           setCertificates((prev) =>
             prev.map((c) =>
               c.id === cert.id
-                ? { ...c, certificatePdfUrl: shareUrl, certificateStoragePath: ensured.storagePath ?? c.certificateStoragePath }
+                ? {
+                    ...c,
+                    publicShareUrl: shareUrl,
+                    publicShareId: ensuredShare.shareId ?? c.publicShareId,
+                    certificatePdfUrl: ensuredShare.pdfUrl ?? c.certificatePdfUrl,
+                  }
                 : c
             )
           );

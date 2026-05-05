@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router";
-import { LayoutDashboard, BookOpen, FolderOpen, Award, Users, BarChart3, LogOut, Shield, ShoppingBag, Bell, ShoppingCart, X } from "lucide-react";
+import { LayoutDashboard, BookOpen, FolderOpen, Award, Users, BarChart3, LogOut, Shield, ShoppingBag, Bell, ShoppingCart, X, GraduationCap, Crown } from "lucide-react";
 import { Button } from "../ui/button";
 import { useAuth } from "../auth/AuthProvider";
 import { useState, useEffect } from "react";
@@ -16,6 +16,12 @@ import { formatDistanceToNow } from "date-fns";
 import { trackEvent } from "../../analytics/trackEvent";
 import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalyticsContract";
 import { UserBadgeSuiteDialog } from "../badges/UserBadgeSuiteDialog";
+import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
+import { useAdminViewMode } from "../../contexts/AdminViewModeContext";
+import {
+  isStaffAdminRole,
+  pathExemptFromStaffAdminHubRedirect,
+} from "../../lib/adminHubNavigation";
 
 interface NavItem {
   path: string;
@@ -106,7 +112,30 @@ export function WebNavigation() {
   const userRoles = user?.roles || [];
   const hasRole = (role: string) =>
     userRoles.some((r) => r.trim().toLowerCase() === role.trim().toLowerCase());
+
+  const hasStaffAdminAccess = isStaffAdminRole(userRoles);
+
+  const { adminViewMode, setAdminViewMode } = useAdminViewMode();
+
+  const showStudentNavLinks = !hasStaffAdminAccess || adminViewMode === "student";
+  const adminMinimalHeader = hasStaffAdminAccess && adminViewMode === "admin";
+
+  useEffect(() => {
+    if (!user || !hasStaffAdminAccess || adminViewMode !== "admin") return;
+    if (pathExemptFromStaffAdminHubRedirect(location.pathname)) return;
+    if (!location.pathname.startsWith("/admin")) {
+      navigate("/admin", { replace: true });
+    }
+  }, [user, hasStaffAdminAccess, adminViewMode, location.pathname, navigate]);
+
+  const logoTo =
+    hasStaffAdminAccess && adminViewMode === "admin" ? "/admin" : "/dashboard";
+
   const navItems = allNavItems.filter((item) => {
+    if (item.path === "/admin/auth") {
+      if (!hasStaffAdminAccess) return false;
+      if (adminViewMode === "student") return false;
+    }
     // If item has deniedRoles, check if user has any of them
     if (item.deniedRoles && item.deniedRoles.length > 0) {
       const hasDeniedRole = item.deniedRoles.some((role) => hasRole(role));
@@ -128,46 +157,75 @@ export function WebNavigation() {
     return true;
   });
 
+  const staffViewToggle = hasStaffAdminAccess ? (
+    <ToggleGroup
+      type="single"
+      value={adminViewMode}
+      onValueChange={(v) => {
+        if (v === "student" || v === "admin") setAdminViewMode(v);
+      }}
+      variant="outline"
+      size="sm"
+      className="shrink-0 flex"
+    >
+      <ToggleGroupItem value="student" aria-label="Student view" className="px-2.5 md:px-3">
+        <GraduationCap className="w-4 h-4 shrink-0" />
+        <span className="ml-1.5 hidden md:inline">Student</span>
+      </ToggleGroupItem>
+      <ToggleGroupItem value="admin" aria-label="Admin view" className="px-2.5 md:px-3">
+        <Crown className="w-4 h-4 shrink-0" />
+        <span className="ml-1.5 hidden md:inline">Admin</span>
+      </ToggleGroupItem>
+    </ToggleGroup>
+  ) : null;
+
   return (
     <nav className="bg-card border-b border-border">
-      <div className="max-w-7xl mx-auto px-8">
-        <div className="flex items-center justify-between h-16">
-          <div className="flex items-center gap-8">
-            <Link to="/" className="text-xl font-bold text-foreground">
+      <div className={adminMinimalHeader ? "max-w-[1600px] mx-auto px-8" : "max-w-7xl mx-auto px-8"}>
+        <div className="flex items-center justify-between h-16 gap-4">
+          <div className="flex items-center gap-6 min-w-0 flex-1">
+            <Link to={logoTo} className="text-xl font-bold text-foreground shrink-0">
               Mortar
             </Link>
-            <div className="flex items-center gap-1">
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = location.pathname === item.path || 
-                  (item.path === "/dashboard" && location.pathname === "/");
-                
-                return (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    onClick={() =>
-                      trackEvent(WEB_ANALYTICS_EVENTS.NAV_LINK_CLICKED, {
-                        path: item.path,
-                        label: item.label,
-                      })
-                    }
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
-                      isActive
-                        ? "bg-accent text-accent-foreground"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                    }`}
-                  >
-                    <Icon className="w-4 h-4" />
-                    <span>{item.label}</span>
-                  </Link>
-                );
-              })}
-            </div>
+            {adminMinimalHeader && staffViewToggle}
+            {showStudentNavLinks && (
+              <div className="flex items-center gap-1 flex-wrap min-w-0">
+                {navItems.map((item) => {
+                  const Icon = item.icon;
+                  const isAdminNavItem = item.path === "/admin/auth";
+                  const isActive =
+                    location.pathname === item.path ||
+                    (item.path === "/dashboard" && location.pathname === "/") ||
+                    (isAdminNavItem && location.pathname.startsWith("/admin"));
+
+                  return (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      onClick={() =>
+                        trackEvent(WEB_ANALYTICS_EVENTS.NAV_LINK_CLICKED, {
+                          path: item.path,
+                          label: item.label,
+                        })
+                      }
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                        isActive
+                          ? "bg-accent text-accent-foreground"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" />
+                      <span>{item.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
           </div>
-          
+
           {user && (
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 shrink-0">
+              {showStudentNavLinks && hasStaffAdminAccess && staffViewToggle}
               <DropdownMenu open={notificationsOpen} onOpenChange={setNotificationsOpen}>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="relative">

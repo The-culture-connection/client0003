@@ -6,10 +6,12 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Shield, Lock, AlertCircle } from "lucide-react";
 import { useAuth } from "../components/auth/AuthProvider";
+import { useAdminViewMode } from "../contexts/AdminViewModeContext";
 
 export function AdminAuthPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { setAdminViewMode } = useAdminViewMode();
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -34,6 +36,7 @@ export function AdminAuthPage() {
         // Store admin auth in sessionStorage
         sessionStorage.setItem("admin_authenticated", "true");
         sessionStorage.setItem("admin_auth_time", Date.now().toString());
+        setAdminViewMode("admin");
         navigate("/admin");
       } else {
         setError("Invalid password. Please try again.");
@@ -59,7 +62,7 @@ export function AdminAuthPage() {
         const eightHours = 8 * 60 * 60 * 1000;
         
         if (timeDiff < eightHours) {
-          // Already authenticated, redirect to admin page
+          setAdminViewMode("admin");
           navigate("/admin", { replace: true });
         } else {
           // Session expired, clear it
@@ -68,7 +71,7 @@ export function AdminAuthPage() {
         }
       }
     }
-  }, [hasAdminAccess, navigate]);
+  }, [hasAdminAccess, navigate, setAdminViewMode]);
 
   if (!hasAdminAccess) {
     return (

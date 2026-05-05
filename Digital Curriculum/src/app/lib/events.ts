@@ -145,6 +145,26 @@ function mergeAdminListedEvents(
   return out;
 }
 
+/** Count merged events whose effective approval status is `pending` (same merge rules as admin list). */
+export function countMergedPendingApprovalEvents(fromE: Event[], fromM: Event[]): number {
+  const map = new Map<string, { e?: Event; m?: Event }>();
+  for (const e of fromE) {
+    const prev = map.get(e.id) ?? {};
+    map.set(e.id, { ...prev, e });
+  }
+  for (const m of fromM) {
+    const prev = map.get(m.id) ?? {};
+    map.set(m.id, { ...prev, m });
+  }
+  let n = 0;
+  for (const [, pair] of map) {
+    const display =
+      pair.m?.approval_status === "pending" ? pair.m : pair.e ?? pair.m!;
+    if (display?.approval_status === "pending") n++;
+  }
+  return n;
+}
+
 /**
  * Published events for the Digital Curriculum web Events hub (`events` only).
  */

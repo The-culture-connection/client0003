@@ -4,6 +4,8 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Card } from "../components/ui/card";
 import { useAuth } from "../components/auth/AuthProvider";
+import { useAdminViewMode } from "../contexts/AdminViewModeContext";
+import { isStaffAdminRole, staffPrimaryHomePath } from "../lib/adminHubNavigation";
 import { useScreenAnalytics } from "../analytics/useScreenAnalytics";
 import { trackEvent } from "../analytics/trackEvent";
 import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalyticsContract";
@@ -19,12 +21,14 @@ export function LoginPage() {
   const [resetEmailSent, setResetEmailSent] = useState(false);
   const navigate = useNavigate();
   const { user, signIn, signUp } = useAuth();
+  const { adminViewMode } = useAdminViewMode();
 
   useEffect(() => {
-    if (user) {
-      navigate("/dashboard");
-    }
-  }, [user, navigate]);
+    if (!user) return;
+    navigate(isStaffAdminRole(user.roles) ? staffPrimaryHomePath(adminViewMode) : "/dashboard", {
+      replace: true,
+    });
+  }, [user, adminViewMode, navigate]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,15 +41,13 @@ export function LoginPage() {
 
     try {
       if (isSignUp) {
-        await signUp(email, password);
+        const u = await signUp(email, password);
         trackEvent(WEB_ANALYTICS_EVENTS.LOGIN_SIGN_UP_SUCCEEDED, { mode: "sign_up" });
-        // New user - route to dashboard (in real app, would check onboarding status)
-        navigate("/dashboard");
+        navigate(isStaffAdminRole(u.roles) ? staffPrimaryHomePath(adminViewMode) : "/dashboard");
       } else {
-        await signIn(email, password);
+        const u = await signIn(email, password);
         trackEvent(WEB_ANALYTICS_EVENTS.LOGIN_SIGN_IN_SUCCEEDED, { mode: "sign_in" });
-        // Existing user - route to dashboard
-        navigate("/dashboard");
+        navigate(isStaffAdminRole(u.roles) ? staffPrimaryHomePath(adminViewMode) : "/dashboard");
       }
     } catch (err: any) {
       trackEvent(WEB_ANALYTICS_EVENTS.LOGIN_SIGN_IN_FAILED, {

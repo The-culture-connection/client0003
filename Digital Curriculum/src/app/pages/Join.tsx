@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useAdminViewMode } from "../contexts/AdminViewModeContext";
+import { isStaffAdminRole, staffPrimaryHomePath } from "../lib/adminHubNavigation";
 import { useNavigate, Link } from "react-router";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -17,6 +19,7 @@ export function JoinPage() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { signUp } = useAuth();
+  const { adminViewMode } = useAdminViewMode();
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,10 +37,9 @@ export function JoinPage() {
       }
 
       // Create account with invite code
-      await signUp(email, password);
+      const u = await signUp(email, password);
       trackEvent(WEB_ANALYTICS_EVENTS.LOGIN_SIGN_UP_SUCCEEDED, { mode: "invite_sign_up" });
-      // Route to dashboard (in real app, would route to onboarding for new users)
-      navigate("/dashboard");
+      navigate(isStaffAdminRole(u.roles) ? staffPrimaryHomePath(adminViewMode) : "/dashboard");
     } catch (err: any) {
       trackEvent(WEB_ANALYTICS_EVENTS.LOGIN_SIGN_IN_FAILED, { mode: "invite_sign_up" });
       setError(err.message || "Failed to join");

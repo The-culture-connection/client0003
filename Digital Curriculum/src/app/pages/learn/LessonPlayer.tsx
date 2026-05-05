@@ -7,14 +7,16 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router";
 import { getSlides, getBlocks, getLesson, getLessonImages, getLessonContent, getCourseSlideCounts, type Slide, type Block, type Lesson, type LessonImage, type LessonContentSlide, type LessonQuiz, type LessonSurvey } from "../../lib/curriculum";
 import { getCourse, getCourseLessonQuiz, getCourseLessonSurvey, getLessonsWithQuiz, getLessonsWithSurvey } from "../../lib/courses";
-import { getCourseProgress, updateLessonSlideProgress, setLessonCompleted, recordLessonQuizAttempt, recordLessonSurveySubmission, markCourseCompleted, calculateCourseProgress } from "../../lib/courseProgress";
+import { getCourseProgress, updateLessonSlideProgress, setLessonCompleted, recordLessonQuizAttempt, recordLessonSurveySubmission, markCourseCompleted, calculateCourseProgress, updateModulesCompletionMap } from "../../lib/courseProgress";
 import { createSkillCertificatesForCompletedCourse, uploadSurveyResponsePdf } from "../../lib/dataroom";
 import { DEFAULT_DATAROOM_FOLDER_ID } from "../../lib/dataroomFolders";
 import { useAuth } from "../../components/auth/AuthProvider";
+import { functions } from "../../lib/firebase";
+import { httpsCallable } from "firebase/functions";
 import { SlideRenderer } from "../../components/curriculum/SlideRenderer";
 import { YouTubeBlock } from "../../components/curriculum/YouTubeBlock";
 import { Button } from "../../components/ui/button";
-import { ChevronLeft, ChevronRight, LogOut, Loader2, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, LogOut, Loader2 } from "lucide-react";
 import { useScreenAnalytics } from "../../analytics/useScreenAnalytics";
 import { trackEvent } from "../../analytics/trackEvent";
 import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalyticsContract";
@@ -219,6 +221,46 @@ export function LessonPlayer() {
     }
   };
 
+  const syncModuleCompletionAndAwardBadges = async (
+    progressAfter: NonNullable<Awaited<ReturnType<typeof getCourseProgress>>>,
+    course: NonNullable<Awaited<ReturnType<typeof getCourse>>>
+  ) => {
+    if (!user || !courseId) return;
+    const mappingModules = course.curriculumMapping?.modules ?? [];
+    if (mappingModules.length === 0) return;
+
+    const currentModulesCompleted = progressAfter.modulesCompleted ?? {};
+    const nextModulesCompleted: Record<string, boolean> = {...currentModulesCompleted};
+    const newlyCompletedModuleIds: string[] = [];
+
+    for (const mapModule of mappingModules) {
+      const mid = mapModule.moduleId;
+      if (!mid) continue;
+      const lessonIds =
+        mapModule.chapters?.flatMap((c) => c.lessons ?? []).map((l) => l.lessonId).filter(Boolean) as string[];
+      if (lessonIds.length === 0) continue;
+      const completed = lessonIds.every((lid) => progressAfter.lessonsCompleted?.[lid] === true);
+      nextModulesCompleted[mid] = completed;
+      if (completed && !currentModulesCompleted[mid]) {
+        newlyCompletedModuleIds.push(mid);
+      }
+    }
+
+    await updateModulesCompletionMap(user.uid, courseId, nextModulesCompleted);
+
+    if (newlyCompletedModuleIds.length > 0) {
+      try {
+        const awardFn = httpsCallable(functions, "awardCourseModuleBadges");
+        await awardFn({
+          course_id: courseId,
+          module_ids: newlyCompletedModuleIds,
+        });
+      } catch (err) {
+        console.error("Failed to award module completion badges:", err);
+      }
+    }
+  };
+
   const saveProgressAndExit = async () => {
     trackEvent(WEB_ANALYTICS_EVENTS.LESSON_CLOSE_CLICKED, {
       lesson_id: lessonId ?? null,
@@ -245,6 +287,7 @@ export function LessonPlayer() {
         getCourse(courseId),
       ]);
       if (progressAfter && course) {
+        await syncModuleCompletionAndAwardBadges(progressAfter, course);
         const totalSlidesPerLesson = await getCourseSlideCounts(course);
         const lessonIds = Object.keys(totalSlidesPerLesson);
         const [lessonsWithQuiz, lessonsWithSurvey] = await Promise.all([
@@ -362,6 +405,7 @@ export function LessonPlayer() {
         getCourse(courseId),
       ]);
       if (progressAfter && course) {
+        await syncModuleCompletionAndAwardBadges(progressAfter, course);
         const totalSlidesPerLesson = await getCourseSlideCounts(course);
         const lessonIds = Object.keys(totalSlidesPerLesson);
         const [lessonsWithQuizMap, lessonsWithSurveyMap] = await Promise.all([
