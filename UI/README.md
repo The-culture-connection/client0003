@@ -1,7 +1,7 @@
 
-  # Entrepreneur Networking App
+  # Overall Project UI
 
-  This is a code bundle for Entrepreneur Networking App. The original project is available at https://www.figma.com/design/sfiPOjQynwgmrByrMuVkW2/Entrepreneur-Networking-App.
+  This is a code bundle for Overall Project UI. The original project is available at https://www.figma.com/design/VsrapCmOdeiWuFaScQ4erf/Overall-Project-UI.
 
   ## Running the code
 

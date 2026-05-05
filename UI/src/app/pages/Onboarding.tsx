@@ -1,245 +1,265 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Button } from '../components/Button';
-import { SkillChip } from '../components/SkillChip';
-import { CheckCircle2 } from 'lucide-react';
+import { useAuth } from '../lib/auth-context';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Badge } from '../components/ui/badge';
+import { UserRole } from '../lib/store';
 
-const availableSkills = [
-  'React', 'Python', 'Design', 'Marketing', 'Sales', 'Product Management',
-  'Data Science', 'iOS Development', 'Android', 'UI/UX', 'Leadership', 'Strategy'
-];
-
-const networkingGoals = [
-  { id: 'mentorship', label: 'Mentorship', icon: '🎓' },
-  { id: 'career', label: 'Career Growth', icon: '🚀' },
-  { id: 'social', label: 'Social', icon: '🤝' },
-  { id: 'collaboration', label: 'Collaboration', icon: '💡' },
-];
-
-export default function Onboarding() {
+export function Onboarding() {
   const navigate = useNavigate();
+  const { user, updateUser } = useAuth();
   const [step, setStep] = useState(1);
-  const [formData, setFormData] = useState({
-    name: '',
-    gradYear: '',
-    organization: '',
-    skillsOffered: [] as string[],
-    skillsNeeded: [] as string[],
-    goals: [] as string[],
-  });
+  const [name, setName] = useState(user?.name || '');
+  const [city, setCity] = useState('');
+  const [cohort, setCohort] = useState('');
+  const [role, setRole] = useState<UserRole>('digital-student');
 
-  const totalSteps = 4;
-  const progress = (step / totalSteps) * 100;
-
-  const handleNext = () => {
-    if (step < totalSteps) {
-      setStep(step + 1);
-    } else {
-      // Save to localStorage for demo
-      localStorage.setItem('userProfile', JSON.stringify(formData));
-      navigate('/home');
-    }
-  };
-
-  const handleBack = () => {
-    if (step > 1) setStep(step - 1);
-  };
-
-  const toggleSkill = (skill: string, type: 'offered' | 'needed') => {
-    const key = type === 'offered' ? 'skillsOffered' : 'skillsNeeded';
-    const current = formData[key];
-    setFormData({
-      ...formData,
-      [key]: current.includes(skill)
-        ? current.filter(s => s !== skill)
-        : [...current, skill],
+  const handleComplete = () => {
+    // Update user profile using auth context
+    updateUser({
+      name,
+      city,
+      cohort,
+      role,
+      completedBusinessProfile: true,
     });
+    navigate('/dashboard');
   };
 
-  const toggleGoal = (goalId: string) => {
-    setFormData({
-      ...formData,
-      goals: formData.goals.includes(goalId)
-        ? formData.goals.filter(g => g !== goalId)
-        : [...formData.goals, goalId],
-    });
-  };
+  const totalSteps = 3;
 
   return (
-    <div className="min-h-screen bg-background flex flex-col max-w-md mx-auto">
-      {/* Progress Bar */}
-      <div className="sticky top-0 bg-background z-10 pt-4 px-6">
-        <div className="h-2 bg-secondary rounded-full overflow-hidden">
-          <div
-            className="h-full bg-accent transition-all duration-300"
-            style={{ width: `${progress}%` }}
-          />
+    <div className="min-h-screen flex items-center justify-center bg-[#fafcfc] p-4">
+      <div className="w-full max-w-2xl">
+        {/* Logo & Progress */}
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-[#1d1d1d] mb-4">MORTAR</h1>
+          <div className="flex items-center justify-center gap-2 mb-2">
+            {[1, 2, 3].map((s) => (
+              <div
+                key={s}
+                className={`h-2 rounded-full transition-all ${
+                  s <= step
+                    ? 'w-16 bg-[#871002]'
+                    : 'w-8 bg-[#1d1d1d]/20'
+                }`}
+              />
+            ))}
+          </div>
+          <p className="text-sm text-[#1d1d1d]/60">
+            Step {step} of {totalSteps}
+          </p>
         </div>
-        <p className="text-sm text-muted-foreground text-center mt-2">
-          Step {step} of {totalSteps}
-        </p>
-      </div>
 
-      {/* Content */}
-      <div className="flex-1 px-6 py-8">
-        {step === 1 && (
-          <div className="text-center space-y-6">
-            <div className="w-20 h-20 bg-accent rounded-full flex items-center justify-center mx-auto">
-              <span className="text-4xl">🎓</span>
-            </div>
-            <div>
-              <h1 className="text-3xl mb-3">Welcome to Alumni Connect</h1>
-              <p className="text-muted-foreground">
-                Build meaningful connections with fellow alumni. Network, mentor, and grow together.
-              </p>
-            </div>
-            <div className="space-y-3 text-left bg-secondary rounded-2xl p-6">
-              <div className="flex items-start gap-3">
-                <CheckCircle2 className="w-5 h-5 text-accent mt-0.5" />
-                <div>
-                  <h4 className="font-medium">Smart Matching</h4>
-                  <p className="text-sm text-muted-foreground">Connect based on skills and goals</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <CheckCircle2 className="w-5 h-5 text-accent mt-0.5" />
-                <div>
-                  <h4 className="font-medium">Community Groups</h4>
-                  <p className="text-sm text-muted-foreground">Join groups aligned with your interests</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <CheckCircle2 className="w-5 h-5 text-accent mt-0.5" />
-                <div>
-                  <h4 className="font-medium">Exclusive Events</h4>
-                  <p className="text-sm text-muted-foreground">Access alumni-only networking events</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        <Card className="border-[#1d1d1d]/10">
+          <CardHeader>
+            <CardTitle className="text-2xl text-[#1d1d1d]">
+              {step === 1 && 'Welcome to MORTAR'}
+              {step === 2 && 'Tell us about yourself'}
+              {step === 3 && 'Choose your path'}
+            </CardTitle>
+            <CardDescription>
+              {step === 1 && 'Let\'s get you set up for success'}
+              {step === 2 && 'Help us personalize your experience'}
+              {step === 3 && 'Select your membership type'}
+            </CardDescription>
+          </CardHeader>
 
-        {step === 2 && (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl mb-2">Tell us about yourself</h2>
-              <p className="text-muted-foreground">We'll use this to personalize your experience</p>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label className="block mb-2">Full Name</label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl bg-secondary border-2 border-transparent focus:border-accent outline-none transition-colors"
-                  placeholder="Enter your name"
-                />
-              </div>
-              <div>
-                <label className="block mb-2">Graduation Year</label>
-                <input
-                  type="text"
-                  value={formData.gradYear}
-                  onChange={(e) => setFormData({ ...formData, gradYear: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl bg-secondary border-2 border-transparent focus:border-accent outline-none transition-colors"
-                  placeholder="e.g., 2020"
-                />
-              </div>
-              <div>
-                <label className="block mb-2">Current Organization</label>
-                <input
-                  type="text"
-                  value={formData.organization}
-                  onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl bg-secondary border-2 border-transparent focus:border-accent outline-none transition-colors"
-                  placeholder="Where do you work?"
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {step === 3 && (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl mb-2">Your skills</h2>
-              <p className="text-muted-foreground">Select skills you can offer and skills you're looking to learn</p>
-            </div>
-            <div>
-              <h3 className="font-medium mb-3">Skills I can offer</h3>
-              <div className="flex flex-wrap gap-2 mb-6">
-                {availableSkills.map((skill) => (
-                  <SkillChip
-                    key={skill}
-                    label={skill}
-                    selected={formData.skillsOffered.includes(skill)}
-                    onClick={() => toggleSkill(skill, 'offered')}
+          <CardContent className="space-y-6">
+            {step === 1 && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Full Name</Label>
+                  <Input
+                    id="name"
+                    type="text"
+                    placeholder="Jordan Smith"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="border-[#1d1d1d]/20"
                   />
-                ))}
-              </div>
-              <h3 className="font-medium mb-3">Skills I need</h3>
-              <div className="flex flex-wrap gap-2">
-                {availableSkills.map((skill) => (
-                  <SkillChip
-                    key={skill}
-                    label={skill}
-                    selected={formData.skillsNeeded.includes(skill)}
-                    onClick={() => toggleSkill(skill, 'needed')}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
+                </div>
 
-        {step === 4 && (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl mb-2">Networking goals</h2>
-              <p className="text-muted-foreground">What are you looking to achieve?</p>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              {networkingGoals.map((goal) => (
-                <button
-                  key={goal.id}
-                  onClick={() => toggleGoal(goal.id)}
-                  className={`p-6 rounded-2xl border-2 transition-all ${
-                    formData.goals.includes(goal.id)
-                      ? 'border-accent bg-accent/5'
-                      : 'border-border hover:border-muted'
-                  }`}
+                <div className="p-4 bg-[#1d1d1d]/5 rounded-lg">
+                  <h3 className="font-medium text-[#1d1d1d] mb-2">What to expect:</h3>
+                  <ul className="space-y-2 text-sm text-[#1d1d1d]/70">
+                    <li className="flex items-start gap-2">
+                      <span className="text-[#871002]">✓</span>
+                      <span>Structured curriculum with video lessons and quizzes</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-[#871002]">✓</span>
+                      <span>Build real business assets in your Data Room</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-[#871002]">✓</span>
+                      <span>Connect with entrepreneurs in your city</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-[#871002]">✓</span>
+                      <span>Earn badges and track your progress</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <Button
+                  onClick={() => setStep(2)}
+                  disabled={!name}
+                  className="w-full bg-[#871002] hover:bg-[#871002]/90 text-white"
                 >
-                  <div className="text-4xl mb-2">{goal.icon}</div>
-                  <div className="font-medium">{goal.label}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+                  Continue
+                </Button>
+              </div>
+            )}
 
-      {/* Actions */}
-      <div className="sticky bottom-0 bg-background border-t border-border p-6">
-        <div className="flex gap-3">
-          {step > 1 && (
-            <Button onClick={handleBack} variant="outline" className="flex-1">
-              Back
-            </Button>
-          )}
-          <Button
-            onClick={handleNext}
-            variant="primary"
-            className="flex-1"
-            disabled={
-              (step === 2 && (!formData.name || !formData.gradYear || !formData.organization)) ||
-              (step === 3 && formData.skillsOffered.length === 0 && formData.skillsNeeded.length === 0) ||
-              (step === 4 && formData.goals.length === 0)
-            }
-          >
-            {step === totalSteps ? 'Join the Network' : 'Continue'}
-          </Button>
-        </div>
+            {step === 2 && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="city">City</Label>
+                  <Select value={city} onValueChange={setCity}>
+                    <SelectTrigger className="border-[#1d1d1d]/20">
+                      <SelectValue placeholder="Select your city" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Cincinnati">Cincinnati, OH</SelectItem>
+                      <SelectItem value="Detroit">Detroit, MI</SelectItem>
+                      <SelectItem value="Indianapolis">Indianapolis, IN</SelectItem>
+                      <SelectItem value="Louisville">Louisville, KY</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="cohort">Cohort (Optional)</Label>
+                  <Select value={cohort} onValueChange={setCohort}>
+                    <SelectTrigger className="border-[#1d1d1d]/20">
+                      <SelectValue placeholder="Select your cohort" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="2026-Spring">2026 Spring</SelectItem>
+                      <SelectItem value="2026-Fall">2026 Fall</SelectItem>
+                      <SelectItem value="2025-Spring">2025 Spring</SelectItem>
+                      <SelectItem value="2025-Fall">2025 Fall</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-[#1d1d1d]/60">
+                    Select if you're part of an in-person cohort
+                  </p>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setStep(1)}
+                    className="flex-1 border-[#1d1d1d]/20"
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    onClick={() => setStep(3)}
+                    disabled={!city}
+                    className="flex-1 bg-[#871002] hover:bg-[#871002]/90 text-white"
+                  >
+                    Continue
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {step === 3 && (
+              <div className="space-y-4">
+                <div className="space-y-3">
+                  <div
+                    onClick={() => setRole('in-person-alumni')}
+                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                      role === 'in-person-alumni'
+                        ? 'border-[#871002] bg-[#871002]/5'
+                        : 'border-[#1d1d1d]/20 hover:border-[#1d1d1d]/40'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <h3 className="font-medium text-[#1d1d1d]">In-Person Alumni</h3>
+                      <Badge className="bg-[#871002] text-white">FREE</Badge>
+                    </div>
+                    <p className="text-sm text-[#1d1d1d]/70 mb-2">
+                      Completed an in-person MORTAR program
+                    </p>
+                    <ul className="text-xs text-[#1d1d1d]/60 space-y-1">
+                      <li>✓ Full access to all curriculum</li>
+                      <li>✓ Alumni network & events</li>
+                      <li>✓ Create groups & post opportunities</li>
+                    </ul>
+                  </div>
+
+                  <div
+                    onClick={() => setRole('digital-alumni')}
+                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                      role === 'digital-alumni'
+                        ? 'border-[#871002] bg-[#871002]/5'
+                        : 'border-[#1d1d1d]/20 hover:border-[#1d1d1d]/40'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <h3 className="font-medium text-[#1d1d1d]">Digital Alumni</h3>
+                      <Badge variant="outline" className="border-[#1d1d1d]/20">PAID</Badge>
+                    </div>
+                    <p className="text-sm text-[#1d1d1d]/70 mb-2">
+                      Completed paid digital curriculum
+                    </p>
+                    <ul className="text-xs text-[#1d1d1d]/60 space-y-1">
+                      <li>✓ Access to purchased bundles</li>
+                      <li>✓ Alumni network access</li>
+                      <li>✓ Community participation</li>
+                    </ul>
+                  </div>
+
+                  <div
+                    onClick={() => setRole('digital-student')}
+                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                      role === 'digital-student'
+                        ? 'border-[#871002] bg-[#871002]/5'
+                        : 'border-[#1d1d1d]/20 hover:border-[#1d1d1d]/40'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <h3 className="font-medium text-[#1d1d1d]">Digital Student</h3>
+                      <Badge variant="outline" className="border-[#1d1d1d]/20">PAID</Badge>
+                    </div>
+                    <p className="text-sm text-[#1d1d1d]/70 mb-2">
+                      New to MORTAR, starting digital curriculum
+                    </p>
+                    <ul className="text-xs text-[#1d1d1d]/60 space-y-1">
+                      <li>✓ Purchase curriculum bundles</li>
+                      <li>✓ Community participation</li>
+                      <li>✓ Track progress & earn badges</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setStep(2)}
+                    className="flex-1 border-[#1d1d1d]/20"
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    onClick={handleComplete}
+                    className="flex-1 bg-[#871002] hover:bg-[#871002]/90 text-white"
+                  >
+                    Complete Setup
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

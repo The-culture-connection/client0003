@@ -2,6 +2,7 @@ import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import { Progress } from "../../components/ui/progress";
+import { useAuth } from "../../lib/auth-context";
 import {
   BookOpen,
   Calendar,
@@ -19,17 +20,19 @@ import {
 } from "lucide-react";
 
 export function WebDashboard() {
+  const { user } = useAuth();
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       {/* Welcome Header - Compact */}
       <div className="mb-5">
         <h1 className="text-2xl text-foreground mb-1">
-          Welcome back, <span className="text-accent">Grace</span>
+          Welcome back, <span className="text-accent">{user?.name.split(' ')[0] || 'there'}</span>
         </h1>
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
-          <span>Cohort: Fall 2026</span>
+          <span>Cohort: {user?.cohort}</span>
           <span>•</span>
-          <span>City: Cincinnati</span>
+          <span>City: {user?.city}</span>
           <span>•</span>
           <span className="text-accent">You completed 2 lessons this week 🔥</span>
         </div>

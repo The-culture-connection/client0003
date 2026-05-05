@@ -1,5 +1,13 @@
 import { Link, useLocation } from "react-router";
 import { Home, Users, Calendar, Compass, User } from "lucide-react";
+import { useAuth } from "../../lib/auth-context";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
+import { Button } from "../ui/button";
 
 const navItems = [
   { path: "/mobile/feed", label: "Feed", icon: Home },
@@ -11,18 +19,38 @@ const navItems = [
 
 export function MobileNavigation() {
   const location = useLocation();
+  const { user } = useAuth();
 
   return (
     <>
       <div className="fixed top-0 left-0 right-0 bg-card border-b border-border z-10">
         <div className="flex items-center justify-between px-4 h-14">
           <h1 className="text-lg font-bold text-foreground">Mortar</h1>
-          <Link
-            to="/dashboard"
-            className="text-xs text-accent hover:text-accent/90"
-          >
-            Web App →
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              to="/dashboard"
+              className="text-xs text-accent hover:text-accent/90"
+            >
+              Web App →
+            </Link>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <User className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuLabel>
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">{user?.name}</p>
+                    <p className="text-xs leading-none text-muted-foreground">
+                      {user?.email}
+                    </p>
+                  </div>
+                </DropdownMenuLabel>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
       

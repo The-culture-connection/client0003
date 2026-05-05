@@ -799,6 +799,15 @@ service cloud.firestore {
       allow write: if hasStaffClaim();
     }
 
+    // Public, branded certificate share pages.
+    match /certificate_public_links/{shareId} {
+      allow read: if true;
+      allow create: if isSignedIn()
+        && request.resource.data.ownerUid == request.auth.uid;
+      allow update, delete: if isSignedIn()
+        && resource.data.ownerUid == request.auth.uid;
+    }
+
     // --- Canonical analytics (Admin SDK + validated callables only) ---
     match /analytics_raw_events/{id} {
       allow read, write: if false;
