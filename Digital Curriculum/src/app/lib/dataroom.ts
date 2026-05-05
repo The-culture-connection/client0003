@@ -8,6 +8,8 @@ import {
   collection,
   addDoc,
   getDocs,
+  getDoc,
+  doc,
   query,
   orderBy,
   serverTimestamp,
@@ -27,6 +29,7 @@ export interface SkillCertificate {
   courseId: string;
   courseTitle: string;
   skill: string;
+  recipientName?: string;
   certificatePdfUrl?: string;
   certificateStoragePath?: string;
   type: "skill";
@@ -88,7 +91,8 @@ export async function createSkillCertificate(
   courseId: string,
   courseTitle: string,
   skill: string,
-  certTemplate?: { pdfUrl?: string; storagePath?: string }
+  certTemplate?: { pdfUrl?: string; storagePath?: string },
+  recipientName?: string
 ): Promise<string | null> {
   const certsRef = getCertificatesRef(userId);
   const existing = await getDocs(
@@ -107,6 +111,7 @@ export async function createSkillCertificate(
     courseId,
     courseTitle,
     skill,
+    recipientName: recipientName?.trim() || null,
     certificatePdfUrl: certTemplate?.pdfUrl ?? null,
     certificateStoragePath: certTemplate?.storagePath ?? null,
     type: "skill",
@@ -133,6 +138,19 @@ export async function createSkillCertificatesForCompletedCourse(
   const courseId = course.id;
   const courseTitle = course.title || "Course";
   if (!courseId) return { certificatesCreated: false, skills: [] };
+  let recipientName = "Learner";
+  try {
+    const userSnap = await getDoc(doc(db, "users", userId));
+    if (userSnap.exists()) {
+      const userData = userSnap.data() as Record<string, unknown>;
+      recipientName =
+        (typeof userData.display_name === "string" && userData.display_name.trim()) ||
+        (typeof userData.name === "string" && userData.name.trim()) ||
+        recipientName;
+    }
+  } catch {
+    // Keep fallback when user profile cannot be read.
+  }
 
   const allSkills = new Set<string>();
   const certBySkill = new Map<string, { pdfUrl?: string; storagePath?: string }>();
@@ -155,7 +173,8 @@ export async function createSkillCertificatesForCompletedCourse(
       courseId,
       courseTitle,
       skill,
-      certBySkill.get(skill)
+      certBySkill.get(skill),
+      recipientName
     );
     if (id) createdIds.push(id);
   }

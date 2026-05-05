@@ -160,6 +160,7 @@ export function WebDataRoom() {
     }
     const win = window.open("", "_blank");
     if (!win) return;
+    const recipientName = cert.recipientName?.trim() || user?.displayName || "Learner";
     const createdAt = cert.createdAt && typeof (cert.createdAt as { toDate?: () => Date }).toDate === "function"
       ? (cert.createdAt as { toDate: () => Date }).toDate()
       : cert.createdAt && typeof (cert.createdAt as { seconds?: number }).seconds === "number"
@@ -169,13 +170,17 @@ export function WebDataRoom() {
       <!DOCTYPE html>
       <html>
         <head><title>Certificate - ${cert.skill}</title></head>
-        <body style="margin:0;padding:40px;font-family:Georgia,serif;text-align:center;background:#fafafa;">
-          <div style="max-width:600px;margin:0 auto;border:3px solid #1a1a1a;padding:48px;background:#fff;">
-            <h1 style="font-size:28px;margin-bottom:8px;">Certificate of Completion</h1>
-            <p style="color:#666;font-size:14px;margin-bottom:32px;">${cert.courseTitle}</p>
-            <p style="font-size:22px;margin:24px 0;">Congratulations on the new skill:</p>
-            <p style="font-size:28px;font-weight:bold;margin:16px 0;color:#1a1a1a;">${cert.skill}</p>
-            <p style="color:#888;font-size:12px;margin-top:48px;">Earned ${format(createdAt, "MMMM d, yyyy")}</p>
+        <body style="margin:0;padding:28px;font-family:Georgia,serif;text-align:center;background:#000;color:#e8ddb0;">
+          <div style="max-width:880px;min-height:560px;margin:0 auto;border:3px solid #e8ddb0;padding:56px 40px;background:#000;box-sizing:border-box;">
+            <h1 style="font-size:54px;letter-spacing:2px;margin:0 0 8px 0;font-weight:700;">MORTAR</h1>
+            <p style="margin:0 0 40px 0;color:#d7c98e;font-size:14px;">building communities through entrepreneurship</p>
+            <p style="font-size:34px;letter-spacing:1px;margin:0 0 8px 0;">This certificate is proudly presented to</p>
+            <p style="font-size:72px;line-height:1.1;margin:0 0 36px 0;font-style:italic;">${recipientName}</p>
+            <p style="font-size:44px;letter-spacing:3px;line-height:1.3;text-transform:uppercase;margin:0 0 24px 0;">
+              For Learning The<br/>Follow Essential Skill
+            </p>
+            <p style="font-size:62px;letter-spacing:4px;line-height:1.15;text-transform:uppercase;margin:0;">${cert.skill}</p>
+            <p style="color:#d7c98e;font-size:14px;margin-top:44px;">${cert.courseTitle} • Earned ${format(createdAt, "MMMM d, yyyy")}</p>
           </div>
         </body>
       </html>
