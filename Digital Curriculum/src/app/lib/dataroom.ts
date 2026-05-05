@@ -72,8 +72,9 @@ const CERTIFICATES_SUBCOLLECTION = "certificates";
 const NOTIFICATIONS_SUBCOLLECTION = "notifications";
 const SURVEY_RESPONSES_SUBCOLLECTION = "surveyResponses";
 const CERTIFICATE_TEMPLATE_URLS = [
-  new URL("../../../Certificate Template.pdf", import.meta.url).href,
-  new URL("../../../Certificate template.pdf", import.meta.url).href,
+  // dataroom.ts is in src/app/lib, so project-root assets are ../../../../
+  new URL("../../../../Certificate Template.pdf", import.meta.url).href,
+  new URL("../../../../Certificate template.pdf", import.meta.url).href,
 ];
 
 function getCertificatesRef(userId: string) {
@@ -94,6 +95,46 @@ async function generateTemplateCertificatePdfUpload(
   recipientName: string,
   skill: string
 ): Promise<{ pdfUrl: string; storagePath: string }> {
+  const cleanName = (recipientName || "Learner").trim();
+  const cleanSkill = (skill || "Skill").trim();
+  const makeFallbackCertificateBlob = (): Blob => {
+    const doc = new jsPDF({
+      orientation: "landscape",
+      unit: "pt",
+      format: "letter",
+    });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    doc.setFillColor(0, 0, 0);
+    doc.rect(0, 0, pageWidth, pageHeight, "F");
+    doc.setDrawColor(232, 221, 176);
+    doc.setLineWidth(3);
+    doc.rect(24, 24, pageWidth - 48, pageHeight - 48, "S");
+
+    doc.setTextColor(232, 221, 176);
+    doc.setFont("times", "normal");
+    doc.setFontSize(20);
+    doc.text("This certificate is proudly presented to", pageWidth / 2, 175, {
+      align: "center",
+    });
+    doc.setFont("times", "italic");
+    doc.setFontSize(62);
+    doc.text(cleanName, pageWidth / 2, 245, { align: "center" });
+    doc.setFont("times", "bold");
+    doc.setFontSize(28);
+    doc.text("FOR LEARNING THE", pageWidth / 2, 305, { align: "center" });
+    doc.text("FOLLOW ESSENTIAL SKILL", pageWidth / 2, 345, { align: "center" });
+    doc.setFontSize(30);
+    const fallbackSkillText = cleanSkill.toUpperCase();
+    const maxFallbackSkillWidth = pageWidth - 120;
+    const measuredFallbackSkillWidth = doc.getTextWidth(fallbackSkillText);
+    if (measuredFallbackSkillWidth > maxFallbackSkillWidth) {
+      doc.setFontSize(Math.max(20, (30 * maxFallbackSkillWidth) / measuredFallbackSkillWidth));
+    }
+    doc.text(fallbackSkillText, pageWidth / 2, 392, { align: "center" });
+    return doc.output("blob");
+  };
+
   let templateBytes: ArrayBuffer | null = null;
   for (const url of CERTIFICATE_TEMPLATE_URLS) {
     try {
@@ -105,52 +146,56 @@ async function generateTemplateCertificatePdfUpload(
       // Try next template candidate.
     }
   }
-  if (!templateBytes) {
-    throw new Error("Failed to load certificate template PDF.");
+  let pdfBlob: Blob;
+  if (templateBytes) {
+    try {
+      const pdfDoc = await PDFDocument.load(templateBytes);
+      const pages = pdfDoc.getPages();
+      const page = pages[0];
+      if (!page) throw new Error("Certificate template PDF has no pages.");
+
+      const { width, height } = page.getSize();
+      const nameFont = await pdfDoc.embedFont(StandardFonts.TimesRomanItalic);
+      const skillFont = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
+      const color = rgb(0.91, 0.86, 0.69);
+
+      const maxNameWidth = width * 0.72;
+      let nameSize = 62;
+      while (nameSize > 32 && nameFont.widthOfTextAtSize(cleanName, nameSize) > maxNameWidth) {
+        nameSize -= 2;
+      }
+      const nameWidth = nameFont.widthOfTextAtSize(cleanName, nameSize);
+      page.drawText(cleanName, {
+        x: (width - nameWidth) / 2,
+        y: height * 0.50,
+        size: nameSize,
+        font: nameFont,
+        color,
+      });
+
+      const maxSkillWidth = width * 0.78;
+      let skillSize = 34;
+      while (skillSize > 20 && skillFont.widthOfTextAtSize(cleanSkill.toUpperCase(), skillSize) > maxSkillWidth) {
+        skillSize -= 2;
+      }
+      const skillText = cleanSkill.toUpperCase();
+      const skillWidth = skillFont.widthOfTextAtSize(skillText, skillSize);
+      page.drawText(skillText, {
+        x: (width - skillWidth) / 2,
+        y: height * 0.16,
+        size: skillSize,
+        font: skillFont,
+        color,
+      });
+      const bytes = await pdfDoc.save();
+      pdfBlob = new Blob([bytes], { type: "application/pdf" });
+    } catch {
+      // Template path resolved to non-PDF in some deploy contexts; use generated fallback.
+      pdfBlob = makeFallbackCertificateBlob();
+    }
+  } else {
+    pdfBlob = makeFallbackCertificateBlob();
   }
-  const pdfDoc = await PDFDocument.load(templateBytes);
-  const pages = pdfDoc.getPages();
-  const page = pages[0];
-  if (!page) throw new Error("Certificate template PDF has no pages.");
-
-  const { width, height } = page.getSize();
-  const nameFont = await pdfDoc.embedFont(StandardFonts.TimesRomanItalic);
-  const skillFont = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
-  const color = rgb(0.91, 0.86, 0.69);
-
-  const cleanName = (recipientName || "Learner").trim();
-  const cleanSkill = (skill || "Skill").trim();
-
-  const maxNameWidth = width * 0.72;
-  let nameSize = 62;
-  while (nameSize > 32 && nameFont.widthOfTextAtSize(cleanName, nameSize) > maxNameWidth) {
-    nameSize -= 2;
-  }
-  const nameWidth = nameFont.widthOfTextAtSize(cleanName, nameSize);
-  page.drawText(cleanName, {
-    x: (width - nameWidth) / 2,
-    y: height * 0.50,
-    size: nameSize,
-    font: nameFont,
-    color,
-  });
-
-  const maxSkillWidth = width * 0.78;
-  let skillSize = 44;
-  while (skillSize > 22 && skillFont.widthOfTextAtSize(cleanSkill.toUpperCase(), skillSize) > maxSkillWidth) {
-    skillSize -= 2;
-  }
-  const skillText = cleanSkill.toUpperCase();
-  const skillWidth = skillFont.widthOfTextAtSize(skillText, skillSize);
-  page.drawText(skillText, {
-    x: (width - skillWidth) / 2,
-    y: height * 0.11,
-    size: skillSize,
-    font: skillFont,
-    color,
-  });
-
-  const bytes = await pdfDoc.save();
   const safe = (value: string) =>
     value
       .trim()
@@ -161,7 +206,7 @@ async function generateTemplateCertificatePdfUpload(
   // Must stay under /users/{uid}/dataroom/... to satisfy Storage rules.
   const storagePath = `users/${userId}/dataroom/certificates/${safe(courseId)}_${safe(cleanSkill)}_${Date.now()}.pdf`;
   const storageRef = ref(storage, storagePath);
-  await uploadBytes(storageRef, new Blob([bytes], { type: "application/pdf" }), {
+  await uploadBytes(storageRef, pdfBlob, {
     contentType: "application/pdf",
     contentDisposition: `inline; filename="${safe(cleanName)}_${safe(cleanSkill)}_certificate.pdf"`,
   });
@@ -439,7 +484,7 @@ export async function addNotification(
   }
 ): Promise<string> {
   const ref = getNotificationsRef(userId);
-  const docRef = await addDoc(ref, {
+  const payload = {
     userId,
     type: data.type,
     title: data.title,
@@ -449,7 +494,11 @@ export async function addNotification(
     badgeId: data.badgeId,
     badgeAwardDelta: data.badgeAwardDelta,
     createdAt: serverTimestamp(),
-  });
+  };
+  const cleaned = Object.fromEntries(
+    Object.entries(payload).filter(([, value]) => value !== undefined)
+  ) as Record<string, unknown>;
+  const docRef = await addDoc(ref, cleaned);
   return docRef.id;
 }
 
