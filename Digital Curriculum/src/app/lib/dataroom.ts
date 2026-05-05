@@ -71,7 +71,10 @@ export interface SurveyResponseDocument {
 const CERTIFICATES_SUBCOLLECTION = "certificates";
 const NOTIFICATIONS_SUBCOLLECTION = "notifications";
 const SURVEY_RESPONSES_SUBCOLLECTION = "surveyResponses";
-const CERTIFICATE_TEMPLATE_URL = new URL("../../../Certificate Template.pdf", import.meta.url).href;
+const CERTIFICATE_TEMPLATE_URLS = [
+  new URL("../../../Certificate Template.pdf", import.meta.url).href,
+  new URL("../../../Certificate template.pdf", import.meta.url).href,
+];
 
 function getCertificatesRef(userId: string) {
   return collection(db, "users", userId, CERTIFICATES_SUBCOLLECTION);
@@ -91,10 +94,20 @@ async function generateTemplateCertificatePdfUpload(
   recipientName: string,
   skill: string
 ): Promise<{ pdfUrl: string; storagePath: string }> {
-  const templateBytes = await fetch(CERTIFICATE_TEMPLATE_URL).then((res) => {
-    if (!res.ok) throw new Error("Failed to load certificate template PDF.");
-    return res.arrayBuffer();
-  });
+  let templateBytes: ArrayBuffer | null = null;
+  for (const url of CERTIFICATE_TEMPLATE_URLS) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) continue;
+      templateBytes = await res.arrayBuffer();
+      break;
+    } catch {
+      // Try next template candidate.
+    }
+  }
+  if (!templateBytes) {
+    throw new Error("Failed to load certificate template PDF.");
+  }
   const pdfDoc = await PDFDocument.load(templateBytes);
   const pages = pdfDoc.getPages();
   const page = pages[0];
@@ -131,7 +144,7 @@ async function generateTemplateCertificatePdfUpload(
   const skillWidth = skillFont.widthOfTextAtSize(skillText, skillSize);
   page.drawText(skillText, {
     x: (width - skillWidth) / 2,
-    y: height * 0.08,
+    y: height * 0.11,
     size: skillSize,
     font: skillFont,
     color,
@@ -311,10 +324,15 @@ export async function ensureCertificatePublicPdfUrl(
     cert.recipientName?.trim() || "Learner",
     cert.skill
   );
-  await updateDoc(doc(db, "users", userId, CERTIFICATES_SUBCOLLECTION, cert.id), {
-    certificatePdfUrl: generated.pdfUrl,
-    certificateStoragePath: generated.storagePath,
-  });
+  try {
+    await updateDoc(doc(db, "users", userId, CERTIFICATES_SUBCOLLECTION, cert.id), {
+      certificatePdfUrl: generated.pdfUrl,
+      certificateStoragePath: generated.storagePath,
+    });
+  } catch (e) {
+    // Return working link even if backfill write fails in this environment.
+    console.warn("Could not persist generated certificate link:", e);
+  }
   return generated;
 }
 
