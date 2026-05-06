@@ -54,34 +54,42 @@ class GroupCommentTree extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          StreamBuilder<int?>(
-            stream: repo.watchMyCommentVote(groupId, threadId, comment.id),
-            builder: (context, vs) {
-              final my = vs.data;
-              final score = comment.score;
-              return Column(
-                children: [
-                  IconButton(
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 28, minHeight: 26),
-                    icon: Icon(Icons.keyboard_arrow_up, size: 16, color: my == 1 ? AppColors.primary : AppColors.mutedForeground),
-                    onPressed: uid == null ? null : () => onVote(comment.id, 1),
-                  ),
-                  Text(
-                    '$score',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: my == 1 ? AppColors.primary : my == -1 ? destructive : AppColors.foreground,
-                    ),
-                  ),
-                  IconButton(
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 28, minHeight: 26),
-                    icon: Icon(Icons.keyboard_arrow_down, size: 16, color: my == -1 ? destructive : AppColors.mutedForeground),
-                    onPressed: uid == null ? null : () => onVote(comment.id, -1),
-                  ),
-                ],
+          // Sum votes live from `comments/{id}/votes` (same as thread header). Avoid `comment.score`
+          // on the doc alone — that denormalized field can lag behind subcollection writes.
+          StreamBuilder<int>(
+            stream: repo.watchCommentScore(groupId, threadId, comment.id),
+            initialData: comment.score,
+            builder: (context, scoreSnap) {
+              final score = scoreSnap.data ?? comment.score;
+              return StreamBuilder<int?>(
+                stream: repo.watchMyCommentVote(groupId, threadId, comment.id),
+                builder: (context, vs) {
+                  final my = vs.data;
+                  return Column(
+                    children: [
+                      IconButton(
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 28, minHeight: 26),
+                        icon: Icon(Icons.keyboard_arrow_up, size: 16, color: my == 1 ? AppColors.primary : AppColors.mutedForeground),
+                        onPressed: uid == null ? null : () => onVote(comment.id, 1),
+                      ),
+                      Text(
+                        '$score',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: my == 1 ? AppColors.primary : my == -1 ? destructive : AppColors.foreground,
+                        ),
+                      ),
+                      IconButton(
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 28, minHeight: 26),
+                        icon: Icon(Icons.keyboard_arrow_down, size: 16, color: my == -1 ? destructive : AppColors.mutedForeground),
+                        onPressed: uid == null ? null : () => onVote(comment.id, -1),
+                      ),
+                    ],
+                  );
+                },
               );
             },
           ),

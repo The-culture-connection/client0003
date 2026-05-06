@@ -145,21 +145,25 @@ class _BadgeFlipCelebrationDialogState extends State<BadgeFlipCelebrationDialog>
   }
 
   Widget _backFace() {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.primary,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white24, width: 2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.35),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
-          ),
-        ],
+    // Parent `rotateY` mirrors the back face; flip X so the checkmark reads normally.
+    return Transform.flip(
+      flipX: true,
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.primary,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white24, width: 2),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.35),
+              blurRadius: 24,
+              offset: const Offset(0, 12),
+            ),
+          ],
+        ),
+        alignment: Alignment.center,
+        child: const Icon(Icons.check_rounded, size: 88, color: AppColors.onPrimary),
       ),
-      alignment: Alignment.center,
-      child: const Icon(Icons.check_rounded, size: 88, color: AppColors.onPrimary),
     );
   }
 }

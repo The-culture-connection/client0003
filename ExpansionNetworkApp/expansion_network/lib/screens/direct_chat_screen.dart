@@ -37,12 +37,26 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
   String? _pendingAttachId;
   bool _sending = false;
   bool _messagesStreamErrorLogged = false;
+  /// Firestore-backed display name for initials when Auth has no display name / photo.
+  String? _cachedMeDisplayHint;
 
   @override
   void initState() {
     super.initState();
     _pendingAttachType = widget.initialAttachmentType;
     _pendingAttachId = widget.initialAttachmentId;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null) {
+      unawaited(
+        _users.getDisplayNameForUser(uid).then((name) {
+          if (!mounted) return;
+          final t = name.trim();
+          if (t.isNotEmpty && t != 'Member') {
+            setState(() => _cachedMeDisplayHint = t);
+          }
+        }),
+      );
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(
         ExpansionAnalytics.log(
@@ -59,6 +73,20 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  /// Text used to derive initials on [PosterProfileAvatar] when the signed-in user has no photo.
+  String _displayHintForSignedInUser() {
+    final u = FirebaseAuth.instance.currentUser;
+    if (u == null) return 'Member';
+    final dn = u.displayName?.trim();
+    if (dn != null && dn.isNotEmpty) return dn;
+    final em = u.email?.trim();
+    if (em != null && em.isNotEmpty) {
+      final local = em.split('@').first.trim();
+      if (local.isNotEmpty) return local;
+    }
+    return 'Member';
   }
 
   Future<void> _send() async {
@@ -276,7 +304,11 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
                           ),
                           if (mine) ...[
                             const SizedBox(width: 8),
-                            PosterProfileAvatar(userId: me, radius: 16),
+                            PosterProfileAvatar(
+                              userId: me,
+                              radius: 16,
+                              displayNameHint: _cachedMeDisplayHint ?? _displayHintForSignedInUser(),
+                            ),
                           ],
                         ],
                       ),
