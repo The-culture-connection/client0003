@@ -181,6 +181,14 @@ See repo root `firestore.rules` — shared with Digital Curriculum. **`mortar_in
 
 `eligibleUsers` / `inviteCodes` remain function-gated for writes. Details: `EXPANSION_INVITE_AUTH.md`.
 
+## Transactional email infrastructure (Brevo)
+
+### How the feature works
+
+- Cloud Functions now include a shared Brevo email service layer at **`functions/src/email/brevoClient.ts`** for future transactional/admin email workflows. It resolves the Brevo API key from **Secret Manager env (`BREVO_API_KEY`)** or an explicit runtime override (never hardcoded), sends via Brevo’s SMTP API, and supports both single-recipient (`sendEmail`) and recipient-list (`sendBulkEmail`) operations.
+- Sends are wrapped with retry logic (up to 3 attempts with backoff) for retryable failures (network, HTTP 429, and 5xx responses). Every attempt is logged in Firestore **`email_activity`** with provider, recipient, template id, tags, request/response payloads, status (`sent`/`failed`/`skipped_preferences`), and error message for audit/debugging.
+- `users/{uid}` email preference fields are now part of the model: **`email_opt_out_all`**, **`email_pref_course_nudges`**, **`email_pref_graduation_updates`**, **`email_pref_events`**, and **`email_pref_admin_messages`**. New users default to opt-in values in `onUserCreated`, Digital Curriculum onboarding final save also sets these to enabled, and `sendEmail` / `sendBulkEmail` check preferences before outbound sends.
+
 ## Google Play release (Android)
 
 - **Signing:** `android/key.properties` and `android/keystore.properties` are merged (later file wins per key). Files are decoded as UTF-8 / UTF-8 BOM / UTF-16, then parsed **line-by-line** (`key=value`, first `=` only) — not `java.util.Properties.load`, so Windows paths like `...\release\upload-keystore.jks` do not hit the Java `\u` Unicode escape bug. All four keys must be non-empty. Files live in **`android/`**, not `android/app/`. See `android/key.properties.example`.

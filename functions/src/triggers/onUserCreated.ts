@@ -86,6 +86,11 @@ export const onUserCreated = functions
         },
         profile_completed: false,
         onboarding_status: "needs_profile",
+        email_opt_out_all: false,
+        email_pref_course_nudges: true,
+        email_pref_graduation_updates: true,
+        email_pref_events: true,
+        email_pref_admin_messages: true,
       });
 
       // 2. Create /data_rooms/{uid} document

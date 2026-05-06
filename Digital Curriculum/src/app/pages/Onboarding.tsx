@@ -110,6 +110,15 @@ export function OnboardingPage() {
         updated_at: serverTimestamp(),
       };
 
+      // On final onboarding completion, default email permissions to enabled.
+      if (!partial) {
+        dataToSave.email_opt_out_all = false;
+        dataToSave.email_pref_course_nudges = true;
+        dataToSave.email_pref_graduation_updates = true;
+        dataToSave.email_pref_events = true;
+        dataToSave.email_pref_admin_messages = true;
+      }
+
       // Remove undefined values to avoid Firestore issues
       Object.keys(dataToSave).forEach((key) => {
         if (dataToSave[key] === undefined) {
