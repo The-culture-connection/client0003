@@ -26,7 +26,11 @@ type PushEventType =
   | "event_reminder_2h"
   | "direct_message"
   | "group_message"
-  | "admin_manual";
+  | "admin_manual"
+  | "admin_graduation_application"
+  | "admin_user_reported"
+  | "admin_event_needs_approval"
+  | "admin_digital_dm";
 
 async function assertCallerIsNetworkAdmin(uid: string): Promise<void> {
   const udoc = await db.collection("users").doc(uid).get();
@@ -55,6 +59,22 @@ async function loadTokensForUid(uid: string): Promise<string[]> {
   const snap = await db.collection("users").doc(uid).get();
   if (!snap.exists) return [];
   return cleanTokens(snap.data() as Record<string, unknown>);
+}
+
+async function loadAdminRecipientUids(): Promise<string[]> {
+  const byUid = new Set<string>();
+
+  const [admins, superAdmins, singleRoleAdmins, singleRoleSupers] = await Promise.all([
+    db.collection("users").where("roles", "array-contains", "Admin").select().limit(2500).get(),
+    db.collection("users").where("roles", "array-contains", "superAdmin").select().limit(2500).get(),
+    db.collection("users").where("role", "==", "Admin").select().limit(2500).get(),
+    db.collection("users").where("role", "==", "superAdmin").select().limit(2500).get(),
+  ]);
+
+  for (const snap of [admins, superAdmins, singleRoleAdmins, singleRoleSupers]) {
+    for (const d of snap.docs) byUid.add(d.id);
+  }
+  return Array.from(byUid);
 }
 
 async function logPushActivity(params: {
@@ -289,6 +309,139 @@ export const onMobileGroupCommentPush = onDocumentCreated(
     const authorId = typeof data.author_id === "string" ? data.author_id : "";
     if (!authorId) return;
     await notifyGroupMembers(groupId, authorId, `/groups/${groupId}?thread=${threadId}`);
+  }
+);
+
+export const onGraduationApplicationCreatedAdminPush = onDocumentCreated(
+  {region: "us-central1", document: "GraduationApplications/{applicationId}"},
+  async (event) => {
+    const applicationId = event.params.applicationId as string;
+    const data = event.data?.data() as Record<string, unknown> | undefined;
+    if (!data) return;
+
+    const status = typeof data.status === "string" ? data.status : "pending";
+    if (status !== "pending") return;
+
+    const userName = typeof data.userName === "string" && data.userName.trim() ? data.userName.trim() : "A user";
+    const adminUids = await loadAdminRecipientUids();
+    if (adminUids.length === 0) return;
+
+    await sendPushToUids({
+      type: "admin_graduation_application",
+      uids: adminUids,
+      title: "New graduation application",
+      body: `${userName} submitted a graduation application.`,
+      deepLink: "/admin/events",
+      data: {
+        application_id: applicationId,
+        web_admin_path: "/admin/panel/graduation",
+      },
+      source: "trigger",
+    });
+  }
+);
+
+export const onUserReportedAdminPush = onDocumentCreated(
+  {region: "us-central1", document: "user_reports/{reportId}"},
+  async (event) => {
+    const reportId = event.params.reportId as string;
+    const data = event.data?.data() as Record<string, unknown> | undefined;
+    if (!data) return;
+
+    const reportedUid = typeof data.reported_user_id === "string" ? data.reported_user_id : "";
+    const adminUids = await loadAdminRecipientUids();
+    if (adminUids.length === 0) return;
+
+    await sendPushToUids({
+      type: "admin_user_reported",
+      uids: adminUids,
+      title: "User reported",
+      body: "A new user report needs moderation review.",
+      deepLink: "/admin/reports",
+      data: {report_id: reportId, reported_uid: reportedUid},
+      source: "trigger",
+    });
+  }
+);
+
+export const onEventNeedsApprovalAdminPush = onDocumentCreated(
+  {region: "us-central1", document: "events_mobile/{eventId}"},
+  async (event) => {
+    const eventId = event.params.eventId as string;
+    const data = event.data?.data() as Record<string, unknown> | undefined;
+    if (!data) return;
+
+    const approval = typeof data.approval_status === "string" ? data.approval_status : "";
+    if (approval !== "pending") return;
+
+    const title = typeof data.title === "string" && data.title.trim() ? data.title.trim() : "An event";
+    const adminUids = await loadAdminRecipientUids();
+    if (adminUids.length === 0) return;
+
+    await sendPushToUids({
+      type: "admin_event_needs_approval",
+      uids: adminUids,
+      title: "Event needs approval",
+      body: `${title} is waiting for approval.`,
+      deepLink: "/admin/events",
+      data: {event_id: eventId},
+      source: "trigger",
+    });
+  }
+);
+
+export const onDigitalStudentDmCreatedAdminPush = onDocumentCreated(
+  {region: "us-central1", document: "Digital Student DMs/{dmId}"},
+  async (event) => {
+    const dmId = event.params.dmId as string;
+    const data = event.data?.data() as Record<string, unknown> | undefined;
+    if (!data) return;
+
+    const senderUid = typeof data.uid === "string" ? data.uid : "";
+    const adminUids = await loadAdminRecipientUids();
+    if (adminUids.length === 0) return;
+
+    await sendPushToUids({
+      type: "admin_digital_dm",
+      uids: adminUids,
+      title: "New Digital Curriculum DM",
+      body: "A student sent a new message to Mortar.",
+      deepLink: "/messages",
+      data: {
+        dm_id: dmId,
+        sender_uid: senderUid,
+        web_admin_path: "/admin/panel/messages",
+      },
+      source: "trigger",
+    });
+  }
+);
+
+export const onDigitalStudentDmReplyAdminPush = onDocumentCreated(
+  {region: "us-central1", document: "Digital Student DMs/{dmId}/replies/{replyId}"},
+  async (event) => {
+    const dmId = event.params.dmId as string;
+    const data = event.data?.data() as Record<string, unknown> | undefined;
+    if (!data) return;
+
+    const sender = typeof data.sender === "string" ? data.sender.toLowerCase() : "";
+    if (sender && sender !== "user") return;
+
+    const adminUids = await loadAdminRecipientUids();
+    if (adminUids.length === 0) return;
+
+    await sendPushToUids({
+      type: "admin_digital_dm",
+      uids: adminUids,
+      title: "New Digital Curriculum DM",
+      body: "A student replied in the Mortar DM thread.",
+      deepLink: "/messages",
+      data: {
+        dm_id: dmId,
+        web_admin_path: "/admin/panel/messages",
+      },
+      source: "trigger",
+    });
   }
 );
 
