@@ -39,6 +39,8 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
   bool _messagesStreamErrorLogged = false;
   /// Firestore-backed display name for initials when Auth has no display name / photo.
   String? _cachedMeDisplayHint;
+  /// Partner's display name for incoming message avatars (`PosterProfileAvatar` initials).
+  String? _cachedPartnerDisplayHint;
 
   @override
   void initState() {
@@ -57,6 +59,13 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
         }),
       );
     }
+    unawaited(
+      _users.getDisplayNameForUser(widget.userId).then((name) {
+        if (!mounted) return;
+        final t = name.trim();
+        setState(() => _cachedPartnerDisplayHint = t.isNotEmpty ? t : 'Member');
+      }),
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(
         ExpansionAnalytics.log(
@@ -263,7 +272,11 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           if (!mine) ...[
-                            PosterProfileAvatar(userId: widget.userId, radius: 16),
+                            PosterProfileAvatar(
+                              userId: widget.userId,
+                              radius: 16,
+                              displayNameHint: _cachedPartnerDisplayHint ?? 'Member',
+                            ),
                             const SizedBox(width: 8),
                           ],
                           Flexible(
