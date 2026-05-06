@@ -43,6 +43,7 @@ import {
   Megaphone,
   ClipboardList,
   LineChart,
+  Bell,
   ChevronLeft,
   Crown,
 } from "lucide-react";
@@ -125,6 +126,7 @@ import {
 import { AppAccessHubPanel } from "../components/admin/AppAccessHubPanel";
 import { MobileModerationPanel } from "../components/admin/MobileModerationPanel";
 import { MobileAnalyticsSummariesPanel } from "../components/admin/MobileAnalyticsSummariesPanel";
+import { PushNotificationsPanel } from "../components/admin/PushNotificationsPanel";
 import { MortarInfoAdminPanel } from "../components/admin/MortarInfoAdminPanel";
 import { AnalyticsDashboardPanel } from "../components/admin/AnalyticsDashboardPanel";
 import { AdminGoalReportsPanel } from "../components/admin/AdminGoalReportsPanel";
@@ -1087,6 +1089,10 @@ export function AdminPage() {
           <TabsTrigger value="mobile-analytics">
             <LineChart className="w-4 h-4 mr-2" />
             Mobile analytics
+          </TabsTrigger>
+          <TabsTrigger value="push-notifications">
+            <Bell className="w-4 h-4 mr-2" />
+            Push notifications
           </TabsTrigger>
           <TabsTrigger value="mortar-info">
             <Megaphone className="w-4 h-4 mr-2" />
@@ -2121,6 +2127,15 @@ export function AdminPage() {
             <code className="text-xs bg-muted px-1">queryAdminExpansionAnalyticsEvents</code> to this Firebase project.
           </p>
           <MobileAnalyticsSummariesPanel />
+        </TabsContent>
+
+        <TabsContent value="push-notifications" className="space-y-6">
+          <p className="text-sm text-muted-foreground max-w-4xl">
+            Activity and manual sends for Expansion app push notifications. Deploy Cloud Functions{" "}
+            <code className="text-xs bg-muted px-1">adminSendPushNotification</code> and{" "}
+            <code className="text-xs bg-muted px-1">getPushNotificationActivity</code> in this Firebase project.
+          </p>
+          <PushNotificationsPanel />
         </TabsContent>
 
         <TabsContent value="mortar-info" className="space-y-6">

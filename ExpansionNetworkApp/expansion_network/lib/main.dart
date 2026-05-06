@@ -11,6 +11,7 @@ import 'auth/auth_controller.dart';
 import 'expansion_release_trace.dart';
 import 'firebase_options.dart';
 import 'router/app_router.dart';
+import 'services/push_notifications_service.dart';
 import 'theme/app_theme.dart';
 import 'widgets/content_suspension_gate.dart';
 
@@ -27,6 +28,12 @@ Future<void> main() async {
 
   final authController = AuthController();
   final router = createAppRouter(authController);
+  final pushNotificationsService = PushNotificationsService();
+  await pushNotificationsService.initialize(
+    onDeepLink: (deepLink) async {
+      router.go(deepLink);
+    },
+  );
   runApp(
     ChangeNotifierProvider.value(
       value: authController,

@@ -18,6 +18,7 @@ import UIKit
     // Flutter side stays in sync (typically `duplicate-app`, handled in `lib/main.dart`).
     FirebaseApp.configure()
     GeneratedPluginRegistrant.register(with: self)
+    application.registerForRemoteNotifications()
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 }

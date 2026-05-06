@@ -8,6 +8,7 @@ import '../analytics/expansion_analytics.dart';
 import '../constants/alumni_network_constants.dart';
 import '../expansion_release_trace.dart';
 import '../services/expansion_session_service.dart';
+import '../services/push_notifications_service.dart';
 import '../services/user_profile_repository.dart';
 
 /// Lets native Firebase Auth finish **Keychain** persistence before we call
@@ -23,9 +24,12 @@ class AuthController extends ChangeNotifier {
   AuthController({
     UserProfileRepository? profileRepository,
     ExpansionSessionService? sessionService,
+    PushNotificationsService? pushNotificationsService,
     FirebaseAuth? auth,
   })  : _profileRepository = profileRepository ?? UserProfileRepository(),
         _sessionService = sessionService ?? ExpansionSessionService(),
+        _pushNotificationsService =
+            pushNotificationsService ?? PushNotificationsService(),
         _auth = auth ?? FirebaseAuth.instance;
 
   /// Subscribes to [FirebaseAuth.authStateChanges]. Call once after the first frame
@@ -38,6 +42,7 @@ class AuthController extends ChangeNotifier {
 
   final UserProfileRepository _profileRepository;
   final ExpansionSessionService _sessionService;
+  final PushNotificationsService _pushNotificationsService;
   final FirebaseAuth _auth;
   StreamSubscription<User?>? _sub;
 
@@ -85,6 +90,7 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
 
     await _applySessionForUser(user);
+    await _pushNotificationsService.syncTokenForCurrentUser();
     _loading = false;
     notifyListeners();
   }

@@ -10,6 +10,7 @@ export const ADMIN_PANEL_TAB_SLUGS = [
   "app-access-hub",
   "expansion-mobile",
   "mobile-analytics",
+  "push-notifications",
   "mortar-info",
   "messages",
   "courses",
