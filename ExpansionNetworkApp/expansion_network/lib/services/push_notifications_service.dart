@@ -73,6 +73,8 @@ class PushNotificationsService {
     if (initial != null) {
       await _handleDeepLinkFromMessage(initial);
     }
+
+    await _logPushDebugInfo();
   }
 
   Future<void> syncTokenForCurrentUser() async {
@@ -108,6 +110,23 @@ class PushNotificationsService {
     final handler = _onDeepLink;
     if (handler == null) return;
     await handler(deepLink.trim());
+  }
+
+  Future<void> _logPushDebugInfo() async {
+    final projectId = _firestore.app.options.projectId;
+    final fcmToken = await _messaging.getToken();
+    String? apnsToken;
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+      apnsToken = await _messaging.getAPNSToken();
+    }
+
+    debugPrint('=== PUSH DEBUG START ===');
+    debugPrint('Firebase projectId: ${projectId.isEmpty ? "unknown" : projectId}');
+    debugPrint('FCM token: ${fcmToken ?? "null"}');
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+      debugPrint('APNs token: ${apnsToken ?? "null"}');
+    }
+    debugPrint('=== PUSH DEBUG END ===');
   }
 
   Future<void> dispose() async {
