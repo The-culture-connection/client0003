@@ -83,21 +83,10 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
-import { db, storage, functions } from "../../lib/firebase";
-import { httpsCallable } from "firebase/functions";
+import { db, storage } from "../../lib/firebase";
 import { SlideRenderer } from "../../components/curriculum/SlideRenderer";
 import { YouTubeBlock } from "../../components/curriculum/YouTubeBlock";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "../../components/ui/alert-dialog";
 import { SKILL_CATEGORIES, ALL_SKILLS, type SkillCategory } from "../../lib/onboardingData";
 import { Checkbox } from "../../components/ui/checkbox";
 
@@ -244,12 +233,6 @@ export function CourseBuilder() {
   const [newBadgeImageUrlsByModule, setNewBadgeImageUrlsByModule] = useState<Record<number, string>>({});
   const [newBadgeImageFilesByModule, setNewBadgeImageFilesByModule] = useState<Record<number, File | null>>({});
   const [creatingBadgeByModule, setCreatingBadgeByModule] = useState<Record<number, boolean>>({});
-  /** Admin: reset learner course progress (Assignment tab) */
-  const [resetProgressInput, setResetProgressInput] = useState("");
-  const [resetProgressOpen, setResetProgressOpen] = useState(false);
-  const [resetProgressBusy, setResetProgressBusy] = useState(false);
-  const [resetProgressResolvedUid, setResetProgressResolvedUid] = useState<string | null>(null);
-  const [resetProgressResolvedLabel, setResetProgressResolvedLabel] = useState("");
   /** Which survey question row is edited (per module/lesson)—dropdown target */
   const [activeSurveyQuestionByLesson, setActiveSurveyQuestionByLesson] = useState<Record<string, number>>({});
   /** Which quiz question row is edited (per module/lesson)—dropdown target */
@@ -1155,82 +1138,6 @@ export function CourseBuilder() {
 
   const removeAssignedUser = (userId: string) => {
     setAssignedUsers((prev) => prev.filter((u) => u.userId !== userId));
-  };
-
-  const resolveLearnerIdForProgressReset = async (
-    raw: string
-  ): Promise<{ uid: string; label: string } | { error: string }> => {
-    const t = raw.trim();
-    if (!t) return { error: "Enter a learner email or Firebase user ID." };
-    if (t.includes("@")) {
-      const normalized = t.toLowerCase();
-      try {
-        const usersRef = collection(db, "users");
-        let querySnapshot = await getDocs(query(usersRef, where("email", "==", t)));
-        if (querySnapshot.empty) {
-          querySnapshot = await getDocs(query(usersRef, where("email", "==", normalized)));
-        }
-        if (querySnapshot.empty) {
-          return { error: "No user found with that email." };
-        }
-        const userDoc = querySnapshot.docs[0];
-        const data = userDoc.data();
-        const email = typeof data.email === "string" ? data.email : t;
-        return { uid: userDoc.id, label: email };
-      } catch {
-        return { error: "Could not look up that email." };
-      }
-    }
-    if (t.length < 18) {
-      return { error: "That does not look like a valid Firebase user ID." };
-    }
-    return { uid: t, label: t };
-  };
-
-  const handleOpenResetProgressDialog = async () => {
-    const courseId = createdCourseId ?? editingCourseId ?? null;
-    if (!courseId) {
-      alert("Save the course first so it has an ID to target.");
-      return;
-    }
-    const resolved = await resolveLearnerIdForProgressReset(resetProgressInput);
-    if ("error" in resolved) {
-      alert(resolved.error);
-      return;
-    }
-    setResetProgressResolvedUid(resolved.uid);
-    setResetProgressResolvedLabel(resolved.label);
-    setResetProgressOpen(true);
-  };
-
-  const handleConfirmResetCourseProgress = async () => {
-    const courseId = createdCourseId ?? editingCourseId ?? null;
-    const targetUid = resetProgressResolvedUid;
-    if (!courseId || !targetUid) return;
-    setResetProgressBusy(true);
-    try {
-      const resetFn = httpsCallable(functions, "resetCourseProgressForUser");
-      const res = await resetFn({ course_id: courseId, target_user_id: targetUid });
-      type Out = { deleted?: boolean; message?: string };
-      const data = (res.data ?? {}) as Out;
-      alert(typeof data.message === "string" ? data.message : "Request completed.");
-      setResetProgressOpen(false);
-      setResetProgressInput("");
-      setResetProgressResolvedUid(null);
-      setResetProgressResolvedLabel("");
-    } catch (e: unknown) {
-      const code =
-        e && typeof e === "object" && "code" in e
-          ? String((e as { code: unknown }).code)
-          : "";
-      const msg =
-        e && typeof e === "object" && "message" in e
-          ? String((e as { message: unknown }).message)
-          : "Reset failed.";
-      alert(code ? `${msg} (${code})` : msg);
-    } finally {
-      setResetProgressBusy(false);
-    }
   };
 
   const handleCreateModuleBadge = async (moduleIndex: number) => {
@@ -2347,82 +2254,6 @@ export function CourseBuilder() {
             )}
           </Card>
 
-          <Card className="p-6 space-y-4 border-destructive/35">
-            <div>
-              <h3 className="text-sm font-semibold text-destructive">Reset learner progress</h3>
-              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                Deletes the Firestore <code className="text-[11px] bg-muted px-1 py-0.5 rounded">courseProgress</code>{" "}
-                document for this course and the learner you specify. The next time they open the course, progress starts
-                from scratch. Module badges already stored on their profile are not removed.
-              </p>
-            </div>
-            {createdCourseId || editingCourseId ? (
-              <>
-                <p className="text-xs text-muted-foreground">
-                  Course ID:{" "}
-                  <span className="font-mono">{createdCourseId ?? editingCourseId}</span>
-                </p>
-                <div className="space-y-2">
-                  <Label htmlFor="reset-progress-learner">Learner email or Firebase user ID</Label>
-                  <Input
-                    id="reset-progress-learner"
-                    value={resetProgressInput}
-                    onChange={(e) => setResetProgressInput(e.target.value)}
-                    placeholder="student@example.com or Firebase UID"
-                    autoComplete="off"
-                  />
-                </div>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  onClick={() => void handleOpenResetProgressDialog()}
-                  disabled={resetProgressBusy || !resetProgressInput.trim()}
-                >
-                  Reset progress for this learner…
-                </Button>
-              </>
-            ) : (
-              <p className="text-xs text-muted-foreground">Save the course once to enable progress reset.</p>
-            )}
-          </Card>
-
-          <AlertDialog open={resetProgressOpen} onOpenChange={setResetProgressOpen}>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Reset course progress?</AlertDialogTitle>
-                <AlertDialogDescription asChild>
-                  <div className="space-y-2 text-sm text-muted-foreground">
-                    <p>
-                      This permanently deletes stored lesson/quiz/survey progress for{" "}
-                      <strong className="text-foreground">{resetProgressResolvedLabel || resetProgressResolvedUid}</strong>{" "}
-                      on this course.
-                    </p>
-                    <p className="text-xs font-mono break-all text-foreground/80">UID: {resetProgressResolvedUid}</p>
-                  </div>
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel disabled={resetProgressBusy}>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  disabled={resetProgressBusy}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    void handleConfirmResetCourseProgress();
-                  }}
-                >
-                  {resetProgressBusy ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin inline mr-2 align-middle" />
-                      Working…
-                    </>
-                  ) : (
-                    "Confirm reset"
-                  )}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
         </TabsContent>
 
         {/* Preview Tab */}

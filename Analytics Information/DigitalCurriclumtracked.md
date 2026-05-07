@@ -88,10 +88,6 @@ In **`LessonPlayer.tsx`**, when `aiAnalysis.enabled` is true the first **Submit*
 
 **Deploy:** provision the secret (`npx firebase-tools@latest functions:secrets:set OPEN_AI_KEY` in the Firebase project), ensure the function is granted access to that secret, then `npx firebase-tools@latest deploy --only functions` for the codebase that exports `analyzeLessonSurvey` (`functions/src/index.ts`).
 
-### How the feature works (admin — reset learner course progress)
-
-In **Course Builder** → **Assignment** tab (after the course has been saved once), admins can reset one learner’s progress for **this** course. The UI resolves **email** (Firestore `users` query — exact entered value, then lowercase match) or a **Firebase user ID**, confirms in a dialog, then calls HTTPS callable **`resetCourseProgressForUser`** with `{ course_id, target_user_id }`. Staff checks mirror other admin callables: JWT `roles`, then **Firebase Auth custom-claims `roles`**, then **`users/{callerUid}.roles`**, plus legacy **`users/{callerUid}.role`** (case-insensitive match for `Admin` / `superAdmin`) — so Firestore-only staff rows work even when custom claims are stale (`functions/src/callables/resetCourseProgressForUser.ts`). The function checks that the target UID exists in Firebase Auth, loads `courses/{course_id}`, deletes `courseProgress/{target_uid}_{course_id}` when present (otherwise returns `"No progress document to remove"`). Certificates and badges previously written under `users/{uid}` are not removed.
-
 ### 1.5b Data Room (web)
 
 | TS key | `event_name` (wire) | Wired in app |
