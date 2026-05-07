@@ -7,7 +7,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router";
 import { getSlides, getBlocks, getLesson, getLessonImages, getLessonContent, getCourseSlideCounts, type Slide, type Block, type Lesson, type LessonImage, type LessonContentSlide, type LessonQuiz, type LessonSurvey } from "../../lib/curriculum";
 import { getCourse, getCourseLessonQuiz, getCourseLessonSurvey, getLessonsWithQuiz, getLessonsWithSurvey } from "../../lib/courses";
-import { getCourseProgress, updateLessonSlideProgress, setLessonCompleted, recordLessonQuizAttempt, recordLessonSurveySubmission, markCourseCompleted, calculateCourseProgress, updateModulesCompletionMap } from "../../lib/courseProgress";
+import { getCourseProgress, updateLessonSlideProgress, setLessonCompleted, recordLessonQuizAttempt, recordLessonSurveySubmission, saveLessonSurveyAnswersDraft, markCourseCompleted, calculateCourseProgress, updateModulesCompletionMap } from "../../lib/courseProgress";
 import { createSkillCertificatesForCompletedCourse, uploadSurveyResponsePdf } from "../../lib/dataroom";
 import { DEFAULT_DATAROOM_FOLDER_ID } from "../../lib/dataroomFolders";
 import { useAuth } from "../../components/auth/AuthProvider";
@@ -50,6 +50,11 @@ export function LessonPlayer() {
   const [survey, setSurvey] = useState<LessonSurvey | null>(null);
   const [surveyAnswers, setSurveyAnswers] = useState<string[]>([]);
   const [surveySubmitted, setSurveySubmitted] = useState(false);
+  /** When AI survey analysis is enabled: answer entry → optional choice → optional feedback edits before finalize */
+  type SurveyInteractiveStep = "answer" | "choose" | "feedback";
+  const [surveyInteractiveStep, setSurveyInteractiveStep] = useState<SurveyInteractiveStep>("answer");
+  const [surveyAiFeedbackText, setSurveyAiFeedbackText] = useState<string | null>(null);
+  const [isAnalyzingSurvey, setIsAnalyzingSurvey] = useState(false);
   const [isSubmittingSurvey, setIsSubmittingSurvey] = useState(false);
   const [showSurveyView, setShowSurveyView] = useState(false);
   const loggedQuizExhausted = useRef(false);
@@ -166,9 +171,36 @@ export function LessonPlayer() {
         setQuiz(quizData?.enabled && (quizData.questions?.length ?? 0) > 0 ? quizData : null);
         setSurvey(surveyData?.enabled && (surveyData.questions?.length ?? 0) > 0 ? surveyData : null);
         setProgress(progressData ?? null);
-        if (progressData?.surveySubmitted?.[lessonId!]) setSurveySubmitted(true);
+        const lid = lessonId!;
         if (surveyData?.enabled && (surveyData.questions?.length ?? 0) > 0) {
-          setSurveyAnswers(Array(surveyData.questions!.length).fill(""));
+          const qCount = surveyData.questions!.length;
+          const saved = progressData?.surveyAnswers?.[lid];
+          if (Array.isArray(saved) && saved.length === qCount) {
+            setSurveyAnswers(saved.map((s) => (typeof s === "string" ? s : "")));
+          } else {
+            setSurveyAnswers(Array(qCount).fill(""));
+          }
+          const finalized = progressData?.surveySubmitted?.[lid] === true;
+          setSurveySubmitted(finalized);
+          const aiEnabled = !!(surveyData.aiAnalysis?.enabled);
+          const fb = progressData?.surveyAiFeedback?.[lid];
+          if (finalized) {
+            setSurveyInteractiveStep("answer");
+            setSurveyAiFeedbackText(typeof fb === "string" ? fb : null);
+          } else if (
+            aiEnabled &&
+            Array.isArray(saved) &&
+            saved.length === qCount &&
+            saved.some((s) => (typeof s === "string" ? s.trim() : "") !== "")
+          ) {
+            setSurveyInteractiveStep(typeof fb === "string" && fb.trim() !== "" ? "feedback" : "choose");
+            setSurveyAiFeedbackText(typeof fb === "string" ? fb : null);
+          } else {
+            setSurveyInteractiveStep("answer");
+            setSurveyAiFeedbackText(null);
+          }
+        } else {
+          if (progressData?.surveySubmitted?.[lid]) setSurveySubmitted(true);
         }
 
         let initialIndex = 0;
@@ -367,22 +399,23 @@ export function LessonPlayer() {
     }
   };
 
-  const handleSurveySubmit = async () => {
+  /** Final submission: lesson complete + optional survey PDF + course completion badges */
+  const finalizeSurveyAndCompleteLesson = async (answersTrimmed: string[]) => {
     if (!survey?.questions?.length || !user || !courseId || !lessonId) return;
     const sorted = [...survey.questions].sort((a, b) => a.order - b.order);
-    const answers = sorted.map((_, i) => surveyAnswers[i] ?? "").map((s) => s.trim());
     setIsSubmittingSurvey(true);
     try {
-      await recordLessonSurveySubmission(user.uid, courseId, lessonId, answers);
+      await recordLessonSurveySubmission(user.uid, courseId, lessonId, answersTrimmed);
       trackEvent(WEB_ANALYTICS_EVENTS.LESSON_SURVEY_SUBMIT_CLICKED, {
         lesson_id: lessonId,
         course_id: courseId,
       });
       setSurveySubmitted(true);
+      setSurveyInteractiveStep("answer");
       setProgress((prev) => ({
         ...prev!,
         surveySubmitted: { ...prev?.surveySubmitted, [lessonId]: true },
-        surveyAnswers: { ...prev?.surveyAnswers, [lessonId]: answers },
+        surveyAnswers: { ...prev?.surveyAnswers, [lessonId]: answersTrimmed },
         lessonsCompleted: { ...prev?.lessonsCompleted, [lessonId]: true },
       }));
       if (survey.generatePdfOnComplete) {
@@ -393,7 +426,7 @@ export function LessonPlayer() {
           lesson?.title ?? "Lesson",
           (survey.title?.trim() || lesson?.title) ?? "Survey",
           sorted.map((q) => ({ question: q.question })),
-          answers,
+          answersTrimmed,
           survey.dataroomFolderId ?? DEFAULT_DATAROOM_FOLDER_ID
         );
         if (ok) {
@@ -430,6 +463,67 @@ export function LessonPlayer() {
     } finally {
       setIsSubmittingSurvey(false);
     }
+  };
+
+  const currentSurveyAnswersTrimmed = () => {
+    if (!survey?.questions?.length) return [];
+    const sorted = [...survey.questions].sort((a, b) => a.order - b.order);
+    return sorted.map((_, i) => surveyAnswers[i] ?? "").map((s) => s.trim());
+  };
+
+  const handleSurveySubmitFirstStep = async () => {
+    if (!survey?.questions?.length || !user || !courseId || !lessonId) return;
+    const answers = currentSurveyAnswersTrimmed();
+    if (survey.aiAnalysis?.enabled) {
+      setIsSubmittingSurvey(true);
+      try {
+        await saveLessonSurveyAnswersDraft(user.uid, courseId, lessonId, answers);
+        setSurveyInteractiveStep("choose");
+        setProgress((prev) => ({
+          ...prev!,
+          surveyAnswers: { ...prev?.surveyAnswers, [lessonId]: answers },
+        }));
+      } finally {
+        setIsSubmittingSurvey(false);
+      }
+      return;
+    }
+    await finalizeSurveyAndCompleteLesson(answers);
+  };
+
+  const runSurveyAiAnalyze = async () => {
+    if (!user || !courseId || !lessonId) return;
+    const answers = currentSurveyAnswersTrimmed();
+    setIsAnalyzingSurvey(true);
+    try {
+      const analyzeFn = httpsCallable(functions, "analyzeLessonSurvey");
+      type AnalyzeResult = { data?: { feedback?: string } };
+      const resp = (await analyzeFn({
+        course_id: courseId,
+        lesson_id: lessonId,
+        answers,
+      })) as AnalyzeResult;
+      const feedback = resp.data?.feedback?.trim();
+      if (feedback) setSurveyAiFeedbackText(feedback);
+      setSurveyInteractiveStep("feedback");
+      const refreshed = await getCourseProgress(user.uid, courseId);
+      setProgress(refreshed ?? null);
+    } catch (e: unknown) {
+      console.error("Survey AI analyze failed:", e);
+      alert("AI analysis couldn’t complete. Try again or continue without it.");
+    } finally {
+      setIsAnalyzingSurvey(false);
+    }
+  };
+
+  const handleSurveySkipAiFinalize = async () => {
+    const answers = currentSurveyAnswersTrimmed();
+    await finalizeSurveyAndCompleteLesson(answers);
+  };
+
+  const handleSurveyFinalizeAfterAi = async () => {
+    const answers = currentSurveyAnswersTrimmed();
+    await finalizeSurveyAndCompleteLesson(answers);
   };
 
   const handleQuizSubmit = async () => {
@@ -563,9 +657,11 @@ export function LessonPlayer() {
       {/* Slide Content */}
       <div className="min-h-[calc(100vh-80px)]">
         {showSurveyView && hasSurvey ? (
-          <div className="container mx-auto px-4 py-8 max-w-2xl">
+          <div
+            className={`container mx-auto px-4 py-8 ${surveyInteractiveStep === "feedback" ? "max-w-4xl" : "max-w-2xl"}`}
+          >
             <h2 className="text-xl font-semibold mb-6">{survey.title?.trim() || "Survey"}</h2>
-            {!surveySubmitted ? (
+            {!surveySubmitted && surveyInteractiveStep === "answer" ? (
               <>
                 <p className="text-gray-400 text-sm mb-6">
                   Please answer the following questions. Your responses are open-ended.
@@ -592,7 +688,7 @@ export function LessonPlayer() {
                 </div>
                 <Button
                   className="mt-6"
-                  onClick={handleSurveySubmit}
+                  onClick={handleSurveySubmitFirstStep}
                   disabled={isSubmittingSurvey}
                 >
                   {isSubmittingSurvey ? (
@@ -601,6 +697,73 @@ export function LessonPlayer() {
                   Submit
                 </Button>
               </>
+            ) : !surveySubmitted && surveyInteractiveStep === "choose" ? (
+              <div className="space-y-4">
+                <p className="text-gray-400 text-sm">
+                  Optional: get AI feedback on your responses based on this lesson&apos;s facilitator instructions, or continue without analysis.
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <Button onClick={runSurveyAiAnalyze} disabled={isAnalyzingSurvey}>
+                    {isAnalyzingSurvey ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : null}
+                    Analyze my responses with AI
+                  </Button>
+                  <Button variant="secondary" onClick={handleSurveySkipAiFinalize} disabled={isSubmittingSurvey}>
+                    Continue in course (skip AI)
+                  </Button>
+                </div>
+              </div>
+            ) : !surveySubmitted && surveyInteractiveStep === "feedback" ? (
+              <div className="grid md:grid-cols-2 gap-6 items-start">
+                <div className="rounded-lg border border-gray-700 p-4 bg-gray-950/80 min-h-[200px] max-h-[60vh] overflow-y-auto">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-accent mb-2">AI feedback</p>
+                  <p className="text-sm whitespace-pre-wrap text-gray-200">
+                    {surveyAiFeedbackText?.trim()
+                      ? surveyAiFeedbackText
+                      : "No feedback loaded yet."}
+                  </p>
+                </div>
+                <div className="space-y-4">
+                  <p className="text-gray-400 text-sm">
+                    Revise your answers with the feedback in mind; you can re-run analysis before finishing this lesson.
+                  </p>
+                  <div className="space-y-6">
+                    {[...survey.questions]
+                      .sort((a, b) => a.order - b.order)
+                      .map((q, i) => (
+                        <div key={i} className="rounded-lg border border-gray-700 p-4 bg-gray-900/50">
+                          <p className="font-medium mb-3">{q.question}</p>
+                          <textarea
+                            value={surveyAnswers[i] ?? ""}
+                            onChange={(e) => {
+                              const next = [...surveyAnswers];
+                              next[i] = e.target.value;
+                              setSurveyAnswers(next);
+                            }}
+                            placeholder="Your answer..."
+                            className="w-full min-h-[80px] rounded-md border border-gray-600 bg-gray-800 text-white px-3 py-2 focus:ring-2 focus:ring-accent"
+                            rows={3}
+                          />
+                        </div>
+                      ))}
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    <Button variant="outline" onClick={runSurveyAiAnalyze} disabled={isAnalyzingSurvey}>
+                      {isAnalyzingSurvey ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : null}
+                      Re-analyze after edits
+                    </Button>
+                    <Button onClick={handleSurveyFinalizeAfterAi} disabled={isSubmittingSurvey}>
+                      {isSubmittingSurvey ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : null}
+                      Finish & complete lesson
+                    </Button>
+                  </div>
+                </div>
+              </div>
             ) : (
               <p className="text-green-400 font-medium">Thank you! Your responses have been saved. You can close the lesson.</p>
             )}

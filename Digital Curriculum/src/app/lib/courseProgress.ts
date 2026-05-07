@@ -24,6 +24,9 @@ export interface CourseProgress {
   /** Per-lesson survey: submitted = lesson complete. Answers stored for PDF generation. */
   surveySubmitted?: Record<string, boolean>;
   surveyAnswers?: Record<string, string[]>; // lessonId -> array of answers in question order
+  /** Latest AI survey feedback written by callable `analyzeLessonSurvey` */
+  surveyAiFeedback?: Record<string, string>;
+  surveyAiAnalyzedAt?: Record<string, Timestamp>;
 }
 
 /**
@@ -317,6 +320,38 @@ export async function recordLessonQuizAttempt(
 /**
  * Record survey submission for a lesson. Marks the lesson completed and stores answers.
  */
+/**
+ * Saves open-ended survey answers without marking the lesson complete.
+ * Used when optional AI analysis lets the learner review feedback before finishing the lesson.
+ */
+export async function saveLessonSurveyAnswersDraft(
+  userId: string,
+  courseId: string,
+  lessonId: string,
+  answers: string[]
+): Promise<void> {
+  try {
+    const progressRef = doc(db, "courseProgress", `${userId}_${courseId}`);
+    const progressSnap = await getDoc(progressRef);
+
+    let progressData: CourseProgress;
+    if (!progressSnap.exists()) {
+      progressData = await initializeCourseProgress(userId, courseId);
+    } else {
+      progressData = progressSnap.data() as CourseProgress;
+    }
+
+    await updateDoc(progressRef, {
+      surveyAnswers: { ...(progressData.surveyAnswers ?? {}), [lessonId]: answers },
+      updatedAt: serverTimestamp(),
+    });
+    invalidateCache(`progress:${userId}`);
+  } catch (error) {
+    console.error("Error saving lesson survey draft answers:", error);
+    throw error;
+  }
+}
+
 export async function recordLessonSurveySubmission(
   userId: string,
   courseId: string,

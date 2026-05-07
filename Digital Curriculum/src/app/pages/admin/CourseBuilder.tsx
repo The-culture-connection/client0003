@@ -144,6 +144,9 @@ interface ModuleData {
     generatePdfOnComplete?: boolean;
     /** Required when generatePdfOnComplete is enabled */
     dataroomFolderId?: string;
+    surveyAiAnalysisEnabled?: boolean;
+    surveyAiPrompt?: string;
+    surveyAiCriteria?: string;
   }>;
 }
 
@@ -200,6 +203,9 @@ export function CourseBuilder() {
           surveyQuestions: [],
           generatePdfOnComplete: false,
           dataroomFolderId: undefined,
+          surveyAiAnalysisEnabled: false,
+          surveyAiPrompt: "",
+          surveyAiCriteria: "",
         },
       ],
     },
@@ -309,6 +315,9 @@ export function CourseBuilder() {
             let surveyQuestions: Array<{ question: string }> = [];
             let generatePdfOnComplete = false;
             let dataroomFolderId: string | undefined = undefined;
+            let surveyAiAnalysisEnabled = false;
+            let surveyAiPrompt = "";
+            let surveyAiCriteria = "";
 
             if (lessonId && cid && moduleId && chapterId) {
               try {
@@ -354,6 +363,10 @@ export function CourseBuilder() {
                   surveyQuestions = (survey.questions ?? []).sort((a, b) => a.order - b.order).map((q) => ({ question: q.question }));
                   generatePdfOnComplete = survey.generatePdfOnComplete ?? false;
                   dataroomFolderId = survey.dataroomFolderId ?? undefined;
+                  const ai = survey.aiAnalysis;
+                  surveyAiAnalysisEnabled = !!ai?.enabled;
+                  surveyAiPrompt = typeof ai?.prompt === "string" ? ai.prompt : "";
+                  surveyAiCriteria = typeof ai?.criteria === "string" ? ai.criteria : "";
                 }
               } catch (e) {
                 console.warn("Load lesson content/quiz failed:", e);
@@ -374,6 +387,9 @@ export function CourseBuilder() {
               surveyQuestions,
               generatePdfOnComplete,
               dataroomFolderId,
+              surveyAiAnalysisEnabled,
+              surveyAiPrompt,
+              surveyAiCriteria,
             });
           }
 
@@ -430,10 +446,13 @@ export function CourseBuilder() {
               quizQuestions: [],
               quizMaxAttempts: 3,
               quizPassPercentage: 70,
-          surveyEnabled: false,
-          surveyTitle: "",
-          surveyQuestions: [],
-          generatePdfOnComplete: false,
+              surveyEnabled: false,
+              surveyTitle: "",
+              surveyQuestions: [],
+              generatePdfOnComplete: false,
+              surveyAiAnalysisEnabled: false,
+              surveyAiPrompt: "",
+              surveyAiCriteria: "",
             },
           ],
         });
@@ -603,6 +622,9 @@ export function CourseBuilder() {
       // If the survey is disabled, PDF export becomes irrelevant as well.
       lesson.generatePdfOnComplete = false;
       lesson.dataroomFolderId = undefined;
+      lesson.surveyAiAnalysisEnabled = false;
+      lesson.surveyAiPrompt = "";
+      lesson.surveyAiCriteria = "";
     }
     if (enabled && !lesson.surveyQuestions?.length) lesson.surveyQuestions = [];
     setModules(updated);
@@ -871,6 +893,14 @@ export function CourseBuilder() {
               questions: surveyQuestions,
               generatePdfOnComplete,
               dataroomFolderId: dataroomFolderId || undefined,
+              aiAnalysis:
+                surveyEnabled && surveyQuestions.length > 0 && (lesson.surveyAiAnalysisEnabled ?? false)
+                  ? {
+                      enabled: true,
+                      prompt: (lesson.surveyAiPrompt ?? "").trim(),
+                      criteria: (lesson.surveyAiCriteria ?? "").trim(),
+                    }
+                  : { enabled: false, prompt: "", criteria: "" },
             });
           }
         }
@@ -929,6 +959,14 @@ export function CourseBuilder() {
               questions: surveyQuestions,
               generatePdfOnComplete,
               dataroomFolderId: dataroomFolderId || undefined,
+              aiAnalysis:
+                surveyEnabled && surveyQuestions.length > 0 && (lesson.surveyAiAnalysisEnabled ?? false)
+                  ? {
+                      enabled: true,
+                      prompt: (lesson.surveyAiPrompt ?? "").trim(),
+                      criteria: (lesson.surveyAiCriteria ?? "").trim(),
+                    }
+                  : { enabled: false, prompt: "", criteria: "" },
             });
           }
         }
@@ -1871,6 +1909,65 @@ export function CourseBuilder() {
                                     </ul>
                                   )}
                                 </div>
+                                {(lesson.surveyQuestions?.length ?? 0) > 0 && (
+                                  <div className="space-y-3 rounded-md border border-border p-3 bg-muted/10">
+                                    <div className="flex items-center gap-2">
+                                      <input
+                                        type="checkbox"
+                                        id={`survey-ai-${moduleIndex}-${lessonIndex}`}
+                                        checked={lesson.surveyAiAnalysisEnabled ?? false}
+                                        onChange={(e) => {
+                                          const checked = e.target.checked;
+                                          const updated = [...modules];
+                                          updated[moduleIndex].lessons[lessonIndex].surveyAiAnalysisEnabled =
+                                            checked;
+                                          setModules(updated);
+                                        }}
+                                        className="rounded border-border"
+                                      />
+                                      <Label
+                                        htmlFor={`survey-ai-${moduleIndex}-${lessonIndex}`}
+                                        className="cursor-pointer text-xs"
+                                      >
+                                        Add AI survey analysis (student can request feedback after submitting)
+                                      </Label>
+                                    </div>
+                                    {lesson.surveyAiAnalysisEnabled && (
+                                      <>
+                                        <div className="space-y-1">
+                                          <Label className="text-xs">AI facilitator prompt</Label>
+                                          <Textarea
+                                            placeholder="Instructions for tone, teaching goals, and how feedback should be structured"
+                                            value={lesson.surveyAiPrompt ?? ""}
+                                            onChange={(e) => {
+                                              const updated = [...modules];
+                                              updated[moduleIndex].lessons[lessonIndex].surveyAiPrompt =
+                                                e.target.value;
+                                              setModules(updated);
+                                            }}
+                                            rows={3}
+                                            className="text-sm"
+                                          />
+                                        </div>
+                                        <div className="space-y-1">
+                                          <Label className="text-xs">Criteria / rubric</Label>
+                                          <Textarea
+                                            placeholder="Bullet points or rubric the AI must explicitly address"
+                                            value={lesson.surveyAiCriteria ?? ""}
+                                            onChange={(e) => {
+                                              const updated = [...modules];
+                                              updated[moduleIndex].lessons[lessonIndex].surveyAiCriteria =
+                                                e.target.value;
+                                              setModules(updated);
+                                            }}
+                                            rows={3}
+                                            className="text-sm"
+                                          />
+                                        </div>
+                                      </>
+                                    )}
+                                  </div>
+                                )}
                               </>
                             )}
                           </div>

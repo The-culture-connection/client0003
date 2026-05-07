@@ -78,6 +78,16 @@ Default metadata merged on the client (then normalized server-side): **`session_
 | `LESSON_QUIZ_ANSWER_SELECTED` | `lesson_quiz_answer_selected` | `LessonPlayer.tsx` (`question_index`, `option_id` A–D — no answer text) |
 | `LESSON_SURVEY_FIELD_CHANGED` | `lesson_survey_field_changed` | `LessonPlayer.tsx` (debounced; counts only — `non_empty_field_count`, `total_fields`, `field_type`) |
 
+### How the feature works (lesson survey — optional OpenAI analysis)
+
+In **Course Builder**, when a lesson survey is enabled and has at least one question, staff may turn on **Add AI survey analysis** and enter a **facilitator prompt** plus **criteria/rubric** stored on `courses/{courseId}/lessonSurveys/{lessonId}` as `aiAnalysis: { enabled, prompt, criteria }`.
+
+The Gen 2 HTTPS callable **`analyzeLessonSurvey`** (`functions/src/callables/analyzeLessonSurvey.ts`) requires a signed-in learner, validates that AI is enabled for that survey, loads the course’s `curriculumMapping` to resolve the Firestore lesson path, builds a plain-text summary of slide blocks / media captions / image alt text (length-capped), sends the admin prompt, criteria, lesson summary, and Q&A to the OpenAI Chat Completions API (`OPEN_AI_KEY` via **Secret Manager** parameter `OPEN_AI_KEY`; optional model override with env `OPEN_AI_MODEL`, default `gpt-4o-mini`), and merges the resulting feedback into `courseProgress/{uid}_{courseId}` as `surveyAiFeedback[lessonId]` and `surveyAiAnalyzedAt[lessonId]`. The learner’s `courseProgress` document must already exist and `userId` must match the caller; clients may pass `{ course_id, lesson_id, answers?: string[] }`—if `answers` is omitted, answers are read from `surveyAnswers[lessonId]` on that progress doc.
+
+In **`LessonPlayer.tsx`**, when `aiAnalysis.enabled` is true the first **Submit** saves answers with `saveLessonSurveyAnswersDraft` (lesson not complete yet) and offers **Analyze with AI** vs **Continue without AI**. After analysis, feedback appears beside editable text areas; the learner may **Re-analyze** or **Finish & complete lesson**, which runs the existing `recordLessonSurveySubmission` flow (PDF export, module badges, course completion) as before.
+
+**Deploy:** provision the secret (`npx firebase-tools@latest functions:secrets:set OPEN_AI_KEY` in the Firebase project), ensure the function is granted access to that secret, then `npx firebase-tools@latest deploy --only functions` for the codebase that exports `analyzeLessonSurvey` (`functions/src/index.ts`).
+
 ### 1.5b Data Room (web)
 
 | TS key | `event_name` (wire) | Wired in app |

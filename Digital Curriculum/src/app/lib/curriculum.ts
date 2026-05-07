@@ -148,6 +148,15 @@ export interface SurveyQuestion {
   question: string;
 }
 
+/** Optional OpenAI-assisted feedback after the learner submits a lesson survey (`analyzeLessonSurvey` callable). */
+export interface LessonSurveyAiAnalysis {
+  enabled: boolean;
+  /** Facilitator instructions for tone, goals, and format of AI feedback */
+  prompt: string;
+  /** Rubric / criteria the model should explicitly address */
+  criteria: string;
+}
+
 /** Survey at the end of a lesson (like quiz but open-ended). Stored per course/lesson. */
 export interface LessonSurvey {
   enabled: boolean;
@@ -161,6 +170,8 @@ export interface LessonSurvey {
    * Data Room folder the generated PDF should be stored under.
    */
   dataroomFolderId?: string;
+  /** When set with `enabled: true`, learners may request AI survey analysis via Cloud Functions. */
+  aiAnalysis?: LessonSurveyAiAnalysis;
   updated_at?: Timestamp;
 }
 
