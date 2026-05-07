@@ -5,7 +5,7 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { initializeApp, getApps } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
-import { getFirestore } from "firebase-admin/firestore";
+import { getFirestore, type DocumentSnapshot } from "firebase-admin/firestore";
 import { z } from "zod";
 import * as logger from "firebase-functions/logger";
 import { callableCorsAllowlist } from "../callableCorsAllowlist";
@@ -22,9 +22,71 @@ const schema = z.object({
   target_user_id: z.string().min(1),
 });
 
-function callerIsStaff(roles: unknown): boolean {
-  if (!Array.isArray(roles)) return false;
-  return roles.some((r) => r === "Admin" || r === "superAdmin");
+/** Matches other admin callables (`getAdminUserAnalyticsSummary`): accept claims, Firestore, and JWT token roles. */
+function normalizeRoles(input: unknown): string[] {
+  if (!Array.isArray(input)) return [];
+  return input
+    .filter((r): r is string => typeof r === "string")
+    .map((r) => r.trim().toLowerCase())
+    .filter((r) => r.length > 0);
+}
+
+function mergedStaffRoleSet(opts: {
+  tokenRoles: string[];
+  claimRoles: string[];
+  docRoles: string[];
+  legacyRole: unknown;
+}): Set<string> {
+  const merged = new Set<string>([
+    ...opts.tokenRoles,
+    ...opts.claimRoles,
+    ...opts.docRoles,
+  ]);
+  if (typeof opts.legacyRole === "string" && opts.legacyRole.trim()) {
+    merged.add(opts.legacyRole.trim().toLowerCase());
+  }
+  return merged;
+}
+
+function setHasStaff(merged: Set<string>): boolean {
+  return merged.has("admin") || merged.has("superadmin");
+}
+
+async function assertCallerIsStaff(
+  callerUid: string,
+  request: { auth?: { token?: Record<string, unknown> } }
+): Promise<void> {
+  const tokenRoles = normalizeRoles(request.auth?.token?.roles);
+  if (setHasStaff(new Set(tokenRoles))) return;
+
+  let userRecord: Awaited<ReturnType<typeof auth.getUser>>;
+  let userDoc: DocumentSnapshot;
+  try {
+    [userRecord, userDoc] = await Promise.all([
+      auth.getUser(callerUid),
+      db.collection("users").doc(callerUid).get(),
+    ]);
+  } catch (e) {
+    logger.error("resetCourseProgressForUser: caller lookup failed", e);
+    throw new HttpsError("internal", "Could not verify caller.");
+  }
+
+  const claimRoles = normalizeRoles(userRecord.customClaims?.roles);
+  const docRoles = normalizeRoles(userDoc.data()?.roles);
+  const legacyRole = userDoc.data()?.role;
+  const merged = mergedStaffRoleSet({
+    tokenRoles,
+    claimRoles,
+    docRoles,
+    legacyRole,
+  });
+
+  if (!setHasStaff(merged)) {
+    throw new HttpsError(
+      "permission-denied",
+      "Admin or superAdmin only (checked Auth claims and users/{uid} document)."
+    );
+  }
 }
 
 export const resetCourseProgressForUser = onCall(
@@ -35,18 +97,7 @@ export const resetCourseProgressForUser = onCall(
       throw new HttpsError("unauthenticated", "Sign in required.");
     }
 
-    let callerRoles: string[];
-    try {
-      const caller = await auth.getUser(callerUid);
-      callerRoles = (caller.customClaims?.roles as string[]) || [];
-    } catch (e) {
-      logger.error("resetCourseProgressForUser: caller auth lookup failed", e);
-      throw new HttpsError("internal", "Could not verify caller.");
-    }
-
-    if (!callerIsStaff(callerRoles)) {
-      throw new HttpsError("permission-denied", "Admin or superAdmin only.");
-    }
+    await assertCallerIsStaff(callerUid, request);
 
     const parsed = schema.safeParse(request.data);
     if (!parsed.success) {
