@@ -83,10 +83,21 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
-import { db, storage } from "../../lib/firebase";
+import { db, storage, functions } from "../../lib/firebase";
+import { httpsCallable } from "firebase/functions";
 import { SlideRenderer } from "../../components/curriculum/SlideRenderer";
 import { YouTubeBlock } from "../../components/curriculum/YouTubeBlock";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../../components/ui/alert-dialog";
 import { SKILL_CATEGORIES, ALL_SKILLS, type SkillCategory } from "../../lib/onboardingData";
 import { Checkbox } from "../../components/ui/checkbox";
 
@@ -233,6 +244,16 @@ export function CourseBuilder() {
   const [newBadgeImageUrlsByModule, setNewBadgeImageUrlsByModule] = useState<Record<number, string>>({});
   const [newBadgeImageFilesByModule, setNewBadgeImageFilesByModule] = useState<Record<number, File | null>>({});
   const [creatingBadgeByModule, setCreatingBadgeByModule] = useState<Record<number, boolean>>({});
+  /** Admin: reset learner course progress (Assignment tab) */
+  const [resetProgressInput, setResetProgressInput] = useState("");
+  const [resetProgressOpen, setResetProgressOpen] = useState(false);
+  const [resetProgressBusy, setResetProgressBusy] = useState(false);
+  const [resetProgressResolvedUid, setResetProgressResolvedUid] = useState<string | null>(null);
+  const [resetProgressResolvedLabel, setResetProgressResolvedLabel] = useState("");
+  /** Which survey question row is edited (per module/lesson)—dropdown target */
+  const [activeSurveyQuestionByLesson, setActiveSurveyQuestionByLesson] = useState<Record<string, number>>({});
+  /** Which quiz question row is edited (per module/lesson)—dropdown target */
+  const [activeQuizQuestionByLesson, setActiveQuizQuestionByLesson] = useState<Record<string, number>>({});
 
   // Initialize curriculum structure (create new only when not editing)
   useEffect(() => {
@@ -589,13 +610,30 @@ export function CourseBuilder() {
       optionD: "",
       correctAnswer: "A",
     });
+    const lk = `${moduleIndex}-${lessonIndex}`;
+    const newIdx = lesson.quizQuestions.length - 1;
+    setActiveQuizQuestionByLesson((prev) => ({ ...prev, [lk]: newIdx }));
     setModules(updated);
   };
 
   const removeQuizQuestion = (moduleIndex: number, lessonIndex: number, qIndex: number) => {
     const updated = [...modules];
     const lesson = updated[moduleIndex].lessons[lessonIndex];
+    const lk = `${moduleIndex}-${lessonIndex}`;
     lesson.quizQuestions = lesson.quizQuestions?.filter((_, i) => i !== qIndex) ?? [];
+    const len = lesson.quizQuestions.length;
+    setActiveQuizQuestionByLesson((prev) => {
+      if (len === 0) {
+        const { [lk]: _r, ...rest } = prev;
+        return rest;
+      }
+      const prevActive = prev[lk] ?? 0;
+      let next = prevActive;
+      if (qIndex < prevActive) next = prevActive - 1;
+      else if (qIndex === prevActive) next = Math.min(prevActive, len - 1);
+      next = Math.max(0, Math.min(next, len - 1));
+      return { ...prev, [lk]: next };
+    });
     setModules(updated);
   };
 
@@ -635,13 +673,30 @@ export function CourseBuilder() {
     const lesson = updated[moduleIndex].lessons[lessonIndex];
     if (!lesson.surveyQuestions) lesson.surveyQuestions = [];
     lesson.surveyQuestions.push({ question: "" });
+    const lk = `${moduleIndex}-${lessonIndex}`;
+    const newIdx = lesson.surveyQuestions.length - 1;
+    setActiveSurveyQuestionByLesson((prev) => ({ ...prev, [lk]: newIdx }));
     setModules(updated);
   };
 
   const removeSurveyQuestion = (moduleIndex: number, lessonIndex: number, qIndex: number) => {
     const updated = [...modules];
     const lesson = updated[moduleIndex].lessons[lessonIndex];
+    const lk = `${moduleIndex}-${lessonIndex}`;
     lesson.surveyQuestions = lesson.surveyQuestions?.filter((_, i) => i !== qIndex) ?? [];
+    const len = lesson.surveyQuestions.length;
+    setActiveSurveyQuestionByLesson((prev) => {
+      if (len === 0) {
+        const { [lk]: _r, ...rest } = prev;
+        return rest;
+      }
+      const prevActive = prev[lk] ?? 0;
+      let next = prevActive;
+      if (qIndex < prevActive) next = prevActive - 1;
+      else if (qIndex === prevActive) next = Math.min(prevActive, len - 1);
+      next = Math.max(0, Math.min(next, len - 1));
+      return { ...prev, [lk]: next };
+    });
     setModules(updated);
   };
 
@@ -1102,6 +1157,82 @@ export function CourseBuilder() {
     setAssignedUsers((prev) => prev.filter((u) => u.userId !== userId));
   };
 
+  const resolveLearnerIdForProgressReset = async (
+    raw: string
+  ): Promise<{ uid: string; label: string } | { error: string }> => {
+    const t = raw.trim();
+    if (!t) return { error: "Enter a learner email or Firebase user ID." };
+    if (t.includes("@")) {
+      const normalized = t.toLowerCase();
+      try {
+        const usersRef = collection(db, "users");
+        let querySnapshot = await getDocs(query(usersRef, where("email", "==", t)));
+        if (querySnapshot.empty) {
+          querySnapshot = await getDocs(query(usersRef, where("email", "==", normalized)));
+        }
+        if (querySnapshot.empty) {
+          return { error: "No user found with that email." };
+        }
+        const userDoc = querySnapshot.docs[0];
+        const data = userDoc.data();
+        const email = typeof data.email === "string" ? data.email : t;
+        return { uid: userDoc.id, label: email };
+      } catch {
+        return { error: "Could not look up that email." };
+      }
+    }
+    if (t.length < 18) {
+      return { error: "That does not look like a valid Firebase user ID." };
+    }
+    return { uid: t, label: t };
+  };
+
+  const handleOpenResetProgressDialog = async () => {
+    const courseId = createdCourseId ?? editingCourseId ?? null;
+    if (!courseId) {
+      alert("Save the course first so it has an ID to target.");
+      return;
+    }
+    const resolved = await resolveLearnerIdForProgressReset(resetProgressInput);
+    if ("error" in resolved) {
+      alert(resolved.error);
+      return;
+    }
+    setResetProgressResolvedUid(resolved.uid);
+    setResetProgressResolvedLabel(resolved.label);
+    setResetProgressOpen(true);
+  };
+
+  const handleConfirmResetCourseProgress = async () => {
+    const courseId = createdCourseId ?? editingCourseId ?? null;
+    const targetUid = resetProgressResolvedUid;
+    if (!courseId || !targetUid) return;
+    setResetProgressBusy(true);
+    try {
+      const resetFn = httpsCallable(functions, "resetCourseProgressForUser");
+      const res = await resetFn({ course_id: courseId, target_user_id: targetUid });
+      type Out = { deleted?: boolean; message?: string };
+      const data = (res.data ?? {}) as Out;
+      alert(typeof data.message === "string" ? data.message : "Request completed.");
+      setResetProgressOpen(false);
+      setResetProgressInput("");
+      setResetProgressResolvedUid(null);
+      setResetProgressResolvedLabel("");
+    } catch (e: unknown) {
+      const code =
+        e && typeof e === "object" && "code" in e
+          ? String((e as { code: unknown }).code)
+          : "";
+      const msg =
+        e && typeof e === "object" && "message" in e
+          ? String((e as { message: unknown }).message)
+          : "Reset failed.";
+      alert(code ? `${msg} (${code})` : msg);
+    } finally {
+      setResetProgressBusy(false);
+    }
+  };
+
   const handleCreateModuleBadge = async (moduleIndex: number) => {
     if (!user) return;
     const name = (newBadgeNamesByModule[moduleIndex] ?? "").trim();
@@ -1542,7 +1673,22 @@ export function CourseBuilder() {
                   </div>
 
                   <div className="space-y-3">
-                    {module.lessons.map((lesson, lessonIndex) => (
+                    {module.lessons.map((lesson, lessonIndex) => {
+                      const lessonPickerKey = `${moduleIndex}-${lessonIndex}`;
+                      const quizList = lesson.quizQuestions ?? [];
+                      const quizSelRaw = activeQuizQuestionByLesson[lessonPickerKey] ?? 0;
+                      const quizEditIx =
+                        quizList.length === 0 ? 0 : Math.min(Math.max(0, quizSelRaw), quizList.length - 1);
+                      const quizAt = quizList[quizEditIx];
+                      const surveyList = lesson.surveyQuestions ?? [];
+                      const surveySelRaw = activeSurveyQuestionByLesson[lessonPickerKey] ?? 0;
+                      const surveyEditIx =
+                        surveyList.length === 0
+                          ? 0
+                          : Math.min(Math.max(0, surveySelRaw), surveyList.length - 1);
+                      const surveyAt = surveyList[surveyEditIx];
+
+                      return (
                       <Card key={lessonIndex} className="p-4 border-border">
                         <div className="space-y-3">
                           <div className="space-y-2">
@@ -1706,91 +1852,110 @@ export function CourseBuilder() {
                                     <Plus className="w-3 h-3 mr-1" />
                                     Add question
                                   </Button>
-                                  {(lesson.quizQuestions?.length ?? 0) > 0 && (
-                                    <ul className="space-y-3">
-                                      {lesson.quizQuestions!.map((q, qIdx) => (
-                                        <li
-                                          key={qIdx}
-                                          className="p-3 rounded border border-border bg-muted/20 space-y-2"
+                                  {(lesson.quizQuestions?.length ?? 0) > 0 && quizAt ? (
+                                    <div className="space-y-2 rounded-md border border-border bg-muted/20 p-3">
+                                      <div className="flex flex-wrap items-center gap-2">
+                                        <Label
+                                          htmlFor={`quiz-q-pick-${moduleIndex}-${lessonIndex}`}
+                                          className="text-xs shrink-0"
                                         >
-                                          <div className="flex justify-between items-start gap-2">
-                                            <span className="text-xs font-medium text-muted-foreground">
-                                              Q{qIdx + 1}
-                                            </span>
-                                            <Button
-                                              type="button"
-                                              variant="ghost"
-                                              size="sm"
-                                              className="h-6 w-6 p-0"
-                                              onClick={() =>
-                                                removeQuizQuestion(moduleIndex, lessonIndex, qIdx)
+                                          Edit question
+                                        </Label>
+                                        <select
+                                          id={`quiz-q-pick-${moduleIndex}-${lessonIndex}`}
+                                          className="text-sm flex-1 min-w-[14rem] max-w-full border border-border rounded px-2 py-1 bg-background text-foreground"
+                                          value={quizEditIx}
+                                          onChange={(e) =>
+                                            setActiveQuizQuestionByLesson((prev) => ({
+                                              ...prev,
+                                              [lessonPickerKey]: parseInt(e.target.value, 10),
+                                            }))
+                                          }
+                                        >
+                                          {(lesson.quizQuestions ?? []).map((qOpt, qi) => (
+                                            <option key={qi} value={qi}>
+                                              {`Q${qi + 1}: ${(qOpt.question?.trim() || "(no text yet)").slice(0, 72)}`}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      </div>
+                                      <div className="flex justify-between items-start gap-2">
+                                        <span className="text-xs font-medium text-muted-foreground">
+                                          Question {quizEditIx + 1} of {(lesson.quizQuestions ?? []).length}
+                                        </span>
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-7 w-7 p-0 shrink-0"
+                                          onClick={() =>
+                                            removeQuizQuestion(moduleIndex, lessonIndex, quizEditIx)
+                                          }
+                                          aria-label={`Delete quiz question ${quizEditIx + 1}`}
+                                        >
+                                          <Trash2 className="w-3 h-3" />
+                                        </Button>
+                                      </div>
+                                      <Input
+                                        placeholder="Question text"
+                                        value={quizAt.question}
+                                        onChange={(e) =>
+                                          updateQuizQuestion(
+                                            moduleIndex,
+                                            lessonIndex,
+                                            quizEditIx,
+                                            "question",
+                                            e.target.value
+                                          )
+                                        }
+                                        className="text-sm"
+                                      />
+                                      <div className="grid grid-cols-2 gap-2">
+                                        {(["A", "B", "C", "D"] as const).map((opt) => (
+                                          <div key={opt} className="flex items-center gap-1">
+                                            <span className="text-xs w-5">{opt}.</span>
+                                            <Input
+                                              placeholder={`Option ${opt}`}
+                                              value={
+                                                quizAt[`option${opt}` as keyof DraftQuizQuestion] as string
                                               }
-                                            >
-                                              <Trash2 className="w-3 h-3" />
-                                            </Button>
-                                          </div>
-                                          <Input
-                                            placeholder="Question text"
-                                            value={q.question}
-                                            onChange={(e) =>
-                                              updateQuizQuestion(
-                                                moduleIndex,
-                                                lessonIndex,
-                                                qIdx,
-                                                "question",
-                                                e.target.value
-                                              )
-                                            }
-                                            className="text-sm"
-                                          />
-                                          <div className="grid grid-cols-2 gap-2">
-                                            {(["A", "B", "C", "D"] as const).map((opt) => (
-                                              <div key={opt} className="flex items-center gap-1">
-                                                <span className="text-xs w-5">{opt}.</span>
-                                                <Input
-                                                  placeholder={`Option ${opt}`}
-                                                  value={
-                                                    q[`option${opt}` as keyof DraftQuizQuestion] as string
-                                                  }
-                                                  onChange={(e) =>
-                                                    updateQuizQuestion(
-                                                      moduleIndex,
-                                                      lessonIndex,
-                                                      qIdx,
-                                                      `option${opt}` as keyof DraftQuizQuestion,
-                                                      e.target.value
-                                                    )
-                                                  }
-                                                  className="text-sm h-8"
-                                                />
-                                              </div>
-                                            ))}
-                                          </div>
-                                          <div className="flex items-center gap-2">
-                                            <Label className="text-xs">Correct:</Label>
-                                            <select
-                                              value={q.correctAnswer}
                                               onChange={(e) =>
                                                 updateQuizQuestion(
                                                   moduleIndex,
                                                   lessonIndex,
-                                                  qIdx,
-                                                  "correctAnswer",
-                                                  e.target.value as "A" | "B" | "C" | "D"
+                                                  quizEditIx,
+                                                  `option${opt}` as keyof DraftQuizQuestion,
+                                                  e.target.value
                                                 )
                                               }
-                                              className="text-sm border border-border rounded px-2 py-1 bg-background"
-                                            >
-                                              <option value="A">A</option>
-                                              <option value="B">B</option>
-                                              <option value="C">C</option>
-                                              <option value="D">D</option>
-                                            </select>
+                                              className="text-sm h-8"
+                                            />
                                           </div>
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  )}
+                                        ))}
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <Label className="text-xs">Correct:</Label>
+                                        <select
+                                          value={quizAt.correctAnswer}
+                                          onChange={(e) =>
+                                            updateQuizQuestion(
+                                              moduleIndex,
+                                              lessonIndex,
+                                              quizEditIx,
+                                              "correctAnswer",
+                                              e.target.value as "A" | "B" | "C" | "D"
+                                            )
+                                          }
+                                          className="text-sm border border-border rounded px-2 py-1 bg-background"
+                                        >
+                                          <option value="A">A</option>
+                                          <option value="B">B</option>
+                                          <option value="C">C</option>
+                                          <option value="D">D</option>
+                                        </select>
+                                      </div>
+                                    </div>
+                                  ) : null}
                                 </div>
                               </>
                             )}
@@ -1873,6 +2038,71 @@ export function CourseBuilder() {
                                     className="text-sm"
                                   />
                                 </div>
+                                <div className="space-y-3 rounded-md border border-border p-3 bg-muted/10">
+                                  <Label className="text-xs font-medium">Optional: AI survey analysis</Label>
+                                  <p className="text-xs text-muted-foreground leading-relaxed">
+                                    After learners submit this survey they can optionally run AI feedback (Cloud Function{" "}
+                                    <code className="text-[11px] bg-muted px-1 py-0.5 rounded">analyzeLessonSurvey</code>
+                                    ). Turn it on below and add your prompt plus criteria—you still need real survey questions
+                                    (next section).
+                                  </p>
+                                  {(lesson.surveyQuestions?.length ?? 0) === 0 ? (
+                                    <p className="text-xs text-amber-600 dark:text-amber-500">
+                                      Add at least one question with <strong>Add question</strong> below, then enable AI
+                                      analysis here.
+                                    </p>
+                                  ) : null}
+                                  <div className="flex items-start gap-2">
+                                    <input
+                                      type="checkbox"
+                                      id={`survey-ai-${moduleIndex}-${lessonIndex}`}
+                                      disabled={(lesson.surveyQuestions?.length ?? 0) === 0}
+                                      checked={lesson.surveyAiAnalysisEnabled ?? false}
+                                      onChange={(e) => {
+                                        const checked = e.target.checked;
+                                        const updated = [...modules];
+                                        updated[moduleIndex].lessons[lessonIndex].surveyAiAnalysisEnabled = checked;
+                                        setModules(updated);
+                                      }}
+                                      className="rounded border-border mt-0.5"
+                                    />
+                                    <Label htmlFor={`survey-ai-${moduleIndex}-${lessonIndex}`} className="cursor-pointer text-xs leading-snug font-normal">
+                                      Enable AI analysis (learners choose to run feedback before finishing the lesson)
+                                    </Label>
+                                  </div>
+                                  {lesson.surveyAiAnalysisEnabled && (lesson.surveyQuestions?.length ?? 0) > 0 ? (
+                                    <>
+                                      <div className="space-y-1">
+                                        <Label className="text-xs">AI facilitator prompt</Label>
+                                        <Textarea
+                                          placeholder="Instructions for tone, teaching goals, and how feedback should be structured"
+                                          value={lesson.surveyAiPrompt ?? ""}
+                                          onChange={(e) => {
+                                            const updated = [...modules];
+                                            updated[moduleIndex].lessons[lessonIndex].surveyAiPrompt = e.target.value;
+                                            setModules(updated);
+                                          }}
+                                          rows={3}
+                                          className="text-sm"
+                                        />
+                                      </div>
+                                      <div className="space-y-1">
+                                        <Label className="text-xs">Criteria / rubric</Label>
+                                        <Textarea
+                                          placeholder="Bullet points or rubric the AI must explicitly address"
+                                          value={lesson.surveyAiCriteria ?? ""}
+                                          onChange={(e) => {
+                                            const updated = [...modules];
+                                            updated[moduleIndex].lessons[lessonIndex].surveyAiCriteria = e.target.value;
+                                            setModules(updated);
+                                          }}
+                                          rows={3}
+                                          className="text-sm"
+                                        />
+                                      </div>
+                                    </>
+                                  ) : null}
+                                </div>
                                 <div className="space-y-2">
                                   <Label className="text-xs">Survey questions (open-ended)</Label>
                                   <Button
@@ -1884,90 +2114,67 @@ export function CourseBuilder() {
                                     <Plus className="w-3 h-3 mr-1" />
                                     Add question
                                   </Button>
-                                  {(lesson.surveyQuestions?.length ?? 0) > 0 && (
-                                    <ul className="space-y-2">
-                                      {lesson.surveyQuestions!.map((q, qIdx) => (
-                                        <li key={qIdx} className="flex items-center gap-2 p-2 rounded border border-border bg-muted/20">
-                                          <span className="text-xs font-medium text-muted-foreground shrink-0">Q{qIdx + 1}</span>
-                                          <Input
-                                            placeholder="Question text"
-                                            value={q.question}
-                                            onChange={(e) => updateSurveyQuestion(moduleIndex, lessonIndex, qIdx, e.target.value)}
-                                            className="text-sm flex-1"
-                                          />
-                                          <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-8 w-8 p-0 shrink-0"
-                                            onClick={() => removeSurveyQuestion(moduleIndex, lessonIndex, qIdx)}
-                                          >
-                                            <Trash2 className="w-3 h-3" />
-                                          </Button>
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  )}
-                                </div>
-                                {(lesson.surveyQuestions?.length ?? 0) > 0 && (
-                                  <div className="space-y-3 rounded-md border border-border p-3 bg-muted/10">
-                                    <div className="flex items-center gap-2">
-                                      <input
-                                        type="checkbox"
-                                        id={`survey-ai-${moduleIndex}-${lessonIndex}`}
-                                        checked={lesson.surveyAiAnalysisEnabled ?? false}
-                                        onChange={(e) => {
-                                          const checked = e.target.checked;
-                                          const updated = [...modules];
-                                          updated[moduleIndex].lessons[lessonIndex].surveyAiAnalysisEnabled =
-                                            checked;
-                                          setModules(updated);
-                                        }}
-                                        className="rounded border-border"
+                                  {(lesson.surveyQuestions?.length ?? 0) > 0 && surveyAt ? (
+                                    <div className="space-y-2 rounded-md border border-border bg-muted/20 p-3">
+                                      <div className="flex flex-wrap items-center gap-2">
+                                        <Label
+                                          htmlFor={`survey-q-pick-${moduleIndex}-${lessonIndex}`}
+                                          className="text-xs shrink-0"
+                                        >
+                                          Edit question
+                                        </Label>
+                                        <select
+                                          id={`survey-q-pick-${moduleIndex}-${lessonIndex}`}
+                                          className="text-sm flex-1 min-w-[14rem] max-w-full border border-border rounded px-2 py-1 bg-background text-foreground"
+                                          value={surveyEditIx}
+                                          onChange={(e) =>
+                                            setActiveSurveyQuestionByLesson((prev) => ({
+                                              ...prev,
+                                              [lessonPickerKey]: parseInt(e.target.value, 10),
+                                            }))
+                                          }
+                                        >
+                                          {(lesson.surveyQuestions ?? []).map((sOpt, si) => (
+                                            <option key={si} value={si}>
+                                              {`Q${si + 1}: ${(sOpt.question?.trim() || "(no text yet)").slice(0, 72)}`}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      </div>
+                                      <div className="flex items-center justify-between gap-2">
+                                        <span className="text-xs text-muted-foreground">
+                                          Editing question {surveyEditIx + 1} of {(lesson.surveyQuestions ?? []).length}
+                                        </span>
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-8 w-8 p-0 shrink-0"
+                                          onClick={() =>
+                                            removeSurveyQuestion(moduleIndex, lessonIndex, surveyEditIx)
+                                          }
+                                          aria-label={`Delete survey question ${surveyEditIx + 1}`}
+                                        >
+                                          <Trash2 className="w-3 h-3" />
+                                        </Button>
+                                      </div>
+                                      <Textarea
+                                        placeholder="Question text shown to learners (open-ended answer)"
+                                        value={surveyAt.question}
+                                        onChange={(e) =>
+                                          updateSurveyQuestion(
+                                            moduleIndex,
+                                            lessonIndex,
+                                            surveyEditIx,
+                                            e.target.value
+                                          )
+                                        }
+                                        rows={4}
+                                        className="text-sm"
                                       />
-                                      <Label
-                                        htmlFor={`survey-ai-${moduleIndex}-${lessonIndex}`}
-                                        className="cursor-pointer text-xs"
-                                      >
-                                        Add AI survey analysis (student can request feedback after submitting)
-                                      </Label>
                                     </div>
-                                    {lesson.surveyAiAnalysisEnabled && (
-                                      <>
-                                        <div className="space-y-1">
-                                          <Label className="text-xs">AI facilitator prompt</Label>
-                                          <Textarea
-                                            placeholder="Instructions for tone, teaching goals, and how feedback should be structured"
-                                            value={lesson.surveyAiPrompt ?? ""}
-                                            onChange={(e) => {
-                                              const updated = [...modules];
-                                              updated[moduleIndex].lessons[lessonIndex].surveyAiPrompt =
-                                                e.target.value;
-                                              setModules(updated);
-                                            }}
-                                            rows={3}
-                                            className="text-sm"
-                                          />
-                                        </div>
-                                        <div className="space-y-1">
-                                          <Label className="text-xs">Criteria / rubric</Label>
-                                          <Textarea
-                                            placeholder="Bullet points or rubric the AI must explicitly address"
-                                            value={lesson.surveyAiCriteria ?? ""}
-                                            onChange={(e) => {
-                                              const updated = [...modules];
-                                              updated[moduleIndex].lessons[lessonIndex].surveyAiCriteria =
-                                                e.target.value;
-                                              setModules(updated);
-                                            }}
-                                            rows={3}
-                                            className="text-sm"
-                                          />
-                                        </div>
-                                      </>
-                                    )}
-                                  </div>
-                                )}
+                                  ) : null}
+                                </div>
                               </>
                             )}
                           </div>
@@ -2019,7 +2226,8 @@ export function CourseBuilder() {
                           )}
                         </div>
                       </Card>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </Card>
@@ -2138,6 +2346,83 @@ export function CourseBuilder() {
               </div>
             )}
           </Card>
+
+          <Card className="p-6 space-y-4 border-destructive/35">
+            <div>
+              <h3 className="text-sm font-semibold text-destructive">Reset learner progress</h3>
+              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                Deletes the Firestore <code className="text-[11px] bg-muted px-1 py-0.5 rounded">courseProgress</code>{" "}
+                document for this course and the learner you specify. The next time they open the course, progress starts
+                from scratch. Module badges already stored on their profile are not removed.
+              </p>
+            </div>
+            {createdCourseId || editingCourseId ? (
+              <>
+                <p className="text-xs text-muted-foreground">
+                  Course ID:{" "}
+                  <span className="font-mono">{createdCourseId ?? editingCourseId}</span>
+                </p>
+                <div className="space-y-2">
+                  <Label htmlFor="reset-progress-learner">Learner email or Firebase user ID</Label>
+                  <Input
+                    id="reset-progress-learner"
+                    value={resetProgressInput}
+                    onChange={(e) => setResetProgressInput(e.target.value)}
+                    placeholder="student@example.com or Firebase UID"
+                    autoComplete="off"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={() => void handleOpenResetProgressDialog()}
+                  disabled={resetProgressBusy || !resetProgressInput.trim()}
+                >
+                  Reset progress for this learner…
+                </Button>
+              </>
+            ) : (
+              <p className="text-xs text-muted-foreground">Save the course once to enable progress reset.</p>
+            )}
+          </Card>
+
+          <AlertDialog open={resetProgressOpen} onOpenChange={setResetProgressOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Reset course progress?</AlertDialogTitle>
+                <AlertDialogDescription asChild>
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    <p>
+                      This permanently deletes stored lesson/quiz/survey progress for{" "}
+                      <strong className="text-foreground">{resetProgressResolvedLabel || resetProgressResolvedUid}</strong>{" "}
+                      on this course.
+                    </p>
+                    <p className="text-xs font-mono break-all text-foreground/80">UID: {resetProgressResolvedUid}</p>
+                  </div>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={resetProgressBusy}>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  disabled={resetProgressBusy}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    void handleConfirmResetCourseProgress();
+                  }}
+                >
+                  {resetProgressBusy ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin inline mr-2 align-middle" />
+                      Working…
+                    </>
+                  ) : (
+                    "Confirm reset"
+                  )}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </TabsContent>
 
         {/* Preview Tab */}

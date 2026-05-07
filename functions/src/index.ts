@@ -65,6 +65,7 @@ export { getCourseFile } from "./callables/getCourseFile";
 export { awardCourseModuleBadges } from "./callables/awardCourseModuleBadges";
 export { importPptxDeck } from "./callables/importPptxDeck";
 export { analyzeLessonSurvey } from "./callables/analyzeLessonSurvey";
+export { resetCourseProgressForUser } from "./callables/resetCourseProgressForUser";
 export { joinGroup, leaveGroup, deleteMobileGroup } from "./callables/groupMembership";
 export {
   adminCreateMobileGroup,

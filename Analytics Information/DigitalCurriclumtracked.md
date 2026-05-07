@@ -80,13 +80,17 @@ Default metadata merged on the client (then normalized server-side): **`session_
 
 ### How the feature works (lesson survey — optional OpenAI analysis)
 
-In **Course Builder**, when a lesson survey is enabled and has at least one question, staff may turn on **Add AI survey analysis** and enter a **facilitator prompt** plus **criteria/rubric** stored on `courses/{courseId}/lessonSurveys/{lessonId}` as `aiAnalysis: { enabled, prompt, criteria }`.
+In **Course Builder**, when a lesson survey is enabled, the **Optional: AI survey analysis** panel appears under survey name (before **Add question**) so admins always see where to configure it; after at least one question row exists they can enable the checkbox and edit **facilitator prompt** and **criteria/rubric**, stored on `courses/{courseId}/lessonSurveys/{lessonId}` as `aiAnalysis: { enabled, prompt, criteria }`. Survey questions and quiz questions both use an **Edit question** dropdown plus a single editor pane so admins can jump back to any earlier question without scrolling through a stacked list.
 
 The Gen 2 HTTPS callable **`analyzeLessonSurvey`** (`functions/src/callables/analyzeLessonSurvey.ts`) requires a signed-in learner, validates that AI is enabled for that survey, loads the course’s `curriculumMapping` to resolve the Firestore lesson path, builds a plain-text summary of slide blocks / media captions / image alt text (length-capped), sends the admin prompt, criteria, lesson summary, and Q&A to the OpenAI Chat Completions API (`OPEN_AI_KEY` via **Secret Manager** parameter `OPEN_AI_KEY`; optional model override with env `OPEN_AI_MODEL`, default `gpt-4o-mini`), and merges the resulting feedback into `courseProgress/{uid}_{courseId}` as `surveyAiFeedback[lessonId]` and `surveyAiAnalyzedAt[lessonId]`. The learner’s `courseProgress` document must already exist and `userId` must match the caller; clients may pass `{ course_id, lesson_id, answers?: string[] }`—if `answers` is omitted, answers are read from `surveyAnswers[lessonId]` on that progress doc.
 
 In **`LessonPlayer.tsx`**, when `aiAnalysis.enabled` is true the first **Submit** saves answers with `saveLessonSurveyAnswersDraft` (lesson not complete yet) and offers **Analyze with AI** vs **Continue without AI**. After analysis, feedback appears beside editable text areas; the learner may **Re-analyze** or **Finish & complete lesson**, which runs the existing `recordLessonSurveySubmission` flow (PDF export, module badges, course completion) as before.
 
 **Deploy:** provision the secret (`npx firebase-tools@latest functions:secrets:set OPEN_AI_KEY` in the Firebase project), ensure the function is granted access to that secret, then `npx firebase-tools@latest deploy --only functions` for the codebase that exports `analyzeLessonSurvey` (`functions/src/index.ts`).
+
+### How the feature works (admin — reset learner course progress)
+
+In **Course Builder** → **Assignment** tab (after the course has been saved once), admins can reset one learner’s progress for **this** course. The UI resolves **email** (Firestore `users` query — exact entered value, then lowercase match) or a **Firebase user ID**, confirms in a dialog, then calls HTTPS callable **`resetCourseProgressForUser`** with `{ course_id, target_user_id }`. Only callers whose Auth custom claims include **Admin** or **superAdmin** may invoke it (`functions/src/callables/resetCourseProgressForUser.ts`). The function checks that the target UID exists in Firebase Auth, loads `courses/{course_id}`, deletes `courseProgress/{target_uid}_{course_id}` when present (otherwise returns `"No progress document to remove"`). Certificates and badges previously written under `users/{uid}` are not removed.
 
 ### 1.5b Data Room (web)
 
