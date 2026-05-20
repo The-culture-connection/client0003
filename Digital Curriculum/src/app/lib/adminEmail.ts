@@ -43,15 +43,17 @@ export async function sendCustomAnnouncementEmail(input: {
   role?: string;
 }): Promise<SendCustomAnnouncementResult> {
   const fn = httpsCallable(functions, "adminSendCustomAnnouncementEmail");
-  const res = await fn({
+  const payload: Record<string, unknown> = {
     headline: input.headline,
     message_body: input.messageBody,
     sender_name: input.senderName,
-    cta_url: input.ctaUrl,
-    cta_label: input.ctaLabel,
-    emails: input.emails,
-    user_ids: input.userIds,
-    role: input.role,
-  });
+  };
+  if (input.ctaUrl?.trim()) payload.cta_url = input.ctaUrl.trim();
+  if (input.ctaLabel?.trim()) payload.cta_label = input.ctaLabel.trim();
+  if (input.emails?.length) payload.emails = input.emails;
+  if (input.userIds?.length) payload.user_ids = input.userIds;
+  if (input.role?.trim()) payload.role = input.role.trim();
+
+  const res = await fn(payload);
   return res.data as SendCustomAnnouncementResult;
 }

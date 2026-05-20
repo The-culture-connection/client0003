@@ -19,9 +19,16 @@ const db = getFirestore();
 const auth = getAuth();
 const MAX_RECIPIENTS = 500;
 
-const optionalUrl = z.preprocess(
-  (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
-  z.string().url().optional()
+/** Callable clients often send `null` for omitted optional fields; treat as undefined. */
+function nullishUndefined<T extends z.ZodTypeAny>(schema: T) {
+  return z.preprocess((v) => (v === null ? undefined : v), schema);
+}
+
+const optionalUrl = nullishUndefined(
+  z.preprocess(
+    (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+    z.string().url().optional()
+  )
 );
 
 const requestSchema = z.object({
@@ -29,10 +36,10 @@ const requestSchema = z.object({
   message_body: z.string().min(1).max(20000),
   sender_name: z.string().min(1).max(120),
   cta_url: optionalUrl,
-  cta_label: z.string().max(80).optional(),
-  emails: z.array(z.string().email()).max(MAX_RECIPIENTS).optional(),
-  user_ids: z.array(z.string().min(1)).max(MAX_RECIPIENTS).optional(),
-  role: z.string().min(1).optional(),
+  cta_label: nullishUndefined(z.string().max(80).optional()),
+  emails: nullishUndefined(z.array(z.string().email()).max(MAX_RECIPIENTS).optional()),
+  user_ids: nullishUndefined(z.array(z.string().min(1)).max(MAX_RECIPIENTS).optional()),
+  role: nullishUndefined(z.string().min(1).optional()),
 });
 
 export const adminSendCustomAnnouncementEmail = onCall(
