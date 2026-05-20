@@ -9,7 +9,6 @@ import { WebCurriculum } from "./pages/web/Curriculum";
 import { WebQuizzes } from "./pages/web/Quizzes";
 import { WebDataRoom } from "./pages/web/DataRoom";
 import { WebEvents } from "./pages/web/Events";
-import { WebAnalytics } from "./pages/web/Analytics";
 import { WebCommunityHub } from "./pages/web/CommunityHub";
 import { WebShop } from "./pages/web/Shop";
 import { ModuleDetail } from "./pages/web/ModuleDetail";
@@ -110,14 +109,7 @@ export const router = createBrowserRouter([
       { path: "groups/:id", Component: GroupDetailPage },
       { path: "events", Component: WebEvents },
       { path: "events/:id", Component: EventDetailPage },
-      {
-        path: "analytics",
-        Component: () => (
-          <RoleGate deniedRoles={["Digital Curriculum Students"]}>
-            <WebAnalytics />
-          </RoleGate>
-        ),
-      },
+      { path: "analytics", loader: () => redirect("/dashboard") },
       {
         path: "admin/auth",
         Component: () => (

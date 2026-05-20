@@ -23,12 +23,15 @@ export async function sendEventRegistrantEmail(input: {
   eventLocationOverride?: string;
 }): Promise<SendEventRegistrantEmailResult> {
   const fn = httpsCallable(functions, "adminSendEventRegistrantEmail");
-  const res = await fn({
+  const payload: Record<string, unknown> = {
     event_id: input.eventId,
     message_body: input.messageBody,
     collection: input.collection ?? "auto",
-    event_location_override: input.eventLocationOverride,
-  });
+  };
+  if (input.eventLocationOverride?.trim()) {
+    payload.event_location_override = input.eventLocationOverride.trim();
+  }
+  const res = await fn(payload);
   return res.data as SendEventRegistrantEmailResult;
 }
 

@@ -1491,7 +1491,7 @@ export function AdminPage() {
           <div className="space-y-4 mt-6">
             <h2 className="text-xl font-semibold text-foreground">All Events</h2>
             <p className="text-sm text-muted-foreground">
-              Lists <strong>events</strong> (curriculum web) and <strong>events_mobile</strong> (Expansion app), merged by id. Member submissions from the app are <strong>Pending approval</strong> in <code className="text-xs bg-muted px-1 rounded">events_mobile</code>. Approve to publish on the mobile feed; use <strong>Where to publish</strong> above when creating from admin.
+              Lists <strong>events</strong> (curriculum web) and <strong>events_mobile</strong> (Expansion app), merged by id. Member submissions from the app are <strong>Pending approval</strong> in <code className="text-xs bg-muted px-1 rounded">events_mobile</code>. Approve to publish on the mobile feed; use <strong>Where to publish</strong> above when creating from admin. Use <strong>Email registrants</strong> on any event card (all types; available even at 0 registered — send is enabled once someone registers).
             </p>
             {loadingEvents ? (
               <Card className="p-8 text-center">
@@ -1629,7 +1629,7 @@ export function AdminPage() {
                           </div>
                         )}
                         <div className="mt-3 flex flex-wrap items-center gap-3">
-                          {registeredCount > 0 && !isPending && (
+                          {!isRejected && (
                             <Button
                               type="button"
                               size="sm"
@@ -1696,8 +1696,15 @@ export function AdminPage() {
                 </DialogHeader>
                 {eventEmailTarget && (
                   <p className="text-sm text-muted-foreground">
-                    <strong>{eventEmailTarget.title}</strong> — {eventEmailTarget.registered_users?.length ?? 0}{" "}
-                    registered (curriculum + mobile lists merged).
+                    <strong>{eventEmailTarget.title}</strong> —{" "}
+                    {eventEmailTarget.registered_users?.length ?? 0} registered (curriculum + mobile lists
+                    merged). Works for all event types (in-person, virtual, hybrid, etc.).
+                    {(eventEmailTarget.registered_users?.length ?? 0) === 0 ? (
+                      <span className="block mt-2 text-amber-700 dark:text-amber-400">
+                        No registrants yet — compose a message now, but send will deliver 0 emails until someone
+                        registers.
+                      </span>
+                    ) : null}
                   </p>
                 )}
                 <Textarea
@@ -1730,10 +1737,15 @@ export function AdminPage() {
                           messageBody: eventEmailMessage.trim(),
                           collection: "auto",
                         });
-                        alert(
-                          `Email sent to ${out.sent} of ${out.recipientCount} registrants` +
-                            (out.failed > 0 ? ` (${out.failed} failed or skipped).` : "."),
-                        );
+                        const count = eventEmailTarget.registered_users?.length ?? 0;
+                        if (out.recipientCount === 0 || count === 0) {
+                          alert("No registrants to email yet. The message was not sent.");
+                        } else {
+                          alert(
+                            `Email sent to ${out.sent} of ${out.recipientCount} registrants` +
+                              (out.failed > 0 ? ` (${out.failed} failed or skipped).` : "."),
+                          );
+                        }
                         setEventEmailTarget(null);
                         setEventEmailMessage("");
                       } catch (e: unknown) {

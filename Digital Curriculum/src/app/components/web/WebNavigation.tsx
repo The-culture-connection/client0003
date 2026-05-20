@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router";
-import { LayoutDashboard, BookOpen, FolderOpen, Award, Users, BarChart3, LogOut, Shield, ShoppingBag, Bell, ShoppingCart, X, GraduationCap, Crown } from "lucide-react";
+import { LayoutDashboard, BookOpen, FolderOpen, Award, Users, LogOut, Shield, ShoppingBag, Bell, ShoppingCart, X, GraduationCap, Crown } from "lucide-react";
 import { Button } from "../ui/button";
 import { useAuth } from "../auth/AuthProvider";
 import { useState, useEffect } from "react";
@@ -38,12 +38,6 @@ const allNavItems: NavItem[] = [
   { path: "/data-room", label: "Data Room", icon: FolderOpen }, // Available to all
   { path: "/community", label: "Community Hub", icon: Users }, // Available to all
   { path: "/shop", label: "Shop Mortar", icon: ShoppingBag }, // Available to all
-  { 
-    path: "/analytics", 
-    label: "Analytics", 
-    icon: BarChart3, 
-    deniedRoles: ["Digital Curriculum Students"] // Denied to Digital Curriculum Students
-  },
   {
     path: "/admin/auth",
     label: "Admin",

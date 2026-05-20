@@ -34,13 +34,6 @@ export const mortarWebAnalytics = {
     });
   },
 
-  analyticsDashboardViewed() {
-    return trackClientAnalyticsEvent({
-      event_name: ANALYTICS_EVENTS.ANALYTICS_DASHBOARD_VIEWED,
-      properties: {},
-    });
-  },
-
   communityHubViewed() {
     return trackClientAnalyticsEvent({
       event_name: ANALYTICS_EVENTS.COMMUNITY_HUB_VIEWED,

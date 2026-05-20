@@ -134,10 +134,20 @@ function mergeAdminListedEvents(
 
     const display =
       m?.approval_status === "pending" ? m : e ?? m!;
+    const registeredSet = new Set<string>();
+    for (const src of [e, m]) {
+      const ru = src?.registered_users;
+      if (Array.isArray(ru)) {
+        for (const uid of ru) {
+          if (typeof uid === "string" && uid.length > 0) registeredSet.add(uid);
+        }
+      }
+    }
     out.push({
       ...display,
       id,
       adminPlatforms,
+      registered_users: Array.from(registeredSet),
     });
   }
 
