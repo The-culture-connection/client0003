@@ -119,7 +119,7 @@ sequenceDiagram
 | `app_access_code_invite` | `createOrUpdateEligibleUser` / `generateInviteCode` / `promoteToDigitalCurriculumAlumni` | App Access Hub (checkbox **Email invite code**) |
 | `course_inactive_7_days` | `scheduledCourseInactiveEmailNudges` — 7+ days idle, incomplete course | *(scheduled daily)* |
 | `course_inactive_14_days` | same — 14+ days idle | *(scheduled daily)* |
-| `event_announcement_to_registrants` | `adminSendEventRegistrantEmail` | Events → **Email registrants** |
+| `event_announcement_to_registrants` | `adminSendEventRegistrantEmail` | Admin → Events tab → **Email registrants** on every event card (all types; shown even at 0 registered) |
 | `admin_custom_announcement` | `adminSendCustomAnnouncementEmail` | **Email Management** panel |
 
 ---
@@ -229,7 +229,7 @@ sequenceDiagram
 
 **HTML:** [`admin_custom_announcement.html`](brevo-templates/html/admin_custom_announcement.html)
 
-> **Security:** Only admins should trigger this template. `message_body` is inserted as HTML from your admin UI — sanitize or restrict to plain text in the callable if untrusted input is possible.
+> **Body formatting:** `message_body` is **plain text** from Functions (Brevo escapes `{{ params.message_body }}`, so HTML tags in params would show literally). In the template use one `<p style="white-space:pre-wrap;">{{ params.message_body }}</p>` — see [`admin_custom_announcement.html`](brevo-templates/html/admin_custom_announcement.html). Re-paste into Brevo after updating the repo HTML.
 
 ---
 

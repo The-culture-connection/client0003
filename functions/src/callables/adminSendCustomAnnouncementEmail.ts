@@ -10,6 +10,7 @@ import {adminCustomAnnouncementParams} from "../email/buildEmailParams";
 import {isTemplateConfigured} from "../email/sendTransactionalEmail";
 import {resolveTemplateId} from "../email/brevoTemplates";
 import {assertCallerIsNetworkAdmin} from "../helpers/assertNetworkAdmin";
+import {nullishUndefined} from "../helpers/callableNullishZod";
 
 if (getApps().length === 0) {
   initializeApp();
@@ -18,11 +19,6 @@ if (getApps().length === 0) {
 const db = getFirestore();
 const auth = getAuth();
 const MAX_RECIPIENTS = 500;
-
-/** Callable clients often send `null` for omitted optional fields; treat as undefined. */
-function nullishUndefined<T extends z.ZodTypeAny>(schema: T) {
-  return z.preprocess((v) => (v === null ? undefined : v), schema);
-}
 
 const optionalUrl = nullishUndefined(
   z.preprocess(

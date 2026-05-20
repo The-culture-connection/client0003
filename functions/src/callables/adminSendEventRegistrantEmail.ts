@@ -8,6 +8,7 @@ import {eventRegistrantParams, formatEventDate, firstNameFrom} from "../email/bu
 import {isTemplateConfigured} from "../email/sendTransactionalEmail";
 import {resolveTemplateId} from "../email/brevoTemplates";
 import {assertCallerIsNetworkAdmin} from "../helpers/assertNetworkAdmin";
+import {nullishUndefined} from "../helpers/callableNullishZod";
 
 if (getApps().length === 0) {
   initializeApp();
@@ -19,9 +20,14 @@ const MAX_RECIPIENTS = 500;
 const requestSchema = z.object({
   event_id: z.string().min(1),
   /** `auto` merges registrants from `events` and `events_mobile` with the same id. */
-  collection: z.enum(["events", "events_mobile", "auto"]).default("auto"),
+  collection: nullishUndefined(z.enum(["events", "events_mobile", "auto"]).default("auto")),
   message_body: z.string().min(1).max(20000),
-  event_location_override: z.string().max(500).optional(),
+  event_location_override: nullishUndefined(
+    z.preprocess(
+      (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+      z.string().max(500).optional()
+    )
+  ),
 });
 
 async function loadEventAndRegistrants(

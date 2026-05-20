@@ -126,7 +126,7 @@ export function eventRegistrantParams(input: {
     event_title: input.event_title.trim(),
     event_date: input.event_date,
     event_location: input.event_location?.trim() || "See event page for location",
-    message_body: htmlOrPlainMessageBody(input.message_body),
+    message_body: plainMessageBody(input.message_body),
     rsvp_url:
       input.rsvp_url?.trim() ||
       `${base.replace(/\/$/, "")}/events/${input.event_id}`,
@@ -149,7 +149,7 @@ export function adminCustomAnnouncementParams(input: {
   return {
     first_name: input.first_name ?? firstNameFrom(input.userName, input.userEmail),
     headline: input.headline.trim(),
-    message_body: htmlOrPlainMessageBody(input.message_body),
+    message_body: plainMessageBody(input.message_body),
     sender_name: input.sender_name.trim() || "Mortar Team",
     cta_url: input.cta_url?.trim() || platformUrl,
     cta_label: input.cta_label?.trim() || "Open Mortar",
@@ -183,21 +183,26 @@ export function appAccessCodeInviteParams(input: {
   };
 }
 
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+/**
+ * Plain text for Brevo template params. Brevo escapes `{{ params.* }}` in templates,
+ * so HTML tags in params render literally (e.g. visible `<p>test</p>`). Use
+ * `white-space: pre-wrap` in the template body instead of injecting HTML here.
+ */
+export function plainMessageBody(body: string): string {
+  const trimmed = body.trim();
+  if (!trimmed) return "";
+  if (/<[a-z][\s\S]*>/i.test(trimmed)) {
+    return trimmed
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/p>/gi, "\n\n")
+      .replace(/<[^>]+>/g, "")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+  }
+  return trimmed;
 }
 
-/** Plain text → paragraphs; existing HTML passed through. */
+/** @deprecated Prefer plainMessageBody for Brevo transactional templates. */
 export function htmlOrPlainMessageBody(body: string): string {
-  const trimmed = body.trim();
-  if (!trimmed) return "<p></p>";
-  if (/<[a-z][\s\S]*>/i.test(trimmed)) return trimmed;
-  return trimmed
-    .split(/\n\n+/)
-    .map((block) => `<p>${escapeHtml(block).replace(/\n/g, "<br/>")}</p>`)
-    .join("");
+  return plainMessageBody(body);
 }
