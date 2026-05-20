@@ -110,6 +110,37 @@ async function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+/** Poll Firestore until async triggers finish (rollup + badge evaluator). */
+async function waitForLessonsCompleted(uid, minCount, timeoutMs = 20000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const sum = (await db.collection("user_analytics_summary").doc(uid).get()).data() || {};
+    const lessons =
+      typeof sum.counts?.lessons_completed === "number" ? sum.counts.lessons_completed : 0;
+    if (lessons >= minCount) return lessons;
+    await sleep(500);
+  }
+  const final = (await db.collection("user_analytics_summary").doc(uid).get()).data() || {};
+  return typeof final.counts?.lessons_completed === "number" ? final.counts.lessons_completed : 0;
+}
+
+async function waitForBadgeTimes(uid, badgeId, minTimes, timeoutMs = 20000) {
+  const ref = db.collection("user_badges").doc(uid).collection("awarded").doc(badgeId);
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const snap = await ref.get();
+    const times = snap.exists ? snap.data()?.times_awarded ?? 0 : 0;
+    if (times >= minTimes) return { exists: snap.exists, times, data: snap.data() };
+    await sleep(500);
+  }
+  const snap = await ref.get();
+  return {
+    exists: snap.exists,
+    times: snap.exists ? snap.data()?.times_awarded ?? 0 : 0,
+    data: snap.data(),
+  };
+}
+
 async function main() {
   const uid = `phase6_badge_${Date.now()}`;
   console.log("Test uid:", uid);
@@ -181,21 +212,17 @@ async function main() {
 
   console.log("\n--- Ingest 1x lesson_course_completed (expect one-time badge) ---");
   await ingestLessonCompleted(idToken, "emulator_course_1");
-  await sleep(3500);
-
-  const sum1 = (await db.collection("user_analytics_summary").doc(uid).get()).data() || {};
-  const c1 = sum1.counts || {};
-  const lessons1 = typeof c1.lessons_completed === "number" ? c1.lessons_completed : 0;
+  const lessons1 = await waitForLessonsCompleted(uid, 1);
   console.log("user_analytics_summary.lessons_completed:", lessons1);
   if (lessons1 < 1) {
     fail(`Expected lessons_completed >= 1, got ${lessons1}`);
   }
 
-  const oneDoc = await db.collection("user_badges").doc(uid).collection("awarded").doc(BADGE_ONE).get();
-  if (!oneDoc.exists) {
+  const oneAward = await waitForBadgeTimes(uid, BADGE_ONE, 1);
+  if (!oneAward.exists) {
     fail(`Missing user_badges/${uid}/awarded/${BADGE_ONE}`);
   }
-  const oneData = oneDoc.data();
+  const oneData = oneAward.data;
   console.log(`${BADGE_ONE} awarded:`, oneData);
   if ((oneData?.times_awarded ?? 0) !== 1) {
     fail(`Expected times_awarded === 1 for ${BADGE_ONE}, got ${oneData?.times_awarded}`);
@@ -217,20 +244,16 @@ async function main() {
 
   console.log("\n--- Ingest 2nd lesson_course_completed (expect repeatable tier 1) ---");
   await ingestLessonCompleted(idToken, "emulator_course_1");
-  await sleep(3500);
-
-  const sum2 = (await db.collection("user_analytics_summary").doc(uid).get()).data() || {};
-  const c2 = sum2.counts || {};
-  const lessons2 = typeof c2.lessons_completed === "number" ? c2.lessons_completed : 0;
+  const lessons2 = await waitForLessonsCompleted(uid, 2);
   if (lessons2 < 2) {
     fail(`Expected lessons_completed >= 2, got ${lessons2}`);
   }
 
-  const rep1 = await db.collection("user_badges").doc(uid).collection("awarded").doc(BADGE_REPEAT).get();
-  if (!rep1.exists) {
+  const rep1Award = await waitForBadgeTimes(uid, BADGE_REPEAT, 1);
+  if (!rep1Award.exists) {
     fail(`Missing user_badges/${uid}/awarded/${BADGE_REPEAT} after 2 completions`);
   }
-  const rep1Data = rep1.data();
+  const rep1Data = rep1Award.data;
   console.log(`${BADGE_REPEAT} awarded:`, rep1Data);
   if ((rep1Data?.times_awarded ?? 0) !== 1) {
     fail(`Expected repeatable times_awarded === 1 after 2 completions, got ${rep1Data?.times_awarded}`);
@@ -239,10 +262,13 @@ async function main() {
   console.log("\n--- Ingest 3rd + 4th completions (expect repeatable tier 2) ---");
   await ingestLessonCompleted(idToken, "emulator_course_1");
   await ingestLessonCompleted(idToken, "emulator_course_1");
-  await sleep(4000);
+  const lessons4 = await waitForLessonsCompleted(uid, 4);
+  if (lessons4 < 4) {
+    fail(`Expected lessons_completed >= 4, got ${lessons4}`);
+  }
 
-  const rep2 = await db.collection("user_badges").doc(uid).collection("awarded").doc(BADGE_REPEAT).get();
-  const rep2Data = rep2.data();
+  const rep2Award = await waitForBadgeTimes(uid, BADGE_REPEAT, 2);
+  const rep2Data = rep2Award.data;
   console.log(`${BADGE_REPEAT} after 4 completions:`, rep2Data);
   if ((rep2Data?.times_awarded ?? 0) !== 2) {
     fail(`Expected repeatable times_awarded === 2 after 4 completions, got ${rep2Data?.times_awarded}`);

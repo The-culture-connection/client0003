@@ -13,7 +13,7 @@ Firebase-first monorepo powering Next.js web app and Flutter mobile app.
 
 ### Prerequisites
 
-- Node.js 20+
+- Node.js 22+ (Cloud Functions runtime); Node 20+ for local web tooling
 - Firebase CLI (`npm install -g firebase-tools`)
 - Flutter SDK (for mobile development)
 

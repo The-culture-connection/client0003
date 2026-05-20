@@ -2,9 +2,9 @@
  * onUserCreated Trigger (v1 - Non-blocking, GCIP not required)
  * Initializes user document, data room, and user progress when a new user is created
  *
- * Note: Using v1 API because v2/auth is not available in firebase-functions v7.0.6.
- * v1 auth triggers are non-blocking and don't require GCIP.
- * When v2/auth becomes available, this can be migrated to use onUserCreated from v2/auth.
+ * Note: Using v1 API for auth.user().onCreate (Gen 1 auth trigger).
+ * v1 auth triggers are non-blocking and do not require GCIP blocking hooks.
+ * Migrate to a v2 identity trigger when Firebase documents a supported replacement.
  */
 
 import * as functions from "firebase-functions/v1";

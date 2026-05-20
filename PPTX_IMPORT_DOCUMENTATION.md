@@ -15,7 +15,7 @@ This document describes the PPTX-to-course-ingestion pipeline that allows admins
 ### Tech Stack
 
 - **Frontend**: Vite + React + TypeScript
-- **Backend**: Firebase Functions v2 (Node.js 20)
+- **Backend**: Firebase Functions v2 (Node.js 22)
 - **Parsing**: JSZip + xml2js for PPTX extraction
 - **Storage**: Firebase Storage for PPTX files and extracted images
 - **Database**: Firestore for lesson/slide/block documents
