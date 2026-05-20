@@ -103,6 +103,7 @@ export function AppAccessHubPanel() {
   const [cohortId, setCohortId] = useState("");
   const [expDays, setExpDays] = useState("14");
   const [genInvite, setGenInvite] = useState(true);
+  const [sendInviteEmail, setSendInviteEmail] = useState(true);
   const [formMessage, setFormMessage] = useState<string | null>(null);
   const [lastPlainCode, setLastPlainCode] = useState<string | null>(null);
 
@@ -198,6 +199,7 @@ export function AppAccessHubPanel() {
         role,
         source: "digital_curriculum_admin_app_access_hub",
         generateInvite: genInvite,
+        sendInviteEmail,
         expirationDays: Number(expDays) || 14,
         cohortId: cohortId.trim() || undefined,
       });
@@ -219,6 +221,7 @@ export function AppAccessHubPanel() {
       const res = await callFn<{ code?: string }>("generateInviteCode", {
         email: rowEmail.trim(),
         expirationDays: Number(expDays) || 14,
+        sendInviteEmail,
       });
       if (res.data?.code) {
         setLastPlainCode(res.data.code);
@@ -362,15 +365,27 @@ export function AppAccessHubPanel() {
             className="bg-background max-w-md"
           />
         </div>
-        <div className="flex items-center gap-2 mt-4">
-          <Checkbox
-            id="hub-gen"
-            checked={genInvite}
-            onCheckedChange={(v) => setGenInvite(v === true)}
-          />
-          <Label htmlFor="hub-gen" className="text-foreground font-normal cursor-pointer">
-            Generate invite code (network-access roles only)
-          </Label>
+        <div className="flex flex-col gap-2 mt-4">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="hub-gen"
+              checked={genInvite}
+              onCheckedChange={(v) => setGenInvite(v === true)}
+            />
+            <Label htmlFor="hub-gen" className="text-foreground font-normal cursor-pointer">
+              Generate invite code (network-access roles only)
+            </Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="hub-send-email"
+              checked={sendInviteEmail}
+              onCheckedChange={(v) => setSendInviteEmail(v === true)}
+            />
+            <Label htmlFor="hub-send-email" className="text-foreground font-normal cursor-pointer">
+              Email invite code via Brevo (<code className="text-xs">app_access_code_invite</code>)
+            </Label>
+          </div>
         </div>
         <div className="flex flex-wrap gap-2 mt-4">
           <Button

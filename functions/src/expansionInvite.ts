@@ -14,6 +14,8 @@ import {
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 
 import { callableCorsAllowlist } from "./callableCorsAllowlist";
+import { BREVO_API_KEY } from "./email/brevoClient";
+import { sendAppAccessInviteEmail } from "./email/sendAppAccessInviteEmail";
 
 initializeApp();
 const db = getFirestore();
@@ -33,6 +35,11 @@ const auth = getAuth();
 const defaultCallableOptions = {
   invoker: "public" as const,
   cors: callableCorsAllowlist,
+};
+
+const callableWithBrevo = {
+  ...defaultCallableOptions,
+  secrets: [BREVO_API_KEY],
 };
 
 const ELIGIBLE = "eligibleUsers";
@@ -596,7 +603,7 @@ export const finalizeInviteClaim = onCall(defaultCallableOptions, async (request
 });
 
 /** Admin: upsert eligible user. Optionally generate invite for network-access roles. */
-export const createOrUpdateEligibleUser = onCall(defaultCallableOptions, async (request) => {
+export const createOrUpdateEligibleUser = onCall(callableWithBrevo, async (request) => {
   if (!request.auth?.uid) throw new HttpsError("unauthenticated", "Sign in required.");
   await assertCallerIsNetworkAdmin(request.auth.uid);
 
@@ -604,6 +611,7 @@ export const createOrUpdateEligibleUser = onCall(defaultCallableOptions, async (
   const role = request.data?.role as string | undefined;
   const source = (request.data?.source as string) || "admin_console";
   const generateInvite = request.data?.generateInvite === true;
+  const sendInviteEmail = request.data?.sendInviteEmail !== false;
   const expirationDays = Number(request.data?.expirationDays) || 14;
   const cohortId = (request.data?.cohortId as string) || null;
 
@@ -654,6 +662,13 @@ export const createOrUpdateEligibleUser = onCall(defaultCallableOptions, async (
       latestInviteCodeId: inviteId,
       updatedAt: FieldValue.serverTimestamp(),
     });
+
+    await sendAppAccessInviteEmail({
+      to: emailRaw.trim(),
+      inviteCode: plainCode,
+      expiresAt: out.expiresAt,
+      sendEmail: sendInviteEmail,
+    });
   }
 
   return {
@@ -671,7 +686,7 @@ async function internalGenerateInvite(
   networkAccess: boolean,
   createdByUid: string,
   expirationDays: number,
-): Promise<{ inviteId: string; plainCode: string }> {
+): Promise<{ inviteId: string; plainCode: string; expiresAt: Date }> {
   const eligibleRef = db.collection(ELIGIBLE).doc(normalizedEmail);
   const eligibleSnap = await eligibleRef.get();
   const prevId = eligibleSnap.data()?.latestInviteCodeId as string | undefined;
@@ -712,16 +727,17 @@ async function internalGenerateInvite(
     updatedAt: FieldValue.serverTimestamp(),
   });
 
-  return { inviteId: inviteRef.id, plainCode: code };
+  return { inviteId: inviteRef.id, plainCode: code, expiresAt };
 }
 
 /** Admin: generate a new invite for an eligible email. */
-export const generateInviteCode = onCall(defaultCallableOptions, async (request) => {
+export const generateInviteCode = onCall(callableWithBrevo, async (request) => {
   if (!request.auth?.uid) throw new HttpsError("unauthenticated", "Sign in required.");
   await assertCallerIsNetworkAdmin(request.auth.uid);
 
   const emailRaw = request.data?.email as string | undefined;
   const expirationDays = Number(request.data?.expirationDays) || 14;
+  const sendInviteEmail = request.data?.sendInviteEmail !== false;
   if (!emailRaw) throw new HttpsError("invalid-argument", "email is required.");
 
   const normalizedEmail = normalizeEmail(emailRaw);
@@ -740,7 +756,7 @@ export const generateInviteCode = onCall(defaultCallableOptions, async (request)
     );
   }
 
-  const { inviteId, plainCode } = await internalGenerateInvite(
+  const { inviteId, plainCode, expiresAt } = await internalGenerateInvite(
     normalizedEmail,
     el.role as string,
     true,
@@ -757,11 +773,20 @@ export const generateInviteCode = onCall(defaultCallableOptions, async (request)
       updatedAt: FieldValue.serverTimestamp(),
     });
 
+  const linkedUid = el.linkedUid as string | undefined;
+  await sendAppAccessInviteEmail({
+    to: emailRaw.trim(),
+    inviteCode: plainCode,
+    expiresAt,
+    recipientUid: linkedUid,
+    sendEmail: sendInviteEmail,
+  });
+
   return {
     inviteId,
     code: plainCode,
     codePreview: maskedPreview(plainCode),
-    expiresAt: new Date(Date.now() + expirationDays * 86400000).toISOString(),
+    expiresAt: expiresAt.toISOString(),
   };
 });
 
@@ -820,12 +845,13 @@ export const bulkUploadEligibleUsers = onCall(defaultCallableOptions, async (req
   return { ok: true, written };
 });
 
-export const promoteToDigitalCurriculumAlumni = onCall(defaultCallableOptions, async (request) => {
+export const promoteToDigitalCurriculumAlumni = onCall(callableWithBrevo, async (request) => {
   if (!request.auth?.uid) throw new HttpsError("unauthenticated", "Sign in required.");
   await assertCallerIsNetworkAdmin(request.auth.uid);
 
   const emailRaw = request.data?.email as string | undefined;
   const generateInvite = request.data?.generateInvite === true;
+  const sendInviteEmail = request.data?.sendInviteEmail !== false;
   const expirationDays = Number(request.data?.expirationDays) || 14;
   if (!emailRaw) throw new HttpsError("invalid-argument", "email required.");
 
@@ -839,6 +865,7 @@ export const promoteToDigitalCurriculumAlumni = onCall(defaultCallableOptions, a
     throw new HttpsError("failed-precondition", "User is not a Digital Curriculum Student.");
   }
 
+  const linkedUid = el.linkedUid as string | undefined;
   const newRole = "Digital Curriculum Alumni";
   await ref.update({
     role: newRole,
@@ -863,9 +890,14 @@ export const promoteToDigitalCurriculumAlumni = onCall(defaultCallableOptions, a
       inviteRequired: true,
       updatedAt: FieldValue.serverTimestamp(),
     });
+    await sendAppAccessInviteEmail({
+      to: emailRaw.trim(),
+      inviteCode: out.plainCode,
+      expiresAt: out.expiresAt,
+      recipientUid: linkedUid,
+      sendEmail: sendInviteEmail,
+    });
   }
-
-  const linkedUid = el.linkedUid as string | undefined;
   if (linkedUid) {
     await db
       .collection(USERS)

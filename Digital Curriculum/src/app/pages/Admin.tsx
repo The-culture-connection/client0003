@@ -44,6 +44,7 @@ import {
   ClipboardList,
   LineChart,
   Bell,
+  Mail,
   ChevronLeft,
   Crown,
 } from "lucide-react";
@@ -124,6 +125,8 @@ import {
   type Curriculum,
 } from "../lib/curriculum";
 import { AppAccessHubPanel } from "../components/admin/AppAccessHubPanel";
+import { AdminEmailManagementPanel } from "../components/admin/AdminEmailManagementPanel";
+import { sendEventRegistrantEmail } from "../lib/adminEmail";
 import { MobileModerationPanel } from "../components/admin/MobileModerationPanel";
 import { MobileAnalyticsSummariesPanel } from "../components/admin/MobileAnalyticsSummariesPanel";
 import { PushNotificationsPanel } from "../components/admin/PushNotificationsPanel";
@@ -190,6 +193,9 @@ export function AdminPage() {
   const [rejectDialogEvent, setRejectDialogEvent] = useState<Event | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [eventApprovalBusyId, setEventApprovalBusyId] = useState<string | null>(null);
+  const [eventEmailTarget, setEventEmailTarget] = useState<AdminListedEvent | null>(null);
+  const [eventEmailMessage, setEventEmailMessage] = useState("");
+  const [eventEmailSending, setEventEmailSending] = useState(false);
   const [graduationApplications, setGraduationApplications] = useState<GraduationApplication[]>([]);
   const [loadingApplications, setLoadingApplications] = useState(false);
   const [admissionStatus, setAdmissionStatus] = useState<Record<string, boolean>>({});
@@ -1094,6 +1100,10 @@ export function AdminPage() {
             <Bell className="w-4 h-4 mr-2" />
             Push notifications
           </TabsTrigger>
+          <TabsTrigger value="email-management">
+            <Mail className="w-4 h-4 mr-2" />
+            Email Management
+          </TabsTrigger>
           <TabsTrigger value="mortar-info">
             <Megaphone className="w-4 h-4 mr-2" />
             Mortar Info
@@ -1618,7 +1628,22 @@ export function AdminPage() {
                             </Button>
                           </div>
                         )}
-                        <div className="mt-3 flex items-center gap-4">
+                        <div className="mt-3 flex flex-wrap items-center gap-3">
+                          {registeredCount > 0 && !isPending && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="border-border"
+                              onClick={() => {
+                                setEventEmailTarget(event);
+                                setEventEmailMessage("");
+                              }}
+                            >
+                              <Mail className="w-4 h-4 mr-2" />
+                              Email registrants ({registeredCount})
+                            </Button>
+                          )}
                           <Badge variant="outline">
                             {registeredCount}
                             {totalSpots > 0 ? `/${totalSpots}` : ""} registered
@@ -1655,6 +1680,82 @@ export function AdminPage() {
                 );
               })
             )}
+
+            <Dialog
+              open={eventEmailTarget != null}
+              onOpenChange={(open) => {
+                if (!open) {
+                  setEventEmailTarget(null);
+                  setEventEmailMessage("");
+                }
+              }}
+            >
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Email event registrants</DialogTitle>
+                </DialogHeader>
+                {eventEmailTarget && (
+                  <p className="text-sm text-muted-foreground">
+                    <strong>{eventEmailTarget.title}</strong> — {eventEmailTarget.registered_users?.length ?? 0}{" "}
+                    registered (curriculum + mobile lists merged).
+                  </p>
+                )}
+                <Textarea
+                  value={eventEmailMessage}
+                  onChange={(e) => setEventEmailMessage(e.target.value)}
+                  placeholder="Message body for attendees..."
+                  rows={6}
+                />
+                <DialogFooter className="gap-2 sm:gap-0">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setEventEmailTarget(null);
+                      setEventEmailMessage("");
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    className="bg-accent hover:bg-accent/90 text-accent-foreground"
+                    disabled={eventEmailSending || !eventEmailMessage.trim() || !eventEmailTarget?.id}
+                    onClick={async () => {
+                      if (!eventEmailTarget?.id) return;
+                      setEventEmailSending(true);
+                      try {
+                        const out = await sendEventRegistrantEmail({
+                          eventId: eventEmailTarget.id,
+                          messageBody: eventEmailMessage.trim(),
+                          collection: "auto",
+                        });
+                        alert(
+                          `Email sent to ${out.sent} of ${out.recipientCount} registrants` +
+                            (out.failed > 0 ? ` (${out.failed} failed or skipped).` : "."),
+                        );
+                        setEventEmailTarget(null);
+                        setEventEmailMessage("");
+                      } catch (e: unknown) {
+                        const err = e as { message?: string };
+                        alert(err.message ?? String(e));
+                      } finally {
+                        setEventEmailSending(false);
+                      }
+                    }}
+                  >
+                    {eventEmailSending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4 mr-2" />
+                        Send email
+                      </>
+                    )}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
 
             <Dialog
               open={rejectDialogEvent != null}
@@ -1882,8 +1983,8 @@ export function AdminPage() {
                                 try {
                                   await acceptGraduationApplication(application.id, user.uid, selectedTime);
                                   alert(selectedTime 
-                                    ? `Application accepted with selected time: ${selectedTime}! You can now admit the user to upgrade their role.`
-                                    : "Application accepted! You can now admit the user to upgrade their role.");
+                                    ? `Meeting time saved (${selectedTime}). The student will receive a confirmation email. You can admit them after the meeting.`
+                                    : "Application accepted. Select a meeting time to email the student.");
                                   // Reload applications
                                   const updated = await getGraduationApplications();
                                   setGraduationApplications(updated);
@@ -1912,7 +2013,7 @@ export function AdminPage() {
                                 const notes = prompt("Enter rejection reason (optional):");
                                 try {
                                   await rejectGraduationApplication(application.id, user.uid, notes || undefined);
-                                  alert("Application rejected.");
+                                  alert("Application rejected. The student will be notified by email.");
                                   // Reload applications
                                   const updated = await getGraduationApplications();
                                   setGraduationApplications(updated);
@@ -1957,6 +2058,9 @@ export function AdminPage() {
                                   ...prev,
                                   [application.userId]: userInfo.isAdmitted || false,
                                 }));
+                                alert(
+                                  "User admitted to alumni. They will receive a welcome email; Expansion invite code is shown above if generated.",
+                                );
                               } catch (error) {
                                 console.error("Error admitting user:", error);
                                 alert("Failed to admit user. Please try again.");
@@ -1975,7 +2079,7 @@ export function AdminPage() {
                               const notes = prompt("Enter rejection reason (optional):");
                               try {
                                 await rejectGraduationApplication(application.id, user.uid, notes || undefined);
-                                alert("Application rejected.");
+                                alert("Not admitted. The student will be notified by email.");
                                 // Reload applications
                                 const updated = await getGraduationApplications();
                                 setGraduationApplications(updated);
@@ -2105,6 +2209,10 @@ export function AdminPage() {
         {/* Expansion Network — eligible users & invite codes */}
         <TabsContent value="app-access-hub" className="space-y-6">
           <AppAccessHubPanel />
+        </TabsContent>
+
+        <TabsContent value="email-management" className="space-y-6">
+          <AdminEmailManagementPanel />
         </TabsContent>
 
         {/* Expansion Network mobile — groups_mobile + user_reports moderation */}

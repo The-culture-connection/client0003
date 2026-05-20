@@ -10,6 +10,9 @@ export { onUserCreated } from "./triggers/onUserCreated";
 export { onUserReportCreated } from "./triggers/onUserReportCreated";
 export { onMatchProfileWrite } from "./triggers/onMatchProfileWrite";
 export { scheduledNudgeIncompleteProfiles } from "./triggers/scheduledNudgeIncompleteProfiles";
+export { onGraduationApplicationEmail } from "./triggers/onGraduationApplicationEmail";
+export { onUserAlumniAdmittedEmail } from "./triggers/onUserAlumniAdmittedEmail";
+export { scheduledCourseInactiveEmailNudges } from "./triggers/scheduledCourseInactiveEmailNudges";
 export {
   onUserBadgeEarnedPush,
   onBadgeDefinitionCreatedPush,
@@ -73,6 +76,9 @@ export {
   getUserModerationSnapshot,
   moderateUserAccount,
 } from "./callables/adminMobileModeration";
+export {adminSendTestBrevoEmail} from "./callables/adminSendTestBrevoEmail";
+export {adminSendEventRegistrantEmail} from "./callables/adminSendEventRegistrantEmail";
+export {adminSendCustomAnnouncementEmail} from "./callables/adminSendCustomAnnouncementEmail";
 
 export {
   onGroupThreadVoteWrite,

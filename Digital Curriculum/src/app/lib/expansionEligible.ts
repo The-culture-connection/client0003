@@ -30,6 +30,7 @@ export async function registerDigitalCurriculumAlumniEligible(
       role: DIGITAL_CURRICULUM_ALUMNI_ROLE,
       source: opts?.source ?? "digital_curriculum_admin",
       generateInvite: true,
+      sendInviteEmail: true,
       expirationDays: opts?.expirationDays ?? DEFAULT_EXPIRATION_DAYS,
       ...(opts?.cohortId ? { cohortId: opts.cohortId } : {}),
     });

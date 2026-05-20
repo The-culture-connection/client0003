@@ -1,0 +1,9 @@
+Mortar email brand (used in all templates below):
+- Accent / buttons: #871002
+- Dark text: #2d2d2d
+- Muted text: #6b6b6b
+- Page background: #ececec
+- Card: #ffffff
+- Header bar: #871002, text #fafcfc
+
+Brevo: paste ONLY the .html file contents into the template body, not this snippet.

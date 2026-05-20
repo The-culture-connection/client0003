@@ -14,6 +14,8 @@ export const ADMIN_PANEL_TAB_SCOPE: Record<AdminPanelTabSlug, MortarPlatformScop
   "app-access-hub": "expansion_mobile",
   "expansion-mobile": "expansion_mobile",
   "mobile-analytics": "expansion_mobile",
+  "push-notifications": "expansion_mobile",
+  "email-management": "digital_curriculum",
   "mortar-info": "both",
   messages: "digital_curriculum",
   courses: "digital_curriculum",
