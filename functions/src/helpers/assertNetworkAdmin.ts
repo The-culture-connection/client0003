@@ -5,7 +5,25 @@ import {HttpsError} from "firebase-functions/v2/https";
 const db = getFirestore();
 const auth = getAuth();
 
-export async function assertCallerIsNetworkAdmin(uid: string): Promise<void> {
+function rolesFromAuthToken(token: Record<string, unknown> | undefined): string[] {
+  if (!token) return [];
+  const raw = token.roles;
+  if (Array.isArray(raw)) {
+    return raw.filter((r): r is string => typeof r === "string");
+  }
+  if (typeof raw === "string") return [raw];
+  return [];
+}
+
+export async function assertCallerIsNetworkAdmin(
+  uid: string,
+  options?: {authToken?: Record<string, unknown>}
+): Promise<void> {
+  const tokenRoles = rolesFromAuthToken(options?.authToken);
+  if (tokenRoles.includes("Admin") || tokenRoles.includes("superAdmin")) {
+    return;
+  }
+
   const udoc = await db.collection("users").doc(uid).get();
   const roles: string[] = Array.isArray(udoc.data()?.roles) ? (udoc.data()?.roles as string[]) : [];
   const single = udoc.data()?.role as string | undefined;

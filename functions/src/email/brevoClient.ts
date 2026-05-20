@@ -273,20 +273,42 @@ export async function sendEmail(
 export async function sendBulkEmail(
   input: SendBulkEmailInput,
   options?: {apiKey?: string; sender?: {name?: string; email: string}}
-): Promise<{sent: number; failed: number}> {
+): Promise<{sent: number; failed: number; skipped_preferences: number}> {
   const uniqueRecipients = Array.from(
     new Set(input.recipients.map(normalizeEmail).filter((x) => x.length > 0))
   );
   let sent = 0;
   let failed = 0;
+  let skipped_preferences = 0;
 
   for (const recipient of uniqueRecipients) {
     const params = input.paramsPerUser?.[recipient] ?? input.defaultParams ?? {};
+    const recipientUid = input.recipientUidsByEmail?.[recipient];
+    const canSend = await canSendByPreferences(
+      recipientUid,
+      recipient,
+      input.preferenceCategory
+    );
+    if (!canSend) {
+      skipped_preferences++;
+      // eslint-disable-next-line no-await-in-loop
+      await logEmailAttempt({
+        recipient,
+        templateId: input.templateId,
+        tags: input.tags,
+        status: "skipped_preferences",
+        requestBody: {
+          preferenceCategory: input.preferenceCategory ?? null,
+        },
+        errorMessage: "Skipped due to user email preferences",
+      });
+      continue;
+    }
     // eslint-disable-next-line no-await-in-loop
     const result = await sendEmail(
       {
         to: recipient,
-        recipientUid: input.recipientUidsByEmail?.[recipient],
+        recipientUid,
         templateId: input.templateId,
         params,
         tags: input.tags,
@@ -306,6 +328,7 @@ export async function sendBulkEmail(
     recipientCount: uniqueRecipients.length,
     sent,
     failed,
+    skipped_preferences,
   });
-  return {sent, failed};
+  return {sent, failed, skipped_preferences};
 }

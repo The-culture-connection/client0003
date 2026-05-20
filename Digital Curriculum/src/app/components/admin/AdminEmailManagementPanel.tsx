@@ -5,6 +5,7 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 import { Loader2, Mail } from "lucide-react";
+import { FirebaseError } from "firebase/app";
 import { sendCustomAnnouncementEmail } from "../../lib/adminEmail";
 import { useAuth } from "../auth/AuthProvider";
 
@@ -41,6 +42,10 @@ export function AdminEmailManagementPanel() {
       setResult("Add at least one email address or choose a role audience.");
       return;
     }
+    if (ctaUrl.trim() && !/^https?:\/\//i.test(ctaUrl.trim())) {
+      setResult("CTA link must start with https:// (or leave it blank).");
+      return;
+    }
     setSending(true);
     setResult(null);
     try {
@@ -53,13 +58,28 @@ export function AdminEmailManagementPanel() {
         emails: parsedEmails.length ? parsedEmails : undefined,
         role: role || undefined,
       });
-      setResult(
-        `Sent ${out.sent} of ${out.recipientCount} recipients` +
-          (out.failed > 0 ? ` (${out.failed} failed or skipped — check email_activity in Firestore).` : "."),
-      );
+      const skipped = out.skipped_preferences ?? 0;
+      if (out.recipientCount === 0) {
+        setResult("No recipients matched. Check email addresses or role audience.");
+      } else if (out.sent === 0) {
+        setResult(
+          `No emails were delivered (${out.failed} failed, ${skipped} skipped by user preferences). ` +
+            "Check Firestore collection email_activity for this recipient.",
+        );
+      } else {
+        setResult(
+          `Sent ${out.sent} of ${out.recipientCount} recipients` +
+            (skipped > 0 ? ` (${skipped} skipped — opted out of admin messages).` : "") +
+            (out.failed > 0 ? ` (${out.failed} failed — check email_activity in Firestore).` : "."),
+        );
+      }
     } catch (e: unknown) {
-      const err = e as { message?: string };
-      setResult(err.message ?? String(e));
+      if (e instanceof FirebaseError) {
+        setResult(`${e.code}: ${e.message}`);
+      } else {
+        const err = e as { message?: string };
+        setResult(err.message ?? String(e));
+      }
     } finally {
       setSending(false);
     }

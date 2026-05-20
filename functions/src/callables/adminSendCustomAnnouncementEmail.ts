@@ -1,6 +1,8 @@
 import {getApps, initializeApp} from "firebase-admin/app";
+import {getAuth} from "firebase-admin/auth";
 import {getFirestore, Timestamp} from "firebase-admin/firestore";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
+import * as logger from "firebase-functions/logger";
 import {z} from "zod";
 import {callableCorsAllowlist} from "../callableCorsAllowlist";
 import {BREVO_API_KEY, sendBulkEmail} from "../email/brevoClient";
@@ -14,13 +16,19 @@ if (getApps().length === 0) {
 }
 
 const db = getFirestore();
+const auth = getAuth();
 const MAX_RECIPIENTS = 500;
+
+const optionalUrl = z.preprocess(
+  (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+  z.string().url().optional()
+);
 
 const requestSchema = z.object({
   headline: z.string().min(1).max(200),
   message_body: z.string().min(1).max(20000),
   sender_name: z.string().min(1).max(120),
-  cta_url: z.string().url().optional(),
+  cta_url: optionalUrl,
   cta_label: z.string().max(80).optional(),
   emails: z.array(z.string().email()).max(MAX_RECIPIENTS).optional(),
   user_ids: z.array(z.string().min(1)).max(MAX_RECIPIENTS).optional(),
@@ -37,7 +45,9 @@ export const adminSendCustomAnnouncementEmail = onCall(
   async (request) => {
     const callerUid = request.auth?.uid;
     if (!callerUid) throw new HttpsError("unauthenticated", "Sign in required.");
-    await assertCallerIsNetworkAdmin(callerUid);
+    await assertCallerIsNetworkAdmin(callerUid, {
+      authToken: request.auth?.token as Record<string, unknown> | undefined,
+    });
 
     if (!isTemplateConfigured("admin_custom_announcement")) {
       throw new HttpsError(
@@ -48,10 +58,9 @@ export const adminSendCustomAnnouncementEmail = onCall(
 
     const parsed = requestSchema.safeParse(request.data);
     if (!parsed.success) {
-      throw new HttpsError(
-        "invalid-argument",
-        parsed.error.issues.map((e) => e.message).join("; ")
-      );
+      const detail = parsed.error.issues.map((e) => e.message).join("; ");
+      logger.warn("adminSendCustomAnnouncementEmail invalid request", {detail});
+      throw new HttpsError("invalid-argument", detail);
     }
 
     const {headline, message_body, sender_name, cta_url, cta_label, emails, user_ids, role} =
@@ -73,9 +82,35 @@ export const adminSendCustomAnnouncementEmail = onCall(
     if (emails?.length) {
       for (const raw of emails) {
         const email = raw.trim().toLowerCase();
-        if (!recipientMap.has(email)) {
-          recipientMap.set(email, {email});
+        if (recipientMap.has(email)) continue;
+        let uid: string | undefined;
+        let name: string | undefined;
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          const userRecord = await auth.getUserByEmail(email);
+          uid = userRecord.uid;
+          name = userRecord.displayName ?? undefined;
+        } catch {
+          // Not a Firebase Auth account — may still be a valid external recipient.
         }
+        if (!uid) {
+          // eslint-disable-next-line no-await-in-loop
+          const byEmail = await db
+            .collection("users")
+            .where("email", "==", email)
+            .limit(1)
+            .get();
+          if (!byEmail.empty) {
+            uid = byEmail.docs[0].id;
+            const data = byEmail.docs[0].data();
+            name =
+              (typeof data.displayName === "string" && data.displayName) ||
+              (typeof data.display_name === "string" && data.display_name) ||
+              (typeof data.name === "string" && data.name) ||
+              name;
+          }
+        }
+        recipientMap.set(email, {email, uid, name});
       }
     }
 
@@ -139,6 +174,11 @@ export const adminSendCustomAnnouncementEmail = onCall(
     }
 
     const templateId = resolveTemplateId("admin_custom_announcement");
+    logger.info("adminSendCustomAnnouncementEmail sending", {
+      callerUid,
+      recipientCount: recipients.length,
+      templateId,
+    });
     const bulk = await sendBulkEmail({
       recipients,
       templateId,
@@ -163,6 +203,7 @@ export const adminSendCustomAnnouncementEmail = onCall(
       ok: true,
       sent: bulk.sent,
       failed: bulk.failed,
+      skipped_preferences: bulk.skipped_preferences,
       recipientCount: recipients.length,
     };
   }

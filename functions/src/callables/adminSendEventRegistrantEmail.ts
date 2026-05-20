@@ -66,7 +66,9 @@ export const adminSendEventRegistrantEmail = onCall(
   async (request) => {
     const uid = request.auth?.uid;
     if (!uid) throw new HttpsError("unauthenticated", "Sign in required.");
-    await assertCallerIsNetworkAdmin(uid);
+    await assertCallerIsNetworkAdmin(uid, {
+      authToken: request.auth?.token as Record<string, unknown> | undefined,
+    });
 
     if (!isTemplateConfigured("event_announcement_to_registrants")) {
       throw new HttpsError(

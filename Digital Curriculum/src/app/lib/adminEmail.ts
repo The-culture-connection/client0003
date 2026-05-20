@@ -12,6 +12,7 @@ export type SendCustomAnnouncementResult = {
   ok: boolean;
   sent: number;
   failed: number;
+  skipped_preferences?: number;
   recipientCount: number;
 };
 
