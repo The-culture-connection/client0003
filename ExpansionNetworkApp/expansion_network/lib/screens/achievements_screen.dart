@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../analytics/expansion_analytics.dart';
 import '../badge/badge_platform_utils.dart';
@@ -35,7 +36,24 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
   Widget build(BuildContext context) {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) {
-      return const Scaffold(body: Center(child: Text('Sign in to view achievements.')));
+      return Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/profile');
+              }
+            },
+          ),
+          title: const Text('Achievements'),
+          backgroundColor: AppColors.background,
+          foregroundColor: AppColors.foreground,
+        ),
+        body: const Center(child: Text('Sign in to view achievements.')),
+      );
     }
 
     final badgesRepo = BadgeRepository();
@@ -43,6 +61,16 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/profile');
+            }
+          },
+        ),
         title: const Text('Achievements'),
         backgroundColor: AppColors.background,
         foregroundColor: AppColors.foreground,
