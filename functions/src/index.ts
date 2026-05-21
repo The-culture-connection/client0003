@@ -32,6 +32,7 @@ export {
 export { setUserRole } from "./callables/setUserRole";
 export { logAnalyticsEvent } from "./callables/logAnalyticsEvent";
 export { ingestWebAnalytics } from "./callables/ingestWebAnalytics";
+export { getMyWeeklyActivity } from "./callables/getMyWeeklyActivity";
 export { markNotificationReadBackend } from "./callables/markNotificationReadBackend";
 export { getPhase5DashboardMetrics } from "./callables/getPhase5DashboardMetrics";
 export { queryAdminWebAnalyticsEvents } from "./callables/queryAdminWebAnalyticsEvents";

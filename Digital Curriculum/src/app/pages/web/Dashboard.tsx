@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { doc, getDoc } from "firebase/firestore";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
@@ -47,6 +47,7 @@ import { useScreenAnalytics } from "../../analytics/useScreenAnalytics";
 import { useDashboardPassiveEngagement } from "../../analytics/useDashboardPassiveEngagement";
 import { trackEvent } from "../../analytics/trackEvent";
 import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalyticsContract";
+import { WeeklyActivityWidget } from "../../components/dashboard/WeeklyActivityWidget";
 
 const MOCK_BORDER = "border-2 border-red-500";
 
@@ -163,6 +164,14 @@ export function WebDashboard() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  const courseTitles = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const c of courses) {
+      if (c.id) map[c.id] = c.title ?? "Course";
+    }
+    return map;
+  }, [courses]);
 
   const displayName =
     profile?.first_name || profile?.last_name
@@ -579,43 +588,12 @@ export function WebDashboard() {
             </div>
           </Card>
 
-          {/* Leaderboard - mock */}
-          <Card className={`p-5 bg-card border-border shadow-md ${MOCK_BORDER}`}>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-foreground">Cohort Leaderboard</h2>
-              <Trophy className="w-5 h-5 text-accent" />
-            </div>
-            <div className="space-y-2">
-              {[
-                { name: "Alex R", points: 4120, isYou: false, rank: 1 },
-                { name: "Grace S", points: 3980, isYou: true, rank: 2 },
-                { name: "Marcus L", points: 3750, isYou: false, rank: 3 },
-                { name: "Sarah K", points: 3620, isYou: false, rank: 4 },
-                { name: "Jordan P", points: 3450, isYou: false, rank: 5 },
-              ].map((u, idx) => (
-                <div
-                  key={idx}
-                  className={`flex items-center justify-between p-2 rounded ${u.isYou ? "bg-accent/10 border border-accent/30" : ""}`}
-                >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`text-xs font-bold w-6 ${
-                        u.rank === 1 ? "text-yellow-500" : u.rank === 2 ? "text-gray-400" : u.rank === 3 ? "text-orange-600" : "text-muted-foreground"
-                      }`}
-                    >
-                      #{u.rank}
-                    </span>
-                    <span className={`text-sm ${u.isYou ? "font-bold text-accent" : "text-foreground"}`}>
-                      {u.name}
-                      {u.isYou && " (You)"}
-                    </span>
-                  </div>
-                  <span className="text-xs font-medium text-foreground">{u.points.toLocaleString()}</span>
-                </div>
-              ))}
-            </div>
-            <p className="text-xs text-muted-foreground mt-3">Points from modules, assets & community</p>
-          </Card>
+          <WeeklyActivityWidget
+            userId={user?.uid}
+            certificates={certificates}
+            progressMap={progressMap}
+            courseTitles={courseTitles}
+          />
 
           {/* Upcoming Events - real */}
           <Card className="p-5 bg-card border-border shadow-md">
