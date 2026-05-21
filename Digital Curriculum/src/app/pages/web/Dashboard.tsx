@@ -550,6 +550,72 @@ export function WebDashboard() {
               View Community Hub
             </Button>
           </Card>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <Card className="p-5 bg-card border-border shadow-md h-full">
+              <h2 className="text-lg font-bold text-foreground mb-4">Progress</h2>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Target className="w-4 h-4 text-accent" />
+                    <span className="text-sm text-foreground">Lessons Completed</span>
+                  </div>
+                  <span className="text-sm font-bold text-accent">{totalLessonsCompleted}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-accent" />
+                    <span className="text-sm text-foreground">Assets Created</span>
+                  </div>
+                  <span className="text-sm font-bold text-accent">{totalAssets}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <MessageCircle className="w-4 h-4 text-accent" />
+                    <span className="text-sm text-foreground">Groups</span>
+                  </div>
+                  <span className="text-sm font-bold text-accent">{userGroups.length}</span>
+                </div>
+              </div>
+            </Card>
+
+            <Card
+              className="p-5 h-full flex flex-col bg-gradient-to-br from-accent/10 via-card to-card border-accent/30 shadow-md hover:shadow-lg transition-shadow cursor-pointer hover:border-accent/50"
+              onClick={() => navigate("/shop")}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate("/shop"); } }}
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <ShoppingBag className="w-5 h-5 text-accent" />
+                <h2 className="text-lg font-bold text-foreground">Shop Mortar</h2>
+              </div>
+              <p className="text-sm text-muted-foreground mb-3">
+                Discover resources, courses, and services to grow your business
+              </p>
+              <div className="space-y-2 text-sm text-foreground flex-1">
+                <div className="flex items-center gap-2">
+                  <span>📦</span>
+                  <span>Business Toolkits & Templates</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span>👥</span>
+                  <span>1-on-1 Mentorship Sessions</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span>📚</span>
+                  <span>Advanced Courses</span>
+                </div>
+              </div>
+              <Button
+                onClick={(e) => { e.stopPropagation(); navigate("/shop"); }}
+                className="w-full mt-4 bg-accent hover:bg-accent/90 text-accent-foreground"
+              >
+                Browse Shop
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </Card>
+          </div>
         </div>
 
         <div className="lg:col-span-4 space-y-5">
@@ -625,74 +691,6 @@ export function WebDashboard() {
                 ))
               )}
             </div>
-          </Card>
-
-          {/* Progress - lessons, assets, groups */}
-          <Card className="p-5 bg-card border-border shadow-md">
-            <h2 className="text-lg font-bold text-foreground mb-4">Progress</h2>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Target className="w-4 h-4 text-accent" />
-                  <span className="text-sm text-foreground">Lessons Completed</span>
-                </div>
-                <span className="text-sm font-bold text-accent">{totalLessonsCompleted}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-accent" />
-                  <span className="text-sm text-foreground">Assets Created</span>
-                </div>
-                <span className="text-sm font-bold text-accent">{totalAssets}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <MessageCircle className="w-4 h-4 text-accent" />
-                  <span className="text-sm text-foreground">Groups</span>
-                </div>
-                <span className="text-sm font-bold text-accent">{userGroups.length}</span>
-              </div>
-            </div>
-          </Card>
-
-          {/* Shop - real link */}
-          <Card
-            className="p-5 bg-gradient-to-br from-accent/10 via-card to-card border-accent/30 shadow-md hover:shadow-lg transition-shadow cursor-pointer hover:border-accent/50"
-            onClick={() => navigate("/shop")}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate("/shop"); } }}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <ShoppingBag className="w-5 h-5 text-accent" />
-                <h2 className="text-lg font-bold text-foreground">Shop Mortar</h2>
-              </div>
-            </div>
-            <p className="text-sm text-muted-foreground mb-4">
-              Discover resources, courses, and services to grow your business
-            </p>
-            <div className="space-y-2 mb-4">
-              <div className="flex items-center gap-2 text-sm text-foreground">
-                <span>📦</span>
-                <span>Business Toolkits & Templates</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-foreground">
-                <span>👥</span>
-                <span>1-on-1 Mentorship Sessions</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-foreground">
-                <span>📚</span>
-                <span>Advanced Courses</span>
-              </div>
-            </div>
-            <Button
-              onClick={(e) => { e.stopPropagation(); navigate("/shop"); }}
-              className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
-            >
-              Browse Shop
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
           </Card>
         </div>
       </div>
