@@ -138,7 +138,7 @@ export function OnboardingPage() {
         // Show completion screen first, then navigate after a delay
         setCurrentStep(8);
         setTimeout(() => {
-          navigate("/dashboard");
+          navigate("/mortar-info");
         }, 3000);
       }
     } catch (error: any) {
@@ -259,10 +259,10 @@ export function OnboardingPage() {
             </p>
           </div>
           <Button
-            onClick={() => navigate("/dashboard")}
+            onClick={() => navigate("/mortar-info")}
             className="bg-accent hover:bg-accent/90 text-accent-foreground"
           >
-            Go to Dashboard
+            Continue
           </Button>
         </Card>
       </div>

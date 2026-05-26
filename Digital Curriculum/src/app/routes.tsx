@@ -21,6 +21,7 @@ import { MobileMatching } from "./pages/mobile/Matching";
 import { MobileProfile } from "./pages/mobile/Profile";
 import { MobileOnboarding } from "./pages/mobile/Onboarding";
 import { OnboardingPage } from "./pages/Onboarding";
+import { MortarInfoPage } from "./pages/MortarInfo";
 import { DiscussionsPage } from "./pages/Discussions";
 import { DiscussionDetailPage } from "./pages/DiscussionDetail";
 import { GroupDetailPage } from "./pages/GroupDetail";
@@ -96,6 +97,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, loader: () => redirect("/dashboard") },
       { path: "dashboard", Component: WebDashboard },
+      { path: "mortar-info", Component: MortarInfoPage },
       { path: "curriculum", Component: WebCurriculum },
       { path: "curriculum/:moduleId", Component: ModuleDetail },
       { path: "courses/:courseId", Component: CourseDetail },

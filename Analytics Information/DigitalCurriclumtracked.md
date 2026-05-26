@@ -40,6 +40,10 @@ Default metadata merged on the client (then normalized server-side): **`session_
 | `ONBOARDING_FINAL_SAVE_SUCCEEDED` | `onboarding_final_save_succeeded` | `Onboarding.tsx` |
 | `ONBOARDING_COMPLETION_VIEWED` | `onboarding_completion_viewed` | `Onboarding.tsx` |
 
+### How the feature works (post-onboarding Mortar Info page)
+
+After a learner completes onboarding in `Onboarding.tsx`, the app writes `users/{uid}.onboarding_status = "complete"` and shows the in-page completion card. Instead of sending the learner straight to the dashboard, the completion flow now routes them to **`/mortar-info`** (Digital Curriculum web) so they see a structured overview of **MORTAR MASTERS Online** immediately after profile creation, including clear calls-to-action to start the curriculum or continue to the dashboard. The page is a normal authenticated route (under `OnboardingGate`), and tracks a screen session label **`mortar_info`** via `useScreenAnalytics`.
+
 ### 1.4 Navigation & gates
 
 | TS key | `event_name` (wire) | Wired in app |
