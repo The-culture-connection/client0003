@@ -21,6 +21,7 @@ const panelLinks: { label: string; tab: AdminPanelTabSlug }[] = [
   { label: "Expansion mobile", tab: "expansion-mobile" },
   { label: "Mobile analytics", tab: "mobile-analytics" },
   { label: "Email Management", tab: "email-management" },
+  { label: "Email testing", tab: "email-testing" },
   { label: "Mortar Info", tab: "mortar-info" },
   { label: "Direct messages", tab: "messages" },
   { label: "Courses", tab: "courses" },

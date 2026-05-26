@@ -177,7 +177,9 @@ sequenceDiagram
 
 ---
 
-## 4. `course_inactive_7_days`
+## Admin email testing panel
+
+Staff with **Admin** or **superAdmin** can open **Admin → Email testing** (`/admin/panel/email-testing`). Enter any recipient email and optional first name, then send a sample for each configured Brevo template. Callables: `adminListTestEmailTemplates`, `adminSendTestTransactionalEmail` (skips user preference opt-outs; logs to `email_activity` with tag `admin_test`).
 
 **Params:** `first_name`, `course_name`, `resume_url`, `platform_url`, `support_email`, `progress_percent` (string, optional), `progress_message` (optional — populated when course progress **> 50%**)
 

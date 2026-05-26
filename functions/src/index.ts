@@ -79,6 +79,10 @@ export {
   moderateUserAccount,
 } from "./callables/adminMobileModeration";
 export {adminSendTestBrevoEmail} from "./callables/adminSendTestBrevoEmail";
+export {
+  adminSendTestTransactionalEmail,
+  adminListTestEmailTemplates,
+} from "./callables/adminSendTestTransactionalEmail";
 export {adminSendEventRegistrantEmail} from "./callables/adminSendEventRegistrantEmail";
 export {adminSendCustomAnnouncementEmail} from "./callables/adminSendCustomAnnouncementEmail";
 

@@ -12,6 +12,7 @@ export const ADMIN_PANEL_TAB_SLUGS = [
   "mobile-analytics",
   "push-notifications",
   "email-management",
+  "email-testing",
   "mortar-info",
   "messages",
   "courses",

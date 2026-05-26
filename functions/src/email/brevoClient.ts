@@ -23,6 +23,8 @@ export type SendEmailInput = {
   params?: JsonObject;
   tags?: string[];
   preferenceCategory?: "course_nudges" | "graduation_updates" | "events" | "admin_messages";
+  /** Admin test sends only — bypasses user email preference checks. */
+  skipPreferenceCheck?: boolean;
 };
 
 export type SendBulkEmailInput = {
@@ -203,7 +205,9 @@ export async function sendEmail(
   options?: {apiKey?: string; sender?: {name?: string; email: string}}
 ): Promise<{success: boolean; messageId?: string; statusCode: number}> {
   const to = normalizeEmail(input.to);
-  const canSend = await canSendByPreferences(input.recipientUid, to, input.preferenceCategory);
+  const canSend =
+    input.skipPreferenceCheck === true ||
+    (await canSendByPreferences(input.recipientUid, to, input.preferenceCategory));
   if (!canSend) {
     await logEmailAttempt({
       recipient: to,

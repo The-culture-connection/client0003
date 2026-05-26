@@ -47,6 +47,7 @@ import {
   Mail,
   ChevronLeft,
   Crown,
+  FlaskConical,
 } from "lucide-react";
 import { useAuth } from "../components/auth/AuthProvider";
 import {
@@ -126,6 +127,7 @@ import {
 } from "../lib/curriculum";
 import { AppAccessHubPanel } from "../components/admin/AppAccessHubPanel";
 import { AdminEmailManagementPanel } from "../components/admin/AdminEmailManagementPanel";
+import { AdminEmailTestingPanel } from "../components/admin/AdminEmailTestingPanel";
 import { sendEventRegistrantEmail } from "../lib/adminEmail";
 import { MobileModerationPanel } from "../components/admin/MobileModerationPanel";
 import { MobileAnalyticsSummariesPanel } from "../components/admin/MobileAnalyticsSummariesPanel";
@@ -1108,6 +1110,10 @@ export function AdminPage() {
           <TabsTrigger value="email-management">
             <Mail className="w-4 h-4 mr-2" />
             Email Management
+          </TabsTrigger>
+          <TabsTrigger value="email-testing">
+            <FlaskConical className="w-4 h-4 mr-2" />
+            Email testing
           </TabsTrigger>
           <TabsTrigger value="mortar-info">
             <Megaphone className="w-4 h-4 mr-2" />
@@ -2237,6 +2243,10 @@ export function AdminPage() {
 
         <TabsContent value="email-management" className="space-y-6">
           <AdminEmailManagementPanel />
+        </TabsContent>
+
+        <TabsContent value="email-testing" className="space-y-6">
+          <AdminEmailTestingPanel />
         </TabsContent>
 
         {/* Expansion Network mobile — groups_mobile + user_reports moderation */}
