@@ -40,12 +40,6 @@ Default metadata merged on the client (then normalized server-side): **`session_
 | `ONBOARDING_FINAL_SAVE_SUCCEEDED` | `onboarding_final_save_succeeded` | `Onboarding.tsx` |
 | `ONBOARDING_COMPLETION_VIEWED` | `onboarding_completion_viewed` | `Onboarding.tsx` |
 
-### How the feature works (post-onboarding Mortar Masters info page)
-
-After a learner completes onboarding (`users/{uid}.onboarding_status = "complete"`), `Onboarding.tsx` shows a completion screen and then automatically routes the user to **`/mortar-masters`** after a short delay (3s). This route is a protected learner route (under `ProtectedRoot` in `routes.tsx`), so it is only reachable when the user is authenticated and past the onboarding gate.
-
-`/mortar-masters` renders `MortarMastersInfoPage` as a lightweight “course landing overview” that mirrors the structure of the Mortar Masters Online Thinkific page (hero, value bullets, learning outcomes, next steps), with primary CTAs that open the official Thinkific course page in a new tab and secondary CTAs that route back into the Mortar app (Curriculum, Community, Data Room, Shop).
-
 ### 1.4 Navigation & gates
 
 | TS key | `event_name` (wire) | Wired in app |

@@ -51,13 +51,29 @@ class _MessagesScreenState extends State<MessagesScreen> {
           slivers: [
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 8, 24, 12),
+                padding: const EdgeInsets.fromLTRB(8, 8, 24, 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Messages',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w500),
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back, color: AppColors.mutedForeground),
+                          onPressed: () {
+                            if (context.canPop()) {
+                              context.pop();
+                            } else {
+                              context.go('/explore');
+                            }
+                          },
+                        ),
+                        Expanded(
+                          child: Text(
+                            'Messages',
+                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 8),
                     const Text(
