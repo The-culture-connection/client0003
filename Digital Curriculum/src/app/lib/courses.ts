@@ -310,6 +310,71 @@ export async function getCoursesByUserId(userId: string): Promise<Course[]> {
 }
 
 /**
+ * Course IDs the learner has started or completed (from courseProgress).
+ * Used so Digital Curriculum Alumni retain access after role change from Student.
+ */
+export async function getCourseIdsFromUserProgress(userId: string): Promise<string[]> {
+  try {
+    const progressRef = collection(db, "courseProgress");
+    const q = query(progressRef, where("userId", "==", userId));
+    const querySnapshot = await getDocs(q);
+    const ids = new Set<string>();
+    querySnapshot.docs.forEach((docSnap) => {
+      const courseId = docSnap.data().courseId;
+      if (typeof courseId === "string" && courseId.trim()) {
+        ids.add(courseId);
+      }
+    });
+    return [...ids];
+  } catch (error) {
+    console.error("Error getting course IDs from progress:", error);
+    return [];
+  }
+}
+
+function mergeCoursesUnique(courses: Course[]): Course[] {
+  const seen = new Set<string>();
+  const merged: Course[] = [];
+  for (const course of courses) {
+    if (!course.id || seen.has(course.id)) continue;
+    seen.add(course.id);
+    merged.push(course);
+  }
+  return merged;
+}
+
+/**
+ * Courses visible to a learner: role/user assignments plus any course with saved progress.
+ * Alumni who lose the Digital Curriculum Students role still see courses they completed as students.
+ */
+export async function getCoursesForLearner(userId: string, roles: string[]): Promise<Course[]> {
+  try {
+    const [byUserId, byRoleArrays, progressCourseIds] = await Promise.all([
+      getCoursesByUserId(userId),
+      Promise.all(roles.map((role) => getCoursesByRole(role))),
+      getCourseIdsFromUserProgress(userId),
+    ]);
+
+    const assigned = mergeCoursesUnique([...byUserId, ...byRoleArrays.flat()]);
+    const assignedIds = new Set(assigned.map((c) => c.id).filter(Boolean) as string[]);
+    const missingProgressIds = progressCourseIds.filter((id) => !assignedIds.has(id));
+
+    if (missingProgressIds.length === 0) {
+      return assigned;
+    }
+
+    const progressCourses = (
+      await Promise.all(missingProgressIds.map((courseId) => getCourse(courseId)))
+    ).filter((c): c is Course => Boolean(c?.id));
+
+    return mergeCoursesUnique([...assigned, ...progressCourses]);
+  } catch (error) {
+    console.error("Error getting courses for learner:", error);
+    throw error;
+  }
+}
+
+/**
  * Delete a course
  */
 export async function deleteCourse(courseId: string): Promise<void> {

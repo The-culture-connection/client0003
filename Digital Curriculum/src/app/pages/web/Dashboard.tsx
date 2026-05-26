@@ -24,8 +24,7 @@ import { useAuth } from "../../components/auth/AuthProvider";
 import { db } from "../../lib/firebase";
 import { getCurrentUserWithRoles } from "../../lib/auth";
 import {
-  getCoursesByUserId,
-  getCoursesByRole,
+  getCoursesForLearner,
   getLessonsWithQuiz,
   getLessonsWithSurvey,
   type Course,
@@ -123,12 +122,11 @@ export function WebDashboard() {
       setProfile(profileData);
 
       const roles = userWithRoles?.roles ?? [];
-      const [byId, byRole] = await Promise.all([
-        cached(`coursesByUser:${uid}`, () => getCoursesByUserId(uid), TTL_SHORT),
-        Promise.all(roles.map((r: string) => cached(`coursesByRole:${r}`, () => getCoursesByRole(r), TTL_SHORT))).then((arr) => arr.flat()),
-      ]);
-      const allCourses = [...byId, ...byRole];
-      const unique = allCourses.filter((c, i, self) => self.findIndex((x) => x.id === c.id) === i);
+      const unique = await cached(
+        `coursesForLearner:${uid}`,
+        () => getCoursesForLearner(uid, roles),
+        TTL_SHORT
+      );
       setCourses(unique);
 
       const counts: Record<string, Record<string, number>> = {};

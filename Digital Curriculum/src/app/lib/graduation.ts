@@ -2,6 +2,7 @@ import { db, functions } from "./firebase";
 import { collection, addDoc, getDocs, query, where, updateDoc, doc, getDoc, Timestamp } from "firebase/firestore";
 import { updateProfile } from "firebase/auth";
 import { httpsCallable } from "firebase/functions";
+import { invalidateCache } from "./cache";
 
 export interface AvailabilitySlot {
   date: Date;
@@ -239,6 +240,10 @@ export async function admitUserToAlumni(
       graduation_date: Timestamp.now(),
       updated_at: Timestamp.now(),
     });
+
+    invalidateCache(`coursesForLearner:${userId}`);
+    invalidateCache(`roles:${userId}`);
+    invalidateCache(`progress:${userId}`);
   } catch (error) {
     console.error("Error admitting user to alumni:", error);
     throw error;

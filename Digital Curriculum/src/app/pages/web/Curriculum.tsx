@@ -32,7 +32,7 @@ import {
   formatMeetingTimeLabel,
 } from "../../lib/formatDateTime";
 import { useAuth } from "../../components/auth/AuthProvider";
-import { getCoursesByUserId, getCoursesByRole, getLessonsWithQuiz, getLessonsWithSurvey, type Course } from "../../lib/courses";
+import { getCoursesForLearner, getLessonsWithQuiz, getLessonsWithSurvey, type Course } from "../../lib/courses";
 import { getAllCourseProgress, calculateCourseProgress, type CourseProgress } from "../../lib/courseProgress";
 import { getCourseSlideCounts } from "../../lib/curriculum";
 import { getCurrentUserWithRoles } from "../../lib/auth";
@@ -74,18 +74,10 @@ export function WebCurriculum() {
       const currentUser = await cached(`roles:${uid}`, () => getCurrentUserWithRoles(), TTL_SHORT);
       const userRoles = currentUser?.roles || [];
 
-      // Fetch courses assigned to user by ID
-      const coursesByUserId = await cached(`coursesByUser:${uid}`, () => getCoursesByUserId(uid), TTL_SHORT);
-
-      // Fetch courses assigned to user by role
-      const coursesByRolePromises = userRoles.map((role) => cached(`coursesByRole:${role}`, () => getCoursesByRole(role), TTL_SHORT));
-      const coursesByRoleArrays = await Promise.all(coursesByRolePromises);
-      const coursesByRole = coursesByRoleArrays.flat();
-
-      // Combine and deduplicate courses
-      const allCourses = [...coursesByUserId, ...coursesByRole];
-      const uniqueCourses = allCourses.filter(
-        (course, index, self) => index === self.findIndex((c) => c.id === course.id)
+      const uniqueCourses = await cached(
+        `coursesForLearner:${uid}`,
+        () => getCoursesForLearner(uid, userRoles),
+        TTL_SHORT
       );
 
       setCourses(uniqueCourses);
