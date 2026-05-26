@@ -3,7 +3,7 @@ import Flutter
 import UIKit
 
 @main
-@objc class AppDelegate: FlutterAppDelegate {
+@objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
@@ -13,12 +13,16 @@ import UIKit
     // those plugins touch the default Firebase app during registration; without a configured
     // app the process can abort before Dart runs (Debug often still appears to work).
     //
-    // Configure from `GoogleService-Info.plist` first, then let Dart call
+    // Configure from `GoogleService-Info.plist` before plugin registration in
+    // `didInitializeImplicitFlutterEngine`, then let Dart call
     // `Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform)` so the
     // Flutter side stays in sync (typically `duplicate-app`, handled in `lib/main.dart`).
     FirebaseApp.configure()
-    GeneratedPluginRegistrant.register(with: self)
     application.registerForRemoteNotifications()
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+
+  func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
+    GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
   }
 }
