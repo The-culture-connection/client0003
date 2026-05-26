@@ -1,6 +1,7 @@
-import { db } from "./firebase";
+import { db, functions } from "./firebase";
 import { collection, addDoc, getDocs, query, where, updateDoc, doc, getDoc, Timestamp } from "firebase/firestore";
 import { updateProfile } from "firebase/auth";
+import { httpsCallable } from "firebase/functions";
 
 export interface AvailabilitySlot {
   date: Date;
@@ -252,20 +253,13 @@ export async function setUserAdminRole(
   userId: string,
   role: "Admin" | "superAdmin"
 ): Promise<void> {
-  const userRef = doc(db, "users", userId);
-  const userSnap = await getDoc(userRef);
-  if (!userSnap.exists()) {
-    throw new Error("User not found");
-  }
-  const userData = userSnap.data();
-  const currentRoles: string[] = Array.isArray(userData.roles) ? userData.roles : [];
-  if (currentRoles.includes(role)) {
-    return; // already has role
-  }
-  const updatedRoles = [...currentRoles, role];
-  await updateDoc(userRef, {
-    roles: updatedRoles,
-    updated_at: Timestamp.now(),
+  // IMPORTANT: role assignment must be done via callable so custom claims are set,
+  // roles are replaced to Admin-only, and legacy `role` field is removed.
+  const callable = httpsCallable(functions, "setAdminOnly");
+  await callable({
+    // eslint-disable-next-line camelcase
+    target_uid: userId,
+    level: role,
   });
 }
 

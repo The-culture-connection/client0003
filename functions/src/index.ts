@@ -30,6 +30,7 @@ export {
 } from "./pushNotifications";
 
 export { setUserRole } from "./callables/setUserRole";
+export { setAdminOnly } from "./callables/setAdminOnly";
 export { logAnalyticsEvent } from "./callables/logAnalyticsEvent";
 export { ingestWebAnalytics } from "./callables/ingestWebAnalytics";
 export { getMyWeeklyActivity } from "./callables/getMyWeeklyActivity";
