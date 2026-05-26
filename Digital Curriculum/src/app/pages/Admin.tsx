@@ -135,6 +135,11 @@ import { AnalyticsDashboardPanel } from "../components/admin/AnalyticsDashboardP
 import { AdminGoalReportsPanel } from "../components/admin/AdminGoalReportsPanel";
 import { AdminBadgesPanel } from "../components/admin/AdminBadgesPanel";
 import { registerDigitalCurriculumAlumniEligible } from "../lib/expansionEligible";
+import {
+  formatAvailabilityWindowLabel,
+  formatMeetingOptionLabel,
+  formatMeetingTimeLabel,
+} from "../lib/formatDateTime";
 import { trackEvent } from "../analytics/trackEvent";
 import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalyticsContract";
 import { adminPanelPath, isAdminPanelTab, type AdminPanelTabSlug } from "../lib/adminHubNavigation";
@@ -1908,7 +1913,12 @@ export function AdminPage() {
                                 application.availabilitySlots.map((slot, slotIndex) => (
                                   <div key={slotIndex} className="pl-4 border-l-2 border-accent/20">
                                     <p>
-                                      <strong>Slot {slotIndex + 1}:</strong> {slot.date.toLocaleDateString()} from {slot.startTime} to {slot.endTime}
+                                      <strong>Slot {slotIndex + 1}:</strong>{" "}
+                                      {formatAvailabilityWindowLabel(
+                                        slot.date,
+                                        slot.startTime,
+                                        slot.endTime
+                                      )}
                                     </p>
                                   </div>
                                 ))
@@ -1920,7 +1930,9 @@ export function AdminPage() {
                           {application.selectedTime && (
                             <p className="mt-2">
                               <strong className="text-foreground">Selected Time:</strong>{" "}
-                              <span className="text-green-600 font-semibold">{application.selectedTime}</span>
+                              <span className="text-green-600 font-semibold">
+                                {formatMeetingTimeLabel(application.selectedTime)}
+                              </span>
                             </p>
                           )}
                           <p className="mt-2">
@@ -1972,9 +1984,9 @@ export function AdminPage() {
                                   for (let minutes = startMinutes; minutes < endMinutes; minutes += 30) {
                                     const hours = Math.floor(minutes / 60);
                                     const mins = minutes % 60;
-                                    const timeStr = `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
-                                    const dateStr = slot.date.toLocaleDateString();
-                                    options.push(`${dateStr} at ${timeStr}`);
+                                    options.push(
+                                      formatMeetingOptionLabel(slot.date, hours, mins)
+                                    );
                                   }
                                   
                                   return options.map((option, optIndex) => (

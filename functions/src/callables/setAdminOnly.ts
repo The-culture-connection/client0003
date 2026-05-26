@@ -16,6 +16,7 @@ import { getAuth } from "firebase-admin/auth";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { z } from "zod";
 import * as logger from "firebase-functions/logger";
+import { assertCallerIsNetworkAdmin } from "../helpers/assertNetworkAdmin";
 
 if (getApps().length === 0) {
   initializeApp();
@@ -35,13 +36,13 @@ export const setAdminOnly = onCall(async (request) => {
     throw new HttpsError("unauthenticated", "User must be authenticated");
   }
 
-  const callerRecord = await auth.getUser(callerUid);
-  const callerRoles = (callerRecord.customClaims?.roles as string[]) || [];
-
-  // Only existing admins can grant admin roles.
-  if (!callerRoles.includes("Admin") && !callerRoles.includes("superAdmin")) {
-    throw new HttpsError("permission-denied", "Only Admin can set admin roles");
-  }
+  // Use the shared admin assertion so we honor multiple role sources:
+  // - request.auth.token.roles (freshly minted tokens)
+  // - /users/{uid}.roles + legacy /users/{uid}.role
+  // - eligibleUsers/{email}.role fallback
+  await assertCallerIsNetworkAdmin(callerUid, {
+    authToken: (request.auth?.token as Record<string, unknown> | undefined) ?? undefined,
+  });
 
   const parsed = setAdminOnlySchema.safeParse(request.data);
   if (!parsed.success) {

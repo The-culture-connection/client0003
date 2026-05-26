@@ -27,6 +27,10 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router";
 import { GraduationApplicationDialog } from "../../components/graduation/GraduationApplicationDialog";
 import { getUserGraduationApplication, type GraduationApplication } from "../../lib/graduation";
+import {
+  formatAvailabilityWindowLabel,
+  formatMeetingTimeLabel,
+} from "../../lib/formatDateTime";
 import { useAuth } from "../../components/auth/AuthProvider";
 import { getCoursesByUserId, getCoursesByRole, getLessonsWithQuiz, getLessonsWithSurvey, type Course } from "../../lib/courses";
 import { getAllCourseProgress, calculateCourseProgress, type CourseProgress } from "../../lib/courseProgress";
@@ -551,7 +555,9 @@ export function WebCurriculum() {
                   {userApplication.selectedTime ? (
                     <div className="mt-2 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
                       <p className="font-semibold text-foreground mb-1">Scheduled Time:</p>
-                      <p className="text-green-600 font-medium">{userApplication.selectedTime}</p>
+                      <p className="text-green-600 font-medium">
+                        {formatMeetingTimeLabel(userApplication.selectedTime)}
+                      </p>
                     </div>
                   ) : (
                     <p className="text-xs mt-1 italic">Time selection pending...</p>
@@ -595,7 +601,11 @@ export function WebCurriculum() {
                       {userApplication.availabilitySlots && userApplication.availabilitySlots.length > 0 ? (
                         userApplication.availabilitySlots.map((slot, index) => (
                           <p key={index} className="text-xs">
-                            {slot.date.toLocaleDateString()} from {slot.startTime} to {slot.endTime}
+                            {formatAvailabilityWindowLabel(
+                              slot.date,
+                              slot.startTime,
+                              slot.endTime
+                            )}
                           </p>
                         ))
                       ) : (
@@ -604,7 +614,8 @@ export function WebCurriculum() {
                     </div>
                     {userApplication.selectedTime && (
                       <p className="mt-2 text-xs">
-                        <strong className="text-foreground">Selected Time:</strong> {userApplication.selectedTime}
+                        <strong className="text-foreground">Selected Time:</strong>{" "}
+                        {formatMeetingTimeLabel(userApplication.selectedTime)}
                       </p>
                     )}
                     <p className="mt-2 text-xs">

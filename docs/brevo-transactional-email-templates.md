@@ -126,7 +126,9 @@ sequenceDiagram
 
 ## 1. `graduation_meeting_time_selected`
 
-**Params:** `first_name`, `meeting_time`, `notes` (optional), `platform_url`, `support_email`
+**Params:** `first_name`, `meeting_time` (12-hour AM/PM, e.g. `3/16/2026 at 9:00 AM`), `notes` (optional), `platform_url`, `support_email`
+
+`meeting_time` is normalized server-side in `buildEmailParams.graduationMeetingTimeSelectedParams` from admin-selected values (legacy 24-hour strings are converted on send).
 
 **Subject:**  
 `Your Mortar graduation meeting time is confirmed`
@@ -177,7 +179,9 @@ sequenceDiagram
 
 ## 4. `course_inactive_7_days`
 
-**Params:** `first_name`, `course_name`, `resume_url`, `platform_url`, `support_email`
+**Params:** `first_name`, `course_name`, `resume_url`, `platform_url`, `support_email`, `progress_percent` (string, optional), `progress_message` (optional — populated when course progress **> 50%**)
+
+When `progress_message` is non-empty, the template shows an extra highlighted paragraph (learner is more than halfway through the course). Re-copy HTML from [`course_inactive_7_days.html`](brevo-templates/html/course_inactive_7_days.html) after updates; Brevo uses `{% if params.progress_message %}` for the conditional block.
 
 **Subject:**  
 `We miss you in {{ params.course_name }} — pick up where you left off`

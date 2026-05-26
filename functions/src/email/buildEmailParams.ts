@@ -7,6 +7,7 @@ import {
   DEFAULT_PLATFORM_URL,
   DEFAULT_SUPPORT_EMAIL,
 } from "./emailConfig";
+import {formatMeetingTimeLabel} from "../helpers/formatDateTime";
 
 type JsonObject = Record<string, unknown>;
 
@@ -43,7 +44,7 @@ export function graduationMeetingTimeSelectedParams(input: {
 }): JsonObject {
   return {
     first_name: input.first_name ?? firstNameFrom(input.userName, input.userEmail),
-    meeting_time: input.meeting_time.trim(),
+    meeting_time: formatMeetingTimeLabel(input.meeting_time),
     notes: (input.notes?.trim() || "See you at your graduation meeting."),
     ...sharedFooterParams(),
   };
@@ -82,16 +83,31 @@ export function courseInactiveParams(input: {
   course_name?: string;
   course_id?: string;
   resume_url?: string;
+  /** 0–100; when > 50, `progress_message` is populated for the 7-day nudge template. */
+  progress_percent?: number;
 }): JsonObject {
   const courseName = input.course_name?.trim() || DEFAULT_COURSE_DISPLAY_NAME;
   const base = sharedFooterParams().platform_url as string;
   const resume =
     input.resume_url?.trim() ||
     `${base.replace(/\/$/, "")}/curriculum`;
+
+  const pct =
+    typeof input.progress_percent === "number" && !Number.isNaN(input.progress_percent)
+      ? Math.min(100, Math.max(0, input.progress_percent))
+      : undefined;
+
+  const progressMessage =
+    pct != null && pct > 50
+      ? `You're already ${Math.round(pct)}% through ${courseName} — more than halfway there. Your progress is saved; a short session today keeps the momentum going.`
+      : "";
+
   return {
     first_name: input.first_name ?? firstNameFrom(input.userName, input.userEmail),
     course_name: courseName,
     resume_url: resume,
+    progress_percent: pct != null ? String(Math.round(pct)) : "",
+    progress_message: progressMessage,
     ...sharedFooterParams(),
   };
 }
