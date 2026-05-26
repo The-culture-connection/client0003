@@ -11,6 +11,7 @@ import { WebDataRoom } from "./pages/web/DataRoom";
 import { WebEvents } from "./pages/web/Events";
 import { WebCommunityHub } from "./pages/web/CommunityHub";
 import { WebShop } from "./pages/web/Shop";
+import { MortarMastersInfoPage } from "./pages/web/MortarMastersInfo";
 import { ModuleDetail } from "./pages/web/ModuleDetail";
 import { CourseDetail } from "./pages/web/CourseDetail";
 import { MobileFeed } from "./pages/mobile/Feed";
@@ -104,6 +105,7 @@ export const router = createBrowserRouter([
       { path: "certificates", loader: () => redirect("/curriculum") },
       { path: "community", Component: WebCommunityHub },
       { path: "shop", Component: WebShop },
+      { path: "mortar-masters", Component: MortarMastersInfoPage },
       { path: "discussions", Component: DiscussionsPage },
       { path: "discussions/:id", Component: DiscussionDetailPage },
       { path: "groups/:id", Component: GroupDetailPage },
