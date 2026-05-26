@@ -15,18 +15,6 @@ const db = getFirestore();
 const MS_DAY = 24 * 60 * 60 * 1000;
 const BATCH_LIMIT = 120;
 
-function progressPercentFromDoc(data: Record<string, unknown>): number {
-  if (typeof data.progress === "number" && !Number.isNaN(data.progress)) {
-    return Math.min(100, Math.max(0, data.progress));
-  }
-  const completed = data.lessonsCompleted as Record<string, boolean> | undefined;
-  if (!completed || typeof completed !== "object") return 0;
-  const keys = Object.keys(completed);
-  if (keys.length === 0) return 0;
-  const done = keys.filter((k) => completed[k] === true).length;
-  return Math.min(100, Math.max(0, (done / keys.length) * 100));
-}
-
 async function loadUserContact(uid: string): Promise<{
   email: string;
   userName?: string;
@@ -113,14 +101,11 @@ export const scheduledCourseInactiveEmailNudges = onSchedule(
         (typeof data.courseDisplayName === "string" && data.courseDisplayName) ||
         DEFAULT_COURSE_DISPLAY_NAME;
 
-      const progressPercent = progressPercentFromDoc(data);
       const params = courseInactiveParams({
         userEmail: contact.email,
         userName: contact.userName,
         course_name: courseName,
         course_id: typeof data.courseId === "string" ? data.courseId : undefined,
-        progress_percent:
-          templateKey === "course_inactive_7_days" ? progressPercent : undefined,
       });
 
       // eslint-disable-next-line no-await-in-loop

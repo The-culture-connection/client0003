@@ -177,13 +177,9 @@ sequenceDiagram
 
 ---
 
-## Admin email testing panel
+## 4. `course_inactive_7_days`
 
-Staff with **Admin** or **superAdmin** can open **Admin → Email testing** (`/admin/panel/email-testing`). Enter any recipient email and optional first name, then send a sample for each configured Brevo template. Callables: `adminListTestEmailTemplates`, `adminSendTestTransactionalEmail` (skips user preference opt-outs; logs to `email_activity` with tag `admin_test`).
-
-**Params:** `first_name`, `course_name`, `resume_url`, `platform_url`, `support_email`, `progress_percent` (string, optional), `progress_message` (optional — populated when course progress **> 50%**)
-
-When `progress_message` is non-empty, the template shows an extra highlighted paragraph (learner is more than halfway through the course). Re-copy HTML from [`course_inactive_7_days.html`](brevo-templates/html/course_inactive_7_days.html) after updates; Brevo uses `{% if params.progress_message %}` for the conditional block.
+**Params:** `first_name`, `course_name`, `resume_url`, `platform_url`, `support_email`
 
 **Subject:**  
 `We miss you in {{ params.course_name }} — pick up where you left off`
@@ -192,6 +188,12 @@ When `progress_message` is non-empty, the template shows an extra highlighted pa
 `It's been about a week since your last lesson. Your progress is saved.`
 
 **HTML:** [`course_inactive_7_days.html`](brevo-templates/html/course_inactive_7_days.html)
+
+---
+
+## Admin email testing panel
+
+Staff with **Admin** or **superAdmin** can open **Admin → Email testing** (`/admin/panel/email-testing`). Enter any recipient email and optional first name, then send a sample for each configured Brevo template. Callables: `adminListTestEmailTemplates`, `adminSendTestTransactionalEmail` (skips user preference opt-outs; logs to `email_activity` with tag `admin_test`).
 
 ---
 

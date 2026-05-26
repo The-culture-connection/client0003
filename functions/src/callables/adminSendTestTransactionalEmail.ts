@@ -70,7 +70,6 @@ function buildSampleParams(
       userEmail,
       userName,
       course_name: DEFAULT_COURSE_DISPLAY_NAME,
-      progress_percent: 67,
     });
   case "course_inactive_14_days":
     return courseInactiveParams({

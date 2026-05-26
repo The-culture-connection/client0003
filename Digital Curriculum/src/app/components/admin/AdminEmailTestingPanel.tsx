@@ -13,7 +13,7 @@ import {
 } from "../../lib/adminEmailTesting";
 
 const TEMPLATE_LABELS: Record<string, string> = {
-  course_inactive_7_days: "Course inactive — 7 days (with >50% progress sample)",
+  course_inactive_7_days: "Course inactive — 7 days",
   course_inactive_14_days: "Course inactive — 14 days",
   graduation_meeting_time_selected: "Graduation — meeting time confirmed",
   graduation_admitted_to_alumni: "Graduation — admitted to alumni",
