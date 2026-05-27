@@ -32,6 +32,7 @@ export const SKILL_CATEGORIES = {
       "Cash flow management and forecasting",
       "Pricing strategy and margin analysis",
       "Budget development and cost control",
+      "Personal finance",
       "Understanding capital sources (loans, grants, investors)",
       "Investor communication and financial reporting",
     ],
@@ -52,6 +53,7 @@ export const SKILL_CATEGORIES = {
     skills: [
       "Sales conversation and closing techniques",
       "Lead generation strategy",
+      "Pitch Your Business",
       "Customer relationship management (CRM) systems",
       "Strategic partnerships and distribution channels",
       "Negotiation and deal structuring",

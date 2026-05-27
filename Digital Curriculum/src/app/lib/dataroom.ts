@@ -18,6 +18,7 @@ import {
   type Unsubscribe,
   updateDoc,
   setDoc,
+  arrayUnion,
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -337,6 +338,26 @@ export async function createSkillCertificatesForCompletedCourse(
   if (createdIds.length === 0) return { certificatesCreated: false, skills: [] };
 
   const skillsList = Array.from(allSkills);
+
+  // Course-earned skills should also be reflected on the user's profile.
+  // Use setDoc merge so we don't fail if the user doc is missing in an environment.
+  try {
+    await updateDoc(doc(db, "users", userId), {
+      confident_skills: arrayUnion(...skillsList),
+    });
+  } catch (e) {
+    try {
+      await setDoc(
+        doc(db, "users", userId),
+        { confident_skills: arrayUnion(...skillsList) },
+        { merge: true }
+      );
+    } catch {
+      // Non-fatal: certificates are still created; profile enrichment can be retried later.
+      console.warn("Could not update user confident_skills:", e);
+    }
+  }
+
   await addNotification(userId, {
     type: "certificate_available",
     title: "New certificate(s) available",
