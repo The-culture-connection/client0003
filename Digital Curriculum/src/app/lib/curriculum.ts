@@ -605,11 +605,14 @@ export async function setLessonContentSlides(
   await batch.commit();
   for (let i = 0; i < slides.length; i++) {
     const s = slides[i];
-    await addDoc(contentRef, {
-      order: i,
-      type: s.type,
-      ...(s.type === "image"
-        ? { image_url: s.image_url, storage_path: s.storage_path, alt_text: s.alt_text }
+    const typeFields =
+      s.type === "image"
+        ? {
+            image_url: s.image_url,
+            storage_path: s.storage_path,
+            alt_text: s.alt_text,
+            popups: s.popups,
+          }
         : s.type === "html"
           ? { html_content: s.html_content ?? "" }
           : {
@@ -619,7 +622,14 @@ export async function setLessonContentSlides(
               storage_path: s.storage_path,
               caption: s.caption,
               background_color: s.background_color ?? "#000000",
-            }),
+            };
+    const payload = Object.fromEntries(
+      Object.entries({ order: i, type: s.type, ...typeFields }).filter(
+        ([, value]) => value !== undefined
+      )
+    );
+    await addDoc(contentRef, {
+      ...payload,
       created_at: serverTimestamp(),
       updated_at: serverTimestamp(),
     });
