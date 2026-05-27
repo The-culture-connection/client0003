@@ -451,6 +451,14 @@ export async function setCourseLessonQuiz(
   });
 }
 
+export async function deleteCourseLessonQuiz(
+  courseId: string,
+  lessonId: string
+): Promise<void> {
+  const quizRef = doc(db, getCourseLessonQuizPath(courseId, lessonId));
+  await deleteDoc(quizRef);
+}
+
 /**
  * For progress evaluation only: which lessons have an enabled quiz (counted as +1 "slide").
  */
@@ -546,6 +554,14 @@ export async function setCourseLessonSurveyCheckpoints(
     checkpoints: cleaned,
     updated_at: serverTimestamp(),
   });
+}
+
+export async function deleteCourseLessonSurvey(
+  courseId: string,
+  lessonId: string
+): Promise<void> {
+  const ref = doc(db, getCourseLessonSurveyPath(courseId, lessonId));
+  await deleteDoc(ref);
 }
 
 /** @deprecated Prefer getCourseLessonSurveyCheckpoints. Returns legacy doc or synthetic checkpoint. */

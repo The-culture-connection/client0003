@@ -670,6 +670,37 @@ export async function deleteLessonContent(
   await batch.commit();
 }
 
+/** Delete a lesson and its content (media, images, or slide deck). */
+export async function deleteLesson(
+  curriculumId: string,
+  moduleId: string,
+  chapterId: string,
+  lessonId: string
+): Promise<void> {
+  const lesson = await getLesson(curriculumId, moduleId, chapterId, lessonId);
+  if (!lesson) return;
+
+  if (lesson.content_type === "media") {
+    await deleteLessonContent(curriculumId, moduleId, chapterId, lessonId);
+  } else if (lesson.content_type === "images") {
+    await deleteLessonImages(curriculumId, moduleId, chapterId, lessonId);
+  } else {
+    const slides = await getSlides(curriculumId, moduleId, chapterId, lessonId);
+    for (const slide of slides) {
+      if (slide.id) {
+        await deleteSlide(curriculumId, moduleId, chapterId, lessonId, slide.id);
+      }
+    }
+  }
+
+  const lessonRef = doc(
+    db,
+    `curricula/${curriculumId}/modules/${moduleId}/chapters/${chapterId}/lessons`,
+    lessonId
+  );
+  await deleteDoc(lessonRef);
+}
+
 /**
  * Get the number of slides (or equivalent items) in a lesson for progress calculation.
  */

@@ -34,6 +34,7 @@ import {
   ChevronUp,
   ChevronDown,
   ClipboardList,
+  GitMerge,
 } from "lucide-react";
 import { useAuth } from "../../components/auth/AuthProvider";
 import { trackEvent } from "../../analytics/trackEvent";
@@ -94,6 +95,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../componen
 import { SKILL_CATEGORIES, ALL_SKILLS, type SkillCategory } from "../../lib/onboardingData";
 import { Checkbox } from "../../components/ui/checkbox";
 import { LessonSurveyCheckpointEditor } from "../../components/admin/LessonSurveyCheckpointEditor";
+import { mergeDraftLessons, persistMergedMediaLesson } from "../../lib/mergeLessons";
 import {
   type DraftSlide,
   type DraftLessonSurvey,
@@ -191,6 +193,7 @@ export function CourseBuilder() {
 
   const [activeTab, setActiveTab] = useState("metadata");
   const [isSaving, setIsSaving] = useState(false);
+  const [isMergingLessons, setIsMergingLessons] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isLoadingEdit, setIsLoadingEdit] = useState(!!editingCourseId);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -507,6 +510,67 @@ export function CourseBuilder() {
     updated[moduleIndex].lessons = newLessons;
     updated[moduleIndex].lessonCount = count;
     setModules(updated);
+  };
+
+  const handleMergeLessonWithNext = async (
+    moduleIndex: number,
+    lessonIndex: number
+  ) => {
+    const mod = modules[moduleIndex];
+    const first = mod?.lessons[lessonIndex];
+    const second = mod?.lessons[lessonIndex + 1];
+    if (!first || !second) return;
+
+    const firstTitle = first.title?.trim() || `Lesson ${lessonIndex + 1}`;
+    const secondTitle = second.title?.trim() || `Lesson ${lessonIndex + 2}`;
+    const confirmed = window.confirm(
+      `Merge "${secondTitle}" into "${firstTitle}"?\n\nThe first lesson keeps its title. All slides from lesson ${lessonIndex + 1} are kept first, then all slides from lesson ${lessonIndex + 2}. Surveys placed after a slide in the second lesson move to the matching position in the combined lesson.`
+    );
+    if (!confirmed) return;
+
+    setIsMergingLessons(true);
+    try {
+      const merged = mergeDraftLessons(first, second);
+
+      if (
+        curriculumId &&
+        mod.id &&
+        first.lessonId &&
+        second.lessonId &&
+        createdCourseId
+      ) {
+        const chapters = await getChapters(curriculumId, mod.id);
+        const chapterId = chapters[0]?.id;
+        if (!chapterId) {
+          throw new Error("No chapter found for this module.");
+        }
+        await persistMergedMediaLesson({
+          curriculumId,
+          moduleId: mod.id,
+          chapterId,
+          courseId: createdCourseId,
+          keepLessonId: first.lessonId,
+          removeLessonId: second.lessonId,
+          merged,
+          draftSurveysToCheckpoints,
+        });
+      }
+
+      const updated = [...modules];
+      updated[moduleIndex].lessons[lessonIndex] = merged;
+      updated[moduleIndex].lessons.splice(lessonIndex + 1, 1);
+      updated[moduleIndex].lessonCount = updated[moduleIndex].lessons.length;
+      setModules(updated);
+    } catch (err) {
+      console.error("Merge lessons failed:", err);
+      alert(
+        err instanceof Error
+          ? err.message
+          : "Failed to merge lessons. Save the course first if this is a new course."
+      );
+    } finally {
+      setIsMergingLessons(false);
+    }
   };
 
   const handleImageSelect = (
@@ -1663,7 +1727,8 @@ export function CourseBuilder() {
                       const slideCountForSurveys = lesson.slides?.length ?? 0;
 
                       return (
-                      <Card key={lessonIndex} className="p-4 border-border">
+                      <div key={lessonIndex} className="space-y-0">
+                      <Card className="p-4 border-border">
                         <div className="space-y-3">
                           <div className="space-y-2">
                             <Label>Lesson {lessonIndex + 1} Title *</Label>
@@ -2133,6 +2198,28 @@ export function CourseBuilder() {
                           )}
                         </div>
                       </Card>
+                      {lessonIndex < module.lessons.length - 1 && (
+                        <div className="flex justify-center py-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="text-xs"
+                            disabled={isMergingLessons || isSaving}
+                            onClick={() =>
+                              handleMergeLessonWithNext(moduleIndex, lessonIndex)
+                            }
+                          >
+                            {isMergingLessons ? (
+                              <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                            ) : (
+                              <GitMerge className="w-3 h-3 mr-1" />
+                            )}
+                            Merge with next lesson
+                          </Button>
+                        </div>
+                      )}
+                      </div>
                       );
                     })}
                   </div>
