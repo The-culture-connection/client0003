@@ -31,6 +31,8 @@ import {
   GripVertical,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
+  ChevronDown,
   ClipboardList,
 } from "lucide-react";
 import { useAuth } from "../../components/auth/AuthProvider";
@@ -1685,7 +1687,7 @@ export function CourseBuilder() {
                               Slides
                             </Label>
                             <p className="text-xs text-muted-foreground mb-2">
-                              Add slides in order. Upload images or GIFs, add videos from your computer or a public link (YouTube, Canva, etc.), and optionally add emoji popups on image slides.
+                              Add slides in order. Use the arrows on each row to reorder. Upload images or GIFs, add videos from your computer or a public link (YouTube, Canva, etc.), and optionally add emoji popups on image slides.
                             </p>
                             <div className="flex flex-wrap items-center gap-2">
                               <Input
@@ -1718,6 +1720,10 @@ export function CourseBuilder() {
                                     key={slideIdx}
                                     className="flex items-center gap-2 text-sm p-2 rounded border border-border bg-muted/30"
                                   >
+                                    <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" aria-hidden />
+                                    <span className="text-xs text-muted-foreground w-5 flex-shrink-0 tabular-nums">
+                                      {slideIdx + 1}
+                                    </span>
                                     <Badge variant="outline" className="text-xs">
                                       {slide.type === "image"
                                         ? slide.file?.type === "image/gif" || slide.file?.name?.endsWith(".gif")
@@ -1764,11 +1770,40 @@ export function CourseBuilder() {
                                         Popups
                                       </Button>
                                     )}
+                                    <div className="flex items-center flex-shrink-0">
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-7 w-7 p-0"
+                                        title="Move slide up"
+                                        onClick={() =>
+                                          handleMoveSlide(moduleIndex, lessonIndex, slideIdx, -1)
+                                        }
+                                        disabled={slideIdx === 0}
+                                      >
+                                        <ChevronUp className="w-3 h-3" />
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-7 w-7 p-0"
+                                        title="Move slide down"
+                                        onClick={() =>
+                                          handleMoveSlide(moduleIndex, lessonIndex, slideIdx, 1)
+                                        }
+                                        disabled={slideIdx === lesson.slides!.length - 1}
+                                      >
+                                        <ChevronDown className="w-3 h-3" />
+                                      </Button>
+                                    </div>
                                     <Button
                                       type="button"
                                       variant="ghost"
                                       size="sm"
                                       className="h-7 w-7 p-0"
+                                      title="Remove slide"
                                       onClick={() =>
                                         handleRemoveSlide(moduleIndex, lessonIndex, slideIdx)
                                       }
@@ -2412,7 +2447,7 @@ export function CourseBuilder() {
                           </div>
                           {(lesson.slides?.length ?? 0) > 0 ? (
                             <p className="text-xs text-muted-foreground mb-1">
-                              Drag order: use arrows to reorder slides before preview.
+                              Use ↑ ↓ to reorder slides (same order as the Modules &amp; Lessons tab).
                             </p>
                           ) : null}
                           <ul className="space-y-1">
@@ -2421,7 +2456,10 @@ export function CourseBuilder() {
                                 key={slideIdx}
                                 className="flex items-center gap-2 text-sm p-2 rounded bg-muted/50 border border-border"
                               >
-                                <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                                <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" aria-hidden />
+                                <span className="text-xs text-muted-foreground w-5 flex-shrink-0 tabular-nums">
+                                  {slideIdx + 1}
+                                </span>
                                 <Badge variant="outline" className="text-xs flex-shrink-0">
                                   {slide.type === "image" ? "Image" : "Video"}
                                 </Badge>
@@ -2430,30 +2468,32 @@ export function CourseBuilder() {
                                     ? slide.file?.name ?? "Image"
                                     : slide.videoId ?? slide.videoUrl ?? "Video"}
                                 </span>
-                                <div className="flex items-center gap-0">
+                                <div className="flex items-center flex-shrink-0">
                                   <Button
                                     type="button"
                                     variant="ghost"
                                     size="sm"
                                     className="h-7 w-7 p-0"
+                                    title="Move slide up"
                                     onClick={() =>
                                       handleMoveSlide(index, lessonIndex, slideIdx, -1)
                                     }
                                     disabled={slideIdx === 0}
                                   >
-                                    <ChevronLeft className="w-3 h-3" />
+                                    <ChevronUp className="w-3 h-3" />
                                   </Button>
                                   <Button
                                     type="button"
                                     variant="ghost"
                                     size="sm"
                                     className="h-7 w-7 p-0"
+                                    title="Move slide down"
                                     onClick={() =>
                                       handleMoveSlide(index, lessonIndex, slideIdx, 1)
                                     }
                                     disabled={slideIdx === (lesson.slides?.length ?? 0) - 1}
                                   >
-                                    <ChevronRight className="w-3 h-3" />
+                                    <ChevronDown className="w-3 h-3" />
                                   </Button>
                                 </div>
                               </li>

@@ -92,6 +92,7 @@ In **Course Builder** (`CourseBuilder.tsx`), each lesson’s **Slides** section 
 - **Videos:** click **Add video** to open a dialog with two tabs — **Upload file** (MP4/WebM/MOV → `uploadVideoForLesson` → `video_provider: "hosted"`) or **Paste link** (YouTube embeds via `classifyVideoUrl`; other public URLs such as Canva CDN links store as `video_provider: "external"` and play with a native `<video>` element in `MediaVideoBlock.tsx`).
 - **Emoji popups:** on any image/GIF slide row, click **Popups** to open `SlidePopupsEditor` — click the image to place hotspots, pick an emoji, set message text, and adjust X/Y %. Popups persist on the `LessonContentSlide` as `popups: [{ id, emoji, x_percent, y_percent, message }]`.
 - **Learner view:** `LessonPlayer.tsx` renders image slides with `SlideImageWithPopups` (tap emoji → popover message) and video slides with `MediaVideoBlock` (YouTube iframe or hosted/external `<video>`).
+- **Slide order:** In **Modules &amp; Lessons** (and **Preview**), each slide row shows a position number plus **↑** / **↓** controls to reorder before save/publish; order is persisted via `setLessonContentSlides` `order` field.
 
 ### How the feature works (lesson survey — optional OpenAI analysis)
 
