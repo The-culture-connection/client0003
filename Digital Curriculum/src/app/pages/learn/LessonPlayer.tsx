@@ -5,9 +5,28 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router";
-import { getSlides, getBlocks, getLesson, getLessonImages, getLessonContent, getCourseSlideCounts, type Slide, type Block, type Lesson, type LessonImage, type LessonContentSlide, type LessonQuiz, type LessonSurvey } from "../../lib/curriculum";
-import { getCourse, getCourseLessonQuiz, getCourseLessonSurvey, getLessonsWithQuiz, getLessonsWithSurvey } from "../../lib/courses";
-import { getCourseProgress, updateLessonSlideProgress, setLessonCompleted, recordLessonQuizAttempt, recordLessonSurveySubmission, saveLessonSurveyAnswersDraft, markCourseCompleted, calculateCourseProgress, updateModulesCompletionMap } from "../../lib/courseProgress";
+import { getSlides, getBlocks, getLesson, getLessonImages, getLessonContent, getCourseSlideCounts, type Slide, type Block, type Lesson, type LessonImage, type LessonContentSlide, type LessonQuiz, type LessonSurveyCheckpoint } from "../../lib/curriculum";
+import {
+  getCourse,
+  getCourseLessonQuiz,
+  getCourseLessonSurveyCheckpoints,
+  getLessonsWithQuiz,
+  getLessonSurveyCounts,
+  isLessonSurveyCheckpointSubmitted,
+  lessonSurveyProgressKey,
+} from "../../lib/courses";
+import {
+  getCourseProgress,
+  updateLessonSlideProgress,
+  setLessonCompleted,
+  recordLessonQuizAttempt,
+  recordLessonSurveyCheckpointSubmission,
+  saveLessonSurveyAnswersDraft,
+  markCourseCompleted,
+  calculateCourseProgress,
+  updateModulesCompletionMap,
+  areAllLessonSurveysSubmitted,
+} from "../../lib/courseProgress";
 import { createSkillCertificatesForCompletedCourse, uploadSurveyResponsePdf } from "../../lib/dataroom";
 import { DEFAULT_DATAROOM_FOLDER_ID } from "../../lib/dataroomFolders";
 import { useAuth } from "../../components/auth/AuthProvider";
@@ -48,9 +67,10 @@ export function LessonPlayer() {
   const [quizScore, setQuizScore] = useState<{ correct: number; total: number } | null>(null);
   const [isSubmittingQuiz, setIsSubmittingQuiz] = useState(false);
   const [showQuizView, setShowQuizView] = useState(false);
-  const [survey, setSurvey] = useState<LessonSurvey | null>(null);
+  const [surveys, setSurveys] = useState<LessonSurveyCheckpoint[]>([]);
+  const [activeSurveyId, setActiveSurveyId] = useState<string | null>(null);
   const [surveyAnswers, setSurveyAnswers] = useState<string[]>([]);
-  const [surveySubmitted, setSurveySubmitted] = useState(false);
+  const [activeSurveySubmitted, setActiveSurveySubmitted] = useState(false);
   /** When AI survey analysis is enabled: answer entry → optional choice → optional feedback edits before finalize */
   type SurveyInteractiveStep = "answer" | "choose" | "feedback";
   const [surveyInteractiveStep, setSurveyInteractiveStep] = useState<SurveyInteractiveStep>("answer");
@@ -63,17 +83,29 @@ export function LessonPlayer() {
 
   useEffect(() => {
     lastSurveyEngagementSig.current = "";
-  }, [lessonId, showSurveyView]);
+  }, [lessonId, showSurveyView, activeSurveyId]);
 
   const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
   const courseId = params.get("courseId") || undefined;
 
+  const activeSurvey =
+    surveys.find((s) => s.id === activeSurveyId) ?? null;
+
+  const isSurveySubmitted = (surveyId: string) =>
+    lessonId
+      ? isLessonSurveyCheckpointSubmitted(progress, lessonId, surveyId)
+      : false;
+
+  const allSurveysSubmitted =
+    surveys.length === 0 ||
+    (lessonId ? areAllLessonSurveysSubmitted(progress, lessonId, surveys.map((s) => s.id)) : false);
+
   useEffect(() => {
-    if (!showSurveyView || surveySubmitted || !survey?.questions?.length) return;
+    if (!showSurveyView || activeSurveySubmitted || !activeSurvey?.questions?.length) return;
     const t = window.setTimeout(() => {
       const nonEmpty = surveyAnswers.filter((s) => (s ?? "").trim().length > 0).length;
       if (nonEmpty === 0) return;
-      const total = survey.questions.length;
+      const total = activeSurvey.questions.length;
       const sig = `${nonEmpty}/${total}`;
       if (sig === lastSurveyEngagementSig.current) return;
       lastSurveyEngagementSig.current = sig;
@@ -86,7 +118,7 @@ export function LessonPlayer() {
       });
     }, 750);
     return () => clearTimeout(t);
-  }, [surveyAnswers, showSurveyView, surveySubmitted, survey, lessonId, courseId]);
+  }, [surveyAnswers, showSurveyView, activeSurveySubmitted, activeSurvey, lessonId, courseId]);
 
   const isMediaLesson = lesson?.content_type === "media";
   const isImageLesson = lesson?.content_type === "images";
@@ -164,45 +196,20 @@ export function LessonPlayer() {
         }
 
         const courseIdParam = params.get("courseId");
-        const [quizData, surveyData, progressData] = await Promise.all([
+        const [quizData, surveyCheckpoints, progressData] = await Promise.all([
           courseIdParam ? getCourseLessonQuiz(courseIdParam, lessonId!) : Promise.resolve(null),
-          courseIdParam ? getCourseLessonSurvey(courseIdParam, lessonId!) : Promise.resolve(null),
+          courseIdParam ? getCourseLessonSurveyCheckpoints(courseIdParam, lessonId!) : Promise.resolve([]),
           courseIdParam && user ? getCourseProgress(user.uid, courseIdParam) : Promise.resolve(null),
         ]);
         setQuiz(quizData?.enabled && (quizData.questions?.length ?? 0) > 0 ? quizData : null);
-        setSurvey(surveyData?.enabled && (surveyData.questions?.length ?? 0) > 0 ? surveyData : null);
+        setSurveys(surveyCheckpoints);
         setProgress(progressData ?? null);
-        const lid = lessonId!;
-        if (surveyData?.enabled && (surveyData.questions?.length ?? 0) > 0) {
-          const qCount = surveyData.questions!.length;
-          const saved = progressData?.surveyAnswers?.[lid];
-          if (Array.isArray(saved) && saved.length === qCount) {
-            setSurveyAnswers(saved.map((s) => (typeof s === "string" ? s : "")));
-          } else {
-            setSurveyAnswers(Array(qCount).fill(""));
-          }
-          const finalized = progressData?.surveySubmitted?.[lid] === true;
-          setSurveySubmitted(finalized);
-          const aiEnabled = !!(surveyData.aiAnalysis?.enabled);
-          const fb = progressData?.surveyAiFeedback?.[lid];
-          if (finalized) {
-            setSurveyInteractiveStep("answer");
-            setSurveyAiFeedbackText(typeof fb === "string" ? fb : null);
-          } else if (
-            aiEnabled &&
-            Array.isArray(saved) &&
-            saved.length === qCount &&
-            saved.some((s) => (typeof s === "string" ? s.trim() : "") !== "")
-          ) {
-            setSurveyInteractiveStep(typeof fb === "string" && fb.trim() !== "" ? "feedback" : "choose");
-            setSurveyAiFeedbackText(typeof fb === "string" ? fb : null);
-          } else {
-            setSurveyInteractiveStep("answer");
-            setSurveyAiFeedbackText(null);
-          }
-        } else {
-          if (progressData?.surveySubmitted?.[lid]) setSurveySubmitted(true);
-        }
+        setActiveSurveyId(null);
+        setShowSurveyView(false);
+        setSurveyAnswers([]);
+        setActiveSurveySubmitted(false);
+        setSurveyInteractiveStep("answer");
+        setSurveyAiFeedbackText(null);
 
         let initialIndex = 0;
         const slideIndexParam = params.get("slideIndex");
@@ -310,9 +317,9 @@ export function LessonPlayer() {
         await updateLessonSlideProgress(user.uid, courseId, lessonId, currentSlideIndex, itemCount);
       }
       const hasQuiz = quiz != null && (quiz.questions?.length ?? 0) > 0;
-      const hasSurvey = survey != null && (survey.questions?.length ?? 0) > 0;
       const atEnd = itemCount > 0 && currentSlideIndex >= itemCount - 1;
-      if (!hasQuiz && !hasSurvey && atEnd) {
+      const quizOk = !hasQuiz || progress?.quizPassed?.[lessonId] === true;
+      if (atEnd && allSurveysSubmitted && quizOk) {
         await setLessonCompleted(user.uid, courseId, lessonId);
       }
       const [progressAfter, course] = await Promise.all([
@@ -325,9 +332,16 @@ export function LessonPlayer() {
         const lessonIds = Object.keys(totalSlidesPerLesson);
         const [lessonsWithQuiz, lessonsWithSurvey] = await Promise.all([
           lessonIds.length > 0 ? getLessonsWithQuiz(courseId, lessonIds) : {},
-          lessonIds.length > 0 ? getLessonsWithSurvey(courseId, lessonIds) : {},
+          lessonIds.length > 0 ? getLessonSurveyCounts(courseId, lessonIds) : {},
         ]);
-        const pct = calculateCourseProgress(course, progressAfter, totalSlidesPerLesson, lessonsWithQuiz, lessonsWithSurvey);
+        const pct = calculateCourseProgress(
+          course,
+          progressAfter,
+          totalSlidesPerLesson,
+          lessonsWithQuiz,
+          undefined,
+          lessonsWithSurvey
+        );
         if (pct >= 100) {
           await markCourseCompleted(user.uid, courseId);
           trackEvent(WEB_ANALYTICS_EVENTS.LESSON_COURSE_COMPLETED, {
@@ -352,7 +366,59 @@ export function LessonPlayer() {
 
   const progressPct = itemCount > 0 ? ((currentSlideIndex + 1) / itemCount) * 100 : 0;
   const hasQuiz = quiz != null && (quiz.questions?.length ?? 0) > 0;
-  const hasSurvey = survey != null && (survey.questions?.length ?? 0) > 0;
+  const hasSurveys = surveys.length > 0;
+
+  const openSurveyCheckpoint = (checkpoint: LessonSurveyCheckpoint) => {
+    if (!lessonId || !progress) {
+      setActiveSurveyId(checkpoint.id);
+      setSurveyAnswers(Array(checkpoint.questions.length).fill(""));
+      setActiveSurveySubmitted(false);
+      setSurveyInteractiveStep("answer");
+      setShowSurveyView(true);
+      return;
+    }
+    const progressKey = lessonSurveyProgressKey(lessonId, checkpoint.id);
+    const qCount = checkpoint.questions.length;
+    const saved = progress.surveyAnswers?.[progressKey] ?? progress.surveyAnswers?.[lessonId];
+    setActiveSurveyId(checkpoint.id);
+    if (Array.isArray(saved) && saved.length === qCount) {
+      setSurveyAnswers(saved.map((s) => (typeof s === "string" ? s : "")));
+    } else {
+      setSurveyAnswers(Array(qCount).fill(""));
+    }
+    const submitted = isLessonSurveyCheckpointSubmitted(progress, lessonId, checkpoint.id);
+    setActiveSurveySubmitted(submitted);
+    const aiEnabled = !!checkpoint.aiAnalysis?.enabled;
+    const fb =
+      progress.surveyAiFeedback?.[progressKey] ?? progress.surveyAiFeedback?.[lessonId];
+    if (submitted) {
+      setSurveyInteractiveStep("answer");
+      setSurveyAiFeedbackText(typeof fb === "string" ? fb : null);
+    } else if (
+      aiEnabled &&
+      Array.isArray(saved) &&
+      saved.length === qCount &&
+      saved.some((s) => (typeof s === "string" ? s.trim() : "") !== "")
+    ) {
+      setSurveyInteractiveStep(typeof fb === "string" && fb.trim() !== "" ? "feedback" : "choose");
+      setSurveyAiFeedbackText(typeof fb === "string" ? fb : null);
+    } else {
+      setSurveyInteractiveStep("answer");
+      setSurveyAiFeedbackText(null);
+    }
+    setShowSurveyView(true);
+    window.scrollTo(0, 0);
+  };
+
+  const pendingSurveysAfterCurrentSlide = () =>
+    surveys.filter(
+      (s) =>
+        !isSurveySubmitted(s.id) &&
+        s.afterSlideIndex === currentSlideIndex
+    );
+
+  const pendingEndSurveys = () =>
+    surveys.filter((s) => !isSurveySubmitted(s.id) && s.afterSlideIndex === -1);
   const userPassed = progress?.quizPassed?.[lessonId!] === true;
   const attemptsUsed = progress?.quizAttempts?.[lessonId!] ?? 0;
   const atEnd = itemCount > 0 && currentSlideIndex >= itemCount - 1;
@@ -384,6 +450,12 @@ export function LessonPlayer() {
   }, [hasQuiz, quizSubmitted, quizPassed, canTryAgain, lessonId, courseId, attemptsUsed]);
 
   const handleNext = () => {
+    const midLessonPending = pendingSurveysAfterCurrentSlide();
+    if (midLessonPending.length > 0) {
+      openSurveyCheckpoint(midLessonPending[0]);
+      return;
+    }
+
     if (currentSlideIndex < itemCount - 1) {
       trackEvent(WEB_ANALYTICS_EVENTS.LESSON_SLIDE_NEXT_CLICKED, {
         lesson_id: lessonId ?? null,
@@ -393,66 +465,118 @@ export function LessonPlayer() {
       });
       setCurrentSlideIndex(currentSlideIndex + 1);
       window.scrollTo(0, 0);
-    } else if (atEnd && hasQuiz && !userPassed) {
+      return;
+    }
+
+    const endPending = pendingEndSurveys();
+    if (endPending.length > 0) {
+      openSurveyCheckpoint(endPending[0]);
+      return;
+    }
+
+    if (atEnd && hasQuiz && !userPassed) {
       setShowQuizView(true);
-    } else if (atEnd && hasSurvey && !surveySubmitted) {
-      setShowSurveyView(true);
     }
   };
 
-  /** Final submission: lesson complete + optional survey PDF + course completion badges */
-  const finalizeSurveyAndCompleteLesson = async (answersTrimmed: string[]) => {
-    if (!survey?.questions?.length || !user || !courseId || !lessonId) return;
-    const sorted = [...survey.questions].sort((a, b) => a.order - b.order);
+  /** Submit one survey checkpoint; may complete lesson when all surveys + quiz are done. */
+  const finalizeSurveyCheckpoint = async (answersTrimmed: string[]) => {
+    if (!activeSurvey?.questions?.length || !user || !courseId || !lessonId || !activeSurveyId) {
+      return;
+    }
+    const sorted = [...activeSurvey.questions].sort((a, b) => a.order - b.order);
+    const submittedSurveyId = activeSurveyId;
+    const afterIdx = activeSurvey.afterSlideIndex;
     setIsSubmittingSurvey(true);
     try {
-      await recordLessonSurveySubmission(user.uid, courseId, lessonId, answersTrimmed);
+      await recordLessonSurveyCheckpointSubmission(
+        user.uid,
+        courseId,
+        lessonId,
+        submittedSurveyId,
+        answersTrimmed,
+        {
+          allSurveyIds: surveys.map((s) => s.id),
+          quizRequired: hasQuiz,
+          quizPassed: userPassed,
+        }
+      );
       trackEvent(WEB_ANALYTICS_EVENTS.LESSON_SURVEY_SUBMIT_CLICKED, {
         lesson_id: lessonId,
         course_id: courseId,
       });
-      setSurveySubmitted(true);
+      setActiveSurveySubmitted(true);
       setSurveyInteractiveStep("answer");
-      setProgress((prev) => ({
-        ...prev!,
-        surveySubmitted: { ...prev?.surveySubmitted, [lessonId]: true },
-        surveyAnswers: { ...prev?.surveyAnswers, [lessonId]: answersTrimmed },
-        lessonsCompleted: { ...prev?.lessonsCompleted, [lessonId]: true },
-      }));
-      if (survey.generatePdfOnComplete) {
+      setShowSurveyView(false);
+      setActiveSurveyId(null);
+
+      const refreshed = await getCourseProgress(user.uid, courseId);
+      setProgress(refreshed ?? null);
+
+      if (activeSurvey.generatePdfOnComplete) {
         const ok = await uploadSurveyResponsePdf(
           user.uid,
           courseId,
           lessonId,
           lesson?.title ?? "Lesson",
-          (survey.title?.trim() || lesson?.title) ?? "Survey",
+          (activeSurvey.title?.trim() || lesson?.title) ?? "Survey",
           sorted.map((q) => ({ question: q.question })),
           answersTrimmed,
-          survey.dataroomFolderId ?? DEFAULT_DATAROOM_FOLDER_ID
+          activeSurvey.dataroomFolderId ?? DEFAULT_DATAROOM_FOLDER_ID
         );
         if (ok) {
           alert("Your survey responses have been saved as a PDF in your Data Room.");
         }
       }
-      const [progressAfter, course] = await Promise.all([
-        getCourseProgress(user.uid, courseId),
-        getCourse(courseId),
-      ]);
+
+      if (afterIdx >= 0 && afterIdx < itemCount - 1) {
+        setCurrentSlideIndex(afterIdx + 1);
+        window.scrollTo(0, 0);
+      }
+
+      const progressAfter = refreshed;
+      const moreAtSameSlide = surveys.filter(
+        (s) =>
+          s.id !== submittedSurveyId &&
+          !isLessonSurveyCheckpointSubmitted(progressAfter, lessonId, s.id) &&
+          s.afterSlideIndex === afterIdx
+      );
+      if (moreAtSameSlide.length > 0) {
+        openSurveyCheckpoint(moreAtSameSlide[0]);
+        return;
+      }
+
+      if (afterIdx === -1 && hasQuiz && !userPassed) {
+        setShowQuizView(true);
+        return;
+      }
+
+      const course = await getCourse(courseId);
       if (progressAfter && course) {
         await syncModuleCompletionAndAwardBadges(progressAfter, course);
         const totalSlidesPerLesson = await getCourseSlideCounts(course);
         const lessonIds = Object.keys(totalSlidesPerLesson);
-        const [lessonsWithQuizMap, lessonsWithSurveyMap] = await Promise.all([
+        const [lessonsWithQuizMap, lessonSurveyCounts] = await Promise.all([
           lessonIds.length > 0 ? getLessonsWithQuiz(courseId, lessonIds) : {},
-          lessonIds.length > 0 ? getLessonsWithSurvey(courseId, lessonIds) : {},
+          lessonIds.length > 0 ? getLessonSurveyCounts(courseId, lessonIds) : {},
         ]);
-        const pct = calculateCourseProgress(course, progressAfter, totalSlidesPerLesson, lessonsWithQuizMap, lessonsWithSurveyMap);
+        const pct = calculateCourseProgress(
+          course,
+          progressAfter,
+          totalSlidesPerLesson,
+          lessonsWithQuizMap,
+          undefined,
+          lessonSurveyCounts
+        );
         if (pct >= 100) {
           await markCourseCompleted(user.uid, courseId);
           trackEvent(WEB_ANALYTICS_EVENTS.LESSON_COURSE_COMPLETED, {
             course_id: courseId,
           });
-          const { certificatesCreated } = await createSkillCertificatesForCompletedCourse(user.uid, course);
+          const { certificatesCreated } = await createSkillCertificatesForCompletedCourse(
+            user.uid,
+            course
+          );
           if (certificatesCreated) {
             trackEvent(WEB_ANALYTICS_EVENTS.LESSON_CERTIFICATE_CREATED, {
               course_id: courseId,
@@ -467,33 +591,42 @@ export function LessonPlayer() {
   };
 
   const currentSurveyAnswersTrimmed = () => {
-    if (!survey?.questions?.length) return [];
-    const sorted = [...survey.questions].sort((a, b) => a.order - b.order);
+    if (!activeSurvey?.questions?.length) return [];
+    const sorted = [...activeSurvey.questions].sort((a, b) => a.order - b.order);
     return sorted.map((_, i) => surveyAnswers[i] ?? "").map((s) => s.trim());
   };
 
   const handleSurveySubmitFirstStep = async () => {
-    if (!survey?.questions?.length || !user || !courseId || !lessonId) return;
+    if (!activeSurvey?.questions?.length || !user || !courseId || !lessonId || !activeSurveyId) {
+      return;
+    }
     const answers = currentSurveyAnswersTrimmed();
-    if (survey.aiAnalysis?.enabled) {
+    if (activeSurvey.aiAnalysis?.enabled) {
       setIsSubmittingSurvey(true);
       try {
-        await saveLessonSurveyAnswersDraft(user.uid, courseId, lessonId, answers);
+        await saveLessonSurveyAnswersDraft(
+          user.uid,
+          courseId,
+          lessonId,
+          answers,
+          activeSurveyId
+        );
         setSurveyInteractiveStep("choose");
+        const progressKey = lessonSurveyProgressKey(lessonId, activeSurveyId);
         setProgress((prev) => ({
           ...prev!,
-          surveyAnswers: { ...prev?.surveyAnswers, [lessonId]: answers },
+          surveyAnswers: { ...prev?.surveyAnswers, [progressKey]: answers },
         }));
       } finally {
         setIsSubmittingSurvey(false);
       }
       return;
     }
-    await finalizeSurveyAndCompleteLesson(answers);
+    await finalizeSurveyCheckpoint(answers);
   };
 
   const runSurveyAiAnalyze = async () => {
-    if (!user || !courseId || !lessonId) return;
+    if (!user || !courseId || !lessonId || !activeSurveyId) return;
     const answers = currentSurveyAnswersTrimmed();
     setIsAnalyzingSurvey(true);
     try {
@@ -502,6 +635,7 @@ export function LessonPlayer() {
       const resp = (await analyzeFn({
         course_id: courseId,
         lesson_id: lessonId,
+        survey_id: activeSurveyId,
         answers,
       })) as AnalyzeResult;
       const feedback = resp.data?.feedback?.trim();
@@ -519,12 +653,12 @@ export function LessonPlayer() {
 
   const handleSurveySkipAiFinalize = async () => {
     const answers = currentSurveyAnswersTrimmed();
-    await finalizeSurveyAndCompleteLesson(answers);
+    await finalizeSurveyCheckpoint(answers);
   };
 
   const handleSurveyFinalizeAfterAi = async () => {
     const answers = currentSurveyAnswersTrimmed();
-    await finalizeSurveyAndCompleteLesson(answers);
+    await finalizeSurveyCheckpoint(answers);
   };
 
   const handleQuizSubmit = async () => {
@@ -657,18 +791,18 @@ export function LessonPlayer() {
 
       {/* Slide Content */}
       <div className="min-h-[calc(100vh-80px)]">
-        {showSurveyView && hasSurvey ? (
+        {showSurveyView && activeSurvey ? (
           <div
             className={`container mx-auto px-4 py-8 ${surveyInteractiveStep === "feedback" ? "max-w-4xl" : "max-w-2xl"}`}
           >
-            <h2 className="text-xl font-semibold mb-6">{survey.title?.trim() || "Survey"}</h2>
-            {!surveySubmitted && surveyInteractiveStep === "answer" ? (
+            <h2 className="text-xl font-semibold mb-6">{activeSurvey.title?.trim() || "Survey"}</h2>
+            {!activeSurveySubmitted && surveyInteractiveStep === "answer" ? (
               <>
                 <p className="text-gray-400 text-sm mb-6">
                   Please answer the following questions. Your responses are open-ended.
                 </p>
                 <div className="space-y-6">
-                  {[...survey.questions]
+                  {[...activeSurvey.questions]
                     .sort((a, b) => a.order - b.order)
                     .map((q, i) => (
                       <div key={i} className="rounded-lg border border-gray-700 p-4 bg-gray-900/50">
@@ -698,7 +832,7 @@ export function LessonPlayer() {
                   Submit
                 </Button>
               </>
-            ) : !surveySubmitted && surveyInteractiveStep === "choose" ? (
+            ) : !activeSurveySubmitted && surveyInteractiveStep === "choose" ? (
               <div className="space-y-4">
                 <p className="text-gray-400 text-sm">
                   Optional: get AI feedback on your responses based on this lesson&apos;s facilitator instructions, or continue without analysis.
@@ -715,7 +849,7 @@ export function LessonPlayer() {
                   </Button>
                 </div>
               </div>
-            ) : !surveySubmitted && surveyInteractiveStep === "feedback" ? (
+            ) : !activeSurveySubmitted && surveyInteractiveStep === "feedback" ? (
               <div className="grid md:grid-cols-2 gap-6 items-start">
                 <div className="rounded-lg border border-gray-700 p-4 bg-gray-950/80 min-h-[200px] max-h-[60vh] overflow-y-auto">
                   <p className="text-xs font-semibold uppercase tracking-wide text-accent mb-2">AI feedback</p>
@@ -730,7 +864,7 @@ export function LessonPlayer() {
                     Revise your answers with the feedback in mind; you can re-run analysis before finishing this lesson.
                   </p>
                   <div className="space-y-6">
-                    {[...survey.questions]
+                    {[...activeSurvey.questions]
                       .sort((a, b) => a.order - b.order)
                       .map((q, i) => (
                         <div key={i} className="rounded-lg border border-gray-700 p-4 bg-gray-900/50">
@@ -907,10 +1041,24 @@ export function LessonPlayer() {
           variant="secondary"
           size="lg"
           onClick={handleNext}
-          disabled={currentSlideIndex === itemCount - 1 && !(atEnd && hasSurvey && !surveySubmitted) && !(atEnd && hasQuiz && !userPassed)}
+          disabled={
+            currentSlideIndex === itemCount - 1 &&
+            pendingSurveysAfterCurrentSlide().length === 0 &&
+            !(atEnd && pendingEndSurveys().length > 0) &&
+            !(atEnd && hasQuiz && !userPassed)
+          }
           className="text-foreground"
         >
-          {atEnd && hasQuiz && !userPassed ? "Start Quiz" : atEnd && hasSurvey && !surveySubmitted ? (survey?.title?.trim() ? `Start: ${survey.title}` : "Start Survey") : "Next"}
+          {atEnd && hasQuiz && !userPassed
+            ? "Start Quiz"
+            : pendingSurveysAfterCurrentSlide().length > 0 ||
+                (atEnd && pendingEndSurveys().length > 0)
+              ? pendingSurveysAfterCurrentSlide()[0]?.title?.trim()
+                ? `Survey: ${pendingSurveysAfterCurrentSlide()[0].title}`
+                : atEnd && pendingEndSurveys()[0]?.title?.trim()
+                  ? `Survey: ${pendingEndSurveys()[0].title}`
+                  : "Start Survey"
+              : "Next"}
           <ChevronRight className="w-5 h-5 ml-2" />
         </Button>
       </div>

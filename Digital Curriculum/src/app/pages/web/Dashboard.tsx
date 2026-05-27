@@ -26,7 +26,7 @@ import { getCurrentUserWithRoles } from "../../lib/auth";
 import {
   getCoursesForLearner,
   getLessonsWithQuiz,
-  getLessonsWithSurvey,
+  getLessonSurveyCounts,
   type Course,
   type Module,
 } from "../../lib/courses";
@@ -68,7 +68,7 @@ export function WebDashboard() {
   const [progressMap, setProgressMap] = useState<Record<string, CourseProgress>>({});
   const [slideCountsMap, setSlideCountsMap] = useState<Record<string, Record<string, number>>>({});
   const [lessonsWithQuizMap, setLessonsWithQuizMap] = useState<Record<string, Record<string, boolean>>>({});
-  const [lessonsWithSurveyMap, setLessonsWithSurveyMap] = useState<Record<string, Record<string, boolean>>>({});
+  const [lessonsWithSurveyMap, setLessonsWithSurveyMap] = useState<Record<string, Record<string, number>>>({});
   const [certificates, setCertificates] = useState<Awaited<ReturnType<typeof listCertificates>>>([]);
   const [surveyDocs, setSurveyDocs] = useState<Awaited<ReturnType<typeof listSurveyResponses>>>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
@@ -131,7 +131,7 @@ export function WebDashboard() {
 
       const counts: Record<string, Record<string, number>> = {};
       const quizMap: Record<string, Record<string, boolean>> = {};
-      const surveyMap: Record<string, Record<string, boolean>> = {};
+      const surveyCountMap: Record<string, Record<string, number>> = {};
       await Promise.all(
         unique.map(async (c) => {
           if (!c.id || !c.curriculumMapping) return;
@@ -140,18 +140,22 @@ export function WebDashboard() {
             const lessonIds = Object.keys(counts[c.id]);
             if (lessonIds.length > 0) {
               quizMap[c.id] = await cached(`quiz:${c.id}`, () => getLessonsWithQuiz(c.id, lessonIds), TTL_MEDIUM);
-              surveyMap[c.id] = await cached(`survey:${c.id}`, () => getLessonsWithSurvey(c.id, lessonIds), TTL_MEDIUM);
+              surveyCountMap[c.id] = await cached(
+                `survey:${c.id}`,
+                () => getLessonSurveyCounts(c.id, lessonIds),
+                TTL_MEDIUM
+              );
             }
           } catch {
             counts[c.id] = {};
             quizMap[c.id] = {};
-            surveyMap[c.id] = {};
+            surveyCountMap[c.id] = {};
           }
         })
       );
       setSlideCountsMap(counts);
       setLessonsWithQuizMap(quizMap);
-      setLessonsWithSurveyMap(surveyMap);
+      setLessonsWithSurveyMap(surveyCountMap);
     } catch (e) {
       console.error("Dashboard load error:", e);
     } finally {
@@ -189,7 +193,7 @@ export function WebDashboard() {
       const slideCounts = (c.id ? slideCountsMap[c.id] : undefined) ?? {};
       const quiz = (c.id ? lessonsWithQuizMap[c.id] : undefined) ?? {};
       const survey = (c.id ? lessonsWithSurveyMap[c.id] : undefined) ?? {};
-      const pct = calculateCourseProgress(c, p, slideCounts, quiz, survey);
+      const pct = calculateCourseProgress(c, p, slideCounts, quiz, undefined, survey);
       return pct < 100;
     }) ?? courses[0];
   const nextStepProgress = nextStepCourse?.id ? progressMap[nextStepCourse.id] : null;
@@ -203,6 +207,7 @@ export function WebDashboard() {
           nextStepProgress,
           nextStepSlideCounts,
           nextStepQuiz,
+          undefined,
           nextStepSurvey
         )
       : 0;

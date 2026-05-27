@@ -2,6 +2,11 @@ import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from "firebase/firest
 import { db } from "./firebase";
 import { Timestamp } from "firebase/firestore";
 import { invalidateCache } from "./cache";
+import {
+  isLessonSurveyCheckpointSubmitted,
+  lessonSurveyProgressKey,
+  LEGACY_LESSON_SURVEY_ID,
+} from "./courses";
 
 export interface CourseProgress {
   userId: string;
@@ -328,7 +333,8 @@ export async function saveLessonSurveyAnswersDraft(
   userId: string,
   courseId: string,
   lessonId: string,
-  answers: string[]
+  answers: string[],
+  surveyId: string = LEGACY_LESSON_SURVEY_ID
 ): Promise<void> {
   try {
     const progressRef = doc(db, "courseProgress", `${userId}_${courseId}`);
@@ -341,8 +347,9 @@ export async function saveLessonSurveyAnswersDraft(
       progressData = progressSnap.data() as CourseProgress;
     }
 
+    const progressKey = lessonSurveyProgressKey(lessonId, surveyId);
     await updateDoc(progressRef, {
-      surveyAnswers: { ...(progressData.surveyAnswers ?? {}), [lessonId]: answers },
+      surveyAnswers: { ...(progressData.surveyAnswers ?? {}), [progressKey]: answers },
       updatedAt: serverTimestamp(),
     });
     invalidateCache(`progress:${userId}`);
@@ -352,11 +359,30 @@ export async function saveLessonSurveyAnswersDraft(
   }
 }
 
-export async function recordLessonSurveySubmission(
+/** True when every listed survey checkpoint has been submitted for this lesson. */
+export function areAllLessonSurveysSubmitted(
+  progress: CourseProgress | null | undefined,
+  lessonId: string,
+  surveyIds: string[]
+): boolean {
+  if (surveyIds.length === 0) return true;
+  return surveyIds.every((sid) =>
+    isLessonSurveyCheckpointSubmitted(progress, lessonId, sid)
+  );
+}
+
+export async function recordLessonSurveyCheckpointSubmission(
   userId: string,
   courseId: string,
   lessonId: string,
-  answers: string[]
+  surveyId: string,
+  answers: string[],
+  options?: {
+    /** When true, mark the lesson complete if quiz (if any) is passed and all surveys submitted. */
+    allSurveyIds?: string[];
+    quizRequired?: boolean;
+    quizPassed?: boolean;
+  }
 ): Promise<void> {
   try {
     const progressRef = doc(db, "courseProgress", `${userId}_${courseId}`);
@@ -369,17 +395,31 @@ export async function recordLessonSurveySubmission(
       progressData = progressSnap.data() as CourseProgress;
     }
 
+    const progressKey = lessonSurveyProgressKey(lessonId, surveyId);
     const updatedSurveySubmitted = {
       ...(progressData.surveySubmitted ?? {}),
-      [lessonId]: true,
+      [progressKey]: true,
     };
     const updatedSurveyAnswers = {
       ...(progressData.surveyAnswers ?? {}),
-      [lessonId]: answers,
+      [progressKey]: answers,
     };
+
+    const allSurveyIds = options?.allSurveyIds ?? [surveyId];
+    const surveysDone = areAllLessonSurveysSubmitted(
+      {
+        ...progressData,
+        surveySubmitted: updatedSurveySubmitted,
+      },
+      lessonId,
+      allSurveyIds
+    );
+    const quizOk = !options?.quizRequired || options.quizPassed === true;
+    const markLessonComplete = surveysDone && quizOk;
+
     const updatedLessonsCompleted = {
       ...progressData.lessonsCompleted,
-      [lessonId]: true,
+      ...(markLessonComplete ? { [lessonId]: true } : {}),
     };
 
     await updateDoc(progressRef, {
@@ -390,9 +430,26 @@ export async function recordLessonSurveySubmission(
     });
     invalidateCache(`progress:${userId}`);
   } catch (error) {
-    console.error("Error recording lesson survey submission:", error);
+    console.error("Error recording lesson survey checkpoint submission:", error);
     throw error;
   }
+}
+
+/** @deprecated Use recordLessonSurveyCheckpointSubmission with surveyId. */
+export async function recordLessonSurveySubmission(
+  userId: string,
+  courseId: string,
+  lessonId: string,
+  answers: string[]
+): Promise<void> {
+  await recordLessonSurveyCheckpointSubmission(
+    userId,
+    courseId,
+    lessonId,
+    LEGACY_LESSON_SURVEY_ID,
+    answers,
+    { allSurveyIds: [LEGACY_LESSON_SURVEY_ID], quizRequired: false, quizPassed: true }
+  );
 }
 
 /**
@@ -441,8 +498,8 @@ export async function updateModulesCompletionMap(
 /**
  * Calculate course progress percentage based on pages/slides viewed.
  * When totalSlidesPerLesson is provided, uses it as the denominator.
- * When lessonsWithQuiz and/or lessonsWithSurvey are provided, each counts as +1 "slide" for that lesson;
- * lesson is "done" when quiz passed (if has quiz) or survey submitted (if has survey).
+ * When lessonsWithQuiz and/or lessonSurveyCounts are provided, each quiz/survey counts as +1 "slide";
+ * all surveys for a lesson must be submitted for that lesson's survey portion to count as done.
  */
 export function calculateCourseProgress(
   course: {
@@ -462,7 +519,8 @@ export function calculateCourseProgress(
   progress: CourseProgress | null,
   totalSlidesPerLesson?: Record<string, number> | null,
   lessonsWithQuiz?: Record<string, boolean> | null,
-  lessonsWithSurvey?: Record<string, boolean> | null
+  lessonsWithSurvey?: Record<string, boolean> | null,
+  lessonSurveyCounts?: Record<string, number> | null
 ): number {
   if (!progress) return 0;
   if (progress.completed) return 100;
@@ -473,13 +531,27 @@ export function calculateCourseProgress(
   if (totalSlidesPerLesson && Object.keys(totalSlidesPerLesson).length > 0) {
     for (const [lid, total] of Object.entries(totalSlidesPerLesson)) {
       const hasQuiz = lessonsWithQuiz?.[lid] ?? false;
-      const hasSurvey = lessonsWithSurvey?.[lid] ?? false;
-      // Count quiz and survey as separate "slides" for progress only (so both must be done when present)
-      totalSlidesInCourse += total + (hasQuiz ? 1 : 0) + (hasSurvey ? 1 : 0);
+      const surveyCount =
+        lessonSurveyCounts?.[lid] ??
+        (lessonsWithSurvey?.[lid] ? 1 : 0);
+      totalSlidesInCourse += total + (hasQuiz ? 1 : 0) + surveyCount;
       const viewed = progress.pagesViewed?.[lid] ?? 0;
       const quizDone = hasQuiz && progress.quizPassed?.[lid];
-      const surveyDone = hasSurvey && progress.surveySubmitted?.[lid];
-      viewedSlides += Math.min(viewed, total) + (quizDone ? 1 : 0) + (surveyDone ? 1 : 0);
+      let surveysSubmitted = 0;
+      if (surveyCount > 0) {
+        const legacyDone = progress.surveySubmitted?.[lid] === true;
+        if (legacyDone && surveyCount === 1) {
+          surveysSubmitted = 1;
+        } else {
+          for (const [key, done] of Object.entries(progress.surveySubmitted ?? {})) {
+            if (!done) continue;
+            if (key.startsWith(`${lid}::`)) surveysSubmitted++;
+          }
+          surveysSubmitted = Math.min(surveysSubmitted, surveyCount);
+        }
+      }
+      viewedSlides +=
+        Math.min(viewed, total) + (quizDone ? 1 : 0) + surveysSubmitted;
     }
     return totalSlidesInCourse > 0
       ? Math.round((viewedSlides / totalSlidesInCourse) * 100)

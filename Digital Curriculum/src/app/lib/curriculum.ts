@@ -174,22 +174,38 @@ export interface LessonSurveyAiAnalysis {
   criteria: string;
 }
 
-/** Survey at the end of a lesson (like quiz but open-ended). Stored per course/lesson. */
+/** One survey checkpoint in a lesson (may appear after any slide, not only at the end). */
+export interface LessonSurveyCheckpoint {
+  id: string;
+  enabled: boolean;
+  /** Display title (e.g. "Module 1 Reflection"). */
+  title?: string;
+  /**
+   * Show after the learner finishes this slide (0-based). Use -1 for end-of-lesson
+   * (after the last slide, before quiz).
+   */
+  afterSlideIndex: number;
+  /** Sort order when multiple surveys share the same placement. */
+  order?: number;
+  questions: SurveyQuestion[];
+  generatePdfOnComplete: boolean;
+  dataroomFolderId?: string;
+  aiAnalysis?: LessonSurveyAiAnalysis;
+}
+
+/**
+ * @deprecated Legacy single-survey doc shape. New lessons use `LessonSurveyCheckpoint[]`
+ * stored on `courses/{courseId}/lessonSurveys/{lessonId}` as `{ checkpoints: [...] }`.
+ */
 export interface LessonSurvey {
   enabled: boolean;
-  /** Display title for the survey (e.g. "Module 1 Reflection"). Optional for backward compatibility. */
   title?: string;
   questions: SurveyQuestion[];
-  /** When true, generate PDF of answers on completion and upload to user's Data Room */
   generatePdfOnComplete: boolean;
-  /**
-   * When `generatePdfOnComplete` is enabled, the admin must choose which top-level
-   * Data Room folder the generated PDF should be stored under.
-   */
   dataroomFolderId?: string;
-  /** When set with `enabled: true`, learners may request AI survey analysis via Cloud Functions. */
   aiAnalysis?: LessonSurveyAiAnalysis;
   updated_at?: Timestamp;
+  checkpoints?: LessonSurveyCheckpoint[];
 }
 
 export interface Chapter {

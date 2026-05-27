@@ -32,7 +32,7 @@ import {
   formatMeetingTimeLabel,
 } from "../../lib/formatDateTime";
 import { useAuth } from "../../components/auth/AuthProvider";
-import { getCoursesForLearner, getLessonsWithQuiz, getLessonsWithSurvey, type Course } from "../../lib/courses";
+import { getCoursesForLearner, getLessonsWithQuiz, getLessonSurveyCounts, type Course } from "../../lib/courses";
 import { getAllCourseProgress, calculateCourseProgress, type CourseProgress } from "../../lib/courseProgress";
 import { getCourseSlideCounts } from "../../lib/curriculum";
 import { getCurrentUserWithRoles } from "../../lib/auth";
@@ -50,7 +50,7 @@ export function WebCurriculum() {
   const [courseProgress, setCourseProgress] = useState<Record<string, CourseProgress>>({});
   const [courseSlideCounts, setCourseSlideCounts] = useState<Record<string, Record<string, number>>>({});
   const [lessonsWithQuizMap, setLessonsWithQuizMap] = useState<Record<string, Record<string, boolean>>>({});
-  const [lessonsWithSurveyMap, setLessonsWithSurveyMap] = useState<Record<string, Record<string, boolean>>>({});
+  const [lessonsWithSurveyMap, setLessonsWithSurveyMap] = useState<Record<string, Record<string, number>>>({});
   const [loading, setLoading] = useState(true);
   const [progressDataReady, setProgressDataReady] = useState(false);
   const [allCompleted, setAllCompleted] = useState(false);
@@ -100,7 +100,11 @@ export function WebCurriculum() {
               const lessonIds = Object.keys(countsMap[courseId]);
               if (lessonIds.length > 0) {
                 quizMap[courseId] = await cached(`quiz:${courseId}`, () => getLessonsWithQuiz(courseId, lessonIds), TTL_MEDIUM);
-                surveyMap[courseId] = await cached(`survey:${courseId}`, () => getLessonsWithSurvey(courseId, lessonIds), TTL_MEDIUM);
+                surveyMap[courseId] = await cached(
+                  `survey:${courseId}`,
+                  () => getLessonSurveyCounts(courseId, lessonIds),
+                  TTL_MEDIUM
+                );
               } else {
                 quizMap[courseId] = {};
                 surveyMap[courseId] = {};
@@ -125,14 +129,17 @@ export function WebCurriculum() {
         const progressData = progress[course.id || ""];
         const slideCounts = countsMap[course.id ?? ""];
         const lessonsWithQuiz = quizMap[course.id ?? ""];
-        const lessonsWithSurvey = surveyMap[course.id ?? ""];
+        const lessonSurveyCounts = surveyMap[course.id ?? ""];
         if (progressData) {
           const courseProgressValue = calculateCourseProgress(
             course,
             progressData,
             slideCounts && Object.keys(slideCounts).length > 0 ? slideCounts : undefined,
             lessonsWithQuiz && Object.keys(lessonsWithQuiz).length > 0 ? lessonsWithQuiz : undefined,
-            lessonsWithSurvey && Object.keys(lessonsWithSurvey).length > 0 ? lessonsWithSurvey : undefined
+            undefined,
+            lessonSurveyCounts && Object.keys(lessonSurveyCounts).length > 0
+              ? lessonSurveyCounts
+              : undefined
           );
           totalProgress += courseProgressValue;
           if (progressData.completed || courseProgressValue === 100) {
@@ -200,14 +207,15 @@ export function WebCurriculum() {
     const progressData = courseProgress[course.id || ""];
     const slideCounts = courseSlideCounts[course.id || ""];
     const lessonsWithQuiz = lessonsWithQuizMap[course.id || ""];
-    const lessonsWithSurvey = lessonsWithSurveyMap[course.id || ""];
+    const lessonSurveyCounts = lessonsWithSurveyMap[course.id || ""];
     if (!progressData) return 0;
     return calculateCourseProgress(
       course,
       progressData,
       slideCounts && Object.keys(slideCounts).length > 0 ? slideCounts : undefined,
       lessonsWithQuiz && Object.keys(lessonsWithQuiz).length > 0 ? lessonsWithQuiz : undefined,
-      lessonsWithSurvey && Object.keys(lessonsWithSurvey).length > 0 ? lessonsWithSurvey : undefined
+      undefined,
+      lessonSurveyCounts && Object.keys(lessonSurveyCounts).length > 0 ? lessonSurveyCounts : undefined
     );
   };
 
@@ -274,6 +282,7 @@ export function WebCurriculum() {
                           mostRecentCourse.progress,
                           courseSlideCounts[mostRecentCourse.course.id || ""],
                           lessonsWithQuizMap[mostRecentCourse.course.id || ""],
+                          undefined,
                           lessonsWithSurveyMap[mostRecentCourse.course.id || ""]
                         )}
                         className="h-2 flex-1"
@@ -285,6 +294,7 @@ export function WebCurriculum() {
                             mostRecentCourse.progress,
                             courseSlideCounts[mostRecentCourse.course.id || ""],
                             lessonsWithQuizMap[mostRecentCourse.course.id || ""],
+                            undefined,
                             lessonsWithSurveyMap[mostRecentCourse.course.id || ""]
                           )
                         )}%

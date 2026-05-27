@@ -15,7 +15,7 @@ import {
   Calendar,
   User,
 } from "lucide-react";
-import { getCourse, getLessonsWithQuiz, getLessonsWithSurvey, type Course, type Module } from "../../lib/courses";
+import { getCourse, getLessonsWithQuiz, getLessonSurveyCounts, type Course, type Module } from "../../lib/courses";
 import { format } from "date-fns";
 import { useAuth } from "../../components/auth/AuthProvider";
 import { getCourseProgress, calculateCourseProgress, type CourseProgress } from "../../lib/courseProgress";
@@ -35,7 +35,7 @@ export function CourseDetail() {
   const [courseProgress, setCourseProgress] = useState<CourseProgress | null>(null);
   const [courseSlideCounts, setCourseSlideCounts] = useState<Record<string, number> | null>(null);
   const [lessonsWithQuiz, setLessonsWithQuiz] = useState<Record<string, boolean> | null>(null);
-  const [lessonsWithSurvey, setLessonsWithSurvey] = useState<Record<string, boolean> | null>(null);
+  const [lessonSurveyCounts, setLessonSurveyCounts] = useState<Record<string, number> | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedModule, setExpandedModule] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -67,17 +67,17 @@ export function CourseDetail() {
             try {
               const [q, s] = await Promise.all([
                 getLessonsWithQuiz(courseId, Object.keys(counts)),
-                getLessonsWithSurvey(courseId, Object.keys(counts)),
+                getLessonSurveyCounts(courseId, Object.keys(counts)),
               ]);
               setLessonsWithQuiz(q);
-              setLessonsWithSurvey(s);
+              setLessonSurveyCounts(s);
             } catch {
               setLessonsWithQuiz({});
-              setLessonsWithSurvey({});
+              setLessonSurveyCounts({});
             }
           } else {
             setLessonsWithQuiz(null);
-            setLessonsWithSurvey(null);
+            setLessonSurveyCounts(null);
           }
         } else {
           setCourseSlideCounts(null);
@@ -130,7 +130,14 @@ export function CourseDetail() {
   const totalPrice = course.totalPrice || course.modules.reduce((sum, m) => sum + (m.price || 0), 0);
   const totalDurationMonths = course.totalDuration || course.modules.reduce((sum, m) => sum + (m.durationMonths || 0), 0);
   const courseProgressValue = courseProgress
-    ? calculateCourseProgress(course, courseProgress, courseSlideCounts ?? undefined, lessonsWithQuiz ?? undefined, lessonsWithSurvey ?? undefined)
+    ? calculateCourseProgress(
+        course,
+        courseProgress,
+        courseSlideCounts ?? undefined,
+        lessonsWithQuiz ?? undefined,
+        undefined,
+        lessonSurveyCounts ?? undefined
+      )
     : 0;
   // Don't show "Completed" or 100% until we have slide counts (avoids flash from fallback or stale progress.completed)
   const hasProgressData = courseSlideCounts != null;

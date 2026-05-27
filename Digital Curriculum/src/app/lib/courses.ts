@@ -19,7 +19,15 @@ import {
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { db, storage } from "./firebase";
-import type { LessonQuiz, LessonSurvey } from "./curriculum";
+import type { LessonQuiz, LessonSurvey, LessonSurveyCheckpoint } from "./curriculum";
+
+/** Legacy single end-of-lesson survey id (migrated docs). */
+export const LEGACY_LESSON_SURVEY_ID = "default";
+
+/** Progress / answers key for a specific survey checkpoint. */
+export function lessonSurveyProgressKey(lessonId: string, surveyId: string): string {
+  return `${lessonId}::${surveyId}`;
+}
 
 export interface Lesson {
   id?: string;
@@ -465,6 +473,82 @@ export function getCourseLessonSurveyPath(courseId: string, lessonId: string): s
   return `courses/${courseId}/lessonSurveys/${lessonId}`;
 }
 
+function cleanFirestoreData<T extends Record<string, unknown>>(data: T): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(data).filter(([, v]) => v !== undefined));
+}
+
+/** Normalize Firestore lesson survey doc → enabled checkpoints (legacy single-survey supported). */
+export function normalizeLessonSurveyCheckpoints(
+  data: Record<string, unknown> | null | undefined
+): LessonSurveyCheckpoint[] {
+  if (!data) return [];
+
+  if (Array.isArray(data.checkpoints)) {
+    return (data.checkpoints as LessonSurveyCheckpoint[])
+      .filter((c) => c?.enabled && (c.questions?.length ?? 0) > 0)
+      .sort(
+        (a, b) =>
+          (a.order ?? 0) - (b.order ?? 0) ||
+          (a.afterSlideIndex ?? -1) - (b.afterSlideIndex ?? -1)
+      );
+  }
+
+  if (data.enabled && Array.isArray(data.questions) && (data.questions as unknown[]).length > 0) {
+    return [
+      {
+        id: LEGACY_LESSON_SURVEY_ID,
+        enabled: true,
+        title: typeof data.title === "string" ? data.title : undefined,
+        afterSlideIndex: -1,
+        order: 0,
+        questions: data.questions as LessonSurveyCheckpoint["questions"],
+        generatePdfOnComplete: !!data.generatePdfOnComplete,
+        dataroomFolderId:
+          typeof data.dataroomFolderId === "string" ? data.dataroomFolderId : undefined,
+        aiAnalysis: data.aiAnalysis as LessonSurveyCheckpoint["aiAnalysis"],
+      },
+    ];
+  }
+
+  return [];
+}
+
+export async function getCourseLessonSurveyCheckpoints(
+  courseId: string,
+  lessonId: string
+): Promise<LessonSurveyCheckpoint[]> {
+  const ref = doc(db, getCourseLessonSurveyPath(courseId, lessonId));
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return [];
+  return normalizeLessonSurveyCheckpoints(snap.data() as Record<string, unknown>);
+}
+
+export async function setCourseLessonSurveyCheckpoints(
+  courseId: string,
+  lessonId: string,
+  checkpoints: LessonSurveyCheckpoint[]
+): Promise<void> {
+  const ref = doc(db, getCourseLessonSurveyPath(courseId, lessonId));
+  const cleaned = checkpoints.map((c, i) =>
+    cleanFirestoreData({
+      id: c.id,
+      enabled: c.enabled,
+      title: c.title,
+      afterSlideIndex: c.afterSlideIndex,
+      order: c.order ?? i,
+      questions: c.questions,
+      generatePdfOnComplete: c.generatePdfOnComplete,
+      dataroomFolderId: c.dataroomFolderId,
+      aiAnalysis: c.aiAnalysis,
+    })
+  );
+  await setDoc(ref, {
+    checkpoints: cleaned,
+    updated_at: serverTimestamp(),
+  });
+}
+
+/** @deprecated Prefer getCourseLessonSurveyCheckpoints. Returns legacy doc or synthetic checkpoint. */
 export async function getCourseLessonSurvey(
   courseId: string,
   lessonId: string
@@ -472,36 +556,84 @@ export async function getCourseLessonSurvey(
   const ref = doc(db, getCourseLessonSurveyPath(courseId, lessonId));
   const snap = await getDoc(ref);
   if (!snap.exists()) return null;
-  return snap.data() as LessonSurvey;
+  const data = snap.data() as LessonSurvey;
+  const checkpoints = normalizeLessonSurveyCheckpoints(data as Record<string, unknown>);
+  if (checkpoints.length === 0) return null;
+  const first = checkpoints[0];
+  return {
+    enabled: true,
+    title: first.title,
+    questions: first.questions,
+    generatePdfOnComplete: first.generatePdfOnComplete,
+    dataroomFolderId: first.dataroomFolderId,
+    aiAnalysis: first.aiAnalysis,
+    checkpoints,
+  };
 }
 
+/** @deprecated Prefer setCourseLessonSurveyCheckpoints. Writes a single end-of-lesson checkpoint. */
 export async function setCourseLessonSurvey(
   courseId: string,
   lessonId: string,
-  survey: Omit<LessonSurvey, "updated_at">
+  survey: Omit<LessonSurvey, "updated_at" | "checkpoints">
 ): Promise<void> {
-  const ref = doc(db, getCourseLessonSurveyPath(courseId, lessonId));
-  const data = { ...survey, updated_at: serverTimestamp() };
-  // Firestore does not allow undefined; omit any undefined fields
-  const clean = Object.fromEntries(
-    Object.entries(data).filter(([, v]) => v !== undefined)
-  ) as Record<string, unknown>;
-  await setDoc(ref, clean);
+  await setCourseLessonSurveyCheckpoints(courseId, lessonId, [
+    {
+      id: LEGACY_LESSON_SURVEY_ID,
+      enabled: survey.enabled,
+      title: survey.title,
+      afterSlideIndex: -1,
+      order: 0,
+      questions: survey.questions,
+      generatePdfOnComplete: survey.generatePdfOnComplete,
+      dataroomFolderId: survey.dataroomFolderId,
+      aiAnalysis: survey.aiAnalysis,
+    },
+  ]);
+}
+
+export function isLessonSurveyCheckpointSubmitted(
+  progress: { surveySubmitted?: Record<string, boolean> } | null | undefined,
+  lessonId: string,
+  surveyId: string
+): boolean {
+  if (!progress?.surveySubmitted) return false;
+  const key = lessonSurveyProgressKey(lessonId, surveyId);
+  if (progress.surveySubmitted[key] === true) return true;
+  if (surveyId === LEGACY_LESSON_SURVEY_ID && progress.surveySubmitted[lessonId] === true) {
+    return true;
+  }
+  return false;
 }
 
 /**
- * For progress evaluation: which lessons have an enabled survey (counted like quiz).
+ * For progress evaluation: how many enabled surveys each lesson has (each counts as +1 slide).
+ */
+export async function getLessonSurveyCounts(
+  courseId: string,
+  lessonIds: string[]
+): Promise<Record<string, number>> {
+  const out: Record<string, number> = {};
+  await Promise.all(
+    lessonIds.map(async (lid) => {
+      const checkpoints = await getCourseLessonSurveyCheckpoints(courseId, lid);
+      out[lid] = checkpoints.length;
+    })
+  );
+  return out;
+}
+
+/**
+ * @deprecated Use getLessonSurveyCounts. True when lesson has at least one survey.
  */
 export async function getLessonsWithSurvey(
   courseId: string,
   lessonIds: string[]
 ): Promise<Record<string, boolean>> {
+  const counts = await getLessonSurveyCounts(courseId, lessonIds);
   const out: Record<string, boolean> = {};
-  await Promise.all(
-    lessonIds.map(async (lid) => {
-      const survey = await getCourseLessonSurvey(courseId, lid);
-      out[lid] = !!(survey?.enabled && (survey.questions?.length ?? 0) > 0);
-    })
-  );
+  for (const lid of lessonIds) {
+    out[lid] = (counts[lid] ?? 0) > 0;
+  }
   return out;
 }

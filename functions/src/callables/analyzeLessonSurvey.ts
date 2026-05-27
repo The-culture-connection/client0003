@@ -30,6 +30,8 @@ const OPENAI_MODEL_DEFAULT = "gpt-4o-mini";
 const requestSchema = z.object({
   course_id: z.string().min(1),
   lesson_id: z.string().min(1),
+  /** Specific survey checkpoint; defaults to legacy `default` end-of-lesson survey. */
+  survey_id: z.string().min(1).optional(),
   /** If omitted, uses `surveyAnswers` already stored on the caller's course progress doc. */
   answers: z.array(z.string()).optional(),
 });
@@ -45,7 +47,8 @@ type CurriculumMapping = {
   }>;
 };
 
-type LessonSurveyDoc = {
+type LessonSurveyCheckpoint = {
+  id?: string;
   enabled?: boolean;
   title?: string;
   questions?: Array<{ order?: number; question?: string }>;
@@ -55,6 +58,24 @@ type LessonSurveyDoc = {
     criteria?: string;
   };
 };
+
+type LessonSurveyDoc = LessonSurveyCheckpoint & {
+  checkpoints?: LessonSurveyCheckpoint[];
+};
+
+function resolveSurveyCheckpoint(
+  doc: LessonSurveyDoc,
+  surveyId: string
+): LessonSurveyCheckpoint | null {
+  if (Array.isArray(doc.checkpoints) && doc.checkpoints.length > 0) {
+    const found = doc.checkpoints.find((c) => c.id === surveyId && c.enabled !== false);
+    if (found && (found.questions?.length ?? 0) > 0) return found;
+    return null;
+  }
+  if (surveyId !== "default") return null;
+  if (doc.enabled === false || !(doc.questions?.length ?? 0)) return null;
+  return doc;
+}
 
 function findLessonPlacement(
   mapping: CurriculumMapping | undefined,
@@ -284,7 +305,9 @@ export const analyzeLessonSurvey = onCall(
       );
     }
 
-    const { course_id, lesson_id, answers: answersBody } = parsed.data;
+    const { course_id, lesson_id, survey_id: surveyIdBody, answers: answersBody } =
+      parsed.data;
+    const surveyId = surveyIdBody ?? "default";
 
     const surveyRef = db.doc(`courses/${course_id}/lessonSurveys/${lesson_id}`);
     const surveySnap = await surveyRef.get();
@@ -292,9 +315,10 @@ export const analyzeLessonSurvey = onCall(
       throw new HttpsError("not-found", "Survey configuration not found for this lesson.");
     }
 
-    const survey = surveySnap.data() as LessonSurveyDoc;
-    if (!survey.enabled) {
-      throw new HttpsError("failed-precondition", "Survey is not enabled.");
+    const surveyDoc = surveySnap.data() as LessonSurveyDoc;
+    const survey = resolveSurveyCheckpoint(surveyDoc, surveyId);
+    if (!survey) {
+      throw new HttpsError("not-found", "Survey checkpoint not found for this lesson.");
     }
 
     const ai = survey.aiAnalysis;
@@ -345,7 +369,10 @@ export const analyzeLessonSurvey = onCall(
         typeof a === "string" ? a : ""
       );
     } else {
-      const fromProgress = progressRow.surveyAnswers?.[lesson_id];
+      const progressKey = `${lesson_id}::${surveyId}`;
+      const fromProgress =
+        progressRow.surveyAnswers?.[progressKey] ??
+        (surveyId === "default" ? progressRow.surveyAnswers?.[lesson_id] : undefined);
       if (!fromProgress || !Array.isArray(fromProgress)) {
         throw new HttpsError(
           "failed-precondition",
@@ -429,10 +456,11 @@ export const analyzeLessonSurvey = onCall(
       );
     }
 
+    const feedbackKey = `${lesson_id}::${surveyId}`;
     await progressRef.set(
       {
-        surveyAiFeedback: { [lesson_id]: feedback },
-        surveyAiAnalyzedAt: { [lesson_id]: FieldValue.serverTimestamp() },
+        surveyAiFeedback: { [feedbackKey]: feedback },
+        surveyAiAnalyzedAt: { [feedbackKey]: FieldValue.serverTimestamp() },
         updatedAt: FieldValue.serverTimestamp(),
       },
       { merge: true }
@@ -442,6 +470,7 @@ export const analyzeLessonSurvey = onCall(
       feedback,
       lesson_id,
       course_id,
+      survey_id: surveyId,
     };
   },
 );

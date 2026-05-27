@@ -59,22 +59,19 @@ import {
   type Block,
   type LessonImage,
   type LessonContentSlide,
-  type LessonVideoProvider,
-  type SlidePopup,
   type QuizQuestion,
 } from "../../lib/curriculum";
 import {
   createCourse,
   updateCourse,
   setCourseLessonQuiz,
-  setCourseLessonSurvey,
+  setCourseLessonSurveyCheckpoints,
   getCourse,
   getCourseLessonQuiz,
-  getCourseLessonSurvey,
+  getCourseLessonSurveyCheckpoints,
   deleteCourse,
   type Course,
 } from "../../lib/courses";
-import { DATAROOM_FOLDER_OPTIONS } from "../../lib/dataroomFolders";
 import {
   collection,
   query,
@@ -96,28 +93,17 @@ import { SlidePopupsEditor } from "../../components/curriculum/SlidePopupsEditor
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../components/ui/dialog";
 import { SKILL_CATEGORIES, ALL_SKILLS, type SkillCategory } from "../../lib/onboardingData";
 import { Checkbox } from "../../components/ui/checkbox";
+import { LessonSurveyCheckpointEditor } from "../../components/admin/LessonSurveyCheckpointEditor";
+import {
+  type DraftSlide,
+  type DraftLessonSurvey,
+  newDraftLessonSurvey,
+} from "./courseBuilderTypes";
+import type { LessonSurveyCheckpoint } from "../../lib/curriculum";
+
+export type { DraftSlide, DraftLessonSurvey } from "./courseBuilderTypes";
 
 type ImageUploadStatus = "idle" | "uploading" | "success" | "error";
-
-/** One slide in the builder (before save). Image = file + preview URL; Video = upload, YouTube, or external link. */
-export interface DraftSlide {
-  type: "image" | "video";
-  file?: File;
-  imagePreviewUrl?: string;
-  /** When loading from existing content, keep so we don't re-upload */
-  existingImageUrl?: string;
-  existingStoragePath?: string;
-  /** Interactive emoji popups on image slides */
-  popups?: SlidePopup[];
-  videoProvider?: LessonVideoProvider;
-  videoId?: string;
-  videoUrl?: string;
-  videoFile?: File;
-  videoPreviewUrl?: string;
-  existingVideoUrl?: string;
-  existingVideoStoragePath?: string;
-  caption?: string;
-}
 
 /** One multiple-choice question in the builder (before save) */
 export interface DraftQuizQuestion {
@@ -151,17 +137,40 @@ interface ModuleData {
     quizQuestions?: DraftQuizQuestion[];
     quizMaxAttempts?: number;
     quizPassPercentage?: number;
-    /** Survey at end of lesson (open-ended) */
-    surveyEnabled?: boolean;
-    surveyTitle?: string;
-    surveyQuestions?: Array<{ question: string }>;
-    generatePdfOnComplete?: boolean;
-    /** Required when generatePdfOnComplete is enabled */
-    dataroomFolderId?: string;
-    surveyAiAnalysisEnabled?: boolean;
-    surveyAiPrompt?: string;
-    surveyAiCriteria?: string;
+    /** Surveys at any point in the lesson (after a slide or at end) */
+    surveys?: DraftLessonSurvey[];
   }>;
+}
+
+function draftSurveysToCheckpoints(lesson: {
+  surveys?: DraftLessonSurvey[];
+}): LessonSurveyCheckpoint[] {
+  return (lesson.surveys ?? [])
+    .map((s, i) => {
+      const questions = (s.surveyQuestions ?? [])
+        .filter((q) => (q.question?.trim() ?? "") !== "")
+        .map((q, qi) => ({ order: qi, question: q.question.trim() }));
+      if (questions.length === 0) return null;
+      return {
+        id: s.id,
+        enabled: s.enabled !== false,
+        afterSlideIndex: s.afterSlideIndex ?? -1,
+        order: i,
+        title: (s.title ?? "").trim() || "Survey",
+        questions,
+        generatePdfOnComplete: s.generatePdfOnComplete ?? false,
+        dataroomFolderId: s.dataroomFolderId,
+        aiAnalysis:
+          s.surveyAiAnalysisEnabled ?? false
+            ? {
+                enabled: true,
+                prompt: (s.surveyAiPrompt ?? "").trim(),
+                criteria: (s.surveyAiCriteria ?? "").trim(),
+              }
+            : { enabled: false, prompt: "", criteria: "" },
+      } satisfies LessonSurveyCheckpoint;
+    })
+    .filter((c): c is LessonSurveyCheckpoint => c !== null);
 }
 
 function slugifyBadgeId(raw: string): string {
@@ -212,14 +221,7 @@ export function CourseBuilder() {
           quizQuestions: [],
           quizMaxAttempts: 3,
           quizPassPercentage: 70,
-          surveyEnabled: false,
-          surveyTitle: "",
-          surveyQuestions: [],
-          generatePdfOnComplete: false,
-          dataroomFolderId: undefined,
-          surveyAiAnalysisEnabled: false,
-          surveyAiPrompt: "",
-          surveyAiCriteria: "",
+          surveys: [],
         },
       ],
     },
@@ -336,21 +338,14 @@ export function CourseBuilder() {
             let quizQuestions: DraftQuizQuestion[] = [];
             let quizMaxAttempts = 3;
             let quizPassPercentage = 70;
-            let surveyEnabled = false;
-            let surveyTitle = "";
-            let surveyQuestions: Array<{ question: string }> = [];
-            let generatePdfOnComplete = false;
-            let dataroomFolderId: string | undefined = undefined;
-            let surveyAiAnalysisEnabled = false;
-            let surveyAiPrompt = "";
-            let surveyAiCriteria = "";
+            let surveys: DraftLessonSurvey[] = [];
 
             if (lessonId && cid && moduleId && chapterId) {
               try {
-                const [content, quiz, survey] = await Promise.all([
+                const [content, quiz, surveyCheckpoints] = await Promise.all([
                   getLessonContent(cid, moduleId, chapterId, lessonId),
                   getCourseLessonQuiz(editingCourseId, lessonId),
-                  getCourseLessonSurvey(editingCourseId, lessonId),
+                  getCourseLessonSurveyCheckpoints(editingCourseId, lessonId),
                 ]);
                 slides = content.map((s) => {
                   if (s.type === "image") {
@@ -388,17 +383,21 @@ export function CourseBuilder() {
                       correctAnswer: q.correctAnswer,
                     }));
                 }
-                if (survey?.enabled && survey.questions?.length) {
-                  surveyEnabled = true;
-                  surveyTitle = survey.title ?? "";
-                  surveyQuestions = (survey.questions ?? []).sort((a, b) => a.order - b.order).map((q) => ({ question: q.question }));
-                  generatePdfOnComplete = survey.generatePdfOnComplete ?? false;
-                  dataroomFolderId = survey.dataroomFolderId ?? undefined;
-                  const ai = survey.aiAnalysis;
-                  surveyAiAnalysisEnabled = !!ai?.enabled;
-                  surveyAiPrompt = typeof ai?.prompt === "string" ? ai.prompt : "";
-                  surveyAiCriteria = typeof ai?.criteria === "string" ? ai.criteria : "";
-                }
+                surveys = surveyCheckpoints.map((c) => ({
+                  id: c.id,
+                  afterSlideIndex: c.afterSlideIndex ?? -1,
+                  enabled: c.enabled,
+                  title: c.title ?? "",
+                  surveyQuestions: (c.questions ?? [])
+                    .sort((a, b) => a.order - b.order)
+                    .map((q) => ({ question: q.question })),
+                  generatePdfOnComplete: c.generatePdfOnComplete ?? false,
+                  dataroomFolderId: c.dataroomFolderId,
+                  surveyAiAnalysisEnabled: !!c.aiAnalysis?.enabled,
+                  surveyAiPrompt: typeof c.aiAnalysis?.prompt === "string" ? c.aiAnalysis.prompt : "",
+                  surveyAiCriteria:
+                    typeof c.aiAnalysis?.criteria === "string" ? c.aiAnalysis.criteria : "",
+                }));
               } catch (e) {
                 console.warn("Load lesson content/quiz failed:", e);
               }
@@ -413,14 +412,7 @@ export function CourseBuilder() {
               quizQuestions,
               quizMaxAttempts,
               quizPassPercentage,
-              surveyEnabled,
-              surveyTitle,
-              surveyQuestions,
-              generatePdfOnComplete,
-              dataroomFolderId,
-              surveyAiAnalysisEnabled,
-              surveyAiPrompt,
-              surveyAiCriteria,
+              surveys,
             });
           }
 
@@ -477,13 +469,7 @@ export function CourseBuilder() {
               quizQuestions: [],
               quizMaxAttempts: 3,
               quizPassPercentage: 70,
-              surveyEnabled: false,
-              surveyTitle: "",
-              surveyQuestions: [],
-              generatePdfOnComplete: false,
-              surveyAiAnalysisEnabled: false,
-              surveyAiPrompt: "",
-              surveyAiCriteria: "",
+              surveys: [],
             },
           ],
         });
@@ -505,15 +491,16 @@ export function CourseBuilder() {
         newLessons.push(currentLessons[i]);
       } else {
         newLessons.push({
-        title: "",
-        imageFiles: [],
-        slides: [],
-        imageUploadStatus: "idle",
-        quizEnabled: false,
-        quizQuestions: [],
-        quizMaxAttempts: 3,
-        quizPassPercentage: 70,
-      });
+          title: "",
+          imageFiles: [],
+          slides: [],
+          imageUploadStatus: "idle",
+          quizEnabled: false,
+          quizQuestions: [],
+          quizMaxAttempts: 3,
+          quizPassPercentage: 70,
+          surveys: [],
+        });
       }
     }
 
@@ -675,39 +662,72 @@ export function CourseBuilder() {
     setModules(updated);
   };
 
-  const setSurveyEnabled = (moduleIndex: number, lessonIndex: number, enabled: boolean) => {
+  const addLessonSurvey = (moduleIndex: number, lessonIndex: number) => {
     const updated = [...modules];
     const lesson = updated[moduleIndex].lessons[lessonIndex];
-    lesson.surveyEnabled = enabled;
-    if (!enabled) {
-      // If the survey is disabled, PDF export becomes irrelevant as well.
-      lesson.generatePdfOnComplete = false;
-      lesson.dataroomFolderId = undefined;
-      lesson.surveyAiAnalysisEnabled = false;
-      lesson.surveyAiPrompt = "";
-      lesson.surveyAiCriteria = "";
-    }
-    if (enabled && !lesson.surveyQuestions?.length) lesson.surveyQuestions = [];
+    if (!lesson.surveys) lesson.surveys = [];
+    const slideCount = lesson.slides?.length ?? 0;
+    lesson.surveys.push(newDraftLessonSurvey(slideCount > 0 ? slideCount - 1 : -1));
     setModules(updated);
   };
 
-  const addSurveyQuestion = (moduleIndex: number, lessonIndex: number) => {
+  const removeLessonSurvey = (
+    moduleIndex: number,
+    lessonIndex: number,
+    surveyId: string
+  ) => {
     const updated = [...modules];
     const lesson = updated[moduleIndex].lessons[lessonIndex];
-    if (!lesson.surveyQuestions) lesson.surveyQuestions = [];
-    lesson.surveyQuestions.push({ question: "" });
-    const lk = `${moduleIndex}-${lessonIndex}`;
-    const newIdx = lesson.surveyQuestions.length - 1;
-    setActiveSurveyQuestionByLesson((prev) => ({ ...prev, [lk]: newIdx }));
+    lesson.surveys = (lesson.surveys ?? []).filter((s) => s.id !== surveyId);
     setModules(updated);
   };
 
-  const removeSurveyQuestion = (moduleIndex: number, lessonIndex: number, qIndex: number) => {
+  const updateLessonSurvey = (
+    moduleIndex: number,
+    lessonIndex: number,
+    surveyId: string,
+    patch: Partial<DraftLessonSurvey>
+  ) => {
     const updated = [...modules];
     const lesson = updated[moduleIndex].lessons[lessonIndex];
-    const lk = `${moduleIndex}-${lessonIndex}`;
-    lesson.surveyQuestions = lesson.surveyQuestions?.filter((_, i) => i !== qIndex) ?? [];
-    const len = lesson.surveyQuestions.length;
+    const survey = lesson.surveys?.find((s) => s.id === surveyId);
+    if (!survey) return;
+    Object.assign(survey, patch);
+    setModules(updated);
+  };
+
+  const addSurveyQuestion = (
+    moduleIndex: number,
+    lessonIndex: number,
+    surveyId: string
+  ) => {
+    const updated = [...modules];
+    const lesson = updated[moduleIndex].lessons[lessonIndex];
+    const survey = lesson.surveys?.find((s) => s.id === surveyId);
+    if (!survey) return;
+    if (!survey.surveyQuestions) survey.surveyQuestions = [];
+    survey.surveyQuestions.push({ question: "" });
+    const lk = `${moduleIndex}-${lessonIndex}-${surveyId}`;
+    setActiveSurveyQuestionByLesson((prev) => ({
+      ...prev,
+      [lk]: survey.surveyQuestions!.length - 1,
+    }));
+    setModules(updated);
+  };
+
+  const removeSurveyQuestion = (
+    moduleIndex: number,
+    lessonIndex: number,
+    surveyId: string,
+    qIndex: number
+  ) => {
+    const updated = [...modules];
+    const lesson = updated[moduleIndex].lessons[lessonIndex];
+    const survey = lesson.surveys?.find((s) => s.id === surveyId);
+    if (!survey) return;
+    const lk = `${moduleIndex}-${lessonIndex}-${surveyId}`;
+    survey.surveyQuestions = survey.surveyQuestions?.filter((_, i) => i !== qIndex) ?? [];
+    const len = survey.surveyQuestions.length;
     setActiveSurveyQuestionByLesson((prev) => {
       if (len === 0) {
         const { [lk]: _r, ...rest } = prev;
@@ -723,10 +743,17 @@ export function CourseBuilder() {
     setModules(updated);
   };
 
-  const updateSurveyQuestion = (moduleIndex: number, lessonIndex: number, qIndex: number, value: string) => {
+  const updateSurveyQuestion = (
+    moduleIndex: number,
+    lessonIndex: number,
+    surveyId: string,
+    qIndex: number,
+    value: string
+  ) => {
     const updated = [...modules];
     const lesson = updated[moduleIndex].lessons[lessonIndex];
-    const q = lesson.surveyQuestions?.[qIndex];
+    const survey = lesson.surveys?.find((s) => s.id === surveyId);
+    const q = survey?.surveyQuestions?.[qIndex];
     if (!q) return;
     q.question = value;
     setModules(updated);
@@ -986,29 +1013,17 @@ export function CourseBuilder() {
               passPercentage: Math.min(100, Math.max(0, lesson.quizPassPercentage ?? 70)),
               questions: validQuestions,
             });
-            const surveyEnabled = lesson.surveyEnabled ?? false;
-            const surveyQuestions = (lesson.surveyQuestions ?? []).filter((q) => (q.question?.trim() ?? "") !== "").map((q, i) => ({ order: i, question: q.question.trim() }));
-            const generatePdfOnComplete = lesson.generatePdfOnComplete ?? false;
-            const dataroomFolderId = lesson.dataroomFolderId;
-            if (generatePdfOnComplete && !dataroomFolderId) {
-              alert("Select a Data Room folder for this lesson's survey PDF export.");
-              return null;
+            for (const s of lesson.surveys ?? []) {
+              if (s.generatePdfOnComplete && !s.dataroomFolderId) {
+                alert("Select a Data Room folder for each survey that exports a PDF.");
+                return null;
+              }
             }
-            await setCourseLessonSurvey(courseIdToUse, lesson.lessonId, {
-              enabled: surveyEnabled && surveyQuestions.length > 0,
-              title: (lesson.surveyTitle ?? "").trim() || "Survey",
-              questions: surveyQuestions,
-              generatePdfOnComplete,
-              dataroomFolderId: dataroomFolderId || undefined,
-              aiAnalysis:
-                surveyEnabled && surveyQuestions.length > 0 && (lesson.surveyAiAnalysisEnabled ?? false)
-                  ? {
-                      enabled: true,
-                      prompt: (lesson.surveyAiPrompt ?? "").trim(),
-                      criteria: (lesson.surveyAiCriteria ?? "").trim(),
-                    }
-                  : { enabled: false, prompt: "", criteria: "" },
-            });
+            await setCourseLessonSurveyCheckpoints(
+              courseIdToUse,
+              lesson.lessonId,
+              draftSurveysToCheckpoints(lesson)
+            );
           }
         }
         alert("Course updated!");
@@ -1052,29 +1067,17 @@ export function CourseBuilder() {
               passPercentage: Math.min(100, Math.max(0, lesson.quizPassPercentage ?? 70)),
               questions: validQuestions,
             });
-            const surveyEnabled = lesson.surveyEnabled ?? false;
-            const surveyQuestions = (lesson.surveyQuestions ?? []).filter((q) => (q.question?.trim() ?? "") !== "").map((q, i) => ({ order: i, question: q.question.trim() }));
-            const generatePdfOnComplete = lesson.generatePdfOnComplete ?? false;
-            const dataroomFolderId = lesson.dataroomFolderId;
-            if (generatePdfOnComplete && !dataroomFolderId) {
-              alert("Select a Data Room folder for this lesson's survey PDF export.");
-              return null;
+            for (const s of lesson.surveys ?? []) {
+              if (s.generatePdfOnComplete && !s.dataroomFolderId) {
+                alert("Select a Data Room folder for each survey that exports a PDF.");
+                return null;
+              }
             }
-            await setCourseLessonSurvey(courseId, lesson.lessonId, {
-              enabled: surveyEnabled && surveyQuestions.length > 0,
-              title: (lesson.surveyTitle ?? "").trim() || "Survey",
-              questions: surveyQuestions,
-              generatePdfOnComplete,
-              dataroomFolderId: dataroomFolderId || undefined,
-              aiAnalysis:
-                surveyEnabled && surveyQuestions.length > 0 && (lesson.surveyAiAnalysisEnabled ?? false)
-                  ? {
-                      enabled: true,
-                      prompt: (lesson.surveyAiPrompt ?? "").trim(),
-                      criteria: (lesson.surveyAiCriteria ?? "").trim(),
-                    }
-                  : { enabled: false, prompt: "", criteria: "" },
-            });
+            await setCourseLessonSurveyCheckpoints(
+              courseId,
+              lesson.lessonId,
+              draftSurveysToCheckpoints(lesson)
+            );
           }
         }
         alert("Course saved as draft!");
@@ -1656,13 +1659,8 @@ export function CourseBuilder() {
                       const quizEditIx =
                         quizList.length === 0 ? 0 : Math.min(Math.max(0, quizSelRaw), quizList.length - 1);
                       const quizAt = quizList[quizEditIx];
-                      const surveyList = lesson.surveyQuestions ?? [];
-                      const surveySelRaw = activeSurveyQuestionByLesson[lessonPickerKey] ?? 0;
-                      const surveyEditIx =
-                        surveyList.length === 0
-                          ? 0
-                          : Math.min(Math.max(0, surveySelRaw), surveyList.length - 1);
-                      const surveyAt = surveyList[surveyEditIx];
+                      const lessonSurveys = lesson.surveys ?? [];
+                      const slideCountForSurveys = lesson.slides?.length ?? 0;
 
                       return (
                       <Card key={lessonIndex} className="p-4 border-border">
@@ -1998,221 +1996,93 @@ export function CourseBuilder() {
                             )}
                           </div>
 
-                          {/* Survey at end of lesson (open-ended) */}
+                          {/* Surveys (multiple, any placement in lesson) */}
                           <div className="space-y-3 pt-2 border-t border-border">
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="checkbox"
-                                id={`survey-${moduleIndex}-${lessonIndex}`}
-                                checked={lesson.surveyEnabled ?? false}
-                                onChange={(e) =>
-                                  setSurveyEnabled(moduleIndex, lessonIndex, e.target.checked)
-                                }
-                                className="rounded border-border"
-                              />
-                              <Label
-                                htmlFor={`survey-${moduleIndex}-${lessonIndex}`}
-                                className="cursor-pointer"
-                              >
-                                Survey at end of lesson (open-ended; submit to complete)
+                            <div className="flex items-center justify-between gap-2">
+                              <Label className="flex items-center gap-2">
+                                <ClipboardList className="w-4 h-4 text-accent" />
+                                Lesson surveys
                               </Label>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => addLessonSurvey(moduleIndex, lessonIndex)}
+                              >
+                                <Plus className="w-3 h-3 mr-1" />
+                                Add survey
+                              </Button>
                             </div>
-                            {lesson.surveyEnabled && (
-                              <>
-                                <div className="flex items-center gap-2">
-                                  <input
-                                    type="checkbox"
-                                    id={`survey-pdf-${moduleIndex}-${lessonIndex}`}
-                                    checked={lesson.generatePdfOnComplete ?? false}
-                                    onChange={(e) => {
-                                      const checked = e.target.checked;
-                                      const updated = [...modules];
-                                      updated[moduleIndex].lessons[lessonIndex].generatePdfOnComplete = checked;
-                                      if (!checked) {
-                                        updated[moduleIndex].lessons[lessonIndex].dataroomFolderId = undefined;
+                            <p className="text-xs text-muted-foreground">
+                              Add one or more open-ended surveys. Choose when each appears—after a specific slide or at the end of the lesson (before the quiz, if any).
+                            </p>
+                            {lessonSurveys.length === 0 ? (
+                              <p className="text-xs text-muted-foreground italic">No surveys yet.</p>
+                            ) : (
+                              <div className="space-y-3">
+                                {lessonSurveys.map((surveyDraft) => {
+                                  const surveyQKey = `${moduleIndex}-${lessonIndex}-${surveyDraft.id}`;
+                                  const qSelRaw = activeSurveyQuestionByLesson[surveyQKey] ?? 0;
+                                  const qList = surveyDraft.surveyQuestions ?? [];
+                                  const qEditIx =
+                                    qList.length === 0
+                                      ? 0
+                                      : Math.min(Math.max(0, qSelRaw), qList.length - 1);
+                                  return (
+                                    <LessonSurveyCheckpointEditor
+                                      key={surveyDraft.id}
+                                      survey={surveyDraft}
+                                      slideCount={slideCountForSurveys}
+                                      activeQuestionIndex={qEditIx}
+                                      onActiveQuestionIndexChange={(ix) =>
+                                        setActiveSurveyQuestionByLesson((prev) => ({
+                                          ...prev,
+                                          [surveyQKey]: ix,
+                                        }))
                                       }
-                                      setModules(updated);
-                                    }}
-                                    className="rounded border-border"
-                                  />
-                                  <Label htmlFor={`survey-pdf-${moduleIndex}-${lessonIndex}`} className="cursor-pointer text-xs">
-                                    Generate PDF of answers when user completes (upload to Data Room)
-                                  </Label>
-                                </div>
-                                {lesson.generatePdfOnComplete && (
-                                  <div className="space-y-1">
-                                    <Label className="text-xs">Data Room folder for this PDF (required)</Label>
-                                    <select
-                                      value={lesson.dataroomFolderId ?? ""}
-                                      onChange={(e) => {
-                                        const updated = [...modules];
-                                        updated[moduleIndex].lessons[lessonIndex].dataroomFolderId = e.target.value;
-                                        setModules(updated);
-                                      }}
-                                      className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
-                                    >
-                                      <option value="" disabled>
-                                        Select a folder
-                                      </option>
-                                      {DATAROOM_FOLDER_OPTIONS.map((f) => (
-                                        <option key={f.id} value={f.id}>
-                                          {f.name}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  </div>
-                                )}
-                                <div className="space-y-1">
-                                  <Label className="text-xs">Survey name (shown to learners)</Label>
-                                  <Input
-                                    placeholder="e.g. Module 1 Reflection"
-                                    value={lesson.surveyTitle ?? ""}
-                                    onChange={(e) => {
-                                      const updated = [...modules];
-                                      updated[moduleIndex].lessons[lessonIndex].surveyTitle = e.target.value;
-                                      setModules(updated);
-                                    }}
-                                    className="text-sm"
-                                  />
-                                </div>
-                                <div className="space-y-3 rounded-md border border-border p-3 bg-muted/10">
-                                  <Label className="text-xs font-medium">Optional: AI survey analysis</Label>
-                                  <p className="text-xs text-muted-foreground leading-relaxed">
-                                    After learners submit this survey they can optionally run AI feedback (Cloud Function{" "}
-                                    <code className="text-[11px] bg-muted px-1 py-0.5 rounded">analyzeLessonSurvey</code>
-                                    ). Turn it on below and add your prompt plus criteria—you still need real survey questions
-                                    (next section).
-                                  </p>
-                                  {(lesson.surveyQuestions?.length ?? 0) === 0 ? (
-                                    <p className="text-xs text-amber-600 dark:text-amber-500">
-                                      Add at least one question with <strong>Add question</strong> below, then enable AI
-                                      analysis here.
-                                    </p>
-                                  ) : null}
-                                  <div className="flex items-start gap-2">
-                                    <input
-                                      type="checkbox"
-                                      id={`survey-ai-${moduleIndex}-${lessonIndex}`}
-                                      disabled={(lesson.surveyQuestions?.length ?? 0) === 0}
-                                      checked={lesson.surveyAiAnalysisEnabled ?? false}
-                                      onChange={(e) => {
-                                        const checked = e.target.checked;
-                                        const updated = [...modules];
-                                        updated[moduleIndex].lessons[lessonIndex].surveyAiAnalysisEnabled = checked;
-                                        setModules(updated);
-                                      }}
-                                      className="rounded border-border mt-0.5"
+                                      onChange={(patch) =>
+                                        updateLessonSurvey(
+                                          moduleIndex,
+                                          lessonIndex,
+                                          surveyDraft.id,
+                                          patch
+                                        )
+                                      }
+                                      onRemove={() =>
+                                        removeLessonSurvey(
+                                          moduleIndex,
+                                          lessonIndex,
+                                          surveyDraft.id
+                                        )
+                                      }
+                                      onAddQuestion={() =>
+                                        addSurveyQuestion(
+                                          moduleIndex,
+                                          lessonIndex,
+                                          surveyDraft.id
+                                        )
+                                      }
+                                      onRemoveQuestion={(qIndex) =>
+                                        removeSurveyQuestion(
+                                          moduleIndex,
+                                          lessonIndex,
+                                          surveyDraft.id,
+                                          qIndex
+                                        )
+                                      }
+                                      onUpdateQuestion={(qIndex, value) =>
+                                        updateSurveyQuestion(
+                                          moduleIndex,
+                                          lessonIndex,
+                                          surveyDraft.id,
+                                          qIndex,
+                                          value
+                                        )
+                                      }
                                     />
-                                    <Label htmlFor={`survey-ai-${moduleIndex}-${lessonIndex}`} className="cursor-pointer text-xs leading-snug font-normal">
-                                      Enable AI analysis (learners choose to run feedback before finishing the lesson)
-                                    </Label>
-                                  </div>
-                                  {lesson.surveyAiAnalysisEnabled && (lesson.surveyQuestions?.length ?? 0) > 0 ? (
-                                    <>
-                                      <div className="space-y-1">
-                                        <Label className="text-xs">AI facilitator prompt</Label>
-                                        <Textarea
-                                          placeholder="Instructions for tone, teaching goals, and how feedback should be structured"
-                                          value={lesson.surveyAiPrompt ?? ""}
-                                          onChange={(e) => {
-                                            const updated = [...modules];
-                                            updated[moduleIndex].lessons[lessonIndex].surveyAiPrompt = e.target.value;
-                                            setModules(updated);
-                                          }}
-                                          rows={3}
-                                          className="text-sm"
-                                        />
-                                      </div>
-                                      <div className="space-y-1">
-                                        <Label className="text-xs">Criteria / rubric</Label>
-                                        <Textarea
-                                          placeholder="Bullet points or rubric the AI must explicitly address"
-                                          value={lesson.surveyAiCriteria ?? ""}
-                                          onChange={(e) => {
-                                            const updated = [...modules];
-                                            updated[moduleIndex].lessons[lessonIndex].surveyAiCriteria = e.target.value;
-                                            setModules(updated);
-                                          }}
-                                          rows={3}
-                                          className="text-sm"
-                                        />
-                                      </div>
-                                    </>
-                                  ) : null}
-                                </div>
-                                <div className="space-y-2">
-                                  <Label className="text-xs">Survey questions (open-ended)</Label>
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => addSurveyQuestion(moduleIndex, lessonIndex)}
-                                  >
-                                    <Plus className="w-3 h-3 mr-1" />
-                                    Add question
-                                  </Button>
-                                  {(lesson.surveyQuestions?.length ?? 0) > 0 && surveyAt ? (
-                                    <div className="space-y-2 rounded-md border border-border bg-muted/20 p-3">
-                                      <div className="flex flex-wrap items-center gap-2">
-                                        <Label
-                                          htmlFor={`survey-q-pick-${moduleIndex}-${lessonIndex}`}
-                                          className="text-xs shrink-0"
-                                        >
-                                          Edit question
-                                        </Label>
-                                        <select
-                                          id={`survey-q-pick-${moduleIndex}-${lessonIndex}`}
-                                          className="text-sm flex-1 min-w-[14rem] max-w-full border border-border rounded px-2 py-1 bg-background text-foreground"
-                                          value={surveyEditIx}
-                                          onChange={(e) =>
-                                            setActiveSurveyQuestionByLesson((prev) => ({
-                                              ...prev,
-                                              [lessonPickerKey]: parseInt(e.target.value, 10),
-                                            }))
-                                          }
-                                        >
-                                          {(lesson.surveyQuestions ?? []).map((sOpt, si) => (
-                                            <option key={si} value={si}>
-                                              {`Q${si + 1}: ${(sOpt.question?.trim() || "(no text yet)").slice(0, 72)}`}
-                                            </option>
-                                          ))}
-                                        </select>
-                                      </div>
-                                      <div className="flex items-center justify-between gap-2">
-                                        <span className="text-xs text-muted-foreground">
-                                          Editing question {surveyEditIx + 1} of {(lesson.surveyQuestions ?? []).length}
-                                        </span>
-                                        <Button
-                                          type="button"
-                                          variant="ghost"
-                                          size="sm"
-                                          className="h-8 w-8 p-0 shrink-0"
-                                          onClick={() =>
-                                            removeSurveyQuestion(moduleIndex, lessonIndex, surveyEditIx)
-                                          }
-                                          aria-label={`Delete survey question ${surveyEditIx + 1}`}
-                                        >
-                                          <Trash2 className="w-3 h-3" />
-                                        </Button>
-                                      </div>
-                                      <Textarea
-                                        placeholder="Question text shown to learners (open-ended answer)"
-                                        value={surveyAt.question}
-                                        onChange={(e) =>
-                                          updateSurveyQuestion(
-                                            moduleIndex,
-                                            lessonIndex,
-                                            surveyEditIx,
-                                            e.target.value
-                                          )
-                                        }
-                                        rows={4}
-                                        className="text-sm"
-                                      />
-                                    </div>
-                                  ) : null}
-                                </div>
-                              </>
+                                  );
+                                })}
+                              </div>
                             )}
                           </div>
 
