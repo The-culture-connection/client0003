@@ -51,12 +51,14 @@ import {
   getLessonContent,
   setLessonContentSlides,
   uploadSingleImageForLesson,
-  extractYouTubeVideoId,
+  uploadVideoForLesson,
   type Lesson,
   type Slide,
   type Block,
   type LessonImage,
   type LessonContentSlide,
+  type LessonVideoProvider,
+  type SlidePopup,
   type QuizQuestion,
 } from "../../lib/curriculum";
 import {
@@ -85,14 +87,17 @@ import {
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { db, storage } from "../../lib/firebase";
 import { SlideRenderer } from "../../components/curriculum/SlideRenderer";
-import { YouTubeBlock } from "../../components/curriculum/YouTubeBlock";
+import { MediaVideoBlock } from "../../components/curriculum/MediaVideoBlock";
+import { SlideImageWithPopups } from "../../components/curriculum/SlideImageWithPopups";
+import { AddVideoSlideDialog, type VideoSlideInput } from "../../components/curriculum/AddVideoSlideDialog";
+import { SlidePopupsEditor } from "../../components/curriculum/SlidePopupsEditor";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../components/ui/dialog";
 import { SKILL_CATEGORIES, ALL_SKILLS, type SkillCategory } from "../../lib/onboardingData";
 import { Checkbox } from "../../components/ui/checkbox";
 
 type ImageUploadStatus = "idle" | "uploading" | "success" | "error";
 
-/** One slide in the builder (before save). Image = file + preview URL; Video = YouTube id + caption. Existing = from Firestore (no file). */
+/** One slide in the builder (before save). Image = file + preview URL; Video = upload, YouTube, or external link. */
 export interface DraftSlide {
   type: "image" | "video";
   file?: File;
@@ -100,8 +105,15 @@ export interface DraftSlide {
   /** When loading from existing content, keep so we don't re-upload */
   existingImageUrl?: string;
   existingStoragePath?: string;
+  /** Interactive emoji popups on image slides */
+  popups?: SlidePopup[];
+  videoProvider?: LessonVideoProvider;
   videoId?: string;
   videoUrl?: string;
+  videoFile?: File;
+  videoPreviewUrl?: string;
+  existingVideoUrl?: string;
+  existingVideoStoragePath?: string;
   caption?: string;
 }
 
@@ -237,6 +249,14 @@ export function CourseBuilder() {
   const [activeSurveyQuestionByLesson, setActiveSurveyQuestionByLesson] = useState<Record<string, number>>({});
   /** Which quiz question row is edited (per module/lesson)—dropdown target */
   const [activeQuizQuestionByLesson, setActiveQuizQuestionByLesson] = useState<Record<string, number>>({});
+  /** Add-video dialog target lesson */
+  const [videoDialogTarget, setVideoDialogTarget] = useState<{ moduleIndex: number; lessonIndex: number } | null>(null);
+  /** Popups editor target slide */
+  const [popupsEditorTarget, setPopupsEditorTarget] = useState<{
+    moduleIndex: number;
+    lessonIndex: number;
+    slideIndex: number;
+  } | null>(null);
 
   // Initialize curriculum structure (create new only when not editing)
   useEffect(() => {
@@ -337,12 +357,17 @@ export function CourseBuilder() {
                       imagePreviewUrl: s.image_url,
                       existingImageUrl: s.image_url,
                       existingStoragePath: s.storage_path,
+                      popups: s.popups ?? [],
                     };
                   }
                   return {
                     type: "video" as const,
+                    videoProvider: s.video_provider,
                     videoId: s.video_id,
                     videoUrl: s.video_url,
+                    videoPreviewUrl: s.video_provider === "hosted" ? s.video_url : undefined,
+                    existingVideoUrl: s.video_provider === "hosted" ? s.video_url : undefined,
+                    existingVideoStoragePath: s.storage_path,
                     caption: s.caption,
                   };
                 });
@@ -504,7 +529,7 @@ export function CourseBuilder() {
     if (!files?.length) return;
     const fileList = Array.from(files).filter((f) => f.type.startsWith("image/"));
     if (fileList.length === 0) {
-      alert("Please select image files (e.g. JPG, PNG)");
+      alert("Please select image files (JPG, PNG, GIF, or WebP)");
       return;
     }
     const updated = [...modules];
@@ -525,23 +550,33 @@ export function CourseBuilder() {
   const handleAddSlideVideo = (
     moduleIndex: number,
     lessonIndex: number,
-    url: string,
-    caption: string
+    input: VideoSlideInput
   ) => {
-    const videoId = extractYouTubeVideoId(url);
-    if (!videoId) {
-      alert("Invalid YouTube link. Use https://www.youtube.com/watch?v=... or https://youtu.be/...");
-      return;
-    }
     const updated = [...modules];
     const lesson = updated[moduleIndex].lessons[lessonIndex];
     if (!lesson.slides) lesson.slides = [];
     lesson.slides.push({
       type: "video",
-      videoId,
-      videoUrl: url.trim(),
-      caption: caption.trim() || undefined,
+      videoProvider: input.videoProvider,
+      videoId: input.videoId,
+      videoUrl: input.videoUrl,
+      videoFile: input.videoFile,
+      videoPreviewUrl: input.videoFile ? URL.createObjectURL(input.videoFile) : undefined,
+      caption: input.caption,
     });
+    setModules(updated);
+  };
+
+  const handleSaveSlidePopups = (
+    moduleIndex: number,
+    lessonIndex: number,
+    slideIndex: number,
+    popups: SlidePopup[]
+  ) => {
+    const updated = [...modules];
+    const slide = updated[moduleIndex].lessons[lessonIndex].slides?.[slideIndex];
+    if (!slide || slide.type !== "image") return;
+    slide.popups = popups;
     setModules(updated);
   };
 
@@ -550,6 +585,9 @@ export function CourseBuilder() {
     const lesson = updated[moduleIndex].lessons[lessonIndex];
     if (lesson.slides?.[slideIndex]?.imagePreviewUrl) {
       URL.revokeObjectURL(lesson.slides[slideIndex].imagePreviewUrl!);
+    }
+    if (lesson.slides?.[slideIndex]?.videoPreviewUrl) {
+      URL.revokeObjectURL(lesson.slides[slideIndex].videoPreviewUrl!);
     }
     lesson.slides = lesson.slides?.filter((_, i) => i !== slideIndex) ?? [];
     setModules(updated);
@@ -781,6 +819,7 @@ export function CourseBuilder() {
                       image_url,
                       storage_path,
                       alt_text: s.file.name,
+                      popups: s.popups?.length ? s.popups : undefined,
                     });
                   } else if (s.existingImageUrl) {
                     contentSlides.push({
@@ -789,13 +828,41 @@ export function CourseBuilder() {
                       image_url: s.existingImageUrl,
                       storage_path: s.existingStoragePath ?? "",
                       alt_text: "Slide",
+                      popups: s.popups?.length ? s.popups : undefined,
                     });
                   }
-                } else {
+                } else if (s.videoFile) {
+                  const { storage_path, video_url } = await uploadVideoForLesson(
+                    s.videoFile,
+                    curriculumId,
+                    moduleId,
+                    lessonId
+                  );
                   contentSlides.push({
                     order: i,
                     type: "video",
-                    video_provider: "youtube",
+                    video_provider: "hosted",
+                    video_url,
+                    storage_path,
+                    caption: s.caption,
+                    background_color: "#000000",
+                  });
+                } else if (s.existingVideoUrl && s.videoProvider === "hosted") {
+                  contentSlides.push({
+                    order: i,
+                    type: "video",
+                    video_provider: "hosted",
+                    video_url: s.existingVideoUrl,
+                    storage_path: s.existingVideoStoragePath ?? "",
+                    caption: s.caption,
+                    background_color: "#000000",
+                  });
+                } else {
+                  const provider = s.videoProvider ?? (s.videoId ? "youtube" : "external");
+                  contentSlides.push({
+                    order: i,
+                    type: "video",
+                    video_provider: provider,
                     video_id: s.videoId,
                     video_url: s.videoUrl,
                     caption: s.caption,
@@ -1618,12 +1685,12 @@ export function CourseBuilder() {
                               Slides
                             </Label>
                             <p className="text-xs text-muted-foreground mb-2">
-                              Add slides in order. Choose Image (upload) or Video (YouTube link). Reorder in the Preview tab.
+                              Add slides in order. Upload images or GIFs, add videos from your computer or a public link (YouTube, Canva, etc.), and optionally add emoji popups on image slides.
                             </p>
                             <div className="flex flex-wrap items-center gap-2">
                               <Input
                                 type="file"
-                                accept="image/*"
+                                accept="image/*,.gif"
                                 multiple
                                 onChange={(e) =>
                                   handleImageSelect(moduleIndex, lessonIndex, e)
@@ -1635,12 +1702,9 @@ export function CourseBuilder() {
                                 type="button"
                                 variant="outline"
                                 size="sm"
-                                onClick={() => {
-                                  const url = window.prompt("Paste YouTube link (youtube.com/watch?v=... or youtu.be/...)");
-                                  if (!url) return;
-                                  const caption = window.prompt("Optional caption for this video:");
-                                  handleAddSlideVideo(moduleIndex, lessonIndex, url, caption ?? "");
-                                }}
+                                onClick={() =>
+                                  setVideoDialogTarget({ moduleIndex, lessonIndex })
+                                }
                                 disabled={lesson.imageUploadStatus === "uploading"}
                               >
                                 <Video className="w-4 h-4 mr-1" />
@@ -1656,18 +1720,49 @@ export function CourseBuilder() {
                                   >
                                     <Badge variant="outline" className="text-xs">
                                       {slide.type === "image"
-                                        ? "Image"
-                                        : "Video"}
+                                        ? slide.file?.type === "image/gif" || slide.file?.name?.endsWith(".gif")
+                                          ? "GIF"
+                                          : "Image"
+                                        : slide.videoProvider === "hosted"
+                                          ? "Video (upload)"
+                                          : slide.videoProvider === "external"
+                                            ? "Video (link)"
+                                            : "Video"}
                                     </Badge>
                                     {slide.type === "image" && (
                                       <span className="truncate flex-1">
                                         {slide.file?.name ?? "Image"}
+                                        {(slide.popups?.length ?? 0) > 0 && (
+                                          <span className="text-muted-foreground ml-1">
+                                            · {slide.popups!.length} popup{slide.popups!.length === 1 ? "" : "s"}
+                                          </span>
+                                        )}
                                       </span>
                                     )}
                                     {slide.type === "video" && (
                                       <span className="truncate flex-1">
-                                        {slide.videoId ?? slide.videoUrl}
+                                        {slide.videoFile?.name ??
+                                          slide.videoId ??
+                                          slide.videoUrl ??
+                                          "Video"}
                                       </span>
+                                    )}
+                                    {slide.type === "image" && slide.imagePreviewUrl && (
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-7 text-xs"
+                                        onClick={() =>
+                                          setPopupsEditorTarget({
+                                            moduleIndex,
+                                            lessonIndex,
+                                            slideIndex: slideIdx,
+                                          })
+                                        }
+                                      >
+                                        Popups
+                                      </Button>
                                     )}
                                     <Button
                                       type="button"
@@ -2499,6 +2594,48 @@ export function CourseBuilder() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <AddVideoSlideDialog
+        open={videoDialogTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setVideoDialogTarget(null);
+        }}
+        onAdd={(input) => {
+          if (!videoDialogTarget) return;
+          handleAddSlideVideo(
+            videoDialogTarget.moduleIndex,
+            videoDialogTarget.lessonIndex,
+            input
+          );
+          setVideoDialogTarget(null);
+        }}
+      />
+
+      {popupsEditorTarget && (() => {
+        const slide =
+          modules[popupsEditorTarget.moduleIndex]?.lessons[popupsEditorTarget.lessonIndex]
+            ?.slides?.[popupsEditorTarget.slideIndex];
+        if (!slide?.imagePreviewUrl) return null;
+        return (
+          <SlidePopupsEditor
+            open
+            onOpenChange={(open) => {
+              if (!open) setPopupsEditorTarget(null);
+            }}
+            imageSrc={slide.imagePreviewUrl}
+            imageAlt={slide.file?.name}
+            popups={slide.popups ?? []}
+            onSave={(popups) =>
+              handleSaveSlidePopups(
+                popupsEditorTarget.moduleIndex,
+                popupsEditorTarget.lessonIndex,
+                popupsEditorTarget.slideIndex,
+                popups
+              )
+            }
+          />
+        );
+      })()}
     </div>
   );
 }
@@ -2634,23 +2771,28 @@ function LessonPreview({
       if (!s) return null;
       if (s.type === "image") {
         const src = s.imagePreviewUrl;
-        return (
-          <div className="w-full min-h-[400px] bg-black flex items-center justify-center p-6">
-            {src ? (
-              <img
-                src={src}
-                alt={s.file?.name ?? "Slide"}
-                className="max-w-full max-h-[70vh] object-contain"
-              />
-            ) : (
+        if (!src) {
+          return (
+            <div className="w-full min-h-[400px] bg-black flex items-center justify-center p-6">
               <span className="text-gray-500">Image (preview after save)</span>
-            )}
-          </div>
+            </div>
+          );
+        }
+        return (
+          <SlideImageWithPopups
+            src={src}
+            alt={s.file?.name ?? "Slide"}
+            popups={s.popups}
+          />
         );
       }
+      const previewVideoUrl =
+        s.videoPreviewUrl ?? s.existingVideoUrl ?? s.videoUrl;
       return (
-        <YouTubeBlock
-          videoId={s.videoId!}
+        <MediaVideoBlock
+          videoProvider={s.videoProvider}
+          videoId={s.videoId}
+          videoUrl={previewVideoUrl}
           caption={s.caption}
         />
       );
@@ -2659,18 +2801,18 @@ function LessonPreview({
       const c = lessonContent[currentSlideIndex];
       if (c.type === "image") {
         return (
-          <div className="w-full min-h-[400px] bg-black flex items-center justify-center p-6">
-            <img
-              src={c.image_url}
-              alt={c.alt_text ?? "Slide"}
-              className="max-w-full max-h-[70vh] object-contain"
-            />
-          </div>
+          <SlideImageWithPopups
+            src={c.image_url!}
+            alt={c.alt_text ?? "Slide"}
+            popups={c.popups}
+          />
         );
       }
       return (
-        <YouTubeBlock
-          videoId={c.video_id!}
+        <MediaVideoBlock
+          videoProvider={c.video_provider}
+          videoId={c.video_id}
+          videoUrl={c.video_url}
           caption={c.caption}
         />
       );

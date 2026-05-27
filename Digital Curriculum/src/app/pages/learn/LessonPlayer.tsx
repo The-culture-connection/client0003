@@ -14,7 +14,8 @@ import { useAuth } from "../../components/auth/AuthProvider";
 import { functions } from "../../lib/firebase";
 import { httpsCallable } from "firebase/functions";
 import { SlideRenderer } from "../../components/curriculum/SlideRenderer";
-import { YouTubeBlock } from "../../components/curriculum/YouTubeBlock";
+import { MediaVideoBlock } from "../../components/curriculum/MediaVideoBlock";
+import { SlideImageWithPopups } from "../../components/curriculum/SlideImageWithPopups";
 import { Button } from "../../components/ui/button";
 import { ChevronLeft, ChevronRight, LogOut, Loader2 } from "lucide-react";
 import { useScreenAnalytics } from "../../analytics/useScreenAnalytics";
@@ -856,16 +857,17 @@ export function LessonPlayer() {
           <>
             {isMediaLesson && currentContentSlide ? (
               currentContentSlide.type === "image" ? (
-                <div className="w-full min-h-[calc(100vh-80px)] bg-black flex items-center justify-center p-8">
-                  <img
-                    src={currentContentSlide.image_url}
-                    alt={currentContentSlide.alt_text ?? `Slide ${currentSlideIndex + 1}`}
-                    className="max-w-full max-h-full object-contain"
-                  />
-                </div>
+                <SlideImageWithPopups
+                  src={currentContentSlide.image_url!}
+                  alt={currentContentSlide.alt_text ?? `Slide ${currentSlideIndex + 1}`}
+                  popups={currentContentSlide.popups}
+                  className="min-h-[calc(100vh-80px)]"
+                />
               ) : (
-                <YouTubeBlock
-                  videoId={currentContentSlide.video_id!}
+                <MediaVideoBlock
+                  videoProvider={currentContentSlide.video_provider}
+                  videoId={currentContentSlide.video_id}
+                  videoUrl={currentContentSlide.video_url}
                   caption={currentContentSlide.caption}
                 />
               )

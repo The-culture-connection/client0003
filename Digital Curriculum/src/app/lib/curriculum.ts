@@ -103,21 +103,38 @@ export interface LessonImage {
   updated_at?: Timestamp;
 }
 
-/** One slide in a media lesson: either an image or a YouTube video */
+export type LessonVideoProvider = "youtube" | "hosted" | "external";
+
+/** Clickable emoji hotspot on an image slide */
+export interface SlidePopup {
+  id: string;
+  emoji: string;
+  /** Horizontal position as percentage (0–100) from left edge of image */
+  x_percent: number;
+  /** Vertical position as percentage (0–100) from top edge of image */
+  y_percent: number;
+  message: string;
+}
+
+/** One slide in a media lesson: image, video, or custom HTML */
 export interface LessonContentSlide {
   id?: string;
   order: number;
-  type: "image" | "video";
-  // Image slide
+  type: "image" | "video" | "html";
+  // Image slide (includes GIF)
   image_url?: string;
   storage_path?: string;
   alt_text?: string;
-  // Video slide
-  video_provider?: "youtube";
+  /** Interactive emoji popups overlaid on image slides */
+  popups?: SlidePopup[];
+  // Video slide (YouTube, uploaded file, or external URL e.g. Canva CDN)
+  video_provider?: LessonVideoProvider;
   video_id?: string;
   video_url?: string;
   caption?: string;
   background_color?: string;
+  // HTML slide (paste migrated Thinkific / Player Snips markup)
+  html_content?: string;
   created_at?: Timestamp;
   updated_at?: Timestamp;
 }
@@ -276,7 +293,19 @@ export function extractYouTubeVideoId(url: string): string | null {
   if (watchMatch) return watchMatch[1];
   const shortMatch = trimmed.match(/(?:youtu\.be\/)([a-zA-Z0-9_-]{11})/);
   if (shortMatch) return shortMatch[1];
+  const embedMatch = trimmed.match(/(?:youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
+  if (embedMatch) return embedMatch[1];
   return null;
+}
+
+/** Classify a pasted video URL as YouTube or a generic external stream/embed link */
+export function classifyVideoUrl(url: string): {
+  provider: LessonVideoProvider;
+  videoId?: string;
+} {
+  const videoId = extractYouTubeVideoId(url);
+  if (videoId) return { provider: "youtube", videoId };
+  return { provider: "external" };
 }
 
 // ============================================================================
@@ -581,13 +610,16 @@ export async function setLessonContentSlides(
       type: s.type,
       ...(s.type === "image"
         ? { image_url: s.image_url, storage_path: s.storage_path, alt_text: s.alt_text }
-        : {
-            video_provider: s.video_provider ?? "youtube",
-            video_id: s.video_id,
-            video_url: s.video_url,
-            caption: s.caption,
-            background_color: s.background_color ?? "#000000",
-          }),
+        : s.type === "html"
+          ? { html_content: s.html_content ?? "" }
+          : {
+              video_provider: s.video_provider ?? "youtube",
+              video_id: s.video_id,
+              video_url: s.video_url,
+              storage_path: s.storage_path,
+              caption: s.caption,
+              background_color: s.background_color ?? "#000000",
+            }),
       created_at: serverTimestamp(),
       updated_at: serverTimestamp(),
     });
@@ -685,13 +717,33 @@ export async function uploadSingleImageForLesson(
   lessonId: string
 ): Promise<{ storage_path: string; image_url: string }> {
   const ext = file.name.split(".").pop() || "jpg";
-  const storagePath = `curriculum_content/${curriculumId}/${moduleId}/${lessonId}/images/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}.${ext}`;
+  const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+  const storagePath = `curriculum_content/${curriculumId}/${moduleId}/${lessonId}/images/${Date.now()}_${safeName}`;
   const storageRef = ref(storage, storagePath);
   await uploadBytes(storageRef, file, {
-    contentType: file.type || (ext === "png" ? "image/png" : "image/jpeg"),
+    contentType: file.type || (ext === "png" ? "image/png" : ext === "gif" ? "image/gif" : "image/jpeg"),
   });
   const imageUrl = await getDownloadURL(storageRef);
   return { storage_path: storagePath, image_url: imageUrl };
+}
+
+/** Upload a video file (mp4/webm/mov) for a hosted video slide */
+export async function uploadVideoForLesson(
+  file: File,
+  curriculumId: string,
+  moduleId: string,
+  lessonId: string
+): Promise<{ storage_path: string; video_url: string }> {
+  const ext = file.name.split(".").pop() || "mp4";
+  const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+  const storagePath = `curriculum_content/${curriculumId}/${moduleId}/${lessonId}/videos/${Date.now()}_${safeName}`;
+  const storageRef = ref(storage, storagePath);
+  const contentType =
+    file.type ||
+    (ext === "webm" ? "video/webm" : ext === "mov" ? "video/quicktime" : "video/mp4");
+  await uploadBytes(storageRef, file, { contentType });
+  const videoUrl = await getDownloadURL(storageRef);
+  return { storage_path: storagePath, video_url: videoUrl };
 }
 
 export async function getPublishedLessons(

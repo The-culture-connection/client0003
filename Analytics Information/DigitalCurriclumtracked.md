@@ -84,6 +84,15 @@ After a learner completes onboarding in `Onboarding.tsx`, the app writes `users/
 | `LESSON_QUIZ_ANSWER_SELECTED` | `lesson_quiz_answer_selected` | `LessonPlayer.tsx` (`question_index`, `option_id` A–D — no answer text) |
 | `LESSON_SURVEY_FIELD_CHANGED` | `lesson_survey_field_changed` | `LessonPlayer.tsx` (debounced; counts only — `non_empty_field_count`, `total_fields`, `field_type`) |
 
+### How the feature works (Course Builder — lesson slides: GIF/video + emoji popups)
+
+In **Course Builder** (`CourseBuilder.tsx`), each lesson’s **Slides** section supports ordered media slides saved as `content_type: "media"` on the Firestore lesson with documents under `lesson_content`.
+
+- **Images & GIFs:** use the file picker (`accept="image/*,.gif"`). GIFs upload via the same `uploadSingleImageForLesson` path as PNG/JPEG (`curriculum_content/…/images/`).
+- **Videos:** click **Add video** to open a dialog with two tabs — **Upload file** (MP4/WebM/MOV → `uploadVideoForLesson` → `video_provider: "hosted"`) or **Paste link** (YouTube embeds via `classifyVideoUrl`; other public URLs such as Canva CDN links store as `video_provider: "external"` and play with a native `<video>` element in `MediaVideoBlock.tsx`).
+- **Emoji popups:** on any image/GIF slide row, click **Popups** to open `SlidePopupsEditor` — click the image to place hotspots, pick an emoji, set message text, and adjust X/Y %. Popups persist on the `LessonContentSlide` as `popups: [{ id, emoji, x_percent, y_percent, message }]`.
+- **Learner view:** `LessonPlayer.tsx` renders image slides with `SlideImageWithPopups` (tap emoji → popover message) and video slides with `MediaVideoBlock` (YouTube iframe or hosted/external `<video>`).
+
 ### How the feature works (lesson survey — optional OpenAI analysis)
 
 In **Course Builder**, when a lesson survey is enabled, the **Optional: AI survey analysis** panel appears under survey name (before **Add question**) so admins always see where to configure it; after at least one question row exists they can enable the checkbox and edit **facilitator prompt** and **criteria/rubric**, stored on `courses/{courseId}/lessonSurveys/{lessonId}` as `aiAnalysis: { enabled, prompt, criteria }`. Survey questions and quiz questions both use an **Edit question** dropdown plus a single editor pane so admins can jump back to any earlier question without scrolling through a stacked list.
