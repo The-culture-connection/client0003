@@ -14,7 +14,7 @@ const PROJECT_ID = "mortar-stage";
 const REPO_ROOT = path.resolve(__dirname, "../..");
 const DEFAULT_CREDS = path.join(
   REPO_ROOT,
-  "mortar-stage-firebase-adminsdk-fbsvc-6334d7acd6.json"
+  "mortar-stage-firebase-adminsdk-fbsvc-cf45f45ef4.json"
 );
 const MANIFEST_PATH = path.join(REPO_ROOT, "exports/lesson-4-screenshot/manifest.json");
 const PNG_DIR = path.join(REPO_ROOT, "exports/lesson-4-screenshot/png");

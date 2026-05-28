@@ -17,9 +17,8 @@ const SURVEY_UI_SLIDES = new Set([6, 8, 10, 16, 18, 23, 24, 25, 27, 28, 29, 30])
 /** Native quiz in LessonPlayer (skip quiz graphic slide) */
 const QUIZ_UI_SLIDE = 26;
 
-const SKIP_SLIDES = new Set([...SURVEY_UI_SLIDES, QUIZ_UI_SLIDE]);
-
-const VIDEOS_AFTER_SOURCE_SLIDE = {
+/** Canva/PPT slides that are video placeholders — skip PNG; show YouTube embed only */
+const VIDEO_UI_SLIDES = {
   1: {
     youtubeId: "g1TkE84pGII",
     videoUrl: "https://youtu.be/g1TkE84pGII",
@@ -31,6 +30,12 @@ const VIDEOS_AFTER_SOURCE_SLIDE = {
     caption: "The Studio — Chapter 4 Panel Discussion",
   },
 };
+
+const SKIP_SLIDES = new Set([
+  ...SURVEY_UI_SLIDES,
+  QUIZ_UI_SLIDE,
+  ...Object.keys(VIDEO_UI_SLIDES).map(Number),
+]);
 
 /** Survey fires after the content screen immediately before each survey UI slide */
 const SURVEY_DEFINITIONS = [
@@ -165,7 +170,22 @@ function main() {
   let screenNumber = 0;
 
   for (let pptSlide = 1; pptSlide <= TOTAL_PPT_SLIDES; pptSlide++) {
-    if (SKIP_SLIDES.has(pptSlide)) continue;
+    if (SURVEY_UI_SLIDES.has(pptSlide) || pptSlide === QUIZ_UI_SLIDE) continue;
+
+    const videoOnly = VIDEO_UI_SLIDES[pptSlide];
+    if (videoOnly) {
+      screenNumber++;
+      playlist.push({
+        screenNumber,
+        sourceSlide: pptSlide,
+        type: "video",
+        youtubeId: videoOnly.youtubeId,
+        videoUrl: videoOnly.videoUrl,
+        caption: videoOnly.caption,
+        skipCanvaPlaceholder: true,
+      });
+      continue;
+    }
 
     const metaSlide = slidesByNum.get(pptSlide);
     if (!metaSlide) continue;
@@ -179,19 +199,6 @@ function main() {
       widthPx: metaSlide.widthPx,
       heightPx: metaSlide.heightPx,
     });
-
-    const video = VIDEOS_AFTER_SOURCE_SLIDE[pptSlide];
-    if (video) {
-      screenNumber++;
-      playlist.push({
-        screenNumber,
-        sourceSlide: pptSlide,
-        type: "video",
-        youtubeId: video.youtubeId,
-        videoUrl: video.videoUrl,
-        caption: video.caption,
-      });
-    }
   }
 
   const surveys = SURVEY_DEFINITIONS.map((def, order) => ({
@@ -252,6 +259,7 @@ function main() {
     totalPptSlides: TOTAL_PPT_SLIDES,
     skippedSlides: [...SKIP_SLIDES].sort((a, b) => a - b),
     skippedSurveyUiSlides: [...SURVEY_UI_SLIDES].sort((a, b) => a - b),
+    videoUiSlides: Object.keys(VIDEO_UI_SLIDES).map(Number).sort((a, b) => a - b),
     playlist,
     surveys,
     quiz,

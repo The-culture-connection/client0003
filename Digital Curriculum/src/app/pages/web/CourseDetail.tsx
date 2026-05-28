@@ -18,7 +18,12 @@ import {
 import { getCourse, getLessonsWithQuiz, getLessonSurveyCounts, type Course, type Module } from "../../lib/courses";
 import { format } from "date-fns";
 import { useAuth } from "../../components/auth/AuthProvider";
-import { getCourseProgress, calculateCourseProgress, type CourseProgress } from "../../lib/courseProgress";
+import {
+  getCourseProgress,
+  calculateCourseProgress,
+  isLessonSurveysCompleteByCount,
+  type CourseProgress,
+} from "../../lib/courseProgress";
 import { getCourseSlideCounts } from "../../lib/curriculum";
 import { getCurrentUserWithRoles } from "../../lib/auth";
 import { Edit } from "lucide-react";
@@ -135,6 +140,7 @@ export function CourseDetail() {
         courseProgress,
         courseSlideCounts ?? undefined,
         lessonsWithQuiz ?? undefined,
+        undefined,
         undefined,
         lessonSurveyCounts ?? undefined
       )
@@ -344,8 +350,18 @@ export function CourseDetail() {
                         mappingLessons.forEach((l, idx) => {
                           const lid = l.lessonId;
                           const hasQuiz = lessonsWithQuiz?.[lid];
-                          const hasSurvey = lessonsWithSurvey?.[lid];
-                          const done = (courseProgress?.lessonsCompleted?.[lid] && (!hasQuiz || courseProgress?.quizPassed?.[lid]) && (!hasSurvey || courseProgress?.surveySubmitted?.[lid])) || false;
+                          const surveyCount = lessonSurveyCounts?.[lid] ?? 0;
+                          const hasSurvey = surveyCount > 0;
+                          const surveyOk = isLessonSurveysCompleteByCount(
+                            courseProgress,
+                            lid,
+                            surveyCount
+                          );
+                          const done =
+                            (courseProgress?.lessonsCompleted?.[lid] &&
+                              (!hasQuiz || courseProgress?.quizPassed?.[lid]) &&
+                              surveyOk) ||
+                            false;
                           if (done) completedInModule++;
                         });
                       }
@@ -373,8 +389,20 @@ export function CourseDetail() {
                             const curriculumLessonId = curriculumLesson?.lessonId;
                             const lessonIdForProgress = curriculumLessonId || lesson.id || `module_${moduleIndex}_lesson_${lessonIndex}`;
                             const hasQuizForLesson = lessonsWithQuiz?.[lessonIdForProgress];
-                            const hasSurveyForLesson = lessonsWithSurvey?.[lessonIdForProgress];
-                            const isCompleted = (courseProgress?.lessonsCompleted?.[lessonIdForProgress] && (!hasQuizForLesson || courseProgress?.quizPassed?.[lessonIdForProgress]) && (!hasSurveyForLesson || courseProgress?.surveySubmitted?.[lessonIdForProgress])) || false;
+                            const surveyCountForLesson =
+                              lessonSurveyCounts?.[lessonIdForProgress] ?? 0;
+                            const hasSurveyForLesson = surveyCountForLesson > 0;
+                            const surveyOkForLesson = isLessonSurveysCompleteByCount(
+                              courseProgress,
+                              lessonIdForProgress,
+                              surveyCountForLesson
+                            );
+                            const isCompleted =
+                              (courseProgress?.lessonsCompleted?.[lessonIdForProgress] &&
+                                (!hasQuizForLesson ||
+                                  courseProgress?.quizPassed?.[lessonIdForProgress]) &&
+                                surveyOkForLesson) ||
+                              false;
                             const hasCurriculumContent = Boolean(course.curriculumMapping && curriculumLessonId);
                             const showAsCompleted = hasProgressData && isCompleted;
                             const totalSlidesForLesson = hasProgressData ? (courseSlideCounts?.[lessonIdForProgress] ?? courseProgress?.totalPages?.[lessonIdForProgress] ?? 0) : 0;

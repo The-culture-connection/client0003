@@ -193,7 +193,7 @@ export function WebDashboard() {
       const slideCounts = (c.id ? slideCountsMap[c.id] : undefined) ?? {};
       const quiz = (c.id ? lessonsWithQuizMap[c.id] : undefined) ?? {};
       const survey = (c.id ? lessonsWithSurveyMap[c.id] : undefined) ?? {};
-      const pct = calculateCourseProgress(c, p, slideCounts, quiz, undefined, survey);
+      const pct = calculateCourseProgress(c, p, slideCounts, quiz, undefined, undefined, survey);
       return pct < 100;
     }) ?? courses[0];
   const nextStepProgress = nextStepCourse?.id ? progressMap[nextStepCourse.id] : null;
@@ -207,6 +207,7 @@ export function WebDashboard() {
           nextStepProgress,
           nextStepSlideCounts,
           nextStepQuiz,
+          undefined,
           undefined,
           nextStepSurvey
         )

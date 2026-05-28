@@ -137,6 +137,7 @@ export function WebCurriculum() {
             slideCounts && Object.keys(slideCounts).length > 0 ? slideCounts : undefined,
             lessonsWithQuiz && Object.keys(lessonsWithQuiz).length > 0 ? lessonsWithQuiz : undefined,
             undefined,
+            undefined,
             lessonSurveyCounts && Object.keys(lessonSurveyCounts).length > 0
               ? lessonSurveyCounts
               : undefined
@@ -215,6 +216,7 @@ export function WebCurriculum() {
       slideCounts && Object.keys(slideCounts).length > 0 ? slideCounts : undefined,
       lessonsWithQuiz && Object.keys(lessonsWithQuiz).length > 0 ? lessonsWithQuiz : undefined,
       undefined,
+      undefined,
       lessonSurveyCounts && Object.keys(lessonSurveyCounts).length > 0 ? lessonSurveyCounts : undefined
     );
   };
@@ -283,6 +285,7 @@ export function WebCurriculum() {
                           courseSlideCounts[mostRecentCourse.course.id || ""],
                           lessonsWithQuizMap[mostRecentCourse.course.id || ""],
                           undefined,
+                          undefined,
                           lessonsWithSurveyMap[mostRecentCourse.course.id || ""]
                         )}
                         className="h-2 flex-1"
@@ -294,6 +297,7 @@ export function WebCurriculum() {
                             mostRecentCourse.progress,
                             courseSlideCounts[mostRecentCourse.course.id || ""],
                             lessonsWithQuizMap[mostRecentCourse.course.id || ""],
+                            undefined,
                             undefined,
                             lessonsWithSurveyMap[mostRecentCourse.course.id || ""]
                           )

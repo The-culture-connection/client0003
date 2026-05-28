@@ -12,7 +12,7 @@ Seeded: 2026-05-28
 
 ## Content (v2 — updated)
 
-- **21 playlist items**: 19 content PNGs + **2 YouTube videos** (after PPT slides 1 & 12)
+- **19 playlist items**: 17 content PNGs + **2 YouTube-only screens** (PPT slides 1 & 12 skipped — embed only, like surveys/quiz)
 - **Skipped PPT slides**: survey UI 6,8,10,16,18,23–25,27–30 + quiz UI 26
 - **12 survey checkpoints** with lesson-specific questions (native UI, not survey PNG slides)
 - **3-question quiz** at end (native MCQ in player)

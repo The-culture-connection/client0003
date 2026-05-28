@@ -359,6 +359,29 @@ export async function saveLessonSurveyAnswersDraft(
   }
 }
 
+/** True when all survey checkpoints for a lesson are submitted (by count from getLessonSurveyCounts). */
+export function isLessonSurveysCompleteByCount(
+  progress: CourseProgress | null | undefined,
+  lessonId: string,
+  surveyCount: number
+): boolean {
+  if (surveyCount <= 0) return true;
+  if (!progress?.surveySubmitted) return false;
+  if (surveyCount === 1) {
+    return (
+      progress.surveySubmitted[lessonId] === true ||
+      Object.entries(progress.surveySubmitted).some(
+        ([key, done]) => done && key.startsWith(`${lessonId}::`)
+      )
+    );
+  }
+  let submitted = 0;
+  for (const [key, done] of Object.entries(progress.surveySubmitted)) {
+    if (done && key.startsWith(`${lessonId}::`)) submitted++;
+  }
+  return submitted >= surveyCount;
+}
+
 /** True when every listed survey checkpoint has been submitted for this lesson. */
 export function areAllLessonSurveysSubmitted(
   progress: CourseProgress | null | undefined,

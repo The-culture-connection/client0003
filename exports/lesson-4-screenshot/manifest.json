@@ -7,9 +7,11 @@
   "canvaUrl": "https://mortarengagementengines.my.canva.site/survey",
   "totalPptSlides": 32,
   "skippedSlides": [
+    1,
     6,
     8,
     10,
+    12,
     16,
     18,
     23,
@@ -35,25 +37,22 @@
     29,
     30
   ],
+  "videoUiSlides": [
+    1,
+    12
+  ],
   "playlist": [
     {
       "screenNumber": 1,
       "sourceSlide": 1,
-      "fileName": "screen-001.png",
-      "type": "content",
-      "widthPx": 1920,
-      "heightPx": 1080
-    },
-    {
-      "screenNumber": 2,
-      "sourceSlide": 1,
       "type": "video",
       "youtubeId": "g1TkE84pGII",
       "videoUrl": "https://youtu.be/g1TkE84pGII",
-      "caption": "Lesson Four Introduction"
+      "caption": "Lesson Four Introduction",
+      "skipCanvaPlaceholder": true
     },
     {
-      "screenNumber": 3,
+      "screenNumber": 2,
       "sourceSlide": 2,
       "fileName": "screen-002.png",
       "type": "content",
@@ -61,7 +60,7 @@
       "heightPx": 1080
     },
     {
-      "screenNumber": 4,
+      "screenNumber": 3,
       "sourceSlide": 3,
       "fileName": "screen-003.png",
       "type": "content",
@@ -69,7 +68,7 @@
       "heightPx": 1080
     },
     {
-      "screenNumber": 5,
+      "screenNumber": 4,
       "sourceSlide": 4,
       "fileName": "screen-004.png",
       "type": "content",
@@ -77,7 +76,7 @@
       "heightPx": 1080
     },
     {
-      "screenNumber": 6,
+      "screenNumber": 5,
       "sourceSlide": 5,
       "fileName": "screen-005.png",
       "type": "content",
@@ -85,7 +84,7 @@
       "heightPx": 1080
     },
     {
-      "screenNumber": 7,
+      "screenNumber": 6,
       "sourceSlide": 7,
       "fileName": "screen-007.png",
       "type": "content",
@@ -93,7 +92,7 @@
       "heightPx": 1080
     },
     {
-      "screenNumber": 8,
+      "screenNumber": 7,
       "sourceSlide": 9,
       "fileName": "screen-009.png",
       "type": "content",
@@ -101,7 +100,7 @@
       "heightPx": 1080
     },
     {
-      "screenNumber": 9,
+      "screenNumber": 8,
       "sourceSlide": 11,
       "fileName": "screen-011.png",
       "type": "content",
@@ -109,23 +108,16 @@
       "heightPx": 1080
     },
     {
-      "screenNumber": 10,
-      "sourceSlide": 12,
-      "fileName": "screen-012.png",
-      "type": "content",
-      "widthPx": 1920,
-      "heightPx": 1080
-    },
-    {
-      "screenNumber": 11,
+      "screenNumber": 9,
       "sourceSlide": 12,
       "type": "video",
       "youtubeId": "Wi3cV1asrOs",
       "videoUrl": "https://youtu.be/Wi3cV1asrOs",
-      "caption": "The Studio — Chapter 4 Panel Discussion"
+      "caption": "The Studio — Chapter 4 Panel Discussion",
+      "skipCanvaPlaceholder": true
     },
     {
-      "screenNumber": 12,
+      "screenNumber": 10,
       "sourceSlide": 13,
       "fileName": "screen-013.png",
       "type": "content",
@@ -133,7 +125,7 @@
       "heightPx": 1080
     },
     {
-      "screenNumber": 13,
+      "screenNumber": 11,
       "sourceSlide": 14,
       "fileName": "screen-014.png",
       "type": "content",
@@ -141,7 +133,7 @@
       "heightPx": 1080
     },
     {
-      "screenNumber": 14,
+      "screenNumber": 12,
       "sourceSlide": 15,
       "fileName": "screen-015.png",
       "type": "content",
@@ -149,7 +141,7 @@
       "heightPx": 1080
     },
     {
-      "screenNumber": 15,
+      "screenNumber": 13,
       "sourceSlide": 17,
       "fileName": "screen-017.png",
       "type": "content",
@@ -157,7 +149,7 @@
       "heightPx": 1080
     },
     {
-      "screenNumber": 16,
+      "screenNumber": 14,
       "sourceSlide": 19,
       "fileName": "screen-019.png",
       "type": "content",
@@ -165,7 +157,7 @@
       "heightPx": 1080
     },
     {
-      "screenNumber": 17,
+      "screenNumber": 15,
       "sourceSlide": 20,
       "fileName": "screen-020.png",
       "type": "content",
@@ -173,7 +165,7 @@
       "heightPx": 1080
     },
     {
-      "screenNumber": 18,
+      "screenNumber": 16,
       "sourceSlide": 21,
       "fileName": "screen-021.png",
       "type": "content",
@@ -181,7 +173,7 @@
       "heightPx": 1080
     },
     {
-      "screenNumber": 19,
+      "screenNumber": 17,
       "sourceSlide": 22,
       "fileName": "screen-022.png",
       "type": "content",
@@ -189,7 +181,7 @@
       "heightPx": 1080
     },
     {
-      "screenNumber": 20,
+      "screenNumber": 18,
       "sourceSlide": 31,
       "fileName": "screen-031.png",
       "type": "content",
@@ -197,7 +189,7 @@
       "heightPx": 1080
     },
     {
-      "screenNumber": 21,
+      "screenNumber": 19,
       "sourceSlide": 32,
       "fileName": "screen-032.png",
       "type": "content",
@@ -210,7 +202,7 @@
       "id": "lesson4_survey_01",
       "enabled": true,
       "title": "4.0 — Before We Go Any Further",
-      "afterScreenIndex": 5,
+      "afterScreenIndex": 4,
       "order": 0,
       "markerSlide": 6,
       "questions": [
@@ -228,7 +220,7 @@
       "id": "lesson4_survey_02",
       "enabled": true,
       "title": "Vision & Mission Statements",
-      "afterScreenIndex": 6,
+      "afterScreenIndex": 5,
       "order": 1,
       "markerSlide": 8,
       "questions": [
@@ -250,7 +242,7 @@
       "id": "lesson4_survey_03",
       "enabled": true,
       "title": "4.1 — Identifying the Problem (Your WHY)",
-      "afterScreenIndex": 7,
+      "afterScreenIndex": 6,
       "order": 2,
       "markerSlide": 10,
       "questions": [
@@ -272,7 +264,7 @@
       "id": "lesson4_survey_04",
       "enabled": true,
       "title": "4.2 — R.E.S.P.E.C.T. & Maslow's Hierarchy",
-      "afterScreenIndex": 13,
+      "afterScreenIndex": 11,
       "order": 3,
       "markerSlide": 16,
       "questions": [
@@ -294,7 +286,7 @@
       "id": "lesson4_survey_05",
       "enabled": true,
       "title": "4.3 — Who Wants That?",
-      "afterScreenIndex": 14,
+      "afterScreenIndex": 12,
       "order": 4,
       "markerSlide": 18,
       "questions": [
@@ -316,7 +308,7 @@
       "id": "lesson4_survey_06",
       "enabled": true,
       "title": "4.4 — The Customer's Always Right",
-      "afterScreenIndex": 18,
+      "afterScreenIndex": 16,
       "order": 5,
       "markerSlide": 23,
       "questions": [
@@ -338,7 +330,7 @@
       "id": "lesson4_survey_07",
       "enabled": true,
       "title": "4.5 — I Can See Clearly Now",
-      "afterScreenIndex": 18,
+      "afterScreenIndex": 16,
       "order": 6,
       "markerSlide": 24,
       "questions": [
@@ -360,7 +352,7 @@
       "id": "lesson4_survey_08",
       "enabled": true,
       "title": "Business Canvas — Concept Check-in",
-      "afterScreenIndex": 18,
+      "afterScreenIndex": 16,
       "order": 7,
       "markerSlide": 25,
       "questions": [
@@ -382,7 +374,7 @@
       "id": "lesson4_survey_09",
       "enabled": true,
       "title": "The Studio — Panel Reflection",
-      "afterScreenIndex": 18,
+      "afterScreenIndex": 16,
       "order": 8,
       "markerSlide": 27,
       "questions": [
@@ -404,7 +396,7 @@
       "id": "lesson4_survey_10",
       "enabled": true,
       "title": "4.6 — There's No \"I\" in Team",
-      "afterScreenIndex": 18,
+      "afterScreenIndex": 16,
       "order": 9,
       "markerSlide": 28,
       "questions": [
@@ -426,7 +418,7 @@
       "id": "lesson4_survey_11",
       "enabled": true,
       "title": "4.7 — Know Your Assets",
-      "afterScreenIndex": 18,
+      "afterScreenIndex": 16,
       "order": 10,
       "markerSlide": 29,
       "questions": [
@@ -448,7 +440,7 @@
       "id": "lesson4_survey_12",
       "enabled": true,
       "title": "4.8 & 4.9 — Revisit Your Reflection",
-      "afterScreenIndex": 18,
+      "afterScreenIndex": 16,
       "order": 11,
       "markerSlide": 30,
       "questions": [
