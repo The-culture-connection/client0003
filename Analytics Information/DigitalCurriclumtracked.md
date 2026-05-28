@@ -84,6 +84,16 @@ After a learner completes onboarding in `Onboarding.tsx`, the app writes `users/
 | `LESSON_QUIZ_ANSWER_SELECTED` | `lesson_quiz_answer_selected` | `LessonPlayer.tsx` (`question_index`, `option_id` A–D — no answer text) |
 | `LESSON_SURVEY_FIELD_CHANGED` | `lesson_survey_field_changed` | `LessonPlayer.tsx` (debounced; counts only — `non_empty_field_count`, `total_fields`, `field_type`) |
 
+### How the feature works (Thinkific → Mortar course migration export)
+
+**Tool:** `tools/course-migration-export/` reads structured lesson markdown (e.g. `course-content/lesson-4.md`, sourced from `Mortar Masters Online Course/Lesson 4/Coursestructuredmarkdown.txt`) and generates:
+
+1. `exports/lesson-4/lesson-4-migration.pptx` — dark cinematic slides (charcoal background, green headings, white body, placeholders for screenshots/GIFs)
+2. `exports/lesson-4/png/` — one PNG per slide (`slide-001-…png`)
+3. `exports/lesson-4/manifest.json` — maps each PNG to `slideNumber`, `sectionId`, `title`, `type`, `sourceMarkdownHeading`
+
+**Run from repo root:** `npm run export:lesson-4` (requires Node 18+; PNG export uses PowerPoint on Windows or LibreOffice headless). Long sections split across slides; assignment and quiz sections get dedicated slides.
+
 ### How the feature works (Course Builder — lesson slides: GIF/video + emoji popups)
 
 In **Course Builder** (`CourseBuilder.tsx`), each lesson’s **Slides** section supports ordered media slides saved as `content_type: "media"` on the Firestore lesson with documents under `lesson_content`.

@@ -86,6 +86,8 @@ export interface Lesson {
   chapter_id?: string; // Parent reference
   /** "slides" = slide/block model; "images" = ordered list of images only; "media" = mixed image + video slides */
   content_type?: "slides" | "images" | "media";
+  /** When "immersive", media image screens use fullscreen LessonScreenRenderer */
+  screen_mode?: "immersive" | "default";
   // Import fields
   source_type?: "pptx_import" | "manual";
   import_status?: "processing" | "ready" | "failed";

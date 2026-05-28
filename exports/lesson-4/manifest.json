@@ -1,0 +1,828 @@
+[
+  {
+    "slideNumber": 1,
+    "fileName": "slide-001-lesson-overview.png",
+    "sectionId": "lesson-overview",
+    "title": "Lesson 4 — Fade In",
+    "type": "lesson_overview",
+    "sourceMarkdownHeading": "# Lesson 4 — Fade In",
+    "layout": "title"
+  },
+  {
+    "slideNumber": 2,
+    "fileName": "slide-002-intro.png",
+    "sectionId": "intro",
+    "title": "Intro",
+    "type": "video_intro",
+    "sourceMarkdownHeading": "# Section: Intro",
+    "layout": "video",
+    "lessonOrder": 1
+  },
+  {
+    "slideNumber": 3,
+    "fileName": "slide-003-lesson-cover.png",
+    "sectionId": "lesson-cover",
+    "title": "Lesson Cover",
+    "type": "lesson_cover",
+    "sourceMarkdownHeading": "# Section: Lesson Cover",
+    "layout": "visual",
+    "lessonOrder": 2
+  },
+  {
+    "slideNumber": 4,
+    "fileName": "slide-004-entrepreneur-spotlight-header.png",
+    "sectionId": "entrepreneur-spotlight-header",
+    "title": "Entrepreneur Spotlight Header",
+    "type": "section_banner",
+    "sourceMarkdownHeading": "# Section: Entrepreneur Spotlight Header",
+    "layout": "visual",
+    "lessonOrder": 3
+  },
+  {
+    "slideNumber": 5,
+    "fileName": "slide-005-entrepreneur-spotlight-header.png",
+    "sectionId": "entrepreneur-spotlight-header",
+    "title": "Entrepreneur Spotlight — Quote",
+    "type": "entrepreneur_spotlight",
+    "sourceMarkdownHeading": "# Section: Entrepreneur Spotlight",
+    "layout": "quote",
+    "lessonOrder": 4
+  },
+  {
+    "slideNumber": 6,
+    "fileName": "slide-006-entrepreneur-spotlight-story-1.png",
+    "sectionId": "entrepreneur-spotlight-story-1",
+    "title": "Entrepreneur Spotlight — Story 1",
+    "type": "entrepreneur_spotlight",
+    "sourceMarkdownHeading": "# Section: Entrepreneur Spotlight",
+    "layout": "content",
+    "lessonOrder": 4
+  },
+  {
+    "slideNumber": 7,
+    "fileName": "slide-007-entrepreneur-spotlight-story-2.png",
+    "sectionId": "entrepreneur-spotlight-story-2",
+    "title": "Entrepreneur Spotlight — Story 2",
+    "type": "entrepreneur_spotlight",
+    "sourceMarkdownHeading": "# Section: Entrepreneur Spotlight",
+    "layout": "content",
+    "lessonOrder": 4
+  },
+  {
+    "slideNumber": 8,
+    "fileName": "slide-008-entrepreneur-spotlight-story-3.png",
+    "sectionId": "entrepreneur-spotlight-story-3",
+    "title": "Entrepreneur Spotlight — Story 3",
+    "type": "entrepreneur_spotlight",
+    "sourceMarkdownHeading": "# Section: Entrepreneur Spotlight",
+    "layout": "content",
+    "lessonOrder": 4
+  },
+  {
+    "slideNumber": 9,
+    "fileName": "slide-009-entrepreneur-spotlight-story-4.png",
+    "sectionId": "entrepreneur-spotlight-story-4",
+    "title": "Entrepreneur Spotlight — Story 4",
+    "type": "entrepreneur_spotlight",
+    "sourceMarkdownHeading": "# Section: Entrepreneur Spotlight",
+    "layout": "content",
+    "lessonOrder": 4
+  },
+  {
+    "slideNumber": 10,
+    "fileName": "slide-010-4-0-before-we-go-any-further-intro.png",
+    "sectionId": "4-0-before-we-go-any-further-intro",
+    "title": "4.0 Before We Go Any Further",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: 4.0 Before We Go Any Further",
+    "layout": "section_intro",
+    "lessonOrder": 5
+  },
+  {
+    "slideNumber": 11,
+    "fileName": "slide-011-4-0-before-we-go-any-further-content-1.png",
+    "sectionId": "4-0-before-we-go-any-further-content-1",
+    "title": "4.0 Before We Go Any Further — Part 1",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: 4.0 Before We Go Any Further",
+    "layout": "content",
+    "lessonOrder": 5
+  },
+  {
+    "slideNumber": 12,
+    "fileName": "slide-012-4-0-before-we-go-any-further-content-2.png",
+    "sectionId": "4-0-before-we-go-any-further-content-2",
+    "title": "4.0 Before We Go Any Further — Part 2",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: 4.0 Before We Go Any Further",
+    "layout": "content",
+    "lessonOrder": 5
+  },
+  {
+    "slideNumber": 13,
+    "fileName": "slide-013-4-0-before-we-go-any-further-assignment.png",
+    "sectionId": "4-0-before-we-go-any-further-assignment",
+    "title": "4.0 Before We Go Any Further — Assignment",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: 4.0 Before We Go Any Further",
+    "layout": "assignment",
+    "lessonOrder": 5
+  },
+  {
+    "slideNumber": 14,
+    "fileName": "slide-014-vision-mission-statements-intro.png",
+    "sectionId": "vision-mission-statements-intro",
+    "title": "Vision & Mission Statements",
+    "type": "instructional_content",
+    "sourceMarkdownHeading": "# Section: Vision & Mission Statements",
+    "layout": "section_intro",
+    "lessonOrder": 6
+  },
+  {
+    "slideNumber": 15,
+    "fileName": "slide-015-vision-mission-statements-content-1.png",
+    "sectionId": "vision-mission-statements-content-1",
+    "title": "Vision & Mission Statements — Part 1",
+    "type": "instructional_content",
+    "sourceMarkdownHeading": "# Section: Vision & Mission Statements",
+    "layout": "content",
+    "lessonOrder": 6
+  },
+  {
+    "slideNumber": 16,
+    "fileName": "slide-016-vision-mission-statements-content-2.png",
+    "sectionId": "vision-mission-statements-content-2",
+    "title": "Vision & Mission Statements — Part 2",
+    "type": "instructional_content",
+    "sourceMarkdownHeading": "# Section: Vision & Mission Statements",
+    "layout": "content",
+    "lessonOrder": 6
+  },
+  {
+    "slideNumber": 17,
+    "fileName": "slide-017-4-1-identifying-the-problem-intro.png",
+    "sectionId": "4-1-identifying-the-problem-intro",
+    "title": "4.1 Identifying the Problem",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: 4.1 Identifying the Problem",
+    "layout": "section_intro",
+    "lessonOrder": 7
+  },
+  {
+    "slideNumber": 18,
+    "fileName": "slide-018-4-1-identifying-the-problem-content-1.png",
+    "sectionId": "4-1-identifying-the-problem-content-1",
+    "title": "4.1 Identifying the Problem — Part 1",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: 4.1 Identifying the Problem",
+    "layout": "content",
+    "lessonOrder": 7
+  },
+  {
+    "slideNumber": 19,
+    "fileName": "slide-019-4-1-identifying-the-problem-content-2.png",
+    "sectionId": "4-1-identifying-the-problem-content-2",
+    "title": "4.1 Identifying the Problem — Part 2",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: 4.1 Identifying the Problem",
+    "layout": "content",
+    "lessonOrder": 7
+  },
+  {
+    "slideNumber": 20,
+    "fileName": "slide-020-4-1-identifying-the-problem-content-3.png",
+    "sectionId": "4-1-identifying-the-problem-content-3",
+    "title": "4.1 Identifying the Problem — Part 3",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: 4.1 Identifying the Problem",
+    "layout": "content",
+    "lessonOrder": 7
+  },
+  {
+    "slideNumber": 21,
+    "fileName": "slide-021-4-1-identifying-the-problem-content-4.png",
+    "sectionId": "4-1-identifying-the-problem-content-4",
+    "title": "4.1 Identifying the Problem — Part 4",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: 4.1 Identifying the Problem",
+    "layout": "content",
+    "lessonOrder": 7
+  },
+  {
+    "slideNumber": 22,
+    "fileName": "slide-022-4-1-identifying-the-problem-assignment.png",
+    "sectionId": "4-1-identifying-the-problem-assignment",
+    "title": "4.1 Identifying the Problem — Assignment",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: 4.1 Identifying the Problem",
+    "layout": "assignment",
+    "lessonOrder": 7
+  },
+  {
+    "slideNumber": 23,
+    "fileName": "slide-023-4-2-r-e-s-p-e-c-t-intro.png",
+    "sectionId": "4-2-r-e-s-p-e-c-t-intro",
+    "title": "4.2 R.E.S.P.E.C.T",
+    "type": "customer_analysis",
+    "sourceMarkdownHeading": "# Section: 4.2 R.E.S.P.E.C.T",
+    "layout": "section_intro",
+    "lessonOrder": 8
+  },
+  {
+    "slideNumber": 24,
+    "fileName": "slide-024-4-2-r-e-s-p-e-c-t-content-1.png",
+    "sectionId": "4-2-r-e-s-p-e-c-t-content-1",
+    "title": "4.2 R.E.S.P.E.C.T — Part 1",
+    "type": "customer_analysis",
+    "sourceMarkdownHeading": "# Section: 4.2 R.E.S.P.E.C.T",
+    "layout": "content",
+    "lessonOrder": 8
+  },
+  {
+    "slideNumber": 25,
+    "fileName": "slide-025-4-2-r-e-s-p-e-c-t-content-2.png",
+    "sectionId": "4-2-r-e-s-p-e-c-t-content-2",
+    "title": "4.2 R.E.S.P.E.C.T — Part 2",
+    "type": "customer_analysis",
+    "sourceMarkdownHeading": "# Section: 4.2 R.E.S.P.E.C.T",
+    "layout": "content",
+    "lessonOrder": 8
+  },
+  {
+    "slideNumber": 26,
+    "fileName": "slide-026-4-2-r-e-s-p-e-c-t-content-3.png",
+    "sectionId": "4-2-r-e-s-p-e-c-t-content-3",
+    "title": "4.2 R.E.S.P.E.C.T — Part 3",
+    "type": "customer_analysis",
+    "sourceMarkdownHeading": "# Section: 4.2 R.E.S.P.E.C.T",
+    "layout": "content",
+    "lessonOrder": 8
+  },
+  {
+    "slideNumber": 27,
+    "fileName": "slide-027-discussion-exercise-intro.png",
+    "sectionId": "discussion-exercise-intro",
+    "title": "Discussion Exercise",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: Discussion Exercise",
+    "layout": "section_intro",
+    "lessonOrder": 9
+  },
+  {
+    "slideNumber": 28,
+    "fileName": "slide-028-discussion-exercise-content-1.png",
+    "sectionId": "discussion-exercise-content-1",
+    "title": "Discussion Exercise — Part 1",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: Discussion Exercise",
+    "layout": "content",
+    "lessonOrder": 9
+  },
+  {
+    "slideNumber": 29,
+    "fileName": "slide-029-discussion-exercise-assignment.png",
+    "sectionId": "discussion-exercise-assignment",
+    "title": "Discussion Exercise — Assignment",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: Discussion Exercise",
+    "layout": "assignment",
+    "lessonOrder": 9
+  },
+  {
+    "slideNumber": 30,
+    "fileName": "slide-030-4-3-who-wants-that-intro.png",
+    "sectionId": "4-3-who-wants-that-intro",
+    "title": "4.3 Who Wants That?",
+    "type": "customer_analysis",
+    "sourceMarkdownHeading": "# Section: 4.3 Who Wants That?",
+    "layout": "section_intro",
+    "lessonOrder": 10
+  },
+  {
+    "slideNumber": 31,
+    "fileName": "slide-031-4-3-who-wants-that-content-1.png",
+    "sectionId": "4-3-who-wants-that-content-1",
+    "title": "4.3 Who Wants That? — Part 1",
+    "type": "customer_analysis",
+    "sourceMarkdownHeading": "# Section: 4.3 Who Wants That?",
+    "layout": "content",
+    "lessonOrder": 10
+  },
+  {
+    "slideNumber": 32,
+    "fileName": "slide-032-4-3-who-wants-that-content-2.png",
+    "sectionId": "4-3-who-wants-that-content-2",
+    "title": "4.3 Who Wants That? — Part 2",
+    "type": "customer_analysis",
+    "sourceMarkdownHeading": "# Section: 4.3 Who Wants That?",
+    "layout": "content",
+    "lessonOrder": 10
+  },
+  {
+    "slideNumber": 33,
+    "fileName": "slide-033-4-4-the-customer-s-always-right-intro.png",
+    "sectionId": "4-4-the-customer-s-always-right-intro",
+    "title": "4.4 The Customer's Always Right",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: 4.4 The Customer's Always Right",
+    "layout": "section_intro",
+    "lessonOrder": 11
+  },
+  {
+    "slideNumber": 34,
+    "fileName": "slide-034-4-4-the-customer-s-always-right-content-1.png",
+    "sectionId": "4-4-the-customer-s-always-right-content-1",
+    "title": "4.4 The Customer's Always Right — Part 1",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: 4.4 The Customer's Always Right",
+    "layout": "content",
+    "lessonOrder": 11
+  },
+  {
+    "slideNumber": 35,
+    "fileName": "slide-035-4-4-the-customer-s-always-right-content-2.png",
+    "sectionId": "4-4-the-customer-s-always-right-content-2",
+    "title": "4.4 The Customer's Always Right — Part 2",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: 4.4 The Customer's Always Right",
+    "layout": "content",
+    "lessonOrder": 11
+  },
+  {
+    "slideNumber": 36,
+    "fileName": "slide-036-4-4-the-customer-s-always-right-content-3.png",
+    "sectionId": "4-4-the-customer-s-always-right-content-3",
+    "title": "4.4 The Customer's Always Right — Part 3",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: 4.4 The Customer's Always Right",
+    "layout": "content",
+    "lessonOrder": 11
+  },
+  {
+    "slideNumber": 37,
+    "fileName": "slide-037-4-4-the-customer-s-always-right-content-4.png",
+    "sectionId": "4-4-the-customer-s-always-right-content-4",
+    "title": "4.4 The Customer's Always Right — Part 4",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: 4.4 The Customer's Always Right",
+    "layout": "content",
+    "lessonOrder": 11
+  },
+  {
+    "slideNumber": 38,
+    "fileName": "slide-038-4-4-the-customer-s-always-right-assignment.png",
+    "sectionId": "4-4-the-customer-s-always-right-assignment",
+    "title": "4.4 The Customer's Always Right — Assignment",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: 4.4 The Customer's Always Right",
+    "layout": "assignment",
+    "lessonOrder": 11
+  },
+  {
+    "slideNumber": 39,
+    "fileName": "slide-039-4-5-i-can-see-clearly-now-intro.png",
+    "sectionId": "4-5-i-can-see-clearly-now-intro",
+    "title": "4.5 I Can See Clearly Now",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: 4.5 I Can See Clearly Now",
+    "layout": "section_intro",
+    "lessonOrder": 12
+  },
+  {
+    "slideNumber": 40,
+    "fileName": "slide-040-4-5-i-can-see-clearly-now-content-1.png",
+    "sectionId": "4-5-i-can-see-clearly-now-content-1",
+    "title": "4.5 I Can See Clearly Now — Part 1",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: 4.5 I Can See Clearly Now",
+    "layout": "content",
+    "lessonOrder": 12
+  },
+  {
+    "slideNumber": 41,
+    "fileName": "slide-041-4-5-i-can-see-clearly-now-content-2.png",
+    "sectionId": "4-5-i-can-see-clearly-now-content-2",
+    "title": "4.5 I Can See Clearly Now — Part 2",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: 4.5 I Can See Clearly Now",
+    "layout": "content",
+    "lessonOrder": 12
+  },
+  {
+    "slideNumber": 42,
+    "fileName": "slide-042-4-5-i-can-see-clearly-now-content-3.png",
+    "sectionId": "4-5-i-can-see-clearly-now-content-3",
+    "title": "4.5 I Can See Clearly Now — Part 3",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: 4.5 I Can See Clearly Now",
+    "layout": "content",
+    "lessonOrder": 12
+  },
+  {
+    "slideNumber": 43,
+    "fileName": "slide-043-4-5-i-can-see-clearly-now-assignment.png",
+    "sectionId": "4-5-i-can-see-clearly-now-assignment",
+    "title": "4.5 I Can See Clearly Now — Assignment",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: 4.5 I Can See Clearly Now",
+    "layout": "assignment",
+    "lessonOrder": 12
+  },
+  {
+    "slideNumber": 44,
+    "fileName": "slide-044-the-studio.png",
+    "sectionId": "the-studio",
+    "title": "The Studio",
+    "type": "video_panel",
+    "sourceMarkdownHeading": "# Section: The Studio",
+    "layout": "video",
+    "lessonOrder": 13
+  },
+  {
+    "slideNumber": 45,
+    "fileName": "slide-045-4-6-there-s-no-i-in-team-intro.png",
+    "sectionId": "4-6-there-s-no-i-in-team-intro",
+    "title": "4.6 There's No \"I\" in Team",
+    "type": "content_block",
+    "sourceMarkdownHeading": "# Section: 4.6 There's No \"I\" in Team",
+    "layout": "section_intro",
+    "lessonOrder": 14
+  },
+  {
+    "slideNumber": 46,
+    "fileName": "slide-046-4-6-there-s-no-i-in-team-content-1.png",
+    "sectionId": "4-6-there-s-no-i-in-team-content-1",
+    "title": "4.6 There's No \"I\" in Team — Part 1",
+    "type": "content_block",
+    "sourceMarkdownHeading": "# Section: 4.6 There's No \"I\" in Team",
+    "layout": "content",
+    "lessonOrder": 14
+  },
+  {
+    "slideNumber": 47,
+    "fileName": "slide-047-4-6-there-s-no-i-in-team-content-2.png",
+    "sectionId": "4-6-there-s-no-i-in-team-content-2",
+    "title": "4.6 There's No \"I\" in Team — Part 2",
+    "type": "content_block",
+    "sourceMarkdownHeading": "# Section: 4.6 There's No \"I\" in Team",
+    "layout": "content",
+    "lessonOrder": 14
+  },
+  {
+    "slideNumber": 48,
+    "fileName": "slide-048-4-7-know-your-assets-intro.png",
+    "sectionId": "4-7-know-your-assets-intro",
+    "title": "4.7 Know Your Assets",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: 4.7 Know Your Assets",
+    "layout": "section_intro",
+    "lessonOrder": 15
+  },
+  {
+    "slideNumber": 49,
+    "fileName": "slide-049-4-7-know-your-assets-content-1.png",
+    "sectionId": "4-7-know-your-assets-content-1",
+    "title": "4.7 Know Your Assets — Part 1",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: 4.7 Know Your Assets",
+    "layout": "content",
+    "lessonOrder": 15
+  },
+  {
+    "slideNumber": 50,
+    "fileName": "slide-050-4-7-know-your-assets-content-2.png",
+    "sectionId": "4-7-know-your-assets-content-2",
+    "title": "4.7 Know Your Assets — Part 2",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: 4.7 Know Your Assets",
+    "layout": "content",
+    "lessonOrder": 15
+  },
+  {
+    "slideNumber": 51,
+    "fileName": "slide-051-4-7-know-your-assets-assignment.png",
+    "sectionId": "4-7-know-your-assets-assignment",
+    "title": "4.7 Know Your Assets — Assignment",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: 4.7 Know Your Assets",
+    "layout": "assignment",
+    "lessonOrder": 15
+  },
+  {
+    "slideNumber": 52,
+    "fileName": "slide-052-4-8-crystal-clear-intro.png",
+    "sectionId": "4-8-crystal-clear-intro",
+    "title": "4.8 Crystal Clear",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: 4.8 Crystal Clear",
+    "layout": "section_intro",
+    "lessonOrder": 16
+  },
+  {
+    "slideNumber": 53,
+    "fileName": "slide-053-4-8-crystal-clear-content-1.png",
+    "sectionId": "4-8-crystal-clear-content-1",
+    "title": "4.8 Crystal Clear — Part 1",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: 4.8 Crystal Clear",
+    "layout": "content",
+    "lessonOrder": 16
+  },
+  {
+    "slideNumber": 54,
+    "fileName": "slide-054-4-8-crystal-clear-content-2.png",
+    "sectionId": "4-8-crystal-clear-content-2",
+    "title": "4.8 Crystal Clear — Part 2",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: 4.8 Crystal Clear",
+    "layout": "content",
+    "lessonOrder": 16
+  },
+  {
+    "slideNumber": 55,
+    "fileName": "slide-055-4-8-crystal-clear-assignment.png",
+    "sectionId": "4-8-crystal-clear-assignment",
+    "title": "4.8 Crystal Clear — Assignment",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: 4.8 Crystal Clear",
+    "layout": "assignment",
+    "lessonOrder": 16
+  },
+  {
+    "slideNumber": 56,
+    "fileName": "slide-056-4-9-revisit-your-reflection-intro.png",
+    "sectionId": "4-9-revisit-your-reflection-intro",
+    "title": "4.9 Revisit Your Reflection",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: 4.9 Revisit Your Reflection",
+    "layout": "section_intro",
+    "lessonOrder": 17
+  },
+  {
+    "slideNumber": 57,
+    "fileName": "slide-057-4-9-revisit-your-reflection-content-1.png",
+    "sectionId": "4-9-revisit-your-reflection-content-1",
+    "title": "4.9 Revisit Your Reflection — Part 1",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: 4.9 Revisit Your Reflection",
+    "layout": "content",
+    "lessonOrder": 17
+  },
+  {
+    "slideNumber": 58,
+    "fileName": "slide-058-4-9-revisit-your-reflection-content-2.png",
+    "sectionId": "4-9-revisit-your-reflection-content-2",
+    "title": "4.9 Revisit Your Reflection — Part 2",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: 4.9 Revisit Your Reflection",
+    "layout": "content",
+    "lessonOrder": 17
+  },
+  {
+    "slideNumber": 59,
+    "fileName": "slide-059-4-9-revisit-your-reflection-assignment.png",
+    "sectionId": "4-9-revisit-your-reflection-assignment",
+    "title": "4.9 Revisit Your Reflection — Assignment",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: 4.9 Revisit Your Reflection",
+    "layout": "assignment",
+    "lessonOrder": 17
+  },
+  {
+    "slideNumber": 60,
+    "fileName": "slide-060-putting-in-work-mission-impossible-intro.png",
+    "sectionId": "putting-in-work-mission-impossible-intro",
+    "title": "Putting In Work — Mission Impossible",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: Putting In Work — Mission Impossible",
+    "layout": "section_intro",
+    "lessonOrder": 18
+  },
+  {
+    "slideNumber": 61,
+    "fileName": "slide-061-putting-in-work-mission-impossible-content-1.png",
+    "sectionId": "putting-in-work-mission-impossible-content-1",
+    "title": "Putting In Work — Mission Impossible — Part 1",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: Putting In Work — Mission Impossible",
+    "layout": "content",
+    "lessonOrder": 18
+  },
+  {
+    "slideNumber": 62,
+    "fileName": "slide-062-putting-in-work-mission-impossible-content-2.png",
+    "sectionId": "putting-in-work-mission-impossible-content-2",
+    "title": "Putting In Work — Mission Impossible — Part 2",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: Putting In Work — Mission Impossible",
+    "layout": "content",
+    "lessonOrder": 18
+  },
+  {
+    "slideNumber": 63,
+    "fileName": "slide-063-putting-in-work-mission-impossible-assignment.png",
+    "sectionId": "putting-in-work-mission-impossible-assignment",
+    "title": "Putting In Work — Mission Impossible — Assignment",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: Putting In Work — Mission Impossible",
+    "layout": "assignment",
+    "lessonOrder": 18
+  },
+  {
+    "slideNumber": 64,
+    "fileName": "slide-064-putting-in-work-customer-profile-intro.png",
+    "sectionId": "putting-in-work-customer-profile-intro",
+    "title": "Putting In Work — Customer Profile",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: Putting In Work — Customer Profile",
+    "layout": "section_intro",
+    "lessonOrder": 19
+  },
+  {
+    "slideNumber": 65,
+    "fileName": "slide-065-putting-in-work-customer-profile-content-1.png",
+    "sectionId": "putting-in-work-customer-profile-content-1",
+    "title": "Putting In Work — Customer Profile — Part 1",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: Putting In Work — Customer Profile",
+    "layout": "content",
+    "lessonOrder": 19
+  },
+  {
+    "slideNumber": 66,
+    "fileName": "slide-066-putting-in-work-customer-profile-content-2.png",
+    "sectionId": "putting-in-work-customer-profile-content-2",
+    "title": "Putting In Work — Customer Profile — Part 2",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: Putting In Work — Customer Profile",
+    "layout": "content",
+    "lessonOrder": 19
+  },
+  {
+    "slideNumber": 67,
+    "fileName": "slide-067-putting-in-work-customer-profile-assignment.png",
+    "sectionId": "putting-in-work-customer-profile-assignment",
+    "title": "Putting In Work — Customer Profile — Assignment",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: Putting In Work — Customer Profile",
+    "layout": "assignment",
+    "lessonOrder": 19
+  },
+  {
+    "slideNumber": 68,
+    "fileName": "slide-068-putting-in-work-tracking-your-time-create-a-journal-intro.png",
+    "sectionId": "putting-in-work-tracking-your-time-create-a-journal-intro",
+    "title": "Putting In Work — Tracking Your Time: Create a Journal",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: Putting In Work — Tracking Your Time: Create a Journal",
+    "layout": "section_intro",
+    "lessonOrder": 20
+  },
+  {
+    "slideNumber": 69,
+    "fileName": "slide-069-putting-in-work-tracking-your-time-create-a-journal-content-1.png",
+    "sectionId": "putting-in-work-tracking-your-time-create-a-journal-content-1",
+    "title": "Putting In Work — Tracking Your Time: Create a Journal — Part 1",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: Putting In Work — Tracking Your Time: Create a Journal",
+    "layout": "content",
+    "lessonOrder": 20
+  },
+  {
+    "slideNumber": 70,
+    "fileName": "slide-070-putting-in-work-tracking-your-time-create-a-journal-content-2.png",
+    "sectionId": "putting-in-work-tracking-your-time-create-a-journal-content-2",
+    "title": "Putting In Work — Tracking Your Time: Create a Journal — Part 2",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: Putting In Work — Tracking Your Time: Create a Journal",
+    "layout": "content",
+    "lessonOrder": 20
+  },
+  {
+    "slideNumber": 71,
+    "fileName": "slide-071-putting-in-work-tracking-your-time-create-a-journal-assignment.png",
+    "sectionId": "putting-in-work-tracking-your-time-create-a-journal-assignment",
+    "title": "Putting In Work — Tracking Your Time: Create a Journal — Assignment",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: Putting In Work — Tracking Your Time: Create a Journal",
+    "layout": "assignment",
+    "lessonOrder": 20
+  },
+  {
+    "slideNumber": 72,
+    "fileName": "slide-072-putting-in-work-master-business-canvas-synopsis-intro.png",
+    "sectionId": "putting-in-work-master-business-canvas-synopsis-intro",
+    "title": "Putting In Work — Master Business Canvas & Synopsis",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: Putting In Work — Master Business Canvas & Synopsis",
+    "layout": "section_intro",
+    "lessonOrder": 21
+  },
+  {
+    "slideNumber": 73,
+    "fileName": "slide-073-putting-in-work-master-business-canvas-synopsis-content-1.png",
+    "sectionId": "putting-in-work-master-business-canvas-synopsis-content-1",
+    "title": "Putting In Work — Master Business Canvas & Synopsis — Part 1",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: Putting In Work — Master Business Canvas & Synopsis",
+    "layout": "content",
+    "lessonOrder": 21
+  },
+  {
+    "slideNumber": 74,
+    "fileName": "slide-074-putting-in-work-master-business-canvas-synopsis-content-2.png",
+    "sectionId": "putting-in-work-master-business-canvas-synopsis-content-2",
+    "title": "Putting In Work — Master Business Canvas & Synopsis — Part 2",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: Putting In Work — Master Business Canvas & Synopsis",
+    "layout": "content",
+    "lessonOrder": 21
+  },
+  {
+    "slideNumber": 75,
+    "fileName": "slide-075-putting-in-work-master-business-canvas-synopsis-assignment.png",
+    "sectionId": "putting-in-work-master-business-canvas-synopsis-assignment",
+    "title": "Putting In Work — Master Business Canvas & Synopsis — Assignment",
+    "type": "assignment",
+    "sourceMarkdownHeading": "# Section: Putting In Work — Master Business Canvas & Synopsis",
+    "layout": "assignment",
+    "lessonOrder": 21
+  },
+  {
+    "slideNumber": 76,
+    "fileName": "slide-076-dropping-gems-intro.png",
+    "sectionId": "dropping-gems-intro",
+    "title": "Dropping Gems",
+    "type": "summary",
+    "sourceMarkdownHeading": "# Section: Dropping Gems",
+    "layout": "section_intro",
+    "lessonOrder": 22
+  },
+  {
+    "slideNumber": 77,
+    "fileName": "slide-077-dropping-gems-content-1.png",
+    "sectionId": "dropping-gems-content-1",
+    "title": "Dropping Gems — Part 1",
+    "type": "summary",
+    "sourceMarkdownHeading": "# Section: Dropping Gems",
+    "layout": "content",
+    "lessonOrder": 22
+  },
+  {
+    "slideNumber": 78,
+    "fileName": "slide-078-dropping-gems-content-2.png",
+    "sectionId": "dropping-gems-content-2",
+    "title": "Dropping Gems — Part 2",
+    "type": "summary",
+    "sourceMarkdownHeading": "# Section: Dropping Gems",
+    "layout": "content",
+    "lessonOrder": 22
+  },
+  {
+    "slideNumber": 79,
+    "fileName": "slide-079-end-of-lesson-four.png",
+    "sectionId": "end-of-lesson-four",
+    "title": "End of Lesson Four",
+    "type": "completion",
+    "sourceMarkdownHeading": "# Section: End of Lesson Four",
+    "layout": "completion",
+    "lessonOrder": 23
+  },
+  {
+    "slideNumber": 80,
+    "fileName": "slide-080-lesson-4-quiz-intro.png",
+    "sectionId": "lesson-4-quiz-intro",
+    "title": "Lesson 4 Quiz",
+    "type": "quiz_intro",
+    "sourceMarkdownHeading": "# Section: Lesson 4 Quiz",
+    "layout": "quiz_intro",
+    "lessonOrder": 24
+  },
+  {
+    "slideNumber": 81,
+    "fileName": "slide-081-quiz-q1.png",
+    "sectionId": "quiz-q1",
+    "title": "Quiz Question 1",
+    "type": "quiz_question",
+    "sourceMarkdownHeading": "# Question 1",
+    "layout": "quiz"
+  },
+  {
+    "slideNumber": 82,
+    "fileName": "slide-082-quiz-q2.png",
+    "sectionId": "quiz-q2",
+    "title": "Quiz Question 2",
+    "type": "quiz_question",
+    "sourceMarkdownHeading": "# Question 2",
+    "layout": "quiz"
+  },
+  {
+    "slideNumber": 83,
+    "fileName": "slide-083-quiz-q3.png",
+    "sectionId": "quiz-q3",
+    "title": "Quiz Question 3",
+    "type": "quiz_question",
+    "sourceMarkdownHeading": "# Question 3",
+    "layout": "quiz"
+  }
+]

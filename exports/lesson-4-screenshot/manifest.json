@@ -1,0 +1,505 @@
+{
+  "version": 2,
+  "lessonId": "L4",
+  "lessonTitle": "Fade In",
+  "terminology": "screen",
+  "sourcePptx": "course-content/Lesson4.pptx",
+  "canvaUrl": "https://mortarengagementengines.my.canva.site/survey",
+  "totalPptSlides": 32,
+  "skippedSlides": [
+    6,
+    8,
+    10,
+    16,
+    18,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30
+  ],
+  "skippedSurveyUiSlides": [
+    6,
+    8,
+    10,
+    16,
+    18,
+    23,
+    24,
+    25,
+    27,
+    28,
+    29,
+    30
+  ],
+  "playlist": [
+    {
+      "screenNumber": 1,
+      "sourceSlide": 1,
+      "fileName": "screen-001.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 2,
+      "sourceSlide": 1,
+      "type": "video",
+      "youtubeId": "g1TkE84pGII",
+      "videoUrl": "https://youtu.be/g1TkE84pGII",
+      "caption": "Lesson Four Introduction"
+    },
+    {
+      "screenNumber": 3,
+      "sourceSlide": 2,
+      "fileName": "screen-002.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 4,
+      "sourceSlide": 3,
+      "fileName": "screen-003.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 5,
+      "sourceSlide": 4,
+      "fileName": "screen-004.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 6,
+      "sourceSlide": 5,
+      "fileName": "screen-005.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 7,
+      "sourceSlide": 7,
+      "fileName": "screen-007.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 8,
+      "sourceSlide": 9,
+      "fileName": "screen-009.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 9,
+      "sourceSlide": 11,
+      "fileName": "screen-011.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 10,
+      "sourceSlide": 12,
+      "fileName": "screen-012.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 11,
+      "sourceSlide": 12,
+      "type": "video",
+      "youtubeId": "Wi3cV1asrOs",
+      "videoUrl": "https://youtu.be/Wi3cV1asrOs",
+      "caption": "The Studio — Chapter 4 Panel Discussion"
+    },
+    {
+      "screenNumber": 12,
+      "sourceSlide": 13,
+      "fileName": "screen-013.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 13,
+      "sourceSlide": 14,
+      "fileName": "screen-014.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 14,
+      "sourceSlide": 15,
+      "fileName": "screen-015.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 15,
+      "sourceSlide": 17,
+      "fileName": "screen-017.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 16,
+      "sourceSlide": 19,
+      "fileName": "screen-019.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 17,
+      "sourceSlide": 20,
+      "fileName": "screen-020.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 18,
+      "sourceSlide": 21,
+      "fileName": "screen-021.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 19,
+      "sourceSlide": 22,
+      "fileName": "screen-022.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 20,
+      "sourceSlide": 31,
+      "fileName": "screen-031.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 21,
+      "sourceSlide": 32,
+      "fileName": "screen-032.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    }
+  ],
+  "surveys": [
+    {
+      "id": "lesson4_survey_01",
+      "enabled": true,
+      "title": "4.0 — Before We Go Any Further",
+      "afterScreenIndex": 5,
+      "order": 0,
+      "markerSlide": 6,
+      "questions": [
+        {
+          "order": 0,
+          "question": "How would you explain your business concept to a fifth grader?"
+        },
+        {
+          "order": 1,
+          "question": "If you prefer not to write it out fully, list a few ideas that paint the picture."
+        }
+      ]
+    },
+    {
+      "id": "lesson4_survey_02",
+      "enabled": true,
+      "title": "Vision & Mission Statements",
+      "afterScreenIndex": 6,
+      "order": 1,
+      "markerSlide": 8,
+      "questions": [
+        {
+          "order": 0,
+          "question": "In one sentence, what experience should customers have with your business?"
+        },
+        {
+          "order": 1,
+          "question": "What culture or vibe should people feel when they engage with your brand?"
+        },
+        {
+          "order": 2,
+          "question": "What is the lowest common denominator of your business concept right now?"
+        }
+      ]
+    },
+    {
+      "id": "lesson4_survey_03",
+      "enabled": true,
+      "title": "4.1 — Identifying the Problem (Your WHY)",
+      "afterScreenIndex": 7,
+      "order": 2,
+      "markerSlide": 10,
+      "questions": [
+        {
+          "order": 0,
+          "question": "The vision of __________ is to see __________."
+        },
+        {
+          "order": 1,
+          "question": "Customers who buy my product/service will experience __________."
+        },
+        {
+          "order": 2,
+          "question": "Our mission is to provide __________ to __________ so that __________."
+        }
+      ]
+    },
+    {
+      "id": "lesson4_survey_04",
+      "enabled": true,
+      "title": "4.2 — R.E.S.P.E.C.T. & Maslow's Hierarchy",
+      "afterScreenIndex": 13,
+      "order": 3,
+      "markerSlide": 16,
+      "questions": [
+        {
+          "order": 0,
+          "question": "Which level(s) of Maslow's Hierarchy does your offering primarily address for customers?"
+        },
+        {
+          "order": 1,
+          "question": "Why is it important for you as an entrepreneur to understand your own motivations?"
+        },
+        {
+          "order": 2,
+          "question": "What emotional or psychological need does your customer seek to satisfy?"
+        }
+      ]
+    },
+    {
+      "id": "lesson4_survey_05",
+      "enabled": true,
+      "title": "4.3 — Who Wants That?",
+      "afterScreenIndex": 14,
+      "order": 4,
+      "markerSlide": 18,
+      "questions": [
+        {
+          "order": 0,
+          "question": "Who is your target customer? Be as specific as possible."
+        },
+        {
+          "order": 1,
+          "question": "What want, need, or problem are you solving for them?"
+        },
+        {
+          "order": 2,
+          "question": "Why would they choose your solution over doing nothing?"
+        }
+      ]
+    },
+    {
+      "id": "lesson4_survey_06",
+      "enabled": true,
+      "title": "4.4 — The Customer's Always Right",
+      "afterScreenIndex": 18,
+      "order": 5,
+      "markerSlide": 23,
+      "questions": [
+        {
+          "order": 0,
+          "question": "Describe one customer persona (real or ideal) in 2–3 sentences."
+        },
+        {
+          "order": 1,
+          "question": "List 5–10 traits your target customers have in common."
+        },
+        {
+          "order": 2,
+          "question": "What price point feels right for your customer, and why?"
+        }
+      ]
+    },
+    {
+      "id": "lesson4_survey_07",
+      "enabled": true,
+      "title": "4.5 — I Can See Clearly Now",
+      "afterScreenIndex": 18,
+      "order": 6,
+      "markerSlide": 24,
+      "questions": [
+        {
+          "order": 0,
+          "question": "Explain your business in about 40 words (grandparent test)."
+        },
+        {
+          "order": 1,
+          "question": "Now refine that into a six-word statement."
+        },
+        {
+          "order": 2,
+          "question": "What is the single most important thing you want people to remember?"
+        }
+      ]
+    },
+    {
+      "id": "lesson4_survey_08",
+      "enabled": true,
+      "title": "Business Canvas — Concept Check-in",
+      "afterScreenIndex": 18,
+      "order": 7,
+      "markerSlide": 25,
+      "questions": [
+        {
+          "order": 0,
+          "question": "What is your business concept in one clear sentence today?"
+        },
+        {
+          "order": 1,
+          "question": "Who benefits most from what you offer?"
+        },
+        {
+          "order": 2,
+          "question": "What changed in your thinking since the start of this lesson?"
+        }
+      ]
+    },
+    {
+      "id": "lesson4_survey_09",
+      "enabled": true,
+      "title": "The Studio — Panel Reflection",
+      "afterScreenIndex": 18,
+      "order": 8,
+      "markerSlide": 27,
+      "questions": [
+        {
+          "order": 0,
+          "question": "What important takeaway did you get from the panel discussion?"
+        },
+        {
+          "order": 1,
+          "question": "Write down one memorable quote or theme from the video."
+        },
+        {
+          "order": 2,
+          "question": "How does their journey relate to yours?"
+        }
+      ]
+    },
+    {
+      "id": "lesson4_survey_10",
+      "enabled": true,
+      "title": "4.6 — There's No \"I\" in Team",
+      "afterScreenIndex": 18,
+      "order": 9,
+      "markerSlide": 28,
+      "questions": [
+        {
+          "order": 0,
+          "question": "Who is on your team (or support network) today?"
+        },
+        {
+          "order": 1,
+          "question": "What skill gap do you need someone else to cover?"
+        },
+        {
+          "order": 2,
+          "question": "How will you keep others aligned with your mission and vision?"
+        }
+      ]
+    },
+    {
+      "id": "lesson4_survey_11",
+      "enabled": true,
+      "title": "4.7 — Know Your Assets",
+      "afterScreenIndex": 18,
+      "order": 10,
+      "markerSlide": 29,
+      "questions": [
+        {
+          "order": 0,
+          "question": "How much startup capital do you have (or need)?"
+        },
+        {
+          "order": 1,
+          "question": "What assets would you purchase first with that capital?"
+        },
+        {
+          "order": 2,
+          "question": "Why did you prioritize those items?"
+        }
+      ]
+    },
+    {
+      "id": "lesson4_survey_12",
+      "enabled": true,
+      "title": "4.8 & 4.9 — Revisit Your Reflection",
+      "afterScreenIndex": 18,
+      "order": 11,
+      "markerSlide": 30,
+      "questions": [
+        {
+          "order": 0,
+          "question": "How much has your business concept changed since you started Lesson 4?"
+        },
+        {
+          "order": 1,
+          "question": "Is your idea clearer now? In what way?"
+        },
+        {
+          "order": 2,
+          "question": "What is your WHY in one sentence today?"
+        }
+      ]
+    }
+  ],
+  "quiz": {
+    "enabled": true,
+    "maxAttempts": 3,
+    "passPercentage": 70,
+    "canvaSlide": 26,
+    "questions": [
+      {
+        "order": 0,
+        "question": "True or False: Your customer is EVERYONE",
+        "optionA": "True",
+        "optionB": "False",
+        "optionC": "—",
+        "optionD": "—",
+        "correctAnswer": "B"
+      },
+      {
+        "order": 1,
+        "question": "How does entrepreneur Taren Kinebrew from \"The Studio\" stay true to her business concept when she receives requests for regular-sized desserts?",
+        "optionA": "She refers customers to other businesses",
+        "optionB": "She focuses on her niche of creating \"petite desserts\"",
+        "optionC": "She remembers her \"why\" and understands she can't be everything to everybody",
+        "optionD": "All of the above",
+        "correctAnswer": "D"
+      },
+      {
+        "order": 2,
+        "question": "Choose the 3 levels of Abraham Maslow's Hierarchy of Needs",
+        "optionA": "Self-Fulfillment, Cosmetic, Material",
+        "optionB": "Self-Fulfillment, Psychological, Basic",
+        "optionC": "Self-Reflection, Entrepreneurial, Foundation",
+        "optionD": "—",
+        "correctAnswer": "B"
+      }
+    ]
+  }
+}

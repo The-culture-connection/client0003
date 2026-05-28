@@ -35,6 +35,8 @@ import { httpsCallable } from "firebase/functions";
 import { SlideRenderer } from "../../components/curriculum/SlideRenderer";
 import { MediaVideoBlock } from "../../components/curriculum/MediaVideoBlock";
 import { SlideImageWithPopups } from "../../components/curriculum/SlideImageWithPopups";
+import { LessonScreenRenderer } from "../../components/curriculum/LessonScreenRenderer";
+import { useLessonScreenPreload } from "../../hooks/useLessonScreenPreload";
 import { Button } from "../../components/ui/button";
 import { ChevronLeft, ChevronRight, LogOut, Loader2 } from "lucide-react";
 import { useScreenAnalytics } from "../../analytics/useScreenAnalytics";
@@ -122,6 +124,15 @@ export function LessonPlayer() {
 
   const isMediaLesson = lesson?.content_type === "media";
   const isImageLesson = lesson?.content_type === "images";
+  const useImmersiveScreens =
+    isMediaLesson &&
+    (lesson?.screen_mode === "immersive" || lesson?.source_type === "pptx_import");
+  const preloadSource = isMediaLesson
+    ? { kind: "media" as const, items: lessonContent }
+    : isImageLesson
+      ? { kind: "images" as const, items: lessonImages }
+      : null;
+  useLessonScreenPreload(preloadSource, currentSlideIndex);
   const itemCount = isMediaLesson
     ? lessonContent.length
     : isImageLesson
@@ -330,7 +341,7 @@ export function LessonPlayer() {
         await syncModuleCompletionAndAwardBadges(progressAfter, course);
         const totalSlidesPerLesson = await getCourseSlideCounts(course);
         const lessonIds = Object.keys(totalSlidesPerLesson);
-        const [lessonsWithQuiz, lessonsWithSurvey] = await Promise.all([
+        const [lessonsWithQuiz, lessonSurveyCounts] = await Promise.all([
           lessonIds.length > 0 ? getLessonsWithQuiz(courseId, lessonIds) : {},
           lessonIds.length > 0 ? getLessonSurveyCounts(courseId, lessonIds) : {},
         ]);
@@ -340,7 +351,8 @@ export function LessonPlayer() {
           totalSlidesPerLesson,
           lessonsWithQuiz,
           undefined,
-          lessonsWithSurvey
+          undefined,
+          lessonSurveyCounts
         );
         if (pct >= 100) {
           await markCourseCompleted(user.uid, courseId);
@@ -566,6 +578,7 @@ export function LessonPlayer() {
           totalSlidesPerLesson,
           lessonsWithQuizMap,
           undefined,
+          undefined,
           lessonSurveyCounts
         );
         if (pct >= 100) {
@@ -789,8 +802,8 @@ export function LessonPlayer() {
         </div>
       </div>
 
-      {/* Slide Content */}
-      <div className="min-h-[calc(100vh-80px)]">
+      {/* Lesson screen content */}
+      <div className={useImmersiveScreens ? "h-[calc(100vh-80px)]" : "min-h-[calc(100vh-80px)]"}>
         {showSurveyView && activeSurvey ? (
           <div
             className={`container mx-auto px-4 py-8 ${surveyInteractiveStep === "feedback" ? "max-w-4xl" : "max-w-2xl"}`}
@@ -991,12 +1004,21 @@ export function LessonPlayer() {
           <>
             {isMediaLesson && currentContentSlide ? (
               currentContentSlide.type === "image" ? (
-                <SlideImageWithPopups
-                  src={currentContentSlide.image_url!}
-                  alt={currentContentSlide.alt_text ?? `Slide ${currentSlideIndex + 1}`}
-                  popups={currentContentSlide.popups}
-                  className="min-h-[calc(100vh-80px)]"
-                />
+                useImmersiveScreens ? (
+                  <LessonScreenRenderer
+                    src={currentContentSlide.image_url!}
+                    alt={currentContentSlide.alt_text ?? `Screen ${currentSlideIndex + 1}`}
+                    popups={currentContentSlide.popups}
+                    className="h-full"
+                  />
+                ) : (
+                  <SlideImageWithPopups
+                    src={currentContentSlide.image_url!}
+                    alt={currentContentSlide.alt_text ?? `Slide ${currentSlideIndex + 1}`}
+                    popups={currentContentSlide.popups}
+                    className="min-h-[calc(100vh-80px)]"
+                  />
+                )
               ) : (
                 <MediaVideoBlock
                   videoProvider={currentContentSlide.video_provider}
@@ -1006,13 +1028,21 @@ export function LessonPlayer() {
                 />
               )
             ) : isImageLesson && currentImage ? (
-              <div className="w-full h-full flex items-center justify-center p-8">
-                <img
+              useImmersiveScreens ? (
+                <LessonScreenRenderer
                   src={currentImage.image_url}
-                  alt={currentImage.alt_text || `Slide ${currentSlideIndex + 1}`}
-                  className="max-w-full max-h-full object-contain"
+                  alt={currentImage.alt_text || `Screen ${currentSlideIndex + 1}`}
+                  className="h-full"
                 />
-              </div>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center p-8">
+                  <img
+                    src={currentImage.image_url}
+                    alt={currentImage.alt_text || `Slide ${currentSlideIndex + 1}`}
+                    className="max-w-full max-h-full object-contain"
+                  />
+                </div>
+              )
             ) : currentSlide ? (
               <SlideRenderer slide={currentSlide} blocks={currentBlocks} />
             ) : (

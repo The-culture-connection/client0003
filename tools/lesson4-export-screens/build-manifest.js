@@ -1,0 +1,269 @@
+/**
+ * Build manifest.json: skip Canva survey/quiz UI slides, insert YouTube screens, real survey copy.
+ */
+const fs = require("fs");
+const path = require("path");
+
+const repoRoot = path.resolve(__dirname, "../..");
+const exportDir = path.join(repoRoot, "exports/lesson-4-screenshot");
+const metaPath = path.join(exportDir, "export-meta.json");
+const manifestPath = path.join(exportDir, "manifest.json");
+
+const TOTAL_PPT_SLIDES = 32;
+
+/** Canva/PPT slides that are decorative "Survey" UI — not uploaded as lesson screens */
+const SURVEY_UI_SLIDES = new Set([6, 8, 10, 16, 18, 23, 24, 25, 27, 28, 29, 30]);
+
+/** Native quiz in LessonPlayer (skip quiz graphic slide) */
+const QUIZ_UI_SLIDE = 26;
+
+const SKIP_SLIDES = new Set([...SURVEY_UI_SLIDES, QUIZ_UI_SLIDE]);
+
+const VIDEOS_AFTER_SOURCE_SLIDE = {
+  1: {
+    youtubeId: "g1TkE84pGII",
+    videoUrl: "https://youtu.be/g1TkE84pGII",
+    caption: "Lesson Four Introduction",
+  },
+  12: {
+    youtubeId: "Wi3cV1asrOs",
+    videoUrl: "https://youtu.be/Wi3cV1asrOs",
+    caption: "The Studio — Chapter 4 Panel Discussion",
+  },
+};
+
+/** Survey fires after the content screen immediately before each survey UI slide */
+const SURVEY_DEFINITIONS = [
+  {
+    markerSlide: 6,
+    title: "4.0 — Before We Go Any Further",
+    questions: [
+      "How would you explain your business concept to a fifth grader?",
+      "If you prefer not to write it out fully, list a few ideas that paint the picture.",
+    ],
+  },
+  {
+    markerSlide: 8,
+    title: "Vision & Mission Statements",
+    questions: [
+      "In one sentence, what experience should customers have with your business?",
+      "What culture or vibe should people feel when they engage with your brand?",
+      "What is the lowest common denominator of your business concept right now?",
+    ],
+  },
+  {
+    markerSlide: 10,
+    title: "4.1 — Identifying the Problem (Your WHY)",
+    questions: [
+      "The vision of __________ is to see __________.",
+      "Customers who buy my product/service will experience __________.",
+      "Our mission is to provide __________ to __________ so that __________.",
+    ],
+  },
+  {
+    markerSlide: 16,
+    title: "4.2 — R.E.S.P.E.C.T. & Maslow's Hierarchy",
+    questions: [
+      "Which level(s) of Maslow's Hierarchy does your offering primarily address for customers?",
+      "Why is it important for you as an entrepreneur to understand your own motivations?",
+      "What emotional or psychological need does your customer seek to satisfy?",
+    ],
+  },
+  {
+    markerSlide: 18,
+    title: "4.3 — Who Wants That?",
+    questions: [
+      "Who is your target customer? Be as specific as possible.",
+      "What want, need, or problem are you solving for them?",
+      "Why would they choose your solution over doing nothing?",
+    ],
+  },
+  {
+    markerSlide: 23,
+    title: "4.4 — The Customer's Always Right",
+    questions: [
+      "Describe one customer persona (real or ideal) in 2–3 sentences.",
+      "List 5–10 traits your target customers have in common.",
+      "What price point feels right for your customer, and why?",
+    ],
+  },
+  {
+    markerSlide: 24,
+    title: "4.5 — I Can See Clearly Now",
+    questions: [
+      "Explain your business in about 40 words (grandparent test).",
+      "Now refine that into a six-word statement.",
+      "What is the single most important thing you want people to remember?",
+    ],
+  },
+  {
+    markerSlide: 25,
+    title: "Business Canvas — Concept Check-in",
+    questions: [
+      "What is your business concept in one clear sentence today?",
+      "Who benefits most from what you offer?",
+      "What changed in your thinking since the start of this lesson?",
+    ],
+  },
+  {
+    markerSlide: 27,
+    title: "The Studio — Panel Reflection",
+    questions: [
+      "What important takeaway did you get from the panel discussion?",
+      "Write down one memorable quote or theme from the video.",
+      "How does their journey relate to yours?",
+    ],
+  },
+  {
+    markerSlide: 28,
+    title: "4.6 — There's No \"I\" in Team",
+    questions: [
+      "Who is on your team (or support network) today?",
+      "What skill gap do you need someone else to cover?",
+      "How will you keep others aligned with your mission and vision?",
+    ],
+  },
+  {
+    markerSlide: 29,
+    title: "4.7 — Know Your Assets",
+    questions: [
+      "How much startup capital do you have (or need)?",
+      "What assets would you purchase first with that capital?",
+      "Why did you prioritize those items?",
+    ],
+  },
+  {
+    markerSlide: 30,
+    title: "4.8 & 4.9 — Revisit Your Reflection",
+    questions: [
+      "How much has your business concept changed since you started Lesson 4?",
+      "Is your idea clearer now? In what way?",
+      "What is your WHY in one sentence today?",
+    ],
+  },
+];
+
+/** Last playlist index before the survey UI slide (includes video screens). */
+function afterScreenIndexBeforeMarker(markerSlide, playlist) {
+  let idx = -1;
+  for (let i = 0; i < playlist.length; i++) {
+    const src = playlist[i].sourceSlide;
+    if (src != null && src < markerSlide) idx = i;
+  }
+  return Math.max(0, idx);
+}
+
+function main() {
+  const metaRaw = fs.readFileSync(metaPath, "utf8").replace(/^\uFEFF/, "");
+  const meta = JSON.parse(metaRaw);
+  const slidesByNum = new Map();
+  for (const s of Array.isArray(meta) ? meta : [meta]) {
+    slidesByNum.set(s.sourceSlide ?? s.screenNumber, s);
+  }
+
+  const playlist = [];
+  let screenNumber = 0;
+
+  for (let pptSlide = 1; pptSlide <= TOTAL_PPT_SLIDES; pptSlide++) {
+    if (SKIP_SLIDES.has(pptSlide)) continue;
+
+    const metaSlide = slidesByNum.get(pptSlide);
+    if (!metaSlide) continue;
+
+    screenNumber++;
+    playlist.push({
+      screenNumber,
+      sourceSlide: pptSlide,
+      fileName: metaSlide.fileName,
+      type: "content",
+      widthPx: metaSlide.widthPx,
+      heightPx: metaSlide.heightPx,
+    });
+
+    const video = VIDEOS_AFTER_SOURCE_SLIDE[pptSlide];
+    if (video) {
+      screenNumber++;
+      playlist.push({
+        screenNumber,
+        sourceSlide: pptSlide,
+        type: "video",
+        youtubeId: video.youtubeId,
+        videoUrl: video.videoUrl,
+        caption: video.caption,
+      });
+    }
+  }
+
+  const surveys = SURVEY_DEFINITIONS.map((def, order) => ({
+    id: `lesson4_survey_${String(order + 1).padStart(2, "0")}`,
+    enabled: true,
+    title: def.title,
+    afterScreenIndex: afterScreenIndexBeforeMarker(def.markerSlide, playlist),
+    order,
+    markerSlide: def.markerSlide,
+    questions: def.questions.map((q, i) => ({ order: i, question: q })),
+  }));
+
+  const quiz = {
+    enabled: true,
+    maxAttempts: 3,
+    passPercentage: 70,
+    canvaSlide: QUIZ_UI_SLIDE,
+    questions: [
+      {
+        order: 0,
+        question: "True or False: Your customer is EVERYONE",
+        optionA: "True",
+        optionB: "False",
+        optionC: "—",
+        optionD: "—",
+        correctAnswer: "B",
+      },
+      {
+        order: 1,
+        question:
+          'How does entrepreneur Taren Kinebrew from "The Studio" stay true to her business concept when she receives requests for regular-sized desserts?',
+        optionA: "She refers customers to other businesses",
+        optionB: 'She focuses on her niche of creating "petite desserts"',
+        optionC:
+          'She remembers her "why" and understands she can\'t be everything to everybody',
+        optionD: "All of the above",
+        correctAnswer: "D",
+      },
+      {
+        order: 2,
+        question: "Choose the 3 levels of Abraham Maslow's Hierarchy of Needs",
+        optionA: "Self-Fulfillment, Cosmetic, Material",
+        optionB: "Self-Fulfillment, Psychological, Basic",
+        optionC: "Self-Reflection, Entrepreneurial, Foundation",
+        optionD: "—",
+        correctAnswer: "B",
+      },
+    ],
+  };
+
+  const manifest = {
+    version: 2,
+    lessonId: "L4",
+    lessonTitle: "Fade In",
+    terminology: "screen",
+    sourcePptx: "course-content/Lesson4.pptx",
+    canvaUrl: "https://mortarengagementengines.my.canva.site/survey",
+    totalPptSlides: TOTAL_PPT_SLIDES,
+    skippedSlides: [...SKIP_SLIDES].sort((a, b) => a - b),
+    skippedSurveyUiSlides: [...SURVEY_UI_SLIDES].sort((a, b) => a - b),
+    playlist,
+    surveys,
+    quiz,
+  };
+
+  fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+  console.log(`Wrote ${manifestPath}`);
+  console.log(`Playlist items: ${playlist.length} (${playlist.filter((p) => p.type === "content").length} images, ${playlist.filter((p) => p.type === "video").length} videos)`);
+  console.log(`Skipped PPT slides: ${[...SKIP_SLIDES].join(", ")}`);
+  surveys.forEach((s) => {
+    console.log(`  Survey "${s.title}" afterScreenIndex=${s.afterScreenIndex} (before survey UI slide ${s.markerSlide})`);
+  });
+}
+
+main();

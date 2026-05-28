@@ -48,7 +48,7 @@ export function CourseDetail() {
     // Clear slide counts immediately so we never render with stale data from another course (prevents complete flash)
     setCourseSlideCounts(null);
     setLessonsWithQuiz(null);
-    setLessonsWithSurvey(null);
+    setLessonSurveyCounts(null);
     setLoading(true);
 
     const loadCourse = async () => {

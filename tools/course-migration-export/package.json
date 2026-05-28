@@ -1,0 +1,14 @@
+{
+  "name": "@mortar/course-migration-export",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Generate PPTX, PNG exports, and manifest from structured lesson markdown",
+  "type": "module",
+  "scripts": {
+    "export:lesson-4": "node src/index.js --lesson 4",
+    "export": "node src/index.js"
+  },
+  "dependencies": {
+    "pptxgenjs": "^4.0.1"
+  }
+}
