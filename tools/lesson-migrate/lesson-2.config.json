@@ -1,0 +1,111 @@
+{
+  "lessonNumber": 2,
+  "lessonId": "L2",
+  "lessonTitle": "The Four-One-One",
+  "sourcePptx": "course-content/Lesson 2.pptx",
+  "exportDir": "exports/lesson-2-screenshot",
+  "canvaUrl": "https://mortarengagementengines.my.canva.site/lesson-2",
+  "totalPptSlides": 22,
+  "surveyUiSlides": [7, 8, 15, 17, 19],
+  "quizUiSlide": 20,
+  "videoUiSlides": {
+    "3": {
+      "youtubeId": "uJrpYYoNwk8",
+      "videoUrl": "https://youtu.be/uJrpYYoNwk8",
+      "caption": "Lesson Two Introduction"
+    },
+    "14": {
+      "youtubeId": "7HNdxPJH2CM",
+      "videoUrl": "https://youtu.be/7HNdxPJH2CM",
+      "caption": "Lesson Two — Panel Discussion"
+    }
+  },
+  "surveys": [
+    {
+      "markerSlide": 7,
+      "title": "Survey — Part 1",
+      "questions": [
+        "How do you feel when you're hit with an unexpected surprise? (I don't mind / Irritated / Excited for the new opportunity)",
+        "Constant change makes me: (Crazy / Uncomfortable / Excited)",
+        "There's constant drama in the office. How do you feel? (I try to keep calm, but sometimes... / I hate it / Doesn't bother me — I keep my cool)",
+        "My friends think I handle stress well. (Yes / No / I don't tell them)",
+        "When I have a problem, I... (Give up when it's too difficult / Like to have all of the answers / Explore until I find a solution)"
+      ]
+    },
+    {
+      "markerSlide": 8,
+      "title": "Survey — Part 2 (continued)",
+      "questions": [
+        "How do you feel about long-term commitment? (Run, run, RUN! / My bread and butter / My heart changes with the wind)",
+        "If I give you $100 and ask you to light it on fire, you would: (Burn it / Save it / Spend it)",
+        "When I think of networking, I: (Avoid it / Suck it up and do it / Get someone else to do it for me)",
+        "Sacrifice is important to making your dreams come true. (Absolutely, whatever it takes / It depends... / I'll get back to you on that one)",
+        "Finish the sentence: \"Money is...\" (Something to be managed and moved / The root of all evil / A currency that is used to get what I want)"
+      ]
+    },
+    {
+      "markerSlide": 15,
+      "title": "Video takeaways",
+      "questions": ["What are some of your biggest takeaways from the video?"]
+    },
+    {
+      "markerSlide": 17,
+      "title": "Thinking about failure",
+      "questions": [
+        "What does failure mean to you now that you've had a chance to think about it?",
+        "What have you learned from the failures in your life?"
+      ]
+    },
+    {
+      "markerSlide": 19,
+      "title": "Success and failure redefined",
+      "questions": [
+        "Has your definition of success and failure changed at all?",
+        "What does success look like now, personally and for your business?",
+        "What does failure look like now, personally and for your business?"
+      ]
+    }
+  ],
+  "quiz": {
+    "enabled": true,
+    "maxAttempts": 3,
+    "passPercentage": 70,
+    "questions": [
+      {
+        "order": 0,
+        "question": "True or false: Success looks the same for everyone",
+        "optionA": "True — Everyone wants to make lots of money!",
+        "optionB": "False — Everyone can have their own definition of success",
+        "optionC": "—",
+        "optionD": "—",
+        "correctAnswer": "B"
+      },
+      {
+        "order": 1,
+        "question": "Who can you reach out to for support in building your business?",
+        "optionA": "Friends, family, community members, and professionals",
+        "optionB": "No one! It's all on me!",
+        "optionC": "—",
+        "optionD": "—",
+        "correctAnswer": "A"
+      },
+      {
+        "order": 2,
+        "question": "According to panelist Donny Harper, from this lesson's panel discussion, the best way to manage expectations is by:",
+        "optionA": "Setting clear business goals and being flexible",
+        "optionB": "Don't have any!",
+        "optionC": "Make sure expectations are low so that you don't let yourself down",
+        "optionD": "—",
+        "correctAnswer": "A"
+      }
+    ]
+  },
+  "course": {
+    "courseId": "5yOpMeJR9KkbNzdPtQ0E",
+    "curriculumId": "SLpBKFr786sTNwaRMbUF",
+    "moduleId": "kCUhSJJI0mg3cDaTVDTN",
+    "chapterId": "VDINgFM0Q2GEFUSo1uLu",
+    "lessonOrder": 2,
+    "moduleLessonOrder": 2
+  }
+}

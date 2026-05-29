@@ -1,0 +1,602 @@
+{
+  "version": 2,
+  "lessonId": "L7",
+  "lessonTitle": "Always Be Closing",
+  "lessonNumber": 7,
+  "terminology": "screen",
+  "sourcePptx": "course-content/lesson 7.pptx",
+  "canvaUrl": "https://mortarengagementengines.my.canva.site/lesson-7",
+  "totalPptSlides": 53,
+  "skippedSlides": [
+    24,
+    26,
+    44,
+    45,
+    46,
+    47,
+    48,
+    50,
+    53
+  ],
+  "skippedSurveyUiSlides": [
+    26,
+    44,
+    45,
+    46,
+    47,
+    48,
+    50
+  ],
+  "videoUiSlides": [
+    24
+  ],
+  "playlist": [
+    {
+      "screenNumber": 1,
+      "sourceSlide": 1,
+      "fileName": "screen-001.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 2,
+      "sourceSlide": 2,
+      "fileName": "screen-002.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 3,
+      "sourceSlide": 3,
+      "fileName": "screen-003.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 4,
+      "sourceSlide": 4,
+      "fileName": "screen-004.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 5,
+      "sourceSlide": 5,
+      "fileName": "screen-005.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 6,
+      "sourceSlide": 6,
+      "fileName": "screen-006.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 7,
+      "sourceSlide": 7,
+      "fileName": "screen-007.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 8,
+      "sourceSlide": 8,
+      "fileName": "screen-008.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 9,
+      "sourceSlide": 9,
+      "fileName": "screen-009.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 10,
+      "sourceSlide": 10,
+      "fileName": "screen-010.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 11,
+      "sourceSlide": 11,
+      "fileName": "screen-011.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 12,
+      "sourceSlide": 12,
+      "fileName": "screen-012.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 13,
+      "sourceSlide": 13,
+      "fileName": "screen-013.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 14,
+      "sourceSlide": 14,
+      "fileName": "screen-014.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 15,
+      "sourceSlide": 15,
+      "fileName": "screen-015.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 16,
+      "sourceSlide": 16,
+      "fileName": "screen-016.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 17,
+      "sourceSlide": 17,
+      "fileName": "screen-017.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 18,
+      "sourceSlide": 18,
+      "fileName": "screen-018.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 19,
+      "sourceSlide": 19,
+      "fileName": "screen-019.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 20,
+      "sourceSlide": 20,
+      "fileName": "screen-020.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 21,
+      "sourceSlide": 21,
+      "fileName": "screen-021.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 22,
+      "sourceSlide": 22,
+      "fileName": "screen-022.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 23,
+      "sourceSlide": 23,
+      "fileName": "screen-023.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 24,
+      "sourceSlide": 24,
+      "type": "video",
+      "youtubeId": "7LVXvYgg504",
+      "videoUrl": "https://youtu.be/7LVXvYgg504",
+      "caption": "Lesson Seven — Video",
+      "skipCanvaPlaceholder": true
+    },
+    {
+      "screenNumber": 25,
+      "sourceSlide": 25,
+      "fileName": "screen-025.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 26,
+      "sourceSlide": 27,
+      "fileName": "screen-027.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 27,
+      "sourceSlide": 28,
+      "fileName": "screen-028.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 28,
+      "sourceSlide": 29,
+      "fileName": "screen-029.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 29,
+      "sourceSlide": 30,
+      "fileName": "screen-030.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 30,
+      "sourceSlide": 31,
+      "fileName": "screen-031.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 31,
+      "sourceSlide": 32,
+      "fileName": "screen-032.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 32,
+      "sourceSlide": 33,
+      "fileName": "screen-033.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 33,
+      "sourceSlide": 34,
+      "fileName": "screen-034.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 34,
+      "sourceSlide": 35,
+      "fileName": "screen-035.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 35,
+      "sourceSlide": 36,
+      "fileName": "screen-036.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 36,
+      "sourceSlide": 37,
+      "fileName": "screen-037.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 37,
+      "sourceSlide": 38,
+      "fileName": "screen-038.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 38,
+      "sourceSlide": 39,
+      "fileName": "screen-039.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 39,
+      "sourceSlide": 40,
+      "fileName": "screen-040.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 40,
+      "sourceSlide": 41,
+      "fileName": "screen-041.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 41,
+      "sourceSlide": 42,
+      "fileName": "screen-042.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 42,
+      "sourceSlide": 43,
+      "fileName": "screen-043.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 43,
+      "sourceSlide": 49,
+      "fileName": "screen-049.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 44,
+      "sourceSlide": 51,
+      "fileName": "screen-051.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 45,
+      "sourceSlide": 52,
+      "fileName": "screen-052.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    }
+  ],
+  "surveys": [
+    {
+      "id": "lesson7_survey_01",
+      "enabled": true,
+      "title": "Customer reach & marketing",
+      "afterScreenIndex": 24,
+      "order": 0,
+      "markerSlide": 26,
+      "questions": [
+        {
+          "order": 0,
+          "question": "How my customers want to be reached:"
+        },
+        {
+          "order": 1,
+          "question": "How I reach my customers:"
+        },
+        {
+          "order": 2,
+          "question": "New marketing techniques:"
+        }
+      ]
+    },
+    {
+      "id": "lesson7_survey_02",
+      "enabled": true,
+      "title": "Survey — Reality Check",
+      "afterScreenIndex": 41,
+      "order": 1,
+      "markerSlide": 44,
+      "questions": [
+        {
+          "order": 0,
+          "question": "In your life, was there a time you realized you had to pivot?"
+        },
+        {
+          "order": 1,
+          "question": "How did you know?"
+        },
+        {
+          "order": 2,
+          "question": "What did you do?"
+        },
+        {
+          "order": 3,
+          "question": "Did the pivot improve your life? Why or why not?"
+        }
+      ]
+    },
+    {
+      "id": "lesson7_survey_03",
+      "enabled": true,
+      "title": "Sales & marketing reflection",
+      "afterScreenIndex": 41,
+      "order": 2,
+      "markerSlide": 45,
+      "questions": [
+        {
+          "order": 0,
+          "question": "What would you do differently if you had the opportunity to sell again to that difficult customer?"
+        },
+        {
+          "order": 1,
+          "question": "How have your feelings about sales and marketing changed?"
+        },
+        {
+          "order": 2,
+          "question": "What was the most impactful thing you learned?"
+        }
+      ]
+    },
+    {
+      "id": "lesson7_survey_04",
+      "enabled": true,
+      "title": "Elevator pitch",
+      "afterScreenIndex": 41,
+      "order": 3,
+      "markerSlide": 46,
+      "questions": [
+        {
+          "order": 0,
+          "question": "Write your elevator pitch (~100 words) based on your 100-word message from Lesson 6."
+        },
+        {
+          "order": 1,
+          "question": "Practice in front of the mirror and with five people. Write down their feedback."
+        }
+      ]
+    },
+    {
+      "id": "lesson7_survey_05",
+      "enabled": true,
+      "title": "Product or service prototype",
+      "afterScreenIndex": 41,
+      "order": 4,
+      "markerSlide": 47,
+      "questions": [
+        {
+          "order": 0,
+          "question": "Build an example, model, or simulation of one product or service you offer. Share it with 5–10 people (outside immediate family/close friends). What do they like about it? What questions do they have?"
+        }
+      ]
+    },
+    {
+      "id": "lesson7_survey_06",
+      "enabled": true,
+      "title": "Competitors",
+      "afterScreenIndex": 41,
+      "order": 5,
+      "markerSlide": 48,
+      "questions": [
+        {
+          "order": 0,
+          "question": "Write down 5 of your current competitors."
+        },
+        {
+          "order": 1,
+          "question": "Write down 5 of your future competitors."
+        }
+      ]
+    },
+    {
+      "id": "lesson7_survey_07",
+      "enabled": true,
+      "title": "Business Canvas — Sales & Distribution",
+      "afterScreenIndex": 42,
+      "order": 6,
+      "markerSlide": 50,
+      "questions": [
+        {
+          "order": 0,
+          "question": "Go to your business canvas and answer the questions on sticky notes in the Sales and Distribution section. Type out a paragraph of those responses in your Business Synopsis."
+        }
+      ]
+    }
+  ],
+  "quiz": {
+    "enabled": true,
+    "maxAttempts": 3,
+    "passPercentage": 70,
+    "questions": [
+      {
+        "order": 0,
+        "question": "Approximately what percentage of revenue should small businesses be spending on sales and marketing, according to some business leaders?",
+        "optionA": "2%",
+        "optionB": "3%",
+        "optionC": "10%",
+        "optionD": "20%",
+        "correctAnswer": "C"
+      },
+      {
+        "order": 1,
+        "question": "Businesses want to know how your product or service will help them make more money, whereas customers want to know how your product or service will improve their lives.",
+        "optionA": "True",
+        "optionB": "False",
+        "optionC": "—",
+        "optionD": "—",
+        "correctAnswer": "A"
+      },
+      {
+        "order": 2,
+        "question": "Attending trade shows, affinity marketing, and making cold calls are examples of what type of marketing?",
+        "optionA": "Inbound",
+        "optionB": "Outbound",
+        "optionC": "—",
+        "optionD": "—",
+        "correctAnswer": "B"
+      },
+      {
+        "order": 3,
+        "question": "Retargeting, social media marketing, and referral programs are examples of what type of marketing?",
+        "optionA": "Inbound",
+        "optionB": "Outbound",
+        "optionC": "—",
+        "optionD": "—",
+        "correctAnswer": "A"
+      },
+      {
+        "order": 4,
+        "question": "How do Jim Stahly and Donny Harper recommend that you keep loyal customers?",
+        "optionA": "Keep it simple only",
+        "optionB": "Quality product only",
+        "optionC": "Deliver value only",
+        "optionD": "All of the above: keep it simple, make a quality product, deliver value, and recognize loyal customers (e.g. rewards program)",
+        "correctAnswer": "D"
+      },
+      {
+        "order": 5,
+        "question": "What is one of the differences between an introvert and an extrovert?",
+        "optionA": "Introverts don't like being around people while extroverts like being around people",
+        "optionB": "Introverts are energized by time alone while extroverts are energized by time with other people",
+        "optionC": "—",
+        "optionD": "—",
+        "correctAnswer": "B"
+      }
+    ],
+    "canvaSlide": 53
+  },
+  "course": {
+    "courseId": "5yOpMeJR9KkbNzdPtQ0E",
+    "curriculumId": "SLpBKFr786sTNwaRMbUF",
+    "moduleId": "hatLrWdDIWhb3ndNZjxV",
+    "chapterId": "jdgMbIrLo5vi8PGjovr2",
+    "lessonOrder": 2,
+    "moduleLessonOrder": 2
+  }
+}

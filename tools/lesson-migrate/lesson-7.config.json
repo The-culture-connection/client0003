@@ -1,0 +1,147 @@
+{
+  "lessonNumber": 7,
+  "lessonId": "L7",
+  "lessonTitle": "Always Be Closing",
+  "sourcePptx": "course-content/lesson 7.pptx",
+  "exportDir": "exports/lesson-7-screenshot",
+  "canvaUrl": "https://mortarengagementengines.my.canva.site/lesson-7",
+  "totalPptSlides": 53,
+  "surveyUiSlides": [26, 44, 45, 46, 47, 48, 50],
+  "quizUiSlide": 53,
+  "videoUiSlides": {
+    "24": {
+      "youtubeId": "7LVXvYgg504",
+      "videoUrl": "https://youtu.be/7LVXvYgg504",
+      "caption": "Lesson Seven — Video"
+    }
+  },
+  "surveys": [
+    {
+      "markerSlide": 26,
+      "title": "Customer reach & marketing",
+      "questions": [
+        "How my customers want to be reached:",
+        "How I reach my customers:",
+        "New marketing techniques:"
+      ]
+    },
+    {
+      "markerSlide": 44,
+      "title": "Survey — Reality Check",
+      "questions": [
+        "In your life, was there a time you realized you had to pivot?",
+        "How did you know?",
+        "What did you do?",
+        "Did the pivot improve your life? Why or why not?"
+      ]
+    },
+    {
+      "markerSlide": 45,
+      "title": "Sales & marketing reflection",
+      "questions": [
+        "What would you do differently if you had the opportunity to sell again to that difficult customer?",
+        "How have your feelings about sales and marketing changed?",
+        "What was the most impactful thing you learned?"
+      ]
+    },
+    {
+      "markerSlide": 46,
+      "title": "Elevator pitch",
+      "questions": [
+        "Write your elevator pitch (~100 words) based on your 100-word message from Lesson 6.",
+        "Practice in front of the mirror and with five people. Write down their feedback."
+      ]
+    },
+    {
+      "markerSlide": 47,
+      "title": "Product or service prototype",
+      "questions": [
+        "Build an example, model, or simulation of one product or service you offer. Share it with 5–10 people (outside immediate family/close friends). What do they like about it? What questions do they have?"
+      ]
+    },
+    {
+      "markerSlide": 48,
+      "title": "Competitors",
+      "questions": [
+        "Write down 5 of your current competitors.",
+        "Write down 5 of your future competitors."
+      ]
+    },
+    {
+      "markerSlide": 50,
+      "title": "Business Canvas — Sales & Distribution",
+      "questions": [
+        "Go to your business canvas and answer the questions on sticky notes in the Sales and Distribution section. Type out a paragraph of those responses in your Business Synopsis."
+      ]
+    }
+  ],
+  "quiz": {
+    "enabled": true,
+    "maxAttempts": 3,
+    "passPercentage": 70,
+    "questions": [
+      {
+        "order": 0,
+        "question": "Approximately what percentage of revenue should small businesses be spending on sales and marketing, according to some business leaders?",
+        "optionA": "2%",
+        "optionB": "3%",
+        "optionC": "10%",
+        "optionD": "20%",
+        "correctAnswer": "C"
+      },
+      {
+        "order": 1,
+        "question": "Businesses want to know how your product or service will help them make more money, whereas customers want to know how your product or service will improve their lives.",
+        "optionA": "True",
+        "optionB": "False",
+        "optionC": "—",
+        "optionD": "—",
+        "correctAnswer": "A"
+      },
+      {
+        "order": 2,
+        "question": "Attending trade shows, affinity marketing, and making cold calls are examples of what type of marketing?",
+        "optionA": "Inbound",
+        "optionB": "Outbound",
+        "optionC": "—",
+        "optionD": "—",
+        "correctAnswer": "B"
+      },
+      {
+        "order": 3,
+        "question": "Retargeting, social media marketing, and referral programs are examples of what type of marketing?",
+        "optionA": "Inbound",
+        "optionB": "Outbound",
+        "optionC": "—",
+        "optionD": "—",
+        "correctAnswer": "A"
+      },
+      {
+        "order": 4,
+        "question": "How do Jim Stahly and Donny Harper recommend that you keep loyal customers?",
+        "optionA": "Keep it simple only",
+        "optionB": "Quality product only",
+        "optionC": "Deliver value only",
+        "optionD": "All of the above: keep it simple, make a quality product, deliver value, and recognize loyal customers (e.g. rewards program)",
+        "correctAnswer": "D"
+      },
+      {
+        "order": 5,
+        "question": "What is one of the differences between an introvert and an extrovert?",
+        "optionA": "Introverts don't like being around people while extroverts like being around people",
+        "optionB": "Introverts are energized by time alone while extroverts are energized by time with other people",
+        "optionC": "—",
+        "optionD": "—",
+        "correctAnswer": "B"
+      }
+    ]
+  },
+  "course": {
+    "courseId": "5yOpMeJR9KkbNzdPtQ0E",
+    "curriculumId": "SLpBKFr786sTNwaRMbUF",
+    "moduleId": "hatLrWdDIWhb3ndNZjxV",
+    "chapterId": "jdgMbIrLo5vi8PGjovr2",
+    "lessonOrder": 2,
+    "moduleLessonOrder": 2
+  }
+}

@@ -1,0 +1,459 @@
+{
+  "version": 2,
+  "lessonId": "L3",
+  "lessonTitle": "Dollars & Sense",
+  "lessonNumber": 3,
+  "terminology": "screen",
+  "sourcePptx": "course-content/Lesson 3.pptx",
+  "canvaUrl": "https://mortarengagementengines.my.canva.site/lesson-3",
+  "totalPptSlides": 40,
+  "skippedSlides": [
+    2,
+    5,
+    14,
+    20,
+    33,
+    34,
+    35,
+    36,
+    37
+  ],
+  "skippedSurveyUiSlides": [
+    5,
+    14,
+    20,
+    33,
+    35,
+    36,
+    37
+  ],
+  "videoUiSlides": [
+    2
+  ],
+  "playlist": [
+    {
+      "screenNumber": 1,
+      "sourceSlide": 1,
+      "fileName": "screen-001.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 2,
+      "sourceSlide": 2,
+      "type": "video",
+      "youtubeId": "odIvLHGVkQw",
+      "videoUrl": "https://youtu.be/odIvLHGVkQw",
+      "caption": "Lesson Three Introduction",
+      "skipCanvaPlaceholder": true
+    },
+    {
+      "screenNumber": 3,
+      "sourceSlide": 3,
+      "fileName": "screen-003.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 4,
+      "sourceSlide": 4,
+      "fileName": "screen-004.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 5,
+      "sourceSlide": 6,
+      "fileName": "screen-006.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 6,
+      "sourceSlide": 7,
+      "fileName": "screen-007.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 7,
+      "sourceSlide": 8,
+      "fileName": "screen-008.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 8,
+      "sourceSlide": 9,
+      "fileName": "screen-009.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 9,
+      "sourceSlide": 10,
+      "fileName": "screen-010.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 10,
+      "sourceSlide": 11,
+      "fileName": "screen-011.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 11,
+      "sourceSlide": 12,
+      "fileName": "screen-012.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 12,
+      "sourceSlide": 13,
+      "fileName": "screen-013.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 13,
+      "sourceSlide": 15,
+      "fileName": "screen-015.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 14,
+      "sourceSlide": 16,
+      "fileName": "screen-016.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 15,
+      "sourceSlide": 17,
+      "fileName": "screen-017.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 16,
+      "sourceSlide": 18,
+      "fileName": "screen-018.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 17,
+      "sourceSlide": 19,
+      "fileName": "screen-019.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 18,
+      "sourceSlide": 21,
+      "fileName": "screen-021.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 19,
+      "sourceSlide": 22,
+      "fileName": "screen-022.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 20,
+      "sourceSlide": 23,
+      "fileName": "screen-023.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 21,
+      "sourceSlide": 24,
+      "fileName": "screen-024.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 22,
+      "sourceSlide": 25,
+      "fileName": "screen-025.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 23,
+      "sourceSlide": 26,
+      "fileName": "screen-026.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 24,
+      "sourceSlide": 27,
+      "fileName": "screen-027.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 25,
+      "sourceSlide": 28,
+      "fileName": "screen-028.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 26,
+      "sourceSlide": 29,
+      "fileName": "screen-029.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 27,
+      "sourceSlide": 30,
+      "fileName": "screen-030.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 28,
+      "sourceSlide": 31,
+      "fileName": "screen-031.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 29,
+      "sourceSlide": 32,
+      "fileName": "screen-032.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 30,
+      "sourceSlide": 38,
+      "fileName": "screen-038.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 31,
+      "sourceSlide": 39,
+      "fileName": "screen-039.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 32,
+      "sourceSlide": 40,
+      "fileName": "screen-040.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    }
+  ],
+  "surveys": [
+    {
+      "id": "lesson3_survey_01",
+      "enabled": true,
+      "title": "Your relationship with money",
+      "afterScreenIndex": 3,
+      "order": 0,
+      "markerSlide": 5,
+      "questions": [
+        {
+          "order": 0,
+          "question": "Take a moment to think back to the first time you were introduced to the concept of money. What did your family, friends, teachers, religious institutions, or anyone else teach you about money?"
+        },
+        {
+          "order": 1,
+          "question": "What is your most difficult challenge in handling money?"
+        },
+        {
+          "order": 2,
+          "question": "On a scale of 1–5, how would you rate your financial position today?"
+        }
+      ]
+    },
+    {
+      "id": "lesson3_survey_02",
+      "enabled": true,
+      "title": "Simple Monthly Budget",
+      "afterScreenIndex": 11,
+      "order": 1,
+      "markerSlide": 14,
+      "questions": [
+        {
+          "order": 0,
+          "question": "After completing the Simple Monthly Budget Template, what is your net take-home income?"
+        },
+        {
+          "order": 1,
+          "question": "What is one insight you gained from filling in your budget (income vs. expenses)?"
+        }
+      ]
+    },
+    {
+      "id": "lesson3_survey_03",
+      "enabled": true,
+      "title": "Essential business costs",
+      "afterScreenIndex": 16,
+      "order": 2,
+      "markerSlide": 20,
+      "questions": [
+        {
+          "order": 0,
+          "question": "Consider only the most essential costs for your business. List the essential costs you identified and how you validated them (peers, online research, mentor, or accountant)."
+        }
+      ]
+    },
+    {
+      "id": "lesson3_survey_04",
+      "enabled": true,
+      "title": "Barriers to managing money",
+      "afterScreenIndex": 28,
+      "order": 3,
+      "markerSlide": 33,
+      "questions": [
+        {
+          "order": 0,
+          "question": "After considering your environment, background, and new information about credit, debt, or other important financial terms, what would you say are two specific things that keep you from handling money well?"
+        }
+      ]
+    },
+    {
+      "id": "lesson3_survey_05",
+      "enabled": true,
+      "title": "Create a cash flow plan",
+      "afterScreenIndex": 28,
+      "order": 4,
+      "markerSlide": 35,
+      "questions": [
+        {
+          "order": 0,
+          "question": "Describe your cash flow plan: how will you divide your monthly income into expense categories?"
+        },
+        {
+          "order": 1,
+          "question": "How will you handle undefined expenses (such as food and entertainment)?"
+        },
+        {
+          "order": 2,
+          "question": "Finish the budget you started earlier in the lesson — what is your current status or biggest takeaway?"
+        }
+      ]
+    },
+    {
+      "id": "lesson3_survey_06",
+      "enabled": true,
+      "title": "Money management — spending log",
+      "afterScreenIndex": 28,
+      "order": 5,
+      "markerSlide": 36,
+      "questions": [
+        {
+          "order": 0,
+          "question": "For the next week, keep a detailed log of every dollar you spend using the Spending Log. What patterns do you expect to track, or what will you focus on while logging?"
+        }
+      ]
+    },
+    {
+      "id": "lesson3_survey_07",
+      "enabled": true,
+      "title": "Business Canvas — startup costs",
+      "afterScreenIndex": 28,
+      "order": 6,
+      "markerSlide": 37,
+      "questions": [
+        {
+          "order": 0,
+          "question": "Write out your startup costs (a guesstimate is fine). Where will you continue to refine this number?"
+        },
+        {
+          "order": 1,
+          "question": "After answering the questions under the \"Costs\" section, summarize your startup costs in paragraph form for your Business Synopsis."
+        }
+      ]
+    }
+  ],
+  "quiz": {
+    "enabled": true,
+    "maxAttempts": 3,
+    "passPercentage": 70,
+    "questions": [
+      {
+        "order": 0,
+        "question": "True or false: Some debt is \"good\" and essential to growing your business?",
+        "optionA": "True",
+        "optionB": "False",
+        "optionC": "—",
+        "optionD": "—",
+        "correctAnswer": "B"
+      },
+      {
+        "order": 1,
+        "question": "Panelist Christine Luken mentions in this lesson's \"The Studio\" panel that, for some people, the easiest place to start when evaluating your financial situation is:",
+        "optionA": "Credit Score",
+        "optionB": "Spending",
+        "optionC": "Debt",
+        "optionD": "—",
+        "correctAnswer": "C"
+      },
+      {
+        "order": 2,
+        "question": "According to financial advisors, an emergency fund consists of how many months worth of expenses?",
+        "optionA": "One–Two",
+        "optionB": "Six–Nine",
+        "optionC": "Three–Six",
+        "optionD": "—",
+        "correctAnswer": "C"
+      }
+    ],
+    "canvaSlide": 34
+  },
+  "course": {
+    "courseId": "5yOpMeJR9KkbNzdPtQ0E",
+    "curriculumId": "SLpBKFr786sTNwaRMbUF",
+    "moduleId": "kCUhSJJI0mg3cDaTVDTN",
+    "chapterId": "VDINgFM0Q2GEFUSo1uLu",
+    "lessonOrder": 3,
+    "moduleLessonOrder": 3
+  }
+}

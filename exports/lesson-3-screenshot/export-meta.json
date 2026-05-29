@@ -1,0 +1,282 @@
+﻿[
+    {
+        "screenNumber":  1,
+        "sourceSlide":  1,
+        "fileName":  "screen-001.png",
+        "widthPx":  1920,
+        "heightPx":  1080
+    },
+    {
+        "screenNumber":  2,
+        "sourceSlide":  2,
+        "fileName":  "screen-002.png",
+        "widthPx":  1920,
+        "heightPx":  1080
+    },
+    {
+        "screenNumber":  3,
+        "sourceSlide":  3,
+        "fileName":  "screen-003.png",
+        "widthPx":  1920,
+        "heightPx":  1080
+    },
+    {
+        "screenNumber":  4,
+        "sourceSlide":  4,
+        "fileName":  "screen-004.png",
+        "widthPx":  1920,
+        "heightPx":  1080
+    },
+    {
+        "screenNumber":  5,
+        "sourceSlide":  5,
+        "fileName":  "screen-005.png",
+        "widthPx":  1920,
+        "heightPx":  1080
+    },
+    {
+        "screenNumber":  6,
+        "sourceSlide":  6,
+        "fileName":  "screen-006.png",
+        "widthPx":  1920,
+        "heightPx":  1080
+    },
+    {
+        "screenNumber":  7,
+        "sourceSlide":  7,
+        "fileName":  "screen-007.png",
+        "widthPx":  1920,
+        "heightPx":  1080
+    },
+    {
+        "screenNumber":  8,
+        "sourceSlide":  8,
+        "fileName":  "screen-008.png",
+        "widthPx":  1920,
+        "heightPx":  1080
+    },
+    {
+        "screenNumber":  9,
+        "sourceSlide":  9,
+        "fileName":  "screen-009.png",
+        "widthPx":  1920,
+        "heightPx":  1080
+    },
+    {
+        "screenNumber":  10,
+        "sourceSlide":  10,
+        "fileName":  "screen-010.png",
+        "widthPx":  1920,
+        "heightPx":  1080
+    },
+    {
+        "screenNumber":  11,
+        "sourceSlide":  11,
+        "fileName":  "screen-011.png",
+        "widthPx":  1920,
+        "heightPx":  1080
+    },
+    {
+        "screenNumber":  12,
+        "sourceSlide":  12,
+        "fileName":  "screen-012.png",
+        "widthPx":  1920,
+        "heightPx":  1080
+    },
+    {
+        "screenNumber":  13,
+        "sourceSlide":  13,
+        "fileName":  "screen-013.png",
+        "widthPx":  1920,
+        "heightPx":  1080
+    },
+    {
+        "screenNumber":  14,
+        "sourceSlide":  14,
+        "fileName":  "screen-014.png",
+        "widthPx":  1920,
+        "heightPx":  1080
+    },
+    {
+        "screenNumber":  15,
+        "sourceSlide":  15,
+        "fileName":  "screen-015.png",
+        "widthPx":  1920,
+        "heightPx":  1080
+    },
+    {
+        "screenNumber":  16,
+        "sourceSlide":  16,
+        "fileName":  "screen-016.png",
+        "widthPx":  1920,
+        "heightPx":  1080
+    },
+    {
+        "screenNumber":  17,
+        "sourceSlide":  17,
+        "fileName":  "screen-017.png",
+        "widthPx":  1920,
+        "heightPx":  1080
+    },
+    {
+        "screenNumber":  18,
+        "sourceSlide":  18,
+        "fileName":  "screen-018.png",
+        "widthPx":  1920,
+        "heightPx":  1080
+    },
+    {
+        "screenNumber":  19,
+        "sourceSlide":  19,
+        "fileName":  "screen-019.png",
+        "widthPx":  1920,
+        "heightPx":  1080
+    },
+    {
+        "screenNumber":  20,
+        "sourceSlide":  20,
+        "fileName":  "screen-020.png",
+        "widthPx":  1920,
+        "heightPx":  1080
+    },
+    {
+        "screenNumber":  21,
+        "sourceSlide":  21,
+        "fileName":  "screen-021.png",
+        "widthPx":  1920,
+        "heightPx":  1080
+    },
+    {
+        "screenNumber":  22,
+        "sourceSlide":  22,
+        "fileName":  "screen-022.png",
+        "widthPx":  1920,
+        "heightPx":  1080
+    },
+    {
+        "screenNumber":  23,
+        "sourceSlide":  23,
+        "fileName":  "screen-023.png",
+        "widthPx":  1920,
+        "heightPx":  1080
+    },
+    {
+        "screenNumber":  24,
+        "sourceSlide":  24,
+        "fileName":  "screen-024.png",
+        "widthPx":  1920,
+        "heightPx":  1080
+    },
+    {
+        "screenNumber":  25,
+        "sourceSlide":  25,
+        "fileName":  "screen-025.png",
+        "widthPx":  1920,
+        "heightPx":  1080
+    },
+    {
+        "screenNumber":  26,
+        "sourceSlide":  26,
+        "fileName":  "screen-026.png",
+        "widthPx":  1920,
+        "heightPx":  1080
+    },
+    {
+        "screenNumber":  27,
+        "sourceSlide":  27,
+        "fileName":  "screen-027.png",
+        "widthPx":  1920,
+        "heightPx":  1080
+    },
+    {
+        "screenNumber":  28,
+        "sourceSlide":  28,
+        "fileName":  "screen-028.png",
+        "widthPx":  1920,
+        "heightPx":  1080
+    },
+    {
+        "screenNumber":  29,
+        "sourceSlide":  29,
+        "fileName":  "screen-029.png",
+        "widthPx":  1920,
+        "heightPx":  1080
+    },
+    {
+        "screenNumber":  30,
+        "sourceSlide":  30,
+        "fileName":  "screen-030.png",
+        "widthPx":  1920,
+        "heightPx":  1080
+    },
+    {
+        "screenNumber":  31,
+        "sourceSlide":  31,
+        "fileName":  "screen-031.png",
+        "widthPx":  1920,
+        "heightPx":  1080
+    },
+    {
+        "screenNumber":  32,
+        "sourceSlide":  32,
+        "fileName":  "screen-032.png",
+        "widthPx":  1920,
+        "heightPx":  1080
+    },
+    {
+        "screenNumber":  33,
+        "sourceSlide":  33,
+        "fileName":  "screen-033.png",
+        "widthPx":  1920,
+        "heightPx":  1080
+    },
+    {
+        "screenNumber":  34,
+        "sourceSlide":  34,
+        "fileName":  "screen-034.png",
+        "widthPx":  1920,
+        "heightPx":  1080
+    },
+    {
+        "screenNumber":  35,
+        "sourceSlide":  35,
+        "fileName":  "screen-035.png",
+        "widthPx":  1920,
+        "heightPx":  1080
+    },
+    {
+        "screenNumber":  36,
+        "sourceSlide":  36,
+        "fileName":  "screen-036.png",
+        "widthPx":  1920,
+        "heightPx":  1080
+    },
+    {
+        "screenNumber":  37,
+        "sourceSlide":  37,
+        "fileName":  "screen-037.png",
+        "widthPx":  1920,
+        "heightPx":  1080
+    },
+    {
+        "screenNumber":  38,
+        "sourceSlide":  38,
+        "fileName":  "screen-038.png",
+        "widthPx":  1920,
+        "heightPx":  1080
+    },
+    {
+        "screenNumber":  39,
+        "sourceSlide":  39,
+        "fileName":  "screen-039.png",
+        "widthPx":  1920,
+        "heightPx":  1080
+    },
+    {
+        "screenNumber":  40,
+        "sourceSlide":  40,
+        "fileName":  "screen-040.png",
+        "widthPx":  1920,
+        "heightPx":  1080
+    }
+]

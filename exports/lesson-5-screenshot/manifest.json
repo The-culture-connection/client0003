@@ -1,0 +1,251 @@
+{
+  "version": 2,
+  "lessonId": "L5",
+  "lessonTitle": "Internal Reflection",
+  "lessonNumber": 5,
+  "terminology": "screen",
+  "sourcePptx": "course-content/Lesson 5.pptx",
+  "canvaUrl": "https://mortarengagementengines.my.canva.site/dahk-u7ed9g",
+  "totalPptSlides": 16,
+  "skippedSlides": [
+    2,
+    5,
+    6,
+    11,
+    12,
+    14
+  ],
+  "skippedSurveyUiSlides": [
+    5,
+    6,
+    11,
+    14
+  ],
+  "videoUiSlides": [
+    2
+  ],
+  "playlist": [
+    {
+      "screenNumber": 1,
+      "sourceSlide": 1,
+      "fileName": "screen-001.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 2,
+      "sourceSlide": 2,
+      "type": "video",
+      "youtubeId": "CRHntr3bL9M",
+      "videoUrl": "https://youtu.be/CRHntr3bL9M",
+      "caption": "Lesson Five Introduction",
+      "skipCanvaPlaceholder": true
+    },
+    {
+      "screenNumber": 3,
+      "sourceSlide": 3,
+      "fileName": "screen-003.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 4,
+      "sourceSlide": 4,
+      "fileName": "screen-004.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 5,
+      "sourceSlide": 7,
+      "fileName": "screen-007.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 6,
+      "sourceSlide": 8,
+      "fileName": "screen-008.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 7,
+      "sourceSlide": 9,
+      "fileName": "screen-009.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 8,
+      "sourceSlide": 10,
+      "fileName": "screen-010.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 9,
+      "sourceSlide": 13,
+      "fileName": "screen-013.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 10,
+      "sourceSlide": 15,
+      "fileName": "screen-015.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 11,
+      "sourceSlide": 16,
+      "fileName": "screen-016.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    }
+  ],
+  "surveys": [
+    {
+      "id": "lesson5_survey_01",
+      "enabled": true,
+      "title": "Before we go any further",
+      "afterScreenIndex": 3,
+      "order": 0,
+      "markerSlide": 5,
+      "questions": [
+        {
+          "order": 0,
+          "question": "Do you have enough time to start or work on your business? Really? What factors help or hinder you right now?"
+        }
+      ]
+    },
+    {
+      "id": "lesson5_survey_02",
+      "enabled": true,
+      "title": "Business readiness check-in",
+      "afterScreenIndex": 3,
+      "order": 1,
+      "markerSlide": 6,
+      "questions": [
+        {
+          "order": 0,
+          "question": "I've created a product or refined a service. (yes/no)"
+        },
+        {
+          "order": 1,
+          "question": "My business generates money. (yes/no)"
+        },
+        {
+          "order": 2,
+          "question": "I spend more than eight hours a week on my business. (yes/no)"
+        },
+        {
+          "order": 3,
+          "question": "I've spent money on my business. (yes/no)"
+        },
+        {
+          "order": 4,
+          "question": "My friends and family know that I've started a business. (yes/no)"
+        },
+        {
+          "order": 5,
+          "question": "I have filed for incorporation with the state and received an EIN and applicable licensure. (yes/no)"
+        },
+        {
+          "order": 6,
+          "question": "My business has a brand. (yes/no)"
+        },
+        {
+          "order": 7,
+          "question": "My business at least partially supports me. (yes/no)"
+        },
+        {
+          "order": 8,
+          "question": "My business employs people or compensates contractors. (yes/no)"
+        },
+        {
+          "order": 9,
+          "question": "My business has a physical location outside my home. (yes/no)"
+        }
+      ]
+    },
+    {
+      "id": "lesson5_survey_03",
+      "enabled": true,
+      "title": "Time management reflection",
+      "afterScreenIndex": 7,
+      "order": 2,
+      "markerSlide": 11,
+      "questions": [
+        {
+          "order": 0,
+          "question": "Do you really have enough time to start or work on your business? What current time-consuming things do you think may present problems with time management?"
+        }
+      ]
+    },
+    {
+      "id": "lesson5_survey_04",
+      "enabled": true,
+      "title": "Branding Roundup",
+      "afterScreenIndex": 8,
+      "order": 3,
+      "markerSlide": 14,
+      "questions": [
+        {
+          "order": 0,
+          "question": "List a few examples of your favorite or least favorite brands and think about why you love them or loathe them."
+        },
+        {
+          "order": 1,
+          "question": "Write about how you found out about them, what you think they stand for, and how you fit into their customer profile."
+        }
+      ]
+    }
+  ],
+  "quiz": {
+    "enabled": true,
+    "maxAttempts": 3,
+    "passPercentage": 70,
+    "questions": [
+      {
+        "order": 0,
+        "question": "True or false: Sticking to your plan to meet your goals, is hard.",
+        "optionA": "True",
+        "optionB": "False",
+        "optionC": "—",
+        "optionD": "—",
+        "correctAnswer": "A"
+      },
+      {
+        "order": 1,
+        "question": "What does S.M.A.R.T. stand for?",
+        "optionA": "Specific, Measurable, Achievable, Realistic, Time-bound",
+        "optionB": "Specific, Measurable, Affordable, Realistic, Thoughtful",
+        "optionC": "Simple, Memorable, Achievable, Realistic, Time-bound",
+        "optionD": "Self-fulfillment, Measurable, Achievable, Realistic, Time-bound",
+        "correctAnswer": "A"
+      }
+    ],
+    "canvaSlide": 12
+  },
+  "course": {
+    "courseId": "5yOpMeJR9KkbNzdPtQ0E",
+    "curriculumId": "SLpBKFr786sTNwaRMbUF",
+    "moduleId": "kCUhSJJI0mg3cDaTVDTN",
+    "chapterId": "VDINgFM0Q2GEFUSo1uLu",
+    "lessonId": "JwbndTcYG0IzidZhaRIT",
+    "lessonOrder": 2,
+    "moduleLessonOrder": 2
+  }
+}

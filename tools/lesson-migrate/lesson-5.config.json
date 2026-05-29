@@ -1,0 +1,92 @@
+{
+  "lessonNumber": 5,
+  "lessonId": "L5",
+  "lessonTitle": "Internal Reflection",
+  "sourcePptx": "course-content/Lesson 5.pptx",
+  "exportDir": "exports/lesson-5-screenshot",
+  "canvaUrl": "https://mortarengagementengines.my.canva.site/dahk-u7ed9g",
+  "totalPptSlides": 16,
+  "surveyUiSlides": [5, 6, 11, 14],
+  "quizUiSlide": 12,
+  "videoUiSlides": {
+    "2": {
+      "youtubeId": "CRHntr3bL9M",
+      "videoUrl": "https://youtu.be/CRHntr3bL9M",
+      "caption": "Lesson Five Introduction"
+    }
+  },
+  "surveys": [
+    {
+      "markerSlide": 5,
+      "title": "Before we go any further",
+      "questions": [
+        "Do you have enough time to start or work on your business? Really? What factors help or hinder you right now?"
+      ]
+    },
+    {
+      "markerSlide": 6,
+      "title": "Business readiness check-in",
+      "questions": [
+        "I've created a product or refined a service. (yes/no)",
+        "My business generates money. (yes/no)",
+        "I spend more than eight hours a week on my business. (yes/no)",
+        "I've spent money on my business. (yes/no)",
+        "My friends and family know that I've started a business. (yes/no)",
+        "I have filed for incorporation with the state and received an EIN and applicable licensure. (yes/no)",
+        "My business has a brand. (yes/no)",
+        "My business at least partially supports me. (yes/no)",
+        "My business employs people or compensates contractors. (yes/no)",
+        "My business has a physical location outside my home. (yes/no)"
+      ]
+    },
+    {
+      "markerSlide": 11,
+      "title": "Time management reflection",
+      "questions": [
+        "Do you really have enough time to start or work on your business? What current time-consuming things do you think may present problems with time management?"
+      ]
+    },
+    {
+      "markerSlide": 14,
+      "title": "Branding Roundup",
+      "questions": [
+        "List a few examples of your favorite or least favorite brands and think about why you love them or loathe them.",
+        "Write about how you found out about them, what you think they stand for, and how you fit into their customer profile."
+      ]
+    }
+  ],
+  "quiz": {
+    "enabled": true,
+    "maxAttempts": 3,
+    "passPercentage": 70,
+    "questions": [
+      {
+        "order": 0,
+        "question": "True or false: Sticking to your plan to meet your goals, is hard.",
+        "optionA": "True",
+        "optionB": "False",
+        "optionC": "—",
+        "optionD": "—",
+        "correctAnswer": "A"
+      },
+      {
+        "order": 1,
+        "question": "What does S.M.A.R.T. stand for?",
+        "optionA": "Specific, Measurable, Achievable, Realistic, Time-bound",
+        "optionB": "Specific, Measurable, Affordable, Realistic, Thoughtful",
+        "optionC": "Simple, Memorable, Achievable, Realistic, Time-bound",
+        "optionD": "Self-fulfillment, Measurable, Achievable, Realistic, Time-bound",
+        "correctAnswer": "A"
+      }
+    ]
+  },
+  "course": {
+    "courseId": "5yOpMeJR9KkbNzdPtQ0E",
+    "curriculumId": "SLpBKFr786sTNwaRMbUF",
+    "moduleId": "kCUhSJJI0mg3cDaTVDTN",
+    "chapterId": "VDINgFM0Q2GEFUSo1uLu",
+    "lessonId": "JwbndTcYG0IzidZhaRIT",
+    "lessonOrder": 2,
+    "moduleLessonOrder": 2
+  }
+}

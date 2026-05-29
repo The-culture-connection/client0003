@@ -1,0 +1,138 @@
+{
+  "lessonNumber": 8,
+  "lessonId": "L8",
+  "lessonTitle": "All Eyes on Them",
+  "sourcePptx": "course-content/lesson-8.pptx",
+  "exportDir": "exports/lesson-8-screenshot",
+  "canvaUrl": "https://mortarengagementengines.my.canva.site/survey-before-we-go-any-further-you-re-in-the-ring-if-you-re-in-business-if-you-aren-t-a-competitor-your-competitors-are-don-t-get-punched-out-because-you-aren-t-competing-in-the-broadest-sense-webster-s-dictionary-defines-the-word-compete-as-to",
+  "totalPptSlides": 24,
+  "surveyUiSlides": [5, 9, 11, 14, 19, 20, 21],
+  "quizUiSlide": 24,
+  "videoUiSlides": {},
+  "surveys": [
+    {
+      "markerSlide": 5,
+      "title": "Before we go any further — competition",
+      "questions": [
+        "Write down your thoughts and feelings about competition. Are you a competitive person? How do you deal with competition? How do you feel when you win or when you lose?"
+      ]
+    },
+    {
+      "markerSlide": 9,
+      "title": "Don't Be a Hater",
+      "questions": [
+        "Review your current and future competitor lists. Strike any names that don't fit the definition of competitor. Define your similarities and differences. Browse their websites, messaging, ads, and prices if available. What do they do well? Where are their shortcomings? Capture how you are sustainably different and what you learned objectively (not as a hater)."
+      ]
+    },
+    {
+      "markerSlide": 11,
+      "title": "How your business is different",
+      "questions": [
+        "Who am I?",
+        "How does my personal story impact my business?",
+        "What is different about my experience, product, or service from other companies that provide the same thing I do?",
+        "What gaps do I fill for my customers?"
+      ]
+    },
+    {
+      "markerSlide": 14,
+      "title": "Value — products, services, and personal",
+      "questions": [
+        "What is value when it comes to products and services?",
+        "What about our personal values?",
+        "How are these similar?",
+        "How are they different?"
+      ]
+    },
+    {
+      "markerSlide": 19,
+      "title": "Competition reflection (revisit)",
+      "questions": [
+        "Are you a competitive person?",
+        "How do you deal with competition?",
+        "How do you feel when you win or when you lose?",
+        "Have your answers changed from the beginning of class? Why or why not?"
+      ]
+    },
+    {
+      "markerSlide": 20,
+      "title": "Customer interviews",
+      "questions": [
+        "What drew you to my product?",
+        "What problem does my product or service solve, or what need does it meet?",
+        "If you did not know me, would you buy this product or service?",
+        "Would you buy at this price point?",
+        "How much do you think this product or service is worth?",
+        "How much would YOU pay for it?",
+        "Summarize what you learned from interviewing 5–10 current or future customers."
+      ]
+    },
+    {
+      "markerSlide": 21,
+      "title": "Business Canvas — Competition & Value Proposition",
+      "questions": [
+        "Go to your business canvas and answer the corresponding questions on sticky notes in the Competition and Value Proposition sections. Type out paragraphs of those responses in your Business Synopsis."
+      ]
+    }
+  ],
+  "quiz": {
+    "enabled": true,
+    "maxAttempts": 3,
+    "passPercentage": 70,
+    "questions": [
+      {
+        "order": 0,
+        "question": "Who are your competitors?",
+        "optionA": "A company that provides the same or similar services that you do that has similar resources to you.",
+        "optionB": "A company that provides the same or similar services that you do that has way more or way less resources than you.",
+        "optionC": "—",
+        "optionD": "—",
+        "correctAnswer": "A"
+      },
+      {
+        "order": 1,
+        "question": "Which of the following are features of a product?",
+        "optionA": "Statements about your product such as what it can do, its dimensions, specs, etc.",
+        "optionB": "The end result of what a product can actually accomplish for the customer",
+        "optionC": "—",
+        "optionD": "—",
+        "correctAnswer": "A"
+      },
+      {
+        "order": 2,
+        "question": "What is the difference between benefit and value?",
+        "optionA": "Value corresponds to worth, whereas a product or service's benefit is all about what it can do for the customer",
+        "optionB": "Benefit corresponds to worth, whereas a product or service's value is all about what it can do for the customer",
+        "optionC": "—",
+        "optionD": "—",
+        "correctAnswer": "A"
+      },
+      {
+        "order": 3,
+        "question": "Which of the following are types of market research?",
+        "optionA": "Numerical/quantitative, for example, analyzing statistics like demographics",
+        "optionB": "Qualitative, for example, conducting focus groups and surveys",
+        "optionC": "Both",
+        "optionD": "—",
+        "correctAnswer": "C"
+      },
+      {
+        "order": 4,
+        "question": "You need a lot of money and resources to conduct market research.",
+        "optionA": "TRUE, it can be really expensive to conduct market research.",
+        "optionB": "FALSE, there are more affordable ways to conduct market research such as reaching out to customers on social media and asking them what they think of your product.",
+        "optionC": "—",
+        "optionD": "—",
+        "correctAnswer": "B"
+      }
+    ]
+  },
+  "course": {
+    "courseId": "5yOpMeJR9KkbNzdPtQ0E",
+    "curriculumId": "SLpBKFr786sTNwaRMbUF",
+    "moduleId": "hatLrWdDIWhb3ndNZjxV",
+    "chapterId": "jdgMbIrLo5vi8PGjovr2",
+    "lessonOrder": 3,
+    "moduleLessonOrder": 3
+  }
+}

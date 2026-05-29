@@ -1,0 +1,381 @@
+{
+  "version": 2,
+  "lessonId": "L8",
+  "lessonTitle": "All Eyes on Them",
+  "lessonNumber": 8,
+  "terminology": "screen",
+  "sourcePptx": "course-content/lesson-8.pptx",
+  "canvaUrl": "https://mortarengagementengines.my.canva.site/survey-before-we-go-any-further-you-re-in-the-ring-if-you-re-in-business-if-you-aren-t-a-competitor-your-competitors-are-don-t-get-punched-out-because-you-aren-t-competing-in-the-broadest-sense-webster-s-dictionary-defines-the-word-compete-as-to",
+  "totalPptSlides": 24,
+  "skippedSlides": [
+    5,
+    9,
+    11,
+    14,
+    19,
+    20,
+    21,
+    24
+  ],
+  "skippedSurveyUiSlides": [
+    5,
+    9,
+    11,
+    14,
+    19,
+    20,
+    21
+  ],
+  "videoUiSlides": [],
+  "playlist": [
+    {
+      "screenNumber": 1,
+      "sourceSlide": 1,
+      "fileName": "screen-001.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 2,
+      "sourceSlide": 2,
+      "fileName": "screen-002.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 3,
+      "sourceSlide": 3,
+      "fileName": "screen-003.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 4,
+      "sourceSlide": 4,
+      "fileName": "screen-004.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 5,
+      "sourceSlide": 6,
+      "fileName": "screen-006.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 6,
+      "sourceSlide": 7,
+      "fileName": "screen-007.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 7,
+      "sourceSlide": 8,
+      "fileName": "screen-008.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 8,
+      "sourceSlide": 10,
+      "fileName": "screen-010.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 9,
+      "sourceSlide": 12,
+      "fileName": "screen-012.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 10,
+      "sourceSlide": 13,
+      "fileName": "screen-013.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 11,
+      "sourceSlide": 15,
+      "fileName": "screen-015.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 12,
+      "sourceSlide": 16,
+      "fileName": "screen-016.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 13,
+      "sourceSlide": 17,
+      "fileName": "screen-017.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 14,
+      "sourceSlide": 18,
+      "fileName": "screen-018.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 15,
+      "sourceSlide": 22,
+      "fileName": "screen-022.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 16,
+      "sourceSlide": 23,
+      "fileName": "screen-023.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    }
+  ],
+  "surveys": [
+    {
+      "id": "lesson8_survey_01",
+      "enabled": true,
+      "title": "Before we go any further — competition",
+      "afterScreenIndex": 3,
+      "order": 0,
+      "markerSlide": 5,
+      "questions": [
+        {
+          "order": 0,
+          "question": "Write down your thoughts and feelings about competition. Are you a competitive person? How do you deal with competition? How do you feel when you win or when you lose?"
+        }
+      ]
+    },
+    {
+      "id": "lesson8_survey_02",
+      "enabled": true,
+      "title": "Don't Be a Hater",
+      "afterScreenIndex": 6,
+      "order": 1,
+      "markerSlide": 9,
+      "questions": [
+        {
+          "order": 0,
+          "question": "Review your current and future competitor lists. Strike any names that don't fit the definition of competitor. Define your similarities and differences. Browse their websites, messaging, ads, and prices if available. What do they do well? Where are their shortcomings? Capture how you are sustainably different and what you learned objectively (not as a hater)."
+        }
+      ]
+    },
+    {
+      "id": "lesson8_survey_03",
+      "enabled": true,
+      "title": "How your business is different",
+      "afterScreenIndex": 7,
+      "order": 2,
+      "markerSlide": 11,
+      "questions": [
+        {
+          "order": 0,
+          "question": "Who am I?"
+        },
+        {
+          "order": 1,
+          "question": "How does my personal story impact my business?"
+        },
+        {
+          "order": 2,
+          "question": "What is different about my experience, product, or service from other companies that provide the same thing I do?"
+        },
+        {
+          "order": 3,
+          "question": "What gaps do I fill for my customers?"
+        }
+      ]
+    },
+    {
+      "id": "lesson8_survey_04",
+      "enabled": true,
+      "title": "Value — products, services, and personal",
+      "afterScreenIndex": 9,
+      "order": 3,
+      "markerSlide": 14,
+      "questions": [
+        {
+          "order": 0,
+          "question": "What is value when it comes to products and services?"
+        },
+        {
+          "order": 1,
+          "question": "What about our personal values?"
+        },
+        {
+          "order": 2,
+          "question": "How are these similar?"
+        },
+        {
+          "order": 3,
+          "question": "How are they different?"
+        }
+      ]
+    },
+    {
+      "id": "lesson8_survey_05",
+      "enabled": true,
+      "title": "Competition reflection (revisit)",
+      "afterScreenIndex": 13,
+      "order": 4,
+      "markerSlide": 19,
+      "questions": [
+        {
+          "order": 0,
+          "question": "Are you a competitive person?"
+        },
+        {
+          "order": 1,
+          "question": "How do you deal with competition?"
+        },
+        {
+          "order": 2,
+          "question": "How do you feel when you win or when you lose?"
+        },
+        {
+          "order": 3,
+          "question": "Have your answers changed from the beginning of class? Why or why not?"
+        }
+      ]
+    },
+    {
+      "id": "lesson8_survey_06",
+      "enabled": true,
+      "title": "Customer interviews",
+      "afterScreenIndex": 13,
+      "order": 5,
+      "markerSlide": 20,
+      "questions": [
+        {
+          "order": 0,
+          "question": "What drew you to my product?"
+        },
+        {
+          "order": 1,
+          "question": "What problem does my product or service solve, or what need does it meet?"
+        },
+        {
+          "order": 2,
+          "question": "If you did not know me, would you buy this product or service?"
+        },
+        {
+          "order": 3,
+          "question": "Would you buy at this price point?"
+        },
+        {
+          "order": 4,
+          "question": "How much do you think this product or service is worth?"
+        },
+        {
+          "order": 5,
+          "question": "How much would YOU pay for it?"
+        },
+        {
+          "order": 6,
+          "question": "Summarize what you learned from interviewing 5–10 current or future customers."
+        }
+      ]
+    },
+    {
+      "id": "lesson8_survey_07",
+      "enabled": true,
+      "title": "Business Canvas — Competition & Value Proposition",
+      "afterScreenIndex": 13,
+      "order": 6,
+      "markerSlide": 21,
+      "questions": [
+        {
+          "order": 0,
+          "question": "Go to your business canvas and answer the corresponding questions on sticky notes in the Competition and Value Proposition sections. Type out paragraphs of those responses in your Business Synopsis."
+        }
+      ]
+    }
+  ],
+  "quiz": {
+    "enabled": true,
+    "maxAttempts": 3,
+    "passPercentage": 70,
+    "questions": [
+      {
+        "order": 0,
+        "question": "Who are your competitors?",
+        "optionA": "A company that provides the same or similar services that you do that has similar resources to you.",
+        "optionB": "A company that provides the same or similar services that you do that has way more or way less resources than you.",
+        "optionC": "—",
+        "optionD": "—",
+        "correctAnswer": "A"
+      },
+      {
+        "order": 1,
+        "question": "Which of the following are features of a product?",
+        "optionA": "Statements about your product such as what it can do, its dimensions, specs, etc.",
+        "optionB": "The end result of what a product can actually accomplish for the customer",
+        "optionC": "—",
+        "optionD": "—",
+        "correctAnswer": "A"
+      },
+      {
+        "order": 2,
+        "question": "What is the difference between benefit and value?",
+        "optionA": "Value corresponds to worth, whereas a product or service's benefit is all about what it can do for the customer",
+        "optionB": "Benefit corresponds to worth, whereas a product or service's value is all about what it can do for the customer",
+        "optionC": "—",
+        "optionD": "—",
+        "correctAnswer": "A"
+      },
+      {
+        "order": 3,
+        "question": "Which of the following are types of market research?",
+        "optionA": "Numerical/quantitative, for example, analyzing statistics like demographics",
+        "optionB": "Qualitative, for example, conducting focus groups and surveys",
+        "optionC": "Both",
+        "optionD": "—",
+        "correctAnswer": "C"
+      },
+      {
+        "order": 4,
+        "question": "You need a lot of money and resources to conduct market research.",
+        "optionA": "TRUE, it can be really expensive to conduct market research.",
+        "optionB": "FALSE, there are more affordable ways to conduct market research such as reaching out to customers on social media and asking them what they think of your product.",
+        "optionC": "—",
+        "optionD": "—",
+        "correctAnswer": "B"
+      }
+    ],
+    "canvaSlide": 24
+  },
+  "course": {
+    "courseId": "5yOpMeJR9KkbNzdPtQ0E",
+    "curriculumId": "SLpBKFr786sTNwaRMbUF",
+    "moduleId": "hatLrWdDIWhb3ndNZjxV",
+    "chapterId": "jdgMbIrLo5vi8PGjovr2",
+    "lessonOrder": 3,
+    "moduleLessonOrder": 3
+  }
+}

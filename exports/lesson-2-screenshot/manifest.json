@@ -1,0 +1,322 @@
+{
+  "version": 2,
+  "lessonId": "L2",
+  "lessonTitle": "The Four-One-One",
+  "lessonNumber": 2,
+  "terminology": "screen",
+  "sourcePptx": "course-content/Lesson 2.pptx",
+  "canvaUrl": "https://mortarengagementengines.my.canva.site/lesson-2",
+  "totalPptSlides": 22,
+  "skippedSlides": [
+    3,
+    7,
+    8,
+    14,
+    15,
+    17,
+    19,
+    20
+  ],
+  "skippedSurveyUiSlides": [
+    7,
+    8,
+    15,
+    17,
+    19
+  ],
+  "videoUiSlides": [
+    3,
+    14
+  ],
+  "playlist": [
+    {
+      "screenNumber": 1,
+      "sourceSlide": 1,
+      "fileName": "screen-001.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 2,
+      "sourceSlide": 2,
+      "fileName": "screen-002.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 3,
+      "sourceSlide": 3,
+      "type": "video",
+      "youtubeId": "uJrpYYoNwk8",
+      "videoUrl": "https://youtu.be/uJrpYYoNwk8",
+      "caption": "Lesson Two Introduction",
+      "skipCanvaPlaceholder": true
+    },
+    {
+      "screenNumber": 4,
+      "sourceSlide": 4,
+      "fileName": "screen-004.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 5,
+      "sourceSlide": 5,
+      "fileName": "screen-005.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 6,
+      "sourceSlide": 6,
+      "fileName": "screen-006.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 7,
+      "sourceSlide": 9,
+      "fileName": "screen-009.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 8,
+      "sourceSlide": 10,
+      "fileName": "screen-010.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 9,
+      "sourceSlide": 11,
+      "fileName": "screen-011.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 10,
+      "sourceSlide": 12,
+      "fileName": "screen-012.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 11,
+      "sourceSlide": 13,
+      "fileName": "screen-013.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 12,
+      "sourceSlide": 14,
+      "type": "video",
+      "youtubeId": "7HNdxPJH2CM",
+      "videoUrl": "https://youtu.be/7HNdxPJH2CM",
+      "caption": "Lesson Two — Panel Discussion",
+      "skipCanvaPlaceholder": true
+    },
+    {
+      "screenNumber": 13,
+      "sourceSlide": 16,
+      "fileName": "screen-016.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 14,
+      "sourceSlide": 18,
+      "fileName": "screen-018.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 15,
+      "sourceSlide": 21,
+      "fileName": "screen-021.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 16,
+      "sourceSlide": 22,
+      "fileName": "screen-022.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    }
+  ],
+  "surveys": [
+    {
+      "id": "lesson2_survey_01",
+      "enabled": true,
+      "title": "Survey — Part 1",
+      "afterScreenIndex": 5,
+      "order": 0,
+      "markerSlide": 7,
+      "questions": [
+        {
+          "order": 0,
+          "question": "How do you feel when you're hit with an unexpected surprise? (I don't mind / Irritated / Excited for the new opportunity)"
+        },
+        {
+          "order": 1,
+          "question": "Constant change makes me: (Crazy / Uncomfortable / Excited)"
+        },
+        {
+          "order": 2,
+          "question": "There's constant drama in the office. How do you feel? (I try to keep calm, but sometimes... / I hate it / Doesn't bother me — I keep my cool)"
+        },
+        {
+          "order": 3,
+          "question": "My friends think I handle stress well. (Yes / No / I don't tell them)"
+        },
+        {
+          "order": 4,
+          "question": "When I have a problem, I... (Give up when it's too difficult / Like to have all of the answers / Explore until I find a solution)"
+        }
+      ]
+    },
+    {
+      "id": "lesson2_survey_02",
+      "enabled": true,
+      "title": "Survey — Part 2 (continued)",
+      "afterScreenIndex": 5,
+      "order": 1,
+      "markerSlide": 8,
+      "questions": [
+        {
+          "order": 0,
+          "question": "How do you feel about long-term commitment? (Run, run, RUN! / My bread and butter / My heart changes with the wind)"
+        },
+        {
+          "order": 1,
+          "question": "If I give you $100 and ask you to light it on fire, you would: (Burn it / Save it / Spend it)"
+        },
+        {
+          "order": 2,
+          "question": "When I think of networking, I: (Avoid it / Suck it up and do it / Get someone else to do it for me)"
+        },
+        {
+          "order": 3,
+          "question": "Sacrifice is important to making your dreams come true. (Absolutely, whatever it takes / It depends... / I'll get back to you on that one)"
+        },
+        {
+          "order": 4,
+          "question": "Finish the sentence: \"Money is...\" (Something to be managed and moved / The root of all evil / A currency that is used to get what I want)"
+        }
+      ]
+    },
+    {
+      "id": "lesson2_survey_03",
+      "enabled": true,
+      "title": "Video takeaways",
+      "afterScreenIndex": 11,
+      "order": 2,
+      "markerSlide": 15,
+      "questions": [
+        {
+          "order": 0,
+          "question": "What are some of your biggest takeaways from the video?"
+        }
+      ]
+    },
+    {
+      "id": "lesson2_survey_04",
+      "enabled": true,
+      "title": "Thinking about failure",
+      "afterScreenIndex": 12,
+      "order": 3,
+      "markerSlide": 17,
+      "questions": [
+        {
+          "order": 0,
+          "question": "What does failure mean to you now that you've had a chance to think about it?"
+        },
+        {
+          "order": 1,
+          "question": "What have you learned from the failures in your life?"
+        }
+      ]
+    },
+    {
+      "id": "lesson2_survey_05",
+      "enabled": true,
+      "title": "Success and failure redefined",
+      "afterScreenIndex": 13,
+      "order": 4,
+      "markerSlide": 19,
+      "questions": [
+        {
+          "order": 0,
+          "question": "Has your definition of success and failure changed at all?"
+        },
+        {
+          "order": 1,
+          "question": "What does success look like now, personally and for your business?"
+        },
+        {
+          "order": 2,
+          "question": "What does failure look like now, personally and for your business?"
+        }
+      ]
+    }
+  ],
+  "quiz": {
+    "enabled": true,
+    "maxAttempts": 3,
+    "passPercentage": 70,
+    "questions": [
+      {
+        "order": 0,
+        "question": "True or false: Success looks the same for everyone",
+        "optionA": "True — Everyone wants to make lots of money!",
+        "optionB": "False — Everyone can have their own definition of success",
+        "optionC": "—",
+        "optionD": "—",
+        "correctAnswer": "B"
+      },
+      {
+        "order": 1,
+        "question": "Who can you reach out to for support in building your business?",
+        "optionA": "Friends, family, community members, and professionals",
+        "optionB": "No one! It's all on me!",
+        "optionC": "—",
+        "optionD": "—",
+        "correctAnswer": "A"
+      },
+      {
+        "order": 2,
+        "question": "According to panelist Donny Harper, from this lesson's panel discussion, the best way to manage expectations is by:",
+        "optionA": "Setting clear business goals and being flexible",
+        "optionB": "Don't have any!",
+        "optionC": "Make sure expectations are low so that you don't let yourself down",
+        "optionD": "—",
+        "correctAnswer": "A"
+      }
+    ],
+    "canvaSlide": 20
+  },
+  "course": {
+    "courseId": "5yOpMeJR9KkbNzdPtQ0E",
+    "curriculumId": "SLpBKFr786sTNwaRMbUF",
+    "moduleId": "kCUhSJJI0mg3cDaTVDTN",
+    "chapterId": "VDINgFM0Q2GEFUSo1uLu",
+    "lessonOrder": 2,
+    "moduleLessonOrder": 2
+  }
+}

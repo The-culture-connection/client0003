@@ -1,0 +1,418 @@
+{
+  "version": 2,
+  "lessonId": "L6",
+  "lessonTitle": "The Medium Is the Message",
+  "lessonNumber": 6,
+  "terminology": "screen",
+  "sourcePptx": "course-content/lesson 6.pptx",
+  "canvaUrl": "https://mortarengagementengines.my.canva.site/lesson-6",
+  "totalPptSlides": 27,
+  "skippedSlides": [
+    6,
+    7,
+    11,
+    14,
+    15,
+    18,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+  ],
+  "skippedSurveyUiSlides": [
+    7,
+    11,
+    15,
+    20,
+    21,
+    22,
+    23,
+    24
+  ],
+  "videoUiSlides": [
+    6,
+    14,
+    18
+  ],
+  "playlist": [
+    {
+      "screenNumber": 1,
+      "sourceSlide": 1,
+      "fileName": "screen-001.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 2,
+      "sourceSlide": 2,
+      "fileName": "screen-002.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 3,
+      "sourceSlide": 3,
+      "fileName": "screen-003.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 4,
+      "sourceSlide": 4,
+      "fileName": "screen-004.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 5,
+      "sourceSlide": 5,
+      "fileName": "screen-005.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 6,
+      "sourceSlide": 6,
+      "type": "video",
+      "youtubeId": "l0qm878N_o4",
+      "videoUrl": "https://youtu.be/l0qm878N_o4",
+      "caption": "Lesson Six Introduction",
+      "skipCanvaPlaceholder": true
+    },
+    {
+      "screenNumber": 7,
+      "sourceSlide": 8,
+      "fileName": "screen-008.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 8,
+      "sourceSlide": 9,
+      "fileName": "screen-009.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 9,
+      "sourceSlide": 10,
+      "fileName": "screen-010.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 10,
+      "sourceSlide": 12,
+      "fileName": "screen-012.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 11,
+      "sourceSlide": 13,
+      "fileName": "screen-013.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 12,
+      "sourceSlide": 14,
+      "type": "video",
+      "youtubeId": "3Lh54ugZqIo",
+      "videoUrl": "https://youtu.be/3Lh54ugZqIo",
+      "caption": "Lesson Six — Branding Video",
+      "skipCanvaPlaceholder": true
+    },
+    {
+      "screenNumber": 13,
+      "sourceSlide": 16,
+      "fileName": "screen-016.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 14,
+      "sourceSlide": 17,
+      "fileName": "screen-017.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 15,
+      "sourceSlide": 18,
+      "type": "video",
+      "youtubeId": "nopWOC4SRm4",
+      "videoUrl": "https://youtu.be/nopWOC4SRm4",
+      "caption": "The Studio — Lesson Six Panel",
+      "skipCanvaPlaceholder": true
+    },
+    {
+      "screenNumber": 16,
+      "sourceSlide": 19,
+      "fileName": "screen-019.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 17,
+      "sourceSlide": 26,
+      "fileName": "screen-026.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 18,
+      "sourceSlide": 27,
+      "fileName": "screen-027.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    }
+  ],
+  "surveys": [
+    {
+      "id": "lesson6_survey_01",
+      "enabled": true,
+      "title": "Before we go any further — Your brand",
+      "afterScreenIndex": 5,
+      "order": 0,
+      "markerSlide": 7,
+      "questions": [
+        {
+          "order": 0,
+          "question": "What does the word \"brand\" mean to you?"
+        },
+        {
+          "order": 1,
+          "question": "How would you describe your brand?"
+        },
+        {
+          "order": 2,
+          "question": "What have you done to build your brand?"
+        },
+        {
+          "order": 3,
+          "question": "How would someone else depict your brand?"
+        }
+      ]
+    },
+    {
+      "id": "lesson6_survey_02",
+      "enabled": true,
+      "title": "Brand Personified",
+      "afterScreenIndex": 8,
+      "order": 1,
+      "markerSlide": 11,
+      "questions": [
+        {
+          "order": 0,
+          "question": "Hands (hard work, effort, determination) — How does this relate to YOUR business?"
+        },
+        {
+          "order": 1,
+          "question": "Brain — How does strategy or thinking relate to your brand?"
+        },
+        {
+          "order": 2,
+          "question": "Eyes — What is your brand's vision?"
+        },
+        {
+          "order": 3,
+          "question": "Mouth — How does your brand communicate?"
+        },
+        {
+          "order": 4,
+          "question": "Heart — What passion or values drive your brand?"
+        },
+        {
+          "order": 5,
+          "question": "Feet — What moves your brand forward or grounds it?"
+        }
+      ]
+    },
+    {
+      "id": "lesson6_survey_03",
+      "enabled": true,
+      "title": "Branding reflection",
+      "afterScreenIndex": 11,
+      "order": 2,
+      "markerSlide": 15,
+      "questions": [
+        {
+          "order": 0,
+          "question": "What is a brand?"
+        },
+        {
+          "order": 1,
+          "question": "What do certain colors and fonts communicate to customers?"
+        },
+        {
+          "order": 2,
+          "question": "What makes a good tagline?"
+        },
+        {
+          "order": 3,
+          "question": "Write down five things you learned."
+        }
+      ]
+    },
+    {
+      "id": "lesson6_survey_04",
+      "enabled": true,
+      "title": "Brand check-in",
+      "afterScreenIndex": 15,
+      "order": 3,
+      "markerSlide": 20,
+      "questions": [
+        {
+          "order": 0,
+          "question": "What does the word \"brand\" mean to you?"
+        },
+        {
+          "order": 1,
+          "question": "How would you describe your brand?"
+        },
+        {
+          "order": 2,
+          "question": "What have you done to build your brand?"
+        },
+        {
+          "order": 3,
+          "question": "How would someone else depict your brand?"
+        },
+        {
+          "order": 4,
+          "question": "Have your answers changed from the beginning of class? Why or why not?"
+        }
+      ]
+    },
+    {
+      "id": "lesson6_survey_05",
+      "enabled": true,
+      "title": "Putting In Work — \"About Me\"",
+      "afterScreenIndex": 15,
+      "order": 4,
+      "markerSlide": 21,
+      "questions": [
+        {
+          "order": 0,
+          "question": "Write the \"About Me\" section for your future or current social media pages and website."
+        }
+      ]
+    },
+    {
+      "id": "lesson6_survey_06",
+      "enabled": true,
+      "title": "Research — Competition",
+      "afterScreenIndex": 15,
+      "order": 5,
+      "markerSlide": 22,
+      "questions": [
+        {
+          "order": 0,
+          "question": "Make a list of every company you can find (5–10 preferably) that provides the same thing your business (or business idea) provides; these companies could potentially be your competition."
+        }
+      ]
+    },
+    {
+      "id": "lesson6_survey_07",
+      "enabled": true,
+      "title": "Business Canvas — Branding section",
+      "afterScreenIndex": 15,
+      "order": 6,
+      "markerSlide": 23,
+      "questions": [
+        {
+          "order": 0,
+          "question": "Go to your business canvas and answer the corresponding questions on sticky notes in the Branding section. Then type out a paragraph of those responses in your Business Synopsis."
+        }
+      ]
+    },
+    {
+      "id": "lesson6_survey_08",
+      "enabled": true,
+      "title": "Pitches",
+      "afterScreenIndex": 15,
+      "order": 7,
+      "markerSlide": 24,
+      "questions": [
+        {
+          "order": 0,
+          "question": "Write your 100-word pitch. Include a concise idea about what your business is, who you serve, and how we can contact you. You can continue to refine your 40-word pitch as well."
+        }
+      ]
+    }
+  ],
+  "quiz": {
+    "enabled": true,
+    "maxAttempts": 3,
+    "passPercentage": 70,
+    "questions": [
+      {
+        "order": 0,
+        "question": "What does Allen Woods define as a \"brand\" in The Studio panel discussion?",
+        "optionA": "A logo or visual representation of a company",
+        "optionB": "Your logo and a collection of elements, memories, or emotions that connect you to an entity/company",
+        "optionC": "—",
+        "optionD": "—",
+        "correctAnswer": "B"
+      },
+      {
+        "order": 1,
+        "question": "How does Ray Ball recommend approaching networking in The Studio panel discussion?",
+        "optionA": "Only attending typical mixer-style networking events",
+        "optionB": "Attending events with people who can help you win, being strategic about your time, and noticing customers in non-traditional settings",
+        "optionC": "Avoid networking until your brand is perfect",
+        "optionD": "Only networking online",
+        "correctAnswer": "B"
+      },
+      {
+        "order": 2,
+        "question": "What percentage of communication is your tone of voice and body language?",
+        "optionA": "30",
+        "optionB": "57",
+        "optionC": "74",
+        "optionD": "93",
+        "correctAnswer": "D"
+      },
+      {
+        "order": 3,
+        "question": "What is mirroring while communicating?",
+        "optionA": "Mirroring the body language of the person you're talking to",
+        "optionB": "Talking to yourself in the mirror",
+        "optionC": "—",
+        "optionD": "—",
+        "correctAnswer": "A"
+      }
+    ],
+    "canvaSlide": 25
+  },
+  "course": {
+    "courseId": "5yOpMeJR9KkbNzdPtQ0E",
+    "curriculumId": "SLpBKFr786sTNwaRMbUF",
+    "lessonOrder": 1,
+    "moduleLessonOrder": 1,
+    "createModule": {
+      "moduleTitle": "Verse Two",
+      "moduleDescription": "Lessons 6–10",
+      "moduleOrder": 2,
+      "chapterTitle": "Verse Two — Lessons 6–10"
+    }
+  }
+}

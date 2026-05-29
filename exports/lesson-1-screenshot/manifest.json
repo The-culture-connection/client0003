@@ -1,0 +1,394 @@
+{
+  "version": 2,
+  "lessonId": "L1",
+  "lessonTitle": "Release Party",
+  "lessonNumber": 1,
+  "terminology": "screen",
+  "sourcePptx": "course-content/Lesson 1.pptx",
+  "canvaUrl": "https://mortarengagementengines.my.canva.site/dahk-opslgw",
+  "totalPptSlides": 37,
+  "skippedSlides": [
+    2,
+    5,
+    27,
+    36
+  ],
+  "skippedSurveyUiSlides": [
+    5,
+    27,
+    36
+  ],
+  "videoUiSlides": [
+    2
+  ],
+  "playlist": [
+    {
+      "screenNumber": 1,
+      "sourceSlide": 1,
+      "fileName": "screen-001.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 2,
+      "sourceSlide": 2,
+      "type": "video",
+      "youtubeId": "J2rbeuNiCUg",
+      "videoUrl": "https://youtu.be/J2rbeuNiCUg",
+      "caption": "Lesson One Introduction",
+      "skipCanvaPlaceholder": true
+    },
+    {
+      "screenNumber": 3,
+      "sourceSlide": 3,
+      "fileName": "screen-003.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 4,
+      "sourceSlide": 4,
+      "fileName": "screen-004.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 5,
+      "sourceSlide": 6,
+      "fileName": "screen-006.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 6,
+      "sourceSlide": 7,
+      "fileName": "screen-007.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 7,
+      "sourceSlide": 8,
+      "fileName": "screen-008.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 8,
+      "sourceSlide": 9,
+      "fileName": "screen-009.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 9,
+      "sourceSlide": 10,
+      "fileName": "screen-010.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 10,
+      "sourceSlide": 11,
+      "fileName": "screen-011.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 11,
+      "sourceSlide": 12,
+      "fileName": "screen-012.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 12,
+      "sourceSlide": 13,
+      "fileName": "screen-013.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 13,
+      "sourceSlide": 14,
+      "fileName": "screen-014.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 14,
+      "sourceSlide": 15,
+      "fileName": "screen-015.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 15,
+      "sourceSlide": 16,
+      "fileName": "screen-016.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 16,
+      "sourceSlide": 17,
+      "fileName": "screen-017.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 17,
+      "sourceSlide": 18,
+      "fileName": "screen-018.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 18,
+      "sourceSlide": 19,
+      "fileName": "screen-019.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 19,
+      "sourceSlide": 20,
+      "fileName": "screen-020.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 20,
+      "sourceSlide": 21,
+      "fileName": "screen-021.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 21,
+      "sourceSlide": 22,
+      "fileName": "screen-022.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 22,
+      "sourceSlide": 23,
+      "fileName": "screen-023.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 23,
+      "sourceSlide": 24,
+      "fileName": "screen-024.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 24,
+      "sourceSlide": 25,
+      "fileName": "screen-025.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 25,
+      "sourceSlide": 26,
+      "fileName": "screen-026.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 26,
+      "sourceSlide": 28,
+      "fileName": "screen-028.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 27,
+      "sourceSlide": 29,
+      "fileName": "screen-029.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 28,
+      "sourceSlide": 30,
+      "fileName": "screen-030.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 29,
+      "sourceSlide": 31,
+      "fileName": "screen-031.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 30,
+      "sourceSlide": 32,
+      "fileName": "screen-032.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 31,
+      "sourceSlide": 33,
+      "fileName": "screen-033.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 32,
+      "sourceSlide": 34,
+      "fileName": "screen-034.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 33,
+      "sourceSlide": 35,
+      "fileName": "screen-035.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    },
+    {
+      "screenNumber": 34,
+      "sourceSlide": 37,
+      "fileName": "screen-037.png",
+      "type": "content",
+      "widthPx": 1920,
+      "heightPx": 1080
+    }
+  ],
+  "surveys": [
+    {
+      "id": "lesson1_survey_01",
+      "enabled": true,
+      "title": "Business description",
+      "afterScreenIndex": 3,
+      "order": 0,
+      "markerSlide": 5,
+      "questions": [
+        {
+          "order": 0,
+          "question": "Provide a business description (about 40 words)"
+        }
+      ]
+    },
+    {
+      "id": "lesson1_survey_02",
+      "enabled": true,
+      "title": "The Business Synopsis",
+      "afterScreenIndex": 24,
+      "order": 1,
+      "markerSlide": 27,
+      "questions": [
+        {
+          "order": 0,
+          "question": "In your own words, why are the Business Canvas and Business Synopsis essential parts of your entrepreneurial journey?"
+        },
+        {
+          "order": 1,
+          "question": "As you dig deeper into this course, which elements of your business, canvas, or synopsis do you expect to develop first?"
+        },
+        {
+          "order": 2,
+          "question": "What do you plan to start filling in after Lesson 3?"
+        }
+      ]
+    },
+    {
+      "id": "lesson1_survey_03",
+      "enabled": true,
+      "title": "Course expectations",
+      "afterScreenIndex": 32,
+      "order": 2,
+      "markerSlide": 36,
+      "questions": [
+        {
+          "order": 0,
+          "question": "What are you most excited about learning during this course? (List all that apply in your response.)"
+        },
+        {
+          "order": 1,
+          "question": "Gaining an understanding and appreciation how failure can spur growth. (yes/no)"
+        },
+        {
+          "order": 2,
+          "question": "Building a basic budget and outlining business start-up costs. (yes/no)"
+        },
+        {
+          "order": 3,
+          "question": "Identifying who my customer is and how to stand out from competitors. (yes/no)"
+        },
+        {
+          "order": 4,
+          "question": "Creating a 40-word business description/pitch. (yes/no)"
+        },
+        {
+          "order": 5,
+          "question": "Setting S.M.A.R.T. Goals. (yes/no)"
+        },
+        {
+          "order": 6,
+          "question": "Completing sections of a Business Canvas and Business Synopsis. (yes/no)"
+        },
+        {
+          "order": 7,
+          "question": "Did this section help you understand what to expect in the rest of this course? (yes/no)"
+        }
+      ]
+    }
+  ],
+  "quiz": {
+    "enabled": false,
+    "maxAttempts": 3,
+    "passPercentage": 70,
+    "questions": [],
+    "canvaSlide": null
+  },
+  "course": {
+    "courseId": "5yOpMeJR9KkbNzdPtQ0E",
+    "curriculumId": "SLpBKFr786sTNwaRMbUF",
+    "moduleId": "kCUhSJJI0mg3cDaTVDTN",
+    "chapterId": "VDINgFM0Q2GEFUSo1uLu",
+    "lessonOrder": 0,
+    "moduleLessonOrder": 0
+  }
+}
