@@ -23,6 +23,7 @@ export const BREVO_TEMPLATE_IDS = {
   graduation_admitted_to_alumni: tpl("BREVO_TPL_GRADUATION_ADMITTED", 9),
   /** After meeting (or admin reject): status → rejected */
   graduation_not_admitted: tpl("BREVO_TPL_GRADUATION_NOT_ADMITTED", 10),
+  masters_onboarding_welcome: tpl("BREVO_TPL_MASTERS_ONBOARDING_WELCOME", 11),
 } as const;
 
 export type BrevoTemplateKey = keyof typeof BREVO_TEMPLATE_IDS;

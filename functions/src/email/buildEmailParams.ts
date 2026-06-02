@@ -1,12 +1,15 @@
 import {Timestamp} from "firebase-admin/firestore";
 import {
   ADMITTED_ALUMNI_NEXT_STEPS,
+  DEFAULT_COURSE_BENEFIT,
   DEFAULT_COURSE_DISPLAY_NAME,
   DEFAULT_EXPANSION_APP_NAME,
   DEFAULT_EXPANSION_REDEEM_URL,
   DEFAULT_PLATFORM_URL,
+  DEFAULT_SCHEDULE_HOURS,
   DEFAULT_SUPPORT_EMAIL,
 } from "./emailConfig";
+import type {CourseEmailContext} from "./resolveCourseEmailContext";
 import {formatMeetingTimeLabel} from "../helpers/formatDateTime";
 
 type JsonObject = Record<string, unknown>;
@@ -83,18 +86,54 @@ export function courseInactiveParams(input: {
   course_name?: string;
   course_id?: string;
   resume_url?: string;
+  next_lesson_name?: string;
+  course_benefit?: string;
+  progress_percent?: string;
+  next_milestone?: string;
+  time_to_next_badge?: string;
+  courseContext?: CourseEmailContext;
 }): JsonObject {
   const courseName = input.course_name?.trim() || DEFAULT_COURSE_DISPLAY_NAME;
+  const ctx = input.courseContext;
   const base = sharedFooterParams().platform_url as string;
   const resume =
     input.resume_url?.trim() ||
+    ctx?.resume_url ||
     `${base.replace(/\/$/, "")}/curriculum`;
 
   return {
     first_name: input.first_name ?? firstNameFrom(input.userName, input.userEmail),
     course_name: courseName,
     resume_url: resume,
+    next_lesson_name: input.next_lesson_name?.trim() || ctx?.next_lesson_name || "your next lesson",
+    course_benefit: input.course_benefit?.trim() || ctx?.course_benefit || DEFAULT_COURSE_BENEFIT,
+    progress_percent: input.progress_percent?.trim() || ctx?.progress_percent || "0% Complete",
+    next_milestone: input.next_milestone?.trim() || ctx?.next_milestone || "Your next lesson",
+    time_to_next_badge: input.time_to_next_badge?.trim() || ctx?.time_to_next_badge || "30 minutes",
     ...sharedFooterParams(),
+  };
+}
+
+export function mastersOnboardingWelcomeParams(input: {
+  first_name?: string;
+  userName?: string;
+  userEmail: string;
+  first_lesson_title?: string;
+  start_url?: string;
+  schedule_hours?: string;
+  courseContext?: CourseEmailContext;
+}): JsonObject {
+  const shared = sharedFooterParams();
+  const platformUrl = shared.platform_url as string;
+  const ctx = input.courseContext;
+  return {
+    first_name: input.first_name ?? firstNameFrom(input.userName, input.userEmail),
+    user_email: input.userEmail.trim(),
+    first_lesson_title:
+      input.first_lesson_title?.trim() || ctx?.first_lesson_title || "your first lesson",
+    start_url: input.start_url?.trim() || ctx?.start_url || platformUrl,
+    schedule_hours: input.schedule_hours?.trim() || DEFAULT_SCHEDULE_HOURS,
+    ...shared,
   };
 }
 
@@ -159,6 +198,24 @@ export function adminCustomAnnouncementParams(input: {
   };
 }
 
+function toExpiresAtDate(expires_at: Date | Timestamp | string): Date {
+  if (expires_at instanceof Timestamp) return expires_at.toDate();
+  if (expires_at instanceof Date) return expires_at;
+  const parsed = new Date(expires_at);
+  return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+}
+
+/** Human-readable duration for "expire in …" copy (e.g. "48 hours", "14 days"). */
+export function formatExpiresIn(expiresAt: Date): string {
+  const ms = Math.max(0, expiresAt.getTime() - Date.now());
+  const totalHours = Math.ceil(ms / 3_600_000);
+  if (totalHours < 48) {
+    return `${totalHours} hour${totalHours === 1 ? "" : "s"}`;
+  }
+  const totalDays = Math.ceil(ms / 86_400_000);
+  return `${totalDays} day${totalDays === 1 ? "" : "s"}`;
+}
+
 export function appAccessCodeInviteParams(input: {
   first_name?: string;
   email: string;
@@ -167,18 +224,13 @@ export function appAccessCodeInviteParams(input: {
   app_name?: string;
   redeem_url?: string;
 }): JsonObject {
-  let expiresLabel: string;
-  if (input.expires_at instanceof Timestamp) {
-    expiresLabel = input.expires_at.toDate().toLocaleString("en-US", {dateStyle: "medium", timeStyle: "short"});
-  } else if (input.expires_at instanceof Date) {
-    expiresLabel = input.expires_at.toLocaleString("en-US", {dateStyle: "medium", timeStyle: "short"});
-  } else {
-    expiresLabel = String(input.expires_at);
-  }
+  const expiresAtDate = toExpiresAtDate(input.expires_at);
+  const expiresLabel = expiresAtDate.toLocaleString("en-US", {dateStyle: "medium", timeStyle: "short"});
   return {
     first_name: input.first_name ?? firstNameFrom(null, input.email),
     invite_code: input.invite_code.trim(),
     expires_at: expiresLabel,
+    expires_in: formatExpiresIn(expiresAtDate),
     app_name: input.app_name?.trim() || DEFAULT_EXPANSION_APP_NAME,
     redeem_url: input.redeem_url?.trim() || DEFAULT_EXPANSION_REDEEM_URL,
     support_email: DEFAULT_SUPPORT_EMAIL,

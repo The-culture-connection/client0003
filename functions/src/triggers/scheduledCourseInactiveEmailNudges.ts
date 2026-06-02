@@ -4,7 +4,8 @@ import {onSchedule} from "firebase-functions/v2/scheduler";
 import * as logger from "firebase-functions/logger";
 import {BREVO_API_KEY} from "../email/brevoClient";
 import {courseInactiveParams} from "../email/buildEmailParams";
-import {DEFAULT_COURSE_DISPLAY_NAME} from "../email/emailConfig";
+import {DEFAULT_COURSE_DISPLAY_NAME, DEFAULT_COURSE_ID} from "../email/emailConfig";
+import {resolveCourseEmailContext} from "../email/resolveCourseEmailContext";
 import {sendTransactionalEmail} from "../email/sendTransactionalEmail";
 
 if (getApps().length === 0) {
@@ -97,6 +98,15 @@ export const scheduledCourseInactiveEmailNudges = onSchedule(
         continue;
       }
 
+      const courseId =
+        (typeof data.courseId === "string" && data.courseId.trim()) || DEFAULT_COURSE_ID;
+
+      // eslint-disable-next-line no-await-in-loop
+      const courseContext = await resolveCourseEmailContext({
+        courseId,
+        progress: data as Record<string, unknown>,
+      });
+
       const courseName =
         (typeof data.courseDisplayName === "string" && data.courseDisplayName) ||
         DEFAULT_COURSE_DISPLAY_NAME;
@@ -105,7 +115,8 @@ export const scheduledCourseInactiveEmailNudges = onSchedule(
         userEmail: contact.email,
         userName: contact.userName,
         course_name: courseName,
-        course_id: typeof data.courseId === "string" ? data.courseId : undefined,
+        course_id: courseId,
+        courseContext,
       });
 
       // eslint-disable-next-line no-await-in-loop

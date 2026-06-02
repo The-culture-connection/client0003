@@ -12,6 +12,7 @@ export { onMatchProfileWrite } from "./triggers/onMatchProfileWrite";
 export { scheduledNudgeIncompleteProfiles } from "./triggers/scheduledNudgeIncompleteProfiles";
 export { onGraduationApplicationEmail } from "./triggers/onGraduationApplicationEmail";
 export { onUserAlumniAdmittedEmail } from "./triggers/onUserAlumniAdmittedEmail";
+export { onUserOnboardingWelcomeEmail } from "./triggers/onUserOnboardingWelcomeEmail";
 export { scheduledCourseInactiveEmailNudges } from "./triggers/scheduledCourseInactiveEmailNudges";
 export {
   onUserBadgeEarnedPush,

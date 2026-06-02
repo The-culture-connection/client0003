@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Your course is still here</title>
+  <title>Don't lose your momentum!</title>
 </head>
 <body style="margin:0;padding:0;background-color:#ececec;font-family:Arial,Helvetica,sans-serif;">
   <span style="display:none!important;visibility:hidden;mso-hide:all;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">
-    Two weeks away — your course is waiting whenever you're ready.
+    Two weeks away from MORTAR Masters Online — pick up where you left off.
   </span>
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#ececec;">
     <tr>
@@ -16,43 +16,44 @@
           <tr>
             <td style="background-color:#871002;padding:24px 32px;border-radius:8px 8px 0 0;">
               <p style="margin:0;font-size:22px;font-weight:bold;color:#fafcfc;">Mortar</p>
-              <p style="margin:8px 0 0;font-size:13px;color:#f0d4d0;">Digital Curriculum</p>
+              <p style="margin:8px 0 0;font-size:13px;color:#f0d4d0;">MORTAR Masters Online</p>
             </td>
           </tr>
           <tr>
             <td style="background-color:#ffffff;padding:32px;border-left:1px solid #e0e0e0;border-right:1px solid #e0e0e0;">
               <p style="margin:0 0 16px;font-size:16px;color:#2d2d2d;">Hi {{ params.first_name }},</p>
-              <p style="margin:0 0 20px;font-size:16px;line-height:1.6;color:#2d2d2d;">
-                It's been about <strong>two weeks</strong> since we last saw activity in <strong>{{ params.course_name }}</strong>.
-                Your spot in the program is still open — all completed lessons and quiz progress remain on your account.
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.6;color:#2d2d2d;">
+                It's been two weeks since your last visit to the MORTAR Masters Online, and we want to make sure you don't lose the incredible momentum you built early on.
               </p>
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 24px;">
-                <tr>
-                  <td style="padding:16px 20px;background-color:#f8f6f5;border-radius:6px;border:1px solid #e8e0de;">
-                    <p style="margin:0;font-size:14px;line-height:1.5;color:#2d2d2d;">
-                      <strong>Tip:</strong> Block one session on your calendar this week. Small, consistent steps beat long gaps.
-                    </p>
-                  </td>
-                </tr>
-              </table>
-              <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 16px;">
+              <p style="margin:0 0 24px;font-size:16px;line-height:1.6;color:#2d2d2d;">
+                Remember why you started this journey: to master <strong>{{ params.course_benefit }}</strong>. You've already put in the hard work to get this far, and you are fully capable of finishing strong.
+              </p>
+              <p style="margin:0 0 12px;font-size:14px;font-weight:bold;color:#2d2d2d;">Here is your quick roadmap to catch up:</p>
+              <ul style="margin:0 0 24px;padding-left:20px;font-size:15px;line-height:1.8;color:#2d2d2d;">
+                <li><strong>Current Progress:</strong> {{ params.progress_percent }}</li>
+                <li><strong>Next Milestone:</strong> {{ params.next_milestone }}</li>
+                <li><strong>Estimated time to next badge:</strong> {{ params.time_to_next_badge }}</li>
+              </ul>
+              <p style="margin:0 0 20px;font-size:16px;line-height:1.6;color:#2d2d2d;">
+                Let's get back to it! Click below to pick up right where you left off:
+              </p>
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 24px;">
                 <tr>
                   <td style="border-radius:6px;background-color:#871002;">
-                    <a href="{{ params.resume_url }}" target="_blank" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:bold;color:#fafcfc;text-decoration:none;">Continue {{ params.course_name }}</a>
+                    <a href="{{ params.resume_url }}" target="_blank" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:bold;color:#fafcfc;text-decoration:none;">👉 Resume Your Learning Journey</a>
                   </td>
                 </tr>
               </table>
-              <p style="margin:0;font-size:13px;color:#6b6b6b;">
-                Need support staying on track? Email us at
-                <a href="mailto:{{ params.support_email }}" style="color:#871002;">{{ params.support_email }}</a>.
+              <p style="margin:0;font-size:16px;line-height:1.6;color:#2d2d2d;">
+                Best,<br />
+                The MORTAR Masters Team
               </p>
             </td>
           </tr>
           <tr>
             <td style="background-color:#f5f5f5;padding:24px 32px;border-radius:0 0 8px 8px;border:1px solid #e0e0e0;border-top:none;">
               <p style="margin:0;font-size:12px;color:#9a9a9a;">
-                Course reminder · Mortar Digital Curriculum ·
-                <a href="{{ params.platform_url }}" style="color:#871002;">Account settings</a>
+                <a href="mailto:{{ params.support_email }}" style="color:#871002;">{{ params.support_email }}</a>
               </p>
             </td>
           </tr>

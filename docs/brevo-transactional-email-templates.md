@@ -31,11 +31,12 @@ Use these **exact template names** in Brevo (Transactional → Templates) so the
 | `graduation_meeting_time_selected` | Your Mortar graduation meeting time is confirmed | We've selected a time from your availability — see the details below. |
 | `graduation_admitted_to_alumni` | Welcome to Mortar Alumni | You've been admitted after your graduation meeting — see what's next. |
 | `graduation_not_admitted` | Update on your Mortar alumni graduation review | An update after your graduation meeting with our team. |
-| `course_inactive_7_days` | We miss you in {{ params.course_name }} — pick up where you left off | It's been about a week since your last lesson. Your progress is saved. |
-| `course_inactive_14_days` | Still with us? Continue {{ params.course_name }} at your own pace | Two weeks away — your course is waiting whenever you're ready. |
+| `course_inactive_7_days` | We miss you in the classroom! 📚 | It's been a week since your last visit to MORTAR Masters — jump back in today. |
+| `course_inactive_14_days` | Don't lose your momentum! Let's get back on track 🚀 | Two weeks away from MORTAR Masters Online — pick up where you left off. |
+| `masters_onboarding_welcome` | Welcome to MORTAR Masters: Online! Let's get started 🌟 | Welcome to The MORTAR Masters: Online — your first lesson is waiting. |
 | `event_announcement_to_registrants` | Update: {{ params.event_title }} | A message for registered attendees from the Mortar team. |
 | `admin_custom_announcement` | {{ params.headline }} | Message from {{ params.sender_name }} at Mortar. |
-| `app_access_code_invite` | Your {{ params.app_name }} invite code | Use this one-time code to activate your account before it expires. |
+| `app_access_code_invite` | Your MORTARverse App Access Code Has Arrived | Ready to expand your reach? Use your secure access code to unlock the MORTARverse app. |
 
 > **Preheader in Brevo:** If the editor has a separate “Preview text” field, use the third column. The HTML files also include a hidden preheader `<span>` for clients that read it from the body.
 
@@ -119,6 +120,7 @@ sequenceDiagram
 | `app_access_code_invite` | `createOrUpdateEligibleUser` / `generateInviteCode` / `promoteToDigitalCurriculumAlumni` | App Access Hub (checkbox **Email invite code**) |
 | `course_inactive_7_days` | `scheduledCourseInactiveEmailNudges` — 7+ days idle, incomplete course | *(scheduled daily)* |
 | `course_inactive_14_days` | same — 14+ days idle | *(scheduled daily)* |
+| `masters_onboarding_welcome` | `onUserOnboardingWelcomeEmail` when `users.onboarding_status` → `complete` | Digital Curriculum onboarding (final save) |
 | `event_announcement_to_registrants` | `adminSendEventRegistrantEmail` | Admin → Events tab → **Email registrants** on every event card (all types; shown even at 0 registered) |
 | `admin_custom_announcement` | `adminSendCustomAnnouncementEmail` | **Email Management** panel |
 
@@ -179,15 +181,17 @@ sequenceDiagram
 
 ## 4. `course_inactive_7_days`
 
-**Params:** `first_name`, `course_name`, `resume_url`, `platform_url`, `support_email`
+**Params:** `first_name`, `next_lesson_name`, `resume_url`, `platform_url`, `support_email`
 
 **Subject:**  
-`We miss you in {{ params.course_name }} — pick up where you left off`
+`We miss you in the classroom! 📚`
 
 **Preview text:**  
-`It's been about a week since your last lesson. Your progress is saved.`
+`It's been a week since your last visit to MORTAR Masters — jump back in today.`
 
 **HTML:** [`course_inactive_7_days.html`](brevo-templates/html/course_inactive_7_days.html)
+
+**How the feature works:** Daily scheduler (`scheduledCourseInactiveEmailNudges`, 10:00 America/New_York) scans `courseProgress` where `updatedAt` is older than 7 days, `completed` is false, and `brevo_email_inactive_7d_sent_at` is unset. Params include the next incomplete lesson title from `courses/{courseId}.curriculumMapping` and a deep link resume URL. After send, `brevo_email_inactive_7d_sent_at` is set on the progress doc.
 
 ---
 
@@ -199,19 +203,39 @@ Staff with **Admin** or **superAdmin** can open **Admin → Email testing** (`/a
 
 ## 5. `course_inactive_14_days`
 
-**Params:** same as 7-day
+**Params:** `first_name`, `course_benefit`, `progress_percent`, `next_milestone`, `time_to_next_badge`, `resume_url`, `platform_url`, `support_email`
 
 **Subject:**  
-`Still with us? Continue {{ params.course_name }} at your own pace`
+`Don't lose your momentum! Let's get back on track 🚀`
 
 **Preview text:**  
-`Two weeks away — your course is waiting whenever you're ready.`
+`Two weeks away from MORTAR Masters Online — pick up where you left off.`
 
 **HTML:** [`course_inactive_14_days.html`](brevo-templates/html/course_inactive_14_days.html)
 
+**How the feature works:** Same scheduler as 7-day; sends when idle ≥ 14 days and `brevo_email_inactive_14d_sent_at` is unset (7-day email may have been sent earlier). Progress percent comes from `courseProgress.progress`; next milestone from the module containing the next incomplete lesson.
+
 ---
 
-## 6. `event_announcement_to_registrants`
+## 6. `masters_onboarding_welcome`
+
+**Params:** `first_name`, `user_email`, `platform_url`, `first_lesson_title`, `start_url`, `schedule_hours`, `support_email`
+
+**Subject:**  
+`Welcome to MORTAR Masters: Online! Let's get started 🌟`
+
+**Preview text:**  
+`Welcome to The MORTAR Masters: Online — your first lesson is waiting.`
+
+**HTML:** [`masters_onboarding_welcome.html`](brevo-templates/html/masters_onboarding_welcome.html)
+
+**How the feature works:** Firestore trigger `onUserOnboardingWelcomeEmail` on `users/{uid}` when `onboarding_status` changes to `complete` (Digital Curriculum final onboarding save). Sends once per user (`brevo_email_onboarding_welcome_sent_at`). First lesson title and start URL are resolved from `courses/mortar_masters_online` curriculum mapping. Respects `email_pref_course_nudges` unless skipped via admin test send.
+
+**Brevo template ID:** `11` (override with `BREVO_TPL_MASTERS_ONBOARDING_WELCOME`).
+
+---
+
+## 7. `event_announcement_to_registrants`
 
 **Params:** `first_name`, `event_title`, `event_date`, `event_location` (optional), `message_body`, `rsvp_url` (optional), `support_email`
 
@@ -225,7 +249,7 @@ Staff with **Admin** or **superAdmin** can open **Admin → Email testing** (`/a
 
 ---
 
-## 7. `admin_custom_announcement`
+## 8. `admin_custom_announcement`
 
 **Params:** `first_name`, `headline`, `message_body`, `sender_name`, `cta_url` (optional), `cta_label` (optional), `support_email`
 
@@ -241,15 +265,15 @@ Staff with **Admin** or **superAdmin** can open **Admin → Email testing** (`/a
 
 ---
 
-## 8. `app_access_code_invite`
+## 9. `app_access_code_invite`
 
-**Params:** `first_name`, `invite_code`, `expires_at`, `app_name`, `redeem_url` (optional), `support_email`
+**Params:** `first_name`, `invite_code`, `expires_in`, `expires_at`, `app_name`, `redeem_url` (optional), `support_email`
 
 **Subject:**  
-`Your {{ params.app_name }} invite code`
+`Your MORTARverse App Access Code Has Arrived`
 
 **Preview text:**  
-`Use this one-time code to activate your account before it expires.`
+`Ready to expand your reach? Use your secure access code to unlock the MORTARverse app.`
 
 **HTML:** [`app_access_code_invite.html`](brevo-templates/html/app_access_code_invite.html)
 
@@ -258,8 +282,9 @@ Staff with **Admin** or **superAdmin** can open **Admin → Email testing** (`/a
 ## Functions `params` reference (for implementers)
 
 ```ts
-// Wired in: onGraduationApplicationEmail, onUserAlumniAdmittedEmail, scheduledCourseInactiveEmailNudges,
-// adminSendEventRegistrantEmail, adminSendCustomAnnouncementEmail, expansionInvite (app_access_code_invite).
+// Wired in: onGraduationApplicationEmail, onUserAlumniAdmittedEmail, onUserOnboardingWelcomeEmail,
+// scheduledCourseInactiveEmailNudges, adminSendEventRegistrantEmail, adminSendCustomAnnouncementEmail,
+// expansionInvite (app_access_code_invite).
 // Builders: functions/src/email/buildEmailParams.ts
 
 // graduation_meeting_time_selected (admin Accept + selectedTime)
@@ -271,8 +296,14 @@ Staff with **Admin** or **superAdmin** can open **Admin → Email testing** (`/a
 // graduation_not_admitted (admin Reject → status rejected)
 { first_name, notes, platform_url, support_email }
 
-// course_inactive_7_days | course_inactive_14_days
-{ first_name, course_name, resume_url, platform_url, support_email }
+// course_inactive_7_days
+{ first_name, next_lesson_name, resume_url, platform_url, support_email }
+
+// course_inactive_14_days
+{ first_name, course_benefit, progress_percent, next_milestone, time_to_next_badge, resume_url, platform_url, support_email }
+
+// masters_onboarding_welcome
+{ first_name, user_email, platform_url, first_lesson_title, start_url, schedule_hours, support_email }
 
 // event_announcement_to_registrants
 { first_name, event_title, event_date, event_location?, message_body, rsvp_url?, support_email }
@@ -281,5 +312,5 @@ Staff with **Admin** or **superAdmin** can open **Admin → Email testing** (`/a
 { first_name, headline, message_body, sender_name, cta_url?, cta_label?, support_email }
 
 // app_access_code_invite
-{ first_name, invite_code, expires_at, app_name, redeem_url?, support_email }
+{ first_name, invite_code, expires_in, expires_at, app_name, redeem_url?, support_email }
 ```

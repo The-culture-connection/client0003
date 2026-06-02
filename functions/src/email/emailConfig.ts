@@ -17,7 +17,18 @@ export const DEFAULT_EXPANSION_REDEEM_URL =
   process.env.EXPANSION_APP_REDEEM_URL?.trim() || DEFAULT_PLATFORM_URL;
 
 export const DEFAULT_COURSE_DISPLAY_NAME =
-  process.env.DEFAULT_COURSE_DISPLAY_NAME?.trim() || "Mortar Masters Online";
+  process.env.DEFAULT_COURSE_DISPLAY_NAME?.trim() || "MORTAR Masters Online";
+
+/** Shown in 14-day inactivity email ("master …"). */
+export const DEFAULT_COURSE_BENEFIT =
+  process.env.DEFAULT_COURSE_BENEFIT?.trim() ||
+  "the business skills you need to grow with confidence";
+
+export const DEFAULT_SCHEDULE_HOURS =
+  process.env.DEFAULT_ONBOARDING_SCHEDULE_HOURS?.trim() || "2–3 hours";
+
+export const DEFAULT_TIME_TO_NEXT_BADGE =
+  process.env.DEFAULT_TIME_TO_NEXT_BADGE?.trim() || "30 minutes";
 
 export const DEFAULT_COURSE_ID =
   process.env.DEFAULT_COURSE_ID?.trim() || "mortar_masters_online";

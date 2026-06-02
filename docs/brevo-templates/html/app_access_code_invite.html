@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Your invite code</title>
+  <title>Your MORTARverse App Access Code Has Arrived</title>
 </head>
 <body style="margin:0;padding:0;background-color:#ececec;font-family:Arial,Helvetica,sans-serif;">
   <span style="display:none!important;visibility:hidden;mso-hide:all;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">
-    Use this one-time code to activate your account before it expires.
+    Ready to expand your reach? Use your secure access code to unlock the MORTARverse app.
   </span>
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#ececec;">
     <tr>
@@ -16,52 +16,45 @@
           <tr>
             <td style="background-color:#871002;padding:24px 32px;border-radius:8px 8px 0 0;">
               <p style="margin:0;font-size:22px;font-weight:bold;color:#fafcfc;">Mortar</p>
-              <p style="margin:8px 0 0;font-size:13px;color:#f0d4d0;">{{ params.app_name }}</p>
+              <p style="margin:8px 0 0;font-size:13px;color:#f0d4d0;">MORTARverse Alumni Network</p>
             </td>
           </tr>
           <tr>
             <td style="background-color:#ffffff;padding:32px;border-left:1px solid #e0e0e0;border-right:1px solid #e0e0e0;">
               <p style="margin:0 0 16px;font-size:16px;color:#2d2d2d;">Hi {{ params.first_name }},</p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.6;color:#2d2d2d;">
+                Ready to expand your reach? You have been granted access to the MORTARverse Alumni Network app!!
+              </p>
               <p style="margin:0 0 20px;font-size:16px;line-height:1.6;color:#2d2d2d;">
-                You've been invited to join <strong>{{ params.app_name }}</strong>. Use the one-time invite code below to create your account or sign in and claim access.
+                To unlock your account and get started, use the secure verification code below:
               </p>
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 20px;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 24px;">
                 <tr>
-                  <td align="center" style="padding:24px;background-color:#2d2d2d;border-radius:8px;">
-                    <p style="margin:0 0 8px;font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#b8b8b8;">Your invite code</p>
-                    <p style="margin:0;font-size:28px;font-weight:bold;letter-spacing:4px;color:#fafcfc;font-family:'Courier New',Courier,monospace;">{{ params.invite_code }}</p>
+                  <td style="padding:20px 24px;background-color:#f5f5f5;border-radius:8px;border:1px solid #e0e0e0;">
+                    <p style="margin:0 0 8px;font-size:14px;font-weight:bold;color:#2d2d2d;">Access Code:</p>
+                    <p style="margin:0;font-size:28px;font-weight:bold;letter-spacing:4px;color:#871002;font-family:'Courier New',Courier,monospace;">{{ params.invite_code }}</p>
                   </td>
                 </tr>
               </table>
-              <p style="margin:0 0 24px;font-size:14px;line-height:1.5;color:#6b6b6b;text-align:center;">
-                Expires: <strong style="color:#2d2d2d;">{{ params.expires_at }}</strong>
-              </p>
-              <p style="margin:0 0 12px;font-size:14px;font-weight:bold;color:#2d2d2d;">How to redeem</p>
+              <p style="margin:0 0 12px;font-size:14px;font-weight:bold;color:#2d2d2d;">Steps to activate:</p>
               <ol style="margin:0 0 24px;padding-left:20px;font-size:15px;line-height:1.7;color:#2d2d2d;">
-                <li>Install or open the <strong>{{ params.app_name }}</strong> app.</li>
-                <li>Choose <strong>Sign up with invite code</strong> (or sign in if you already have an account).</li>
-                <li>Enter the code exactly as shown — it is case-sensitive.</li>
-                <li>Complete onboarding to access the network.</li>
+                <li>Download the MORTARverse app from the App Store or Google Play.</li>
+                <li>Open the app and enter the email address associated with your account.</li>
+                <li>When prompted, enter the Access Code provided above.</li>
               </ol>
-              <p style="margin:0 0 20px;font-size:13px;line-height:1.5;color:#6b6b6b;">
-                If this code was revoked or already used, contact an administrator for a new invite.
+              <p style="margin:0 0 24px;font-size:14px;line-height:1.6;color:#2d2d2d;">
+                <strong>Note:</strong> For security purposes, this code will expire in {{ params.expires_in }}. If you need a new code, please reply directly to this email.
               </p>
-              <table role="presentation" cellspacing="0" cellpadding="0" border="0">
-                <tr>
-                  <td style="border-radius:6px;background-color:#871002;">
-                    <a href="{{ params.redeem_url }}" target="_blank" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:bold;color:#fafcfc;text-decoration:none;">Open app / redeem</a>
-                  </td>
-                </tr>
-              </table>
+              <p style="margin:0 0 8px;font-size:16px;line-height:1.6;color:#2d2d2d;">Happy networking!</p>
+              <p style="margin:0;font-size:16px;line-height:1.6;color:#2d2d2d;">
+                Best,<br />
+                The MORTAR Team
+              </p>
             </td>
           </tr>
           <tr>
             <td style="background-color:#f5f5f5;padding:24px 32px;border-radius:0 0 8px 8px;border:1px solid #e0e0e0;border-top:none;">
-              <p style="margin:0 0 8px;font-size:13px;color:#6b6b6b;">
-                Do not share this code. Need a replacement? Email
-                <a href="mailto:{{ params.support_email }}" style="color:#871002;">{{ params.support_email }}</a>
-              </p>
-              <p style="margin:0;font-size:12px;color:#9a9a9a;">© Mortar · Expansion Network</p>
+              <p style="margin:0;font-size:12px;color:#9a9a9a;">© Mortar · MORTARverse Alumni Network</p>
             </td>
           </tr>
         </table>

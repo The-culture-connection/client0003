@@ -15,11 +15,13 @@ import {
   appAccessCodeInviteParams,
   courseInactiveParams,
   eventRegistrantParams,
+  mastersOnboardingWelcomeParams,
   graduationAdmittedToAlumniParams,
   graduationMeetingTimeSelectedParams,
   graduationNotAdmittedParams,
 } from "../email/buildEmailParams";
 import {DEFAULT_COURSE_DISPLAY_NAME} from "../email/emailConfig";
+import {defaultCourseEmailContext} from "../email/resolveCourseEmailContext";
 import {sendTransactionalEmail} from "../email/sendTransactionalEmail";
 import {BREVO_TEMPLATE_IDS, type BrevoTemplateKey, resolveTemplateId} from "../email/brevoTemplates";
 
@@ -41,6 +43,7 @@ function preferenceCategoryForTemplate(
   switch (key) {
   case "course_inactive_7_days":
   case "course_inactive_14_days":
+  case "masters_onboarding_welcome":
     return "course_nudges";
   case "graduation_meeting_time_selected":
   case "graduation_admitted_to_alumni":
@@ -66,16 +69,26 @@ function buildSampleParams(
 
   switch (templateKey) {
   case "course_inactive_7_days":
+  case "course_inactive_14_days": {
+    const courseContext = defaultCourseEmailContext();
     return courseInactiveParams({
       userEmail,
       userName,
       course_name: DEFAULT_COURSE_DISPLAY_NAME,
+      courseContext,
+      next_lesson_name: "Lesson 2: Building Your Foundation",
+      progress_percent: "45% Complete",
+      next_milestone: "Module 1 Quiz",
+      time_to_next_badge: "30 minutes",
+      course_benefit: "the business skills you need to grow with confidence",
     });
-  case "course_inactive_14_days":
-    return courseInactiveParams({
+  }
+  case "masters_onboarding_welcome":
+    return mastersOnboardingWelcomeParams({
       userEmail,
       userName,
-      course_name: DEFAULT_COURSE_DISPLAY_NAME,
+      courseContext: defaultCourseEmailContext(),
+      first_lesson_title: "Lesson 1: Welcome to MORTAR Masters",
     });
   case "graduation_meeting_time_selected":
     return graduationMeetingTimeSelectedParams({
