@@ -332,6 +332,9 @@ export function WebNavigation() {
                               .toFixed(2)}
                           </span>
                         </div>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Tax and shipping are added at Stripe Checkout.
+                        </p>
                         <Button
                           className="w-full mt-2 bg-accent hover:bg-accent/90 text-accent-foreground"
                           disabled={checkoutBusy}

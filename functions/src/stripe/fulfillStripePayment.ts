@@ -8,9 +8,11 @@ import {
   SHOP_ORDERS_COLLECTION,
   type PaymentClientPlatform,
   type PaymentOrderStatus,
+  type ShopFulfillmentStatus,
   type StripePurchaseType,
 } from "./paymentTypes";
 import {logPaymentAnalytics, PAYMENT_ANALYTICS} from "./logPaymentAnalytics";
+import type {CheckoutSnapshot} from "./extractCheckoutSnapshot";
 
 const APPAREL_CATEGORIES = new Set(["Tees", "Hoodies", "Crewnecks"]);
 
@@ -79,7 +81,8 @@ async function fulfillShopOrder(
   db: Firestore,
   uid: string,
   orderId: string,
-  linesJson: string
+  linesJson: string,
+  snapshot: CheckoutSnapshot
 ): Promise<void> {
   const lines = JSON.parse(linesJson) as Array<{
     item_id: string;
@@ -90,11 +93,25 @@ async function fulfillShopOrder(
     unit_price_cents?: number;
   }>;
 
+  const fulfillment_status: ShopFulfillmentStatus = "unfulfilled";
+
   await db.collection(SHOP_ORDERS_COLLECTION).doc(orderId).set({
     uid,
     payment_order_id: orderId,
     lines,
     status: "paid",
+    fulfillment_status,
+    subtotal_cents: snapshot.subtotal_cents,
+    tax_cents: snapshot.tax_cents,
+    shipping_cents: snapshot.shipping_cents,
+    total_cents: snapshot.total_cents,
+    currency: snapshot.currency,
+    customer_email: snapshot.customer_email,
+    shipping_address: snapshot.shipping_address,
+    billing_address: snapshot.billing_address,
+    tracking_number: null,
+    admin_notes: null,
+    fulfilled_at: null,
     created_at: FieldValue.serverTimestamp(),
     updated_at: FieldValue.serverTimestamp(),
   });
@@ -128,8 +145,9 @@ export async function fulfillStripePayment(params: {
   clientPlatform: PaymentClientPlatform;
   stripeSessionId: string;
   stripePaymentIntentId?: string | null;
+  checkoutSnapshot: CheckoutSnapshot;
 }): Promise<void> {
-  const {db, orderId, uid, purchaseType, metadata} = params;
+  const {db, orderId, uid, purchaseType, metadata, checkoutSnapshot} = params;
   const orderRef = db.collection(PAYMENT_ORDERS_COLLECTION).doc(orderId);
 
   const existing = await orderRef.get();
@@ -156,9 +174,11 @@ export async function fulfillStripePayment(params: {
     break;
   }
   case "shop": {
-    const linesJson = metadata.shop_lines_json;
-    if (!linesJson) throw new Error("Missing shop_lines_json in payment metadata");
-    await fulfillShopOrder(db, uid, orderId, linesJson);
+    const fromOrder = (existing.data()?.metadata as Record<string, string> | undefined)
+      ?.shop_lines_json;
+    const linesJson = fromOrder ?? metadata.shop_lines_json;
+    if (!linesJson) throw new Error("Missing shop_lines_json on payment order");
+    await fulfillShopOrder(db, uid, orderId, linesJson, checkoutSnapshot);
     break;
   }
   default:
@@ -169,6 +189,14 @@ export async function fulfillStripePayment(params: {
     status: "completed" satisfies PaymentOrderStatus,
     stripe_checkout_session_id: params.stripeSessionId,
     stripe_payment_intent_id: params.stripePaymentIntentId ?? null,
+    subtotal_cents: checkoutSnapshot.subtotal_cents,
+    tax_cents: checkoutSnapshot.tax_cents,
+    shipping_cents: checkoutSnapshot.shipping_cents,
+    total_cents: checkoutSnapshot.total_cents,
+    currency: checkoutSnapshot.currency,
+    customer_email: checkoutSnapshot.customer_email,
+    shipping_address: checkoutSnapshot.shipping_address,
+    billing_address: checkoutSnapshot.billing_address,
     completed_at: FieldValue.serverTimestamp(),
     updated_at: FieldValue.serverTimestamp(),
   });

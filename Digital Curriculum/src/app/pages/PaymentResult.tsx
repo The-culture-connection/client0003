@@ -1,11 +1,11 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Link, useSearchParams } from "react-router";
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { trackEvent } from "../analytics/trackEvent";
 import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalyticsContract";
-import { useCart } from "../lib/cart";
+import { clearCart } from "../lib/cart";
 import { useAuth } from "../components/auth/AuthProvider";
 
 export function PaymentSuccessPage() {
@@ -14,18 +14,29 @@ export function PaymentSuccessPage() {
   const sessionId = params.get("session_id");
   const purchaseType = params.get("type");
   const { user } = useAuth();
-  const { api } = useCart(user?.uid ?? null);
+  const reportedRef = useRef(false);
+  const cartClearedRef = useRef(false);
 
   useEffect(() => {
-    trackEvent(WEB_ANALYTICS_EVENTS.PAYMENT_SUCCEEDED, {
-      order_id: orderId,
-      session_id: sessionId,
-      purchase_type: purchaseType,
-    });
-    if (purchaseType === "shop" && api) {
-      api.clear();
-    }
-  }, [orderId, sessionId, purchaseType, api]);
+    if (reportedRef.current) return;
+    reportedRef.current = true;
+    const dedupe_key = orderId ?? sessionId ?? "payment_success";
+    trackEvent(
+      WEB_ANALYTICS_EVENTS.PAYMENT_SUCCEEDED,
+      {
+        order_id: orderId,
+        session_id: sessionId,
+        purchase_type: purchaseType,
+      },
+      { dedupe_key }
+    );
+  }, [orderId, sessionId, purchaseType]);
+
+  useEffect(() => {
+    if (purchaseType !== "shop" || !user?.uid || cartClearedRef.current) return;
+    cartClearedRef.current = true;
+    clearCart(user.uid);
+  }, [purchaseType, user?.uid]);
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6">
@@ -64,12 +75,19 @@ export function PaymentSuccessPage() {
 export function PaymentCancelPage() {
   const [params] = useSearchParams();
   const orderId = params.get("order_id");
+  const reportedRef = useRef(false);
 
   useEffect(() => {
-    trackEvent(WEB_ANALYTICS_EVENTS.PAYMENT_FAILED, {
-      order_id: orderId,
-      reason: "user_cancelled",
-    });
+    if (reportedRef.current) return;
+    reportedRef.current = true;
+    trackEvent(
+      WEB_ANALYTICS_EVENTS.PAYMENT_FAILED,
+      {
+        order_id: orderId,
+        reason: "user_cancelled",
+      },
+      { dedupe_key: orderId ?? "payment_cancel" }
+    );
   }, [orderId]);
 
   return (

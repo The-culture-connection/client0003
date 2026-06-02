@@ -8,12 +8,13 @@ import {
   SHOP_ITEMS_COLLECTION,
   type StripePurchaseType,
 } from "./paymentTypes";
+import {resolveShopFlatShippingCents} from "./shopShipping";
 
 const shopLineSchema = z.object({
   item_id: z.string().min(1),
   quantity: z.number().int().min(1).max(99),
-  size: z.string().max(32).optional(),
-  category: z.string().max(64).optional(),
+  size: z.string().max(32).nullish(),
+  category: z.string().max(64).nullish(),
 });
 
 export const createCheckoutInputSchema = z.discriminatedUnion("purchase_type", [
@@ -58,11 +59,20 @@ export interface ResolvedCheckout {
   metadata: Record<string, string>;
 }
 
-function dollarsToCents(price: number): number {
+const MIN_CHARGE_CENTS_USD = 50;
+
+function dollarsToCents(price: number, currency = "usd"): number {
   if (!Number.isFinite(price) || price <= 0) {
     throw new HttpsError("failed-precondition", "This item is free and does not require payment");
   }
-  return Math.round(price * 100);
+  const cents = Math.round(price * 100);
+  if (currency === "usd" && cents < MIN_CHARGE_CENTS_USD) {
+    throw new HttpsError(
+      "failed-precondition",
+      `Minimum charge is $${(MIN_CHARGE_CENTS_USD / 100).toFixed(2)} (item price is too low for Stripe)`
+    );
+  }
+  return cents;
 }
 
 function readTicketPriceCents(data: FirebaseFirestore.DocumentData): number {
@@ -90,7 +100,7 @@ export async function resolveCheckoutPricing(
       throw new HttpsError("not-found", "Module not found in course");
     }
     const price = Number(mod.price ?? 0);
-    const amountCents = dollarsToCents(price);
+    const amountCents = dollarsToCents(price, String(course.currency ?? "usd").toLowerCase());
     const title = String(mod.title ?? "Course module");
     const curriculumModuleId =
       (course.curriculumMapping as {modules?: Array<{moduleId?: string}>} | undefined)?.modules?.find(
@@ -161,7 +171,7 @@ export async function resolveCheckoutPricing(
       }
       const item = itemSnap.data()!;
       const unitPrice = Number(item.price ?? 0);
-      const amountCents = dollarsToCents(unitPrice);
+      const amountCents = dollarsToCents(unitPrice, currency);
       const name = String(item.name ?? "Shop item");
       const category = String(line.category ?? item.category ?? "");
       const apparelSizes = ["Tees", "Hoodies", "Crewnecks"];
@@ -195,12 +205,23 @@ export async function resolveCheckoutPricing(
       });
     }
 
+    const shippingCents = resolveShopFlatShippingCents();
+    if (shippingCents > 0) {
+      lineItems.push({
+        name: "Standard shipping",
+        amount_cents: shippingCents,
+        quantity: 1,
+        metadata: {line_type: "shipping"},
+      });
+    }
+
     return {
       currency,
       line_items: lineItems,
       metadata: {
         purchase_type: "shop",
         line_count: String(lineItems.length),
+        flat_shipping_cents: String(shippingCents),
       },
     };
   }

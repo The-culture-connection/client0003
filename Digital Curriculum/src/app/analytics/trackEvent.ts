@@ -2,16 +2,12 @@
  * Reusable web analytics: default metadata, dev logging, failures never throw to callers.
  */
 
-import { httpsCallable } from "firebase/functions";
 import { getAuth } from "firebase/auth";
-import { functions } from "../lib/firebase";
 import type { IngestWebAnalyticsRequest } from "@mortar/analytics-contract/mortarAnalyticsContract";
 import type { WebAnalyticsEventName } from "@mortar/analytics-contract/mortarAnalyticsContract";
 import { getOrCreateAnalyticsSessionId } from "./session";
 import { getActiveScreenName, getActiveScreenSessionId } from "./screenSession";
-import { prepareIngestWebAnalyticsRequest } from "./prepareIngestPayload";
-
-const ingestFn = httpsCallable(functions, "ingestWebAnalytics");
+import { enqueueIngestWebAnalytics } from "./ingestQueue";
 
 export type TrackEventProperties = Record<string, string | number | boolean | null>;
 
@@ -73,14 +69,5 @@ export function trackEvent(
 
   devLog({ ...body, client_user_hint: uid });
 
-  void (async () => {
-    try {
-      await ingestFn(prepareIngestWebAnalyticsRequest(body));
-    } catch (e) {
-      if (import.meta.env.DEV) {
-        // eslint-disable-next-line no-console
-        console.warn("[mortar:analytics:trackEvent_failed]", event_name, e);
-      }
-    }
-  })();
+  enqueueIngestWebAnalytics(body);
 }

@@ -15,6 +15,7 @@ import {getFirestore} from "firebase-admin/firestore";
 import {onRequest} from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import Stripe from "stripe";
+import {extractCheckoutSnapshot} from "../stripe/extractCheckoutSnapshot";
 import {fulfillStripePayment, markPaymentOrderFailed} from "../stripe/fulfillStripePayment";
 import {PAYMENT_ORDERS_COLLECTION, type StripePurchaseType} from "../stripe/paymentTypes";
 import {getStripeClient, resolveStripeSecretKey} from "../stripe/stripeClient";
@@ -40,7 +41,7 @@ export const stripeWebhook = onRequest(
   {
     region: "us-central1",
     secrets: [STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET],
-    invoker: "public",
+    invoker: "public", // Stripe servers must POST without Firebase Auth
   },
   async (req, res) => {
     if (req.method !== "POST") {
@@ -98,6 +99,7 @@ export const stripeWebhook = onRequest(
         }
 
         const amountCents = session.amount_total ?? Number(metadata.amount_cents ?? 0);
+        const checkoutSnapshot = extractCheckoutSnapshot(session);
         await fulfillStripePayment({
           db,
           orderId,
@@ -110,6 +112,7 @@ export const stripeWebhook = onRequest(
           stripeSessionId: session.id,
           stripePaymentIntentId:
             typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id ?? null,
+          checkoutSnapshot,
         });
         break;
       }

@@ -713,6 +713,18 @@ service cloud.firestore {
             .hasOnly(['sizeStocks', 'stockQuantity', 'updatedAt']));
     }
 
+    match /shop_orders/{orderId} {
+      allow read: if hasStaffClaim()
+        || (isSignedIn() && resource.data.uid == request.auth.uid);
+      allow create, update, delete: if false;
+    }
+
+    match /payment_orders/{orderId} {
+      allow read: if hasStaffClaim()
+        || (isSignedIn() && resource.data.uid == request.auth.uid);
+      allow create, update, delete: if false;
+    }
+
     // --- Curriculum web discussion threads (Digital Curriculum) ---
     match /discussion_threads/{threadId} {
       allow read: if isSignedIn();

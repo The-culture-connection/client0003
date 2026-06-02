@@ -6,6 +6,7 @@ import {getApps, initializeApp} from "firebase-admin/app";
 import {FieldValue, getFirestore} from "firebase-admin/firestore";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
+import {callableCorsAllowlist} from "../callableCorsAllowlist";
 import {DEFAULT_PLATFORM_URL} from "../email/emailConfig";
 import {
   createCheckoutInputSchema,
@@ -19,6 +20,10 @@ import {
 } from "../stripe/paymentTypes";
 import {getStripeClient, resolveStripeSecretKey} from "../stripe/stripeClient";
 import {STRIPE_SECRET_KEY} from "../stripe/stripeSecrets";
+import {toStripeSessionMetadata} from "../stripe/stripeMetadata";
+import {buildCheckoutSessionExtras} from "../stripe/checkoutSessionExtras";
+import {taxCodeForCheckoutLine} from "../stripe/stripeTaxCodes";
+import Stripe from "stripe";
 import {logPaymentAnalytics} from "../stripe/logPaymentAnalytics";
 import {WEB_ANALYTICS_EVENTS} from "../analytics/mortarAnalyticsContract";
 
@@ -41,8 +46,9 @@ function defaultCancelUrl(platform: string): string {
 export const createStripeCheckoutSession = onCall(
   {
     region: "us-central1",
-    // `cors: true` ensures OPTIONS succeeds even if allowlist deploy lags; origin still auth-gated.
-    cors: true,
+    // Match other browser callables (e.g. adminSendTestTransactionalEmail). Cloud Run must allow unauthenticated OPTIONS.
+    invoker: "public",
+    cors: callableCorsAllowlist,
     secrets: [STRIPE_SECRET_KEY],
   },
   async (request) => {
@@ -70,6 +76,8 @@ export const createStripeCheckoutSession = onCall(
       order_id: orderId,
       uid,
       client_platform: clientPlatform,
+      amount_cents: String(amountCents),
+      currency: resolved.currency,
     };
 
     if (input.purchase_type === "shop") {
@@ -77,11 +85,22 @@ export const createStripeCheckoutSession = onCall(
         input.lines.map((l) => ({
           item_id: l.item_id,
           quantity: l.quantity,
-          size: l.size,
-          category: l.category,
+          ...(l.size != null && l.size !== "" ? {size: l.size} : {}),
+          ...(l.category != null && l.category !== "" ? {category: l.category} : {}),
         }))
       );
     }
+
+    // Stripe rejects metadata values > 500 chars — keep cart JSON in Firestore only.
+    const stripeMetadata = toStripeSessionMetadata({
+      ...resolved.metadata,
+      order_id: orderId,
+      uid,
+      client_platform: clientPlatform,
+      purchase_type: purchaseType,
+      amount_cents: String(amountCents),
+      currency: resolved.currency,
+    });
 
     const orderDoc: Omit<PaymentOrderDoc, "created_at" | "updated_at"> & {
       created_at: FirebaseFirestore.FieldValue;
@@ -101,45 +120,78 @@ export const createStripeCheckoutSession = onCall(
     };
     await orderRef.set(orderDoc);
 
-    const stripe = getStripeClient(resolveStripeSecretKey());
+    let stripeSecret: string;
+    try {
+      stripeSecret = resolveStripeSecretKey();
+    } catch (keyErr) {
+      const msg = keyErr instanceof Error ? keyErr.message : "Invalid STRIPE_SECRET_KEY";
+      throw new HttpsError("failed-precondition", msg);
+    }
+    const stripe = getStripeClient(stripeSecret);
     const successUrl = input.success_url ?? defaultSuccessUrl(clientPlatform);
     const cancelUrl = input.cancel_url ?? defaultCancelUrl(clientPlatform);
 
-    const session = await stripe.checkout.sessions.create({
-      mode: "payment",
-      client_reference_id: orderId,
-      customer_email: request.auth?.token?.email ?? undefined,
-      line_items: resolved.line_items.map((li) => ({
-        quantity: li.quantity,
-        price_data: {
-          currency: resolved.currency,
-          unit_amount: li.amount_cents,
-          product_data: {
-            name: li.name,
-            metadata: li.metadata,
+    const tokenEmail = request.auth?.token?.email;
+    const customerEmail =
+      typeof tokenEmail === "string" && tokenEmail.includes("@") ? tokenEmail : undefined;
+
+    let session: Stripe.Checkout.Session;
+    try {
+      session = await stripe.checkout.sessions.create({
+        mode: "payment",
+        client_reference_id: orderId,
+        customer_email: customerEmail,
+        ...buildCheckoutSessionExtras(purchaseType),
+        line_items: resolved.line_items.map((li) => ({
+          quantity: li.quantity,
+          price_data: {
+            currency: resolved.currency,
+            unit_amount: li.amount_cents,
+            product_data: {
+              name: li.name.slice(0, 250),
+              tax_code: taxCodeForCheckoutLine(purchaseType, li.metadata),
+            },
           },
-        },
-      })),
-      success_url: `${successUrl}${successUrl.includes("?") ? "&" : "?"}session_id={CHECKOUT_SESSION_ID}&order_id=${orderId}&type=${purchaseType}`,
-      cancel_url: `${cancelUrl}${cancelUrl.includes("?") ? "&" : "?"}order_id=${orderId}&type=${purchaseType}`,
-      metadata: orderMetadata,
-    });
+        })),
+        success_url: `${successUrl}${successUrl.includes("?") ? "&" : "?"}session_id={CHECKOUT_SESSION_ID}&order_id=${orderId}&type=${purchaseType}`,
+        cancel_url: `${cancelUrl}${cancelUrl.includes("?") ? "&" : "?"}order_id=${orderId}&type=${purchaseType}`,
+        metadata: stripeMetadata,
+      });
+    } catch (err) {
+      logger.error("Stripe checkout.sessions.create failed", {
+        orderId,
+        uid,
+        purchaseType,
+        err,
+      });
+      const message =
+        err instanceof Stripe.errors.StripeError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "Stripe checkout failed";
+      throw new HttpsError("failed-precondition", message);
+    }
 
     await orderRef.update({
       stripe_checkout_session_id: session.id,
       updated_at: FieldValue.serverTimestamp(),
     });
 
-    await logPaymentAnalytics(db, {
-      user_id: uid,
-      event_name: WEB_ANALYTICS_EVENTS.PAYMENT_CHECKOUT_STARTED,
-      purchase_type: purchaseType,
-      order_id: orderId,
-      amount_cents: amountCents,
-      currency: resolved.currency,
-      client_platform: clientPlatform,
-      extra: {stripe_checkout_session_id: session.id},
-    });
+    try {
+      await logPaymentAnalytics(db, {
+        user_id: uid,
+        event_name: WEB_ANALYTICS_EVENTS.PAYMENT_CHECKOUT_STARTED,
+        purchase_type: purchaseType,
+        order_id: orderId,
+        amount_cents: amountCents,
+        currency: resolved.currency,
+        client_platform: clientPlatform,
+        extra: {stripe_checkout_session_id: session.id},
+      });
+    } catch (analyticsErr) {
+      logger.warn("Payment analytics log failed (checkout still ok)", analyticsErr);
+    }
 
     if (!session.url) {
       logger.error("Stripe session missing url", {sessionId: session.id});

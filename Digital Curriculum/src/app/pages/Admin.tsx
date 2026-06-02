@@ -92,6 +92,7 @@ import {
   type ShopItem,
   type ShopCategory,
 } from "../lib/shop";
+import { AdminShopOrdersPanel } from "../components/admin/AdminShopOrdersPanel";
 import {
   getGraduationApplications,
   acceptGraduationApplication,
@@ -2286,6 +2287,8 @@ export function AdminPage() {
 
         {/* Shop Tab */}
         <TabsContent value="shop" className="space-y-6">
+          <AdminShopOrdersPanel />
+
           <Card className="p-6">
             <h2 className="text-xl font-semibold text-foreground mb-4">Add Shop Item</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">

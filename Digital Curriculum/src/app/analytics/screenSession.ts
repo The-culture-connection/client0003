@@ -2,14 +2,10 @@
  * Per-screen analytics session: correlates child events until the screen unmounts or another begins.
  */
 
-import { httpsCallable } from "firebase/functions";
-import { functions } from "../lib/firebase";
 import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalyticsContract";
 import type { IngestWebAnalyticsRequest } from "@mortar/analytics-contract/mortarAnalyticsContract";
 import { getOrCreateAnalyticsSessionId } from "./session";
-import { prepareIngestWebAnalyticsRequest } from "./prepareIngestPayload";
-
-const ingestFn = httpsCallable(functions, "ingestWebAnalytics");
+import { enqueueIngestWebAnalytics } from "./ingestQueue";
 
 function newScreenSessionId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -36,15 +32,8 @@ function devLog(label: string, payload: unknown) {
   }
 }
 
-async function sendIngestSafe(body: IngestWebAnalyticsRequest): Promise<void> {
-  try {
-    await ingestFn(prepareIngestWebAnalyticsRequest(body));
-  } catch (e) {
-    if (import.meta.env.DEV) {
-      // eslint-disable-next-line no-console
-      console.warn("[mortar:analytics:ingest_failed]", e);
-    }
-  }
+function sendIngestSafe(body: IngestWebAnalyticsRequest): void {
+  enqueueIngestWebAnalytics(body);
 }
 
 function baseEnvelope(): Pick<IngestWebAnalyticsRequest, "client" | "session_id" | "route_path" | "client_timestamp_ms"> {

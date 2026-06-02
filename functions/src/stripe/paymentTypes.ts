@@ -11,7 +11,24 @@ export type StripePurchaseType = "module" | "event" | "shop";
 
 export type PaymentOrderStatus = "pending" | "completed" | "failed" | "expired";
 
+export type ShopFulfillmentStatus =
+  | "unfulfilled"
+  | "processing"
+  | "shipped"
+  | "delivered"
+  | "cancelled";
+
 export type PaymentClientPlatform = "web" | "ios" | "android";
+
+export interface MortarAddressFields {
+  name?: string | null;
+  line1?: string | null;
+  line2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postal_code?: string | null;
+  country?: string | null;
+}
 
 export interface PaymentOrderDoc {
   uid: string;

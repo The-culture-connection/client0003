@@ -82,12 +82,17 @@ export async function checkoutShopCart(params: {
   await startCheckout(
     {
       purchase_type: "shop",
-      lines: params.lines.map((l) => ({
-        item_id: l.itemId,
-        quantity: l.quantity,
-        size: l.size,
-        category: l.category,
-      })),
+      lines: params.lines.map((l) => {
+        const line: Record<string, string | number> = {
+          item_id: l.itemId,
+          quantity: l.quantity,
+          category: l.category,
+        };
+        if (l.size != null && l.size !== "") {
+          line.size = l.size;
+        }
+        return line;
+      }),
       client_platform: params.clientPlatform ?? "web",
     },
     WEB_ANALYTICS_EVENTS.PAYMENT_SHOP_CHECKOUT_CLICKED

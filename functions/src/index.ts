@@ -87,6 +87,7 @@ export {
 export {adminSendEventRegistrantEmail} from "./callables/adminSendEventRegistrantEmail";
 export {adminSendCustomAnnouncementEmail} from "./callables/adminSendCustomAnnouncementEmail";
 export {createStripeCheckoutSession} from "./callables/createStripeCheckoutSession";
+export {adminUpdateShopOrderFulfillment} from "./callables/adminUpdateShopOrderFulfillment";
 export {stripeWebhook} from "./http/stripeWebhook";
 
 export {

@@ -331,9 +331,15 @@ At the top of the hub, **Action items** shows live Firestore-backed counts (`use
 | `PAYMENT_SHOP_CHECKOUT_CLICKED` | `payment_shop_checkout_clicked` | Cart **Checkout with Stripe** |
 | `PAYMENT_CHECKOUT_STARTED` | `payment_checkout_started` | Callable success (server) |
 | `PAYMENT_CHECKOUT_REDIRECTED` | `payment_checkout_redirected` | Browser redirect to Stripe |
-| `PAYMENT_SUCCEEDED` | `payment_succeeded` | `/payment/success` |
-| `PAYMENT_FAILED` | `payment_failed` | `/payment/cancel` |
+| `PAYMENT_SUCCEEDED` | `payment_succeeded` | `/payment/success` (once per visit; `dedupe_key` = `order_id` or Stripe `session_id`) |
+| `PAYMENT_FAILED` | `payment_failed` | `/payment/cancel` (once per visit) |
 | `PAYMENT_WEBHOOK_SUCCEEDED` | `payment_webhook_succeeded` | Webhook fulfillment |
 | `PAYMENT_WEBHOOK_FAILED` | `payment_webhook_failed` | Webhook expired / async failed |
 
 **Surfaces:** `CourseDetail.tsx` (per-module purchase + lesson lock), `EventDetail.tsx` (`ticket_price_cents` on `events`), cart in `WebNavigation.tsx`, helpers in `lib/stripeCheckout.ts` and `lib/moduleAccess.ts`.
+
+**Payment success page:** `PaymentResult.tsx` emits **`payment_succeeded`** exactly once (ref guard + `dedupe_key`). Shop cart clearing uses **`clearCart(uid)`** in a separate effect — not `useCart().api` in the same effect as analytics (including `api` previously re-ran the effect on every cart update and flooded **`ingestWebAnalytics`** / weekly activity with duplicate **Payment Succeeded** rows). All web ingests share **`ingestQueue.ts`** to cap concurrent HTTP calls and avoid browser **`ERR_INSUFFICIENT_RESOURCES`**.
+
+**Tax & shipping:** All paid Checkout sessions enable **Stripe Tax** (`automatic_tax`) for **Ohio / USA** (MORTAR Cincinnati, EIN 47-2431620). Taxable one-time products: shop, modules, events; no Stripe subscriptions in this flow. Shop adds flat **Standard shipping** (default $8; `SHOP_FLAT_SHIPPING_CENTS`). Policy and Dashboard setup: [docs/STRIPE_SETUP.md](../docs/STRIPE_SETUP.md). Webhook stores tax/shipping/totals on **`payment_orders`** / **`shop_orders`**.
+
+**Shop fulfillment (admin):** **`AdminShopOrdersPanel`** on Admin → Shop lists **`shop_orders`** (real-time), with filters for needs-action / shipped / delivered. Staff update **`fulfillment_status`**, tracking, and notes via **`adminUpdateShopOrderFulfillment`**.

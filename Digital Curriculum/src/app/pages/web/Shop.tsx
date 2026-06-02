@@ -95,6 +95,10 @@ export function WebShop() {
         <p className="text-muted-foreground">
           Tees, hoodies, crewnecks, household items, and accessories
         </p>
+        <p className="text-sm text-muted-foreground mt-2">
+          Sales tax and a flat shipping rate are calculated at Stripe Checkout. You will enter your
+          shipping address before payment.
+        </p>
       </div>
 
       {/* Filter by item type */}
