@@ -58,6 +58,21 @@ export interface Event {
   rejection_reason?: string;
   /** Set on admin-created docs; member submissions behave as mobile-only */
   distribution?: EventDistribution;
+  /** Ticket price in cents (0 or omitted = free RSVP). */
+  ticket_price_cents?: number;
+  /** Legacy dollars field; prefer `ticket_price_cents`. */
+  ticket_price?: number;
+}
+
+/** Resolved ticket price in cents for Stripe checkout. */
+export function getEventTicketPriceCents(event: Pick<Event, "ticket_price_cents" | "ticket_price">): number {
+  if (typeof event.ticket_price_cents === "number" && event.ticket_price_cents > 0) {
+    return Math.round(event.ticket_price_cents);
+  }
+  if (typeof event.ticket_price === "number" && event.ticket_price > 0) {
+    return Math.round(event.ticket_price * 100);
+  }
+  return 0;
 }
 
 /** Admin merged row: same logical event may exist in one or both collections */

@@ -30,6 +30,9 @@ import { Edit } from "lucide-react";
 import { useScreenAnalytics } from "../../analytics/useScreenAnalytics";
 import { trackEvent } from "../../analytics/trackEvent";
 import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalyticsContract";
+import { getPaidModuleIds, userHasModuleAccess } from "../../lib/moduleAccess";
+import { checkoutModule } from "../../lib/stripeCheckout";
+import { Lock } from "lucide-react";
 
 export function CourseDetail() {
   useScreenAnalytics("course_detail");
@@ -44,6 +47,8 @@ export function CourseDetail() {
   const [loading, setLoading] = useState(true);
   const [expandedModule, setExpandedModule] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [paidModuleIds, setPaidModuleIds] = useState<string[]>([]);
+  const [purchasingModuleId, setPurchasingModuleId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!courseId || !user) {
@@ -58,13 +63,17 @@ export function CourseDetail() {
 
     const loadCourse = async () => {
       try {
-        const [courseData, progressData, userWithRoles] = await Promise.all([
+        const [courseData, progressData, userWithRoles, paidMods] = await Promise.all([
           getCourse(courseId),
           getCourseProgress(user.uid, courseId),
           getCurrentUserWithRoles(),
+          getPaidModuleIds(user.uid),
         ]);
         setCourse(courseData);
         setCourseProgress(progressData);
+        setPaidModuleIds(paidMods);
+        const roles = userWithRoles?.roles ?? [];
+        setIsAdmin(roles.includes("Admin") || roles.includes("superAdmin"));
         if (courseData?.curriculumMapping) {
           const counts = await getCourseSlideCounts(courseData);
           setCourseSlideCounts(counts);
@@ -88,13 +97,6 @@ export function CourseDetail() {
           setCourseSlideCounts(null);
           setLessonsWithQuiz(null);
         }
-        
-        // Check if user is admin
-        if (userWithRoles?.roles) {
-          const hasAdminRole = userWithRoles.roles.includes("superAdmin") || userWithRoles.roles.includes("Admin");
-          setIsAdmin(hasAdminRole);
-        }
-        
         if (courseData && courseData.modules.length > 0) {
           setExpandedModule(courseData.modules[0].id || courseData.modules[0].title);
         }
@@ -268,6 +270,11 @@ export function CourseDetail() {
           course.modules
             .sort((a, b) => (a.order || 0) - (b.order || 0))
             .map((module, moduleIndex) => {
+              const curriculumModuleId =
+                course.curriculumMapping?.modules?.[moduleIndex]?.moduleId;
+              const hasModulePaidAccess =
+                isAdmin ||
+                userHasModuleAccess(module, paidModuleIds, curriculumModuleId);
               const moduleDurationMonths = module.durationMonths || 0;
               const moduleDurationDays = moduleDurationMonths * 30;
               let moduleEndDate: Date | null = null;
@@ -322,6 +329,31 @@ export function CourseDetail() {
                       </div>
                     )}
                   </div>
+                  {!hasModulePaidAccess && Number(module.price) > 0 && course.id && (
+                    <Button
+                      size="sm"
+                      className="bg-accent hover:bg-accent/90 text-accent-foreground mr-2"
+                      disabled={purchasingModuleId === (module.id ?? module.title)}
+                      onClick={async () => {
+                        if (!course.id || !module.id) return;
+                        setPurchasingModuleId(module.id);
+                        try {
+                          await checkoutModule({
+                            courseId: course.id,
+                            moduleId: module.id,
+                            curriculumModuleId,
+                          });
+                        } catch (e) {
+                          console.error(e);
+                          alert(e instanceof Error ? e.message : "Checkout failed");
+                        } finally {
+                          setPurchasingModuleId(null);
+                        }
+                      }}
+                    >
+                      {purchasingModuleId === module.id ? "Redirecting…" : `Buy module · $${Number(module.price).toFixed(2)}`}
+                    </Button>
+                  )}
                   <Button
                     variant="outline"
                     size="sm"
@@ -490,6 +522,11 @@ export function CourseDetail() {
                                   <Badge variant="outline" className="text-green-600 border-green-600">
                                     <CheckCircle2 className="w-3 h-3 mr-1" />
                                     Completed
+                                  </Badge>
+                                ) : !hasModulePaidAccess && Number(module.price) > 0 ? (
+                                  <Badge variant="secondary" className="text-xs gap-1">
+                                    <Lock className="w-3 h-3" />
+                                    Purchase module to unlock
                                   </Badge>
                                 ) : hasCurriculumContent ? (
                                   <Button

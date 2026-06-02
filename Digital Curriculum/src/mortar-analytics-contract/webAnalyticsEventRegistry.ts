@@ -84,6 +84,15 @@ export const WEB_ANALYTICS_EVENTS = {
   ADMIN_LESSON_DECK_PUBLISH_CLICKED: "admin_lesson_deck_publish_clicked",
   ADMIN_EVENT_CREATE_SUBMITTED: "admin_event_create_submitted",
   ADMIN_SHOP_ITEM_CREATED: "admin_shop_item_created",
+  PAYMENT_CHECKOUT_STARTED: "payment_checkout_started",
+  PAYMENT_CHECKOUT_REDIRECTED: "payment_checkout_redirected",
+  PAYMENT_SUCCEEDED: "payment_succeeded",
+  PAYMENT_FAILED: "payment_failed",
+  PAYMENT_WEBHOOK_SUCCEEDED: "payment_webhook_succeeded",
+  PAYMENT_WEBHOOK_FAILED: "payment_webhook_failed",
+  PAYMENT_MODULE_PURCHASE_CLICKED: "payment_module_purchase_clicked",
+  PAYMENT_EVENT_TICKET_CLICKED: "payment_event_ticket_clicked",
+  PAYMENT_SHOP_CHECKOUT_CLICKED: "payment_shop_checkout_clicked",
 } as const;
 
 export type WebAnalyticsEventName = (typeof WEB_ANALYTICS_EVENTS)[keyof typeof WEB_ANALYTICS_EVENTS];

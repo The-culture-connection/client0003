@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../analytics/expansion_analytics.dart';
 import '../models/community_event.dart';
 import '../services/events_repository.dart';
+import '../services/stripe_checkout_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/content_action_guard.dart';
 import '../utils/event_calendar_prompt.dart';
@@ -221,6 +222,13 @@ class _EventsScreenState extends State<EventsScreen> {
                                               : () async {
                                                   final currentUid = uid;
                                                   try {
+                                                    if (e.resolvedTicketPriceCents > 0) {
+                                                      await StripeCheckoutService().checkoutEventTicket(
+                                                        context: context,
+                                                        eventId: e.id,
+                                                      );
+                                                      return;
+                                                    }
                                                     await repo.register(e.id);
                                                     if (!context.mounted) return;
                                                     final fresh = await repo.getEvent(e.id);

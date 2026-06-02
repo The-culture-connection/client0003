@@ -1029,6 +1029,12 @@ Each bullet is an **`event_name`** assigned to that bucket (events can appear un
 - **Expansion mobile UI:** **`AchievementsScreen`** lists definitions visible for **`expansion_mobile` or `both`** and shows **`image_url`** thumbnails when set. **`ProfileAchievementsCard`** (profile tab + read-only **user profile modal**) shows an **Earned badges** strip of thumbnails for the same platform filter. **`BadgeEarnedSessionListener`** (wrapped around the main shell in `expansion_shell.dart`) listens for **new** notification documents (skips the initial snapshot) and shows **`BadgeFlipCelebrationDialog`** (badge art → Y-flip → checkmark, **HapticFeedback** at the check), then marks the notification **`read: true`**.
 - **Digital Curriculum UI:** **`UserBadgeSuiteDialog`** hides **Expansion-only** definitions so curriculum admins see curriculum-relevant badges in the suite dialog.
 
+### How the feature works (Stripe payments — Expansion mobile)
+
+- **Service:** `StripeCheckoutService` calls **`createStripeCheckoutSession`** with `purchase_type: event`, `event_collection: events_mobile`, and `client_platform` `ios` / `android`, then opens **`checkout_url`** via `safeLaunchExternalUrl`.
+- **Paid events:** `CommunityEvent.resolvedTicketPriceCents` from `ticket_price_cents` or `ticket_price` on `events_mobile`. **Register** becomes **Pay $X & register** when price &gt; 0; RSVP is granted by **`stripeWebhook`** after payment (refresh event detail to see status).
+- **Analytics:** `payment_event_ticket_clicked`, `payment_checkout_redirected`, plus server `payment_webhook_*` (shared with web). Rollups: **`funnel_summary`** bucket `payments`. See [docs/STRIPE_SETUP.md](../docs/STRIPE_SETUP.md).
+
 ---
 
 *End of Step 2 deliverable for Expansion mobile (`ExpansionNetworkApp/expansion_network`).*

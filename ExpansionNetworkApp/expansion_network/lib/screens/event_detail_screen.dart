@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../analytics/expansion_analytics.dart';
 import '../models/community_event.dart';
 import '../services/events_repository.dart';
+import '../services/stripe_checkout_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/event_calendar_prompt.dart';
 import '../utils/relative_time.dart';
@@ -26,6 +27,7 @@ class EventDetailScreen extends StatefulWidget {
 
 class _EventDetailScreenState extends State<EventDetailScreen> {
   final _events = EventsRepository();
+  final _stripeCheckout = StripeCheckoutService();
   bool _loading = true;
   bool _busy = false;
   CommunityEvent? _event;
@@ -84,6 +86,13 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     try {
       if (wasRegistered) {
         await _events.unregister(widget.eventId);
+      } else if (e.resolvedTicketPriceCents > 0) {
+        await _stripeCheckout.checkoutEventTicket(
+          context: context,
+          eventId: widget.eventId,
+        );
+        if (mounted) setState(() => _busy = false);
+        return;
       } else {
         await _events.register(widget.eventId);
       }
@@ -317,7 +326,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                                     ? 'Unregister'
                                                     : e.isFull
                                                         ? 'Event full'
-                                                        : 'Register',
+                                                        : e.resolvedTicketPriceCents > 0
+                                                            ? 'Pay \$${(e.resolvedTicketPriceCents / 100).toStringAsFixed(2)} & register'
+                                                            : 'Register',
                                               ),
                                       ),
                                     ),

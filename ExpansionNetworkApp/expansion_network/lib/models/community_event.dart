@@ -21,6 +21,8 @@ class CommunityEvent {
     this.createdBy,
     this.rejectionReason,
     this.distribution,
+    this.ticketPriceCents,
+    this.ticketPrice,
   });
 
   final String id;
@@ -42,6 +44,14 @@ class CommunityEvent {
   final String? rejectionReason;
   /// `curriculum` | `mobile` | `both` on admin-created docs; omitted on member submissions.
   final String? distribution;
+  final int? ticketPriceCents;
+  final double? ticketPrice;
+
+  int get resolvedTicketPriceCents {
+    if (ticketPriceCents != null && ticketPriceCents! > 0) return ticketPriceCents!;
+    if (ticketPrice != null && ticketPrice! > 0) return (ticketPrice! * 100).round();
+    return 0;
+  }
 
   bool get isPublished =>
       approvalStatus == null || approvalStatus == 'approved';
@@ -108,6 +118,8 @@ class CommunityEvent {
       createdBy: _s(data['created_by']),
       rejectionReason: _s(data['rejection_reason']),
       distribution: _s(data['distribution']),
+      ticketPriceCents: _i(data['ticket_price_cents']),
+      ticketPrice: data['ticket_price'] is num ? (data['ticket_price'] as num).toDouble() : null,
     );
   }
 

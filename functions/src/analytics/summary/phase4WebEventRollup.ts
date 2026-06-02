@@ -318,6 +318,22 @@ function rollupDeltaForEventName(eventName: string): RollupDelta | null {
   case WEB_ANALYTICS_EVENTS.DISCUSSIONS_SEARCH_CHANGED:
     return { userCounter: "discussions_search_changed", dailyCounter: "discussions_search_changed", communityCounter: null, courseCounter: null };
 
+  case WEB_ANALYTICS_EVENTS.PAYMENT_CHECKOUT_STARTED:
+  case WEB_ANALYTICS_EVENTS.PAYMENT_CHECKOUT_REDIRECTED:
+    return { userCounter: eventName, dailyCounter: eventName, communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.PAYMENT_SUCCEEDED:
+  case WEB_ANALYTICS_EVENTS.PAYMENT_WEBHOOK_SUCCEEDED:
+    return { userCounter: "payment_succeeded", dailyCounter: "payment_succeeded", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.PAYMENT_FAILED:
+  case WEB_ANALYTICS_EVENTS.PAYMENT_WEBHOOK_FAILED:
+    return { userCounter: "payment_failed", dailyCounter: "payment_failed", communityCounter: "payment_failed", courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.PAYMENT_MODULE_PURCHASE_CLICKED:
+    return { userCounter: "payment_module_purchase_clicked", dailyCounter: "payment_module_purchase_clicked", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.PAYMENT_EVENT_TICKET_CLICKED:
+    return { userCounter: "payment_event_ticket_clicked", dailyCounter: "payment_event_ticket_clicked", communityCounter: "event_register_clicked", courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.PAYMENT_SHOP_CHECKOUT_CLICKED:
+    return { userCounter: "payment_shop_checkout_clicked", dailyCounter: "payment_shop_checkout_clicked", communityCounter: null, courseCounter: null };
+
   default:
     return null;
   }

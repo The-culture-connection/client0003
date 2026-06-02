@@ -319,3 +319,21 @@ Staff with **`Admin`** or **`superAdmin`** roles see a **Student** / **Admin** s
 At the top of the hub, **Action items** shows live Firestore-backed counts (`useAdminHubActionCounts`): merged **`events` + `events_mobile`** rows with **`approval_status === "pending"`**, **`GraduationApplications`** with **`status === "pending"`**, **`user_reports`** with **`status`** in **`open`** / **`investigating`** (moderation queue), and **`Digital Student DMs`** where **`read !== true`** (unread / awaiting staff attention). When a bucket has work, its card uses stronger border and background tint and optional alert affordances; each card links to the matching **`/admin/panel/...`** tab. The hub no longer shows the four decorative stat cards (Command/Tools/Builder/Focus). On **`/admin/panel/:tab`**, the horizontal **Tabs** strip is hidden so staff rely on the **`AdminLayout`** sidebar (and direct URLs) to switch admin panels without duplicating the tab bar.
 
 **Platform scope (Digital Curriculum vs Expansion mobile):** Admin hub tool cards, action-item cards, and sidebar links show color-coded **Web** (sky — Mortar Masters web / Digital Curriculum), **Mobile** (amber — Expansion app), or **Both** (violet — shared data or workflows). A compact **horizontal key** (badges + short labels; full text on hover) sits under the command center title and matches the slim key in the admin sidebar. Mapping per panel tab lives in **`mortarPlatformScope.ts`** (`ADMIN_PANEL_TAB_SCOPE`).
+
+### How the feature works (Stripe payments — web)
+
+**Flow:** `createStripeCheckoutSession` (callable) → Stripe Checkout → `stripeWebhook` → Firestore access (`membership.paid_modules`, event `registered_users`, or `shop_orders`) + server analytics (`payment_webhook_*`). Setup: [docs/STRIPE_SETUP.md](../docs/STRIPE_SETUP.md).
+
+| TS key | `event_name` | When |
+|--------|--------------|------|
+| `PAYMENT_MODULE_PURCHASE_CLICKED` | `payment_module_purchase_clicked` | Course detail **Buy module** |
+| `PAYMENT_EVENT_TICKET_CLICKED` | `payment_event_ticket_clicked` | Paid event register |
+| `PAYMENT_SHOP_CHECKOUT_CLICKED` | `payment_shop_checkout_clicked` | Cart **Checkout with Stripe** |
+| `PAYMENT_CHECKOUT_STARTED` | `payment_checkout_started` | Callable success (server) |
+| `PAYMENT_CHECKOUT_REDIRECTED` | `payment_checkout_redirected` | Browser redirect to Stripe |
+| `PAYMENT_SUCCEEDED` | `payment_succeeded` | `/payment/success` |
+| `PAYMENT_FAILED` | `payment_failed` | `/payment/cancel` |
+| `PAYMENT_WEBHOOK_SUCCEEDED` | `payment_webhook_succeeded` | Webhook fulfillment |
+| `PAYMENT_WEBHOOK_FAILED` | `payment_webhook_failed` | Webhook expired / async failed |
+
+**Surfaces:** `CourseDetail.tsx` (per-module purchase + lesson lock), `EventDetail.tsx` (`ticket_price_cents` on `events`), cart in `WebNavigation.tsx`, helpers in `lib/stripeCheckout.ts` and `lib/moduleAccess.ts`.

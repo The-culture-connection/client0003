@@ -142,6 +142,15 @@ function funnelIncrements(eventName: string): Record<string, Record<string, numb
   case "event_register_failed":
     bump("event_to_rsvp", eventName);
     break;
+  case "payment_checkout_started":
+  case "payment_checkout_redirected":
+  case "payment_event_ticket_clicked":
+  case "payment_succeeded":
+  case "payment_failed":
+  case "payment_webhook_succeeded":
+  case "payment_webhook_failed":
+    bump("payments", eventName);
+    break;
   default:
     break;
   }

@@ -5,6 +5,7 @@ import { useAuth } from "../auth/AuthProvider";
 import { useState, useEffect } from "react";
 import { subscribeUserNotifications, markNotificationRead, type UserNotification } from "../../lib/dataroom";
 import { useCart } from "../../lib/cart";
+import { checkoutShopCart } from "../../lib/stripeCheckout";
 import { releaseStock } from "../../lib/shop";
 import {
   DropdownMenu,
@@ -55,6 +56,7 @@ export function WebNavigation() {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [badgeSuiteOpen, setBadgeSuiteOpen] = useState(false);
+  const [checkoutBusy, setCheckoutBusy] = useState(false);
 
   const { cart, itemCount, api } = useCart(user?.uid ?? null);
 
@@ -331,7 +333,25 @@ export function WebNavigation() {
                           </span>
                         </div>
                         <Button
-                          className="w-full mt-3 bg-accent hover:bg-accent/90 text-accent-foreground"
+                          className="w-full mt-2 bg-accent hover:bg-accent/90 text-accent-foreground"
+                          disabled={checkoutBusy}
+                          onClick={async () => {
+                            setCheckoutBusy(true);
+                            try {
+                              await checkoutShopCart({ lines: cart });
+                            } catch (e) {
+                              console.error(e);
+                              alert(e instanceof Error ? e.message : "Checkout failed");
+                            } finally {
+                              setCheckoutBusy(false);
+                            }
+                          }}
+                        >
+                          {checkoutBusy ? "Opening checkout…" : "Checkout with Stripe"}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="w-full mt-2"
                           onClick={() => {
                             trackEvent(WEB_ANALYTICS_EVENTS.CART_CONTINUE_TO_SHOP_CLICKED, {});
                             setCartOpen(false);

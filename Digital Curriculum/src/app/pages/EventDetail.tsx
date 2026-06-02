@@ -19,8 +19,11 @@ import {
   registerForEvent,
   unregisterFromEvent,
   isUserRegistered,
+  getEventTicketPriceCents,
+  COLLECTION_EVENTS,
   type Event,
 } from "../lib/events";
+import { checkoutEventTicket } from "../lib/stripeCheckout";
 import { trackEvent } from "../analytics/trackEvent";
 import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalyticsContract";
 
@@ -59,6 +62,10 @@ export function EventDetailPage() {
     }
   };
 
+  const ticketCents = event ? getEventTicketPriceCents(event) : 0;
+  const ticketPriceLabel =
+    ticketCents > 0 ? `$${(ticketCents / 100).toFixed(2)}` : null;
+
   const handleRegister = async () => {
     if (!id || !user?.uid) {
       alert("Please sign in to register for events");
@@ -68,12 +75,20 @@ export function EventDetailPage() {
     trackEvent(WEB_ANALYTICS_EVENTS.EVENT_REGISTER_CLICKED, { event_id: id });
     setRegistering(true);
     try {
+      if (ticketCents > 0) {
+        await checkoutEventTicket({ eventId: id, collection: COLLECTION_EVENTS });
+        return;
+      }
       await registerForEvent(id, user.uid);
       setIsRegistered(true);
       await loadEvent(); // Reload to get updated counts
       alert("Successfully registered for this event!");
     } catch (error: any) {
       console.error("Error registering for event:", error);
+      trackEvent(WEB_ANALYTICS_EVENTS.EVENT_REGISTER_FAILED, {
+        event_id: id,
+        paid: ticketCents > 0,
+      });
       alert(error.message || "Failed to register. Please try again.");
     } finally {
       setRegistering(false);
@@ -206,6 +221,14 @@ export function EventDetailPage() {
                 <p className="text-foreground font-medium">{event.location}</p>
               </div>
             </div>
+            {ticketPriceLabel && (
+              <div className="flex items-center gap-3">
+                <div>
+                  <p className="text-sm text-muted-foreground">Ticket</p>
+                  <p className="text-foreground font-medium">{ticketPriceLabel}</p>
+                </div>
+              </div>
+            )}
             <div className="flex items-center gap-3">
               <Users className="w-5 h-5 text-accent" />
               <div>
@@ -270,6 +293,8 @@ export function EventDetailPage() {
                         "Event Full"
                       ) : !user ? (
                         "Sign In to Register"
+                      ) : ticketCents > 0 ? (
+                        `Pay ${ticketPriceLabel} & Register`
                       ) : (
                         "Register for Event"
                       )}

@@ -26,6 +26,7 @@ import { DiscussionsPage } from "./pages/Discussions";
 import { DiscussionDetailPage } from "./pages/DiscussionDetail";
 import { GroupDetailPage } from "./pages/GroupDetail";
 import { EventDetailPage } from "./pages/EventDetail";
+import { PaymentSuccessPage, PaymentCancelPage } from "./pages/PaymentResult";
 import { AdminPage } from "./pages/Admin";
 import { AdminAuthPage } from "./pages/AdminAuth";
 import { LessonDeckBuilder } from "./pages/admin/LessonDeckBuilder";
@@ -111,6 +112,8 @@ export const router = createBrowserRouter([
       { path: "groups/:id", Component: GroupDetailPage },
       { path: "events", Component: WebEvents },
       { path: "events/:id", Component: EventDetailPage },
+      { path: "payment/success", Component: PaymentSuccessPage },
+      { path: "payment/cancel", Component: PaymentCancelPage },
       { path: "analytics", loader: () => redirect("/dashboard") },
       {
         path: "admin/auth",
