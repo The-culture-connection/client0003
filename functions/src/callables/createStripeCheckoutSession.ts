@@ -6,7 +6,6 @@ import {getApps, initializeApp} from "firebase-admin/app";
 import {FieldValue, getFirestore} from "firebase-admin/firestore";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
-import {callableCorsAllowlist} from "../callableCorsAllowlist";
 import {DEFAULT_PLATFORM_URL} from "../email/emailConfig";
 import {
   createCheckoutInputSchema,
@@ -42,7 +41,8 @@ function defaultCancelUrl(platform: string): string {
 export const createStripeCheckoutSession = onCall(
   {
     region: "us-central1",
-    cors: callableCorsAllowlist,
+    // `cors: true` ensures OPTIONS succeeds even if allowlist deploy lags; origin still auth-gated.
+    cors: true,
     secrets: [STRIPE_SECRET_KEY],
   },
   async (request) => {

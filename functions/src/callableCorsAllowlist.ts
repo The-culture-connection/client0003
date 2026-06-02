@@ -16,6 +16,6 @@ export const callableCorsAllowlist: (string | RegExp)[] = [
   "https://mortar-dev.web.app",
   "https://mortar-stage.firebaseapp.com",
   "https://mortar-stage.web.app",
-  // Default `*.up.railway.app` service URLs (single DNS label before `.up`).
-  /^https:\/\/[a-z0-9][a-z0-9-]{0,61}\.up\.railway\.app$/i,
+  // Railway service hostnames (e.g. `mortar-stage-stage.up.railway.app`).
+  /^https:\/\/[a-z0-9][a-z0-9-]{0,61}(\.[a-z0-9][a-z0-9-]{0,61})*\.up\.railway\.app$/i,
 ];
