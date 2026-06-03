@@ -195,6 +195,8 @@ export function AdminPage() {
   const [newEventImageUrl, setNewEventImageUrl] = useState("");
   const [newEventImageFile, setNewEventImageFile] = useState<File | null>(null);
   const [newEventDetails, setNewEventDetails] = useState("");
+  /** Optional ticket price in dollars (empty = free RSVP). */
+  const [newEventTicketPrice, setNewEventTicketPrice] = useState("");
   const [creatingEvent, setCreatingEvent] = useState(false);
   const [events, setEvents] = useState<AdminListedEvent[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(false);
@@ -992,6 +994,23 @@ export function AdminPage() {
         imageUrl = await getDownloadURL(storageRef);
       }
 
+      let ticketPriceCents: number | undefined;
+      const ticketRaw = newEventTicketPrice.trim();
+      if (ticketRaw) {
+        const dollars = parseFloat(ticketRaw);
+        if (!Number.isFinite(dollars) || dollars < 0) {
+          alert("Ticket price must be a valid dollar amount (0 or higher).");
+          setCreatingEvent(false);
+          return;
+        }
+        if (dollars > 0 && dollars < 0.5) {
+          alert("Paid events must be at least $0.50 (Stripe minimum).");
+          setCreatingEvent(false);
+          return;
+        }
+        ticketPriceCents = dollars > 0 ? Math.round(dollars * 100) : undefined;
+      }
+
       const createdEvent = await createEvent(
         newEventTitle,
         eventDate,
@@ -1003,6 +1022,7 @@ export function AdminPage() {
           eventType: newEventType,
           imageUrl,
           distribution: newEventDistribution,
+          ticketPriceCents,
         }
       );
       trackEvent(WEB_ANALYTICS_EVENTS.ADMIN_EVENT_CREATE_SUBMITTED, {
@@ -1022,6 +1042,7 @@ export function AdminPage() {
       setNewEventImageUrl("");
       setNewEventImageFile(null);
       setNewEventDetails("");
+      setNewEventTicketPrice("");
       alert("Event created successfully!");
       await loadEvents();
     } catch (error) {
@@ -1423,6 +1444,23 @@ export function AdminPage() {
                     value={newEventSpots}
                     onChange={(e) => setNewEventSpots(e.target.value)}
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="event-ticket-price" className="text-foreground">
+                    Ticket price (optional)
+                  </Label>
+                  <Input
+                    id="event-ticket-price"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="Leave empty for free RSVP"
+                    value={newEventTicketPrice}
+                    onChange={(e) => setNewEventTicketPrice(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Paid events use Stripe Checkout (min $0.50). Leave blank for free registration.
+                  </p>
                 </div>
               </div>
               <div className="space-y-2">

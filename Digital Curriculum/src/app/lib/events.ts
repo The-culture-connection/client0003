@@ -297,6 +297,8 @@ function buildStaffEventPayload(
     availableSpots?: number;
     eventType?: EventType;
     imageUrl?: string;
+    /** Ticket price in cents; 0 or omitted = free RSVP */
+    ticketPriceCents?: number;
   }
 ): Record<string, unknown> {
   const spots =
@@ -322,6 +324,10 @@ function buildStaffEventPayload(
     eventData.available_spots = spots;
     eventData.total_spots = spots;
   }
+  const ticketCents = options?.ticketPriceCents;
+  if (typeof ticketCents === "number" && ticketCents > 0) {
+    eventData.ticket_price_cents = Math.round(ticketCents);
+  }
   return eventData;
 }
 
@@ -340,6 +346,8 @@ export async function createEvent(
     imageUrl?: string;
     /** Default `curriculum` */
     distribution?: EventDistribution;
+    /** Ticket price in cents; 0 or omitted = free RSVP */
+    ticketPriceCents?: number;
   }
 ): Promise<Event> {
   const dist = options?.distribution ?? "curriculum";

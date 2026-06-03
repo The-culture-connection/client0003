@@ -37,6 +37,10 @@ Use these **exact template names** in Brevo (Transactional → Templates) so the
 | `event_announcement_to_registrants` | Update: {{ params.event_title }} | A message for registered attendees from the Mortar team. |
 | `admin_custom_announcement` | {{ params.headline }} | Message from {{ params.sender_name }} at Mortar. |
 | `app_access_code_invite` | Your MORTARverse App Access Code Has Arrived | Ready to expand your reach? Use your secure access code to unlock the MORTARverse app. |
+| `payment_shop_order_confirmed` | Your Mortar shop order is confirmed | Thanks for your Mortar shop order — we're preparing it now. |
+| `payment_event_registration_confirmed` | You're registered — {{ params.event_title }} | Your event registration and payment are confirmed. |
+| `payment_module_purchase_confirmed` | Your course module purchase is confirmed | Your Mortar course module is unlocked — start learning. |
+| `shop_order_fulfillment_update` | Your Mortar shop order update — {{ params.fulfillment_status }} | Status update on your Mortar shop order. |
 
 > **Preheader in Brevo:** If the editor has a separate “Preview text” field, use the third column. The HTML files also include a hidden preheader `<span>` for clients that read it from the body.
 
@@ -313,4 +317,40 @@ Staff with **Admin** or **superAdmin** can open **Admin → Email testing** (`/a
 
 // app_access_code_invite
 { first_name, invite_code, expires_in, expires_at, app_name, redeem_url?, support_email }
+
+// payment_shop_order_confirmed (after Stripe webhook fulfills shop order)
+{ first_name, order_id, order_lines_plain, amount_subtotal, amount_tax, amount_shipping, amount_total, shipping_address_plain, platform_url, support_email }
+
+// payment_event_registration_confirmed
+{ first_name, order_id, event_title, event_date, event_location, events_url, amount_total, platform_url, support_email }
+
+// payment_module_purchase_confirmed
+{ first_name, order_id, course_title, module_title, curriculum_url, amount_total, platform_url, support_email }
+
+// shop_order_fulfillment_update (admin updates fulfillment status / tracking)
+{ first_name, order_id, fulfillment_status, tracking_line, order_lines_plain, platform_url, support_email }
 ```
+
+---
+
+## Payment & shop order emails
+
+HTML: `docs/brevo-templates/html/payment_*.html` and `shop_order_fulfillment_update.html`.
+
+| Template name | When sent | Subject |
+|---------------|-----------|---------|
+| `payment_shop_order_confirmed` | Stripe webhook after paid shop checkout | Your Mortar shop order is confirmed |
+| `payment_event_registration_confirmed` | Stripe webhook after paid event ticket | You're registered — {{ params.event_title }} |
+| `payment_module_purchase_confirmed` | Stripe webhook after paid module | Your course module purchase is confirmed |
+| `shop_order_fulfillment_update` | Admin saves fulfillment status (not `unfulfilled`) | Your Mortar shop order update — {{ params.fulfillment_status }} |
+
+Brevo template IDs (confirmed in Brevo, wired in `functions/src/email/brevoTemplates.ts`):
+
+| Template name | Brevo ID |
+|---------------|----------|
+| `payment_shop_order_confirmed` | **12** |
+| `payment_event_registration_confirmed` | **13** |
+| `payment_module_purchase_confirmed` | **14** |
+| `shop_order_fulfillment_update` | **15** |
+
+Override via env `BREVO_TPL_PAYMENT_SHOP_CONFIRMED`, etc., only if IDs change in Brevo.

@@ -260,3 +260,130 @@ export function plainMessageBody(body: string): string {
 export function htmlOrPlainMessageBody(body: string): string {
   return plainMessageBody(body);
 }
+
+export function formatMoneyCents(cents: number | null | undefined, currency = "usd"): string {
+  const n = Number(cents ?? 0);
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: currency.toUpperCase(),
+  }).format(n / 100);
+}
+
+function formatAddressPlain(addr: {
+  name?: string | null;
+  line1?: string | null;
+  line2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postal_code?: string | null;
+  country?: string | null;
+} | null | undefined): string {
+  if (!addr) return "—";
+  const parts = [
+    addr.name,
+    addr.line1,
+    addr.line2,
+    [addr.city, addr.state, addr.postal_code].filter(Boolean).join(", "),
+    addr.country,
+  ].filter(Boolean);
+  return parts.join("\n") || "—";
+}
+
+export function paymentShopConfirmedParams(input: {
+  userEmail: string;
+  userName?: string;
+  order_id: string;
+  order_lines_plain: string;
+  amount_subtotal?: number | null;
+  amount_tax?: number;
+  amount_shipping?: number;
+  amount_total?: number;
+  currency?: string;
+  shipping_address_plain?: {
+    name?: string | null;
+    line1?: string | null;
+    line2?: string | null;
+    city?: string | null;
+    state?: string | null;
+    postal_code?: string | null;
+    country?: string | null;
+  } | null;
+}): JsonObject {
+  const currency = input.currency ?? "usd";
+  return {
+    first_name: firstNameFrom(input.userName, input.userEmail),
+    order_id: input.order_id,
+    order_lines_plain: input.order_lines_plain,
+    amount_subtotal: formatMoneyCents(input.amount_subtotal, currency),
+    amount_tax: formatMoneyCents(input.amount_tax, currency),
+    amount_shipping: formatMoneyCents(input.amount_shipping, currency),
+    amount_total: formatMoneyCents(input.amount_total, currency),
+    shipping_address_plain: formatAddressPlain(input.shipping_address_plain),
+    ...sharedFooterParams(),
+  };
+}
+
+export function paymentEventConfirmedParams(input: {
+  userEmail: string;
+  userName?: string;
+  order_id: string;
+  event_title: string;
+  event_date: string;
+  event_location: string;
+  event_id: string;
+  amount_total?: number;
+  currency?: string;
+}): JsonObject {
+  const base = sharedFooterParams().platform_url as string;
+  return {
+    first_name: firstNameFrom(input.userName, input.userEmail),
+    order_id: input.order_id,
+    event_title: input.event_title,
+    event_date: input.event_date,
+    event_location: input.event_location,
+    events_url: `${base.replace(/\/$/, "")}/events/${input.event_id}`,
+    amount_total: formatMoneyCents(input.amount_total, input.currency),
+    ...sharedFooterParams(),
+  };
+}
+
+export function paymentModuleConfirmedParams(input: {
+  userEmail: string;
+  userName?: string;
+  order_id: string;
+  course_title: string;
+  module_title: string;
+  curriculum_url: string;
+  amount_total?: number;
+  currency?: string;
+}): JsonObject {
+  return {
+    first_name: firstNameFrom(input.userName, input.userEmail),
+    order_id: input.order_id,
+    course_title: input.course_title,
+    module_title: input.module_title,
+    curriculum_url: input.curriculum_url,
+    amount_total: formatMoneyCents(input.amount_total, input.currency),
+    ...sharedFooterParams(),
+  };
+}
+
+export function shopFulfillmentUpdateParams(input: {
+  userEmail: string;
+  userName?: string;
+  order_id: string;
+  fulfillment_status: string;
+  tracking_line: string;
+  order_lines_plain: string;
+}): JsonObject {
+  const base = sharedFooterParams().platform_url as string;
+  return {
+    first_name: firstNameFrom(input.userName, input.userEmail),
+    order_id: input.order_id,
+    fulfillment_status: input.fulfillment_status,
+    tracking_line: input.tracking_line,
+    order_lines_plain: input.order_lines_plain,
+    shop_url: `${base.replace(/\/$/, "")}/shop`,
+    ...sharedFooterParams(),
+  };
+}

@@ -5,10 +5,13 @@
 import {getApps, initializeApp} from "firebase-admin/app";
 import {FieldValue, getFirestore} from "firebase-admin/firestore";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
+import * as logger from "firebase-functions/logger";
 import {z} from "zod";
 import {callableCorsAllowlist} from "../callableCorsAllowlist";
 import {assertCallerIsNetworkAdmin} from "../helpers/assertNetworkAdmin";
 import {nullishUndefined} from "../helpers/callableNullishZod";
+import {BREVO_API_KEY} from "../email/brevoClient";
+import {sendShopFulfillmentUpdateEmail} from "../email/paymentOrderEmails";
 import {SHOP_ORDERS_COLLECTION, type ShopFulfillmentStatus} from "../stripe/paymentTypes";
 
 if (getApps().length === 0) {
@@ -37,6 +40,7 @@ export const adminUpdateShopOrderFulfillment = onCall(
     region: "us-central1",
     invoker: "public",
     cors: callableCorsAllowlist,
+    secrets: [BREVO_API_KEY],
   },
   async (request) => {
     const uid = request.auth?.uid;
@@ -56,6 +60,9 @@ export const adminUpdateShopOrderFulfillment = onCall(
     if (!snap.exists) {
       throw new HttpsError("not-found", "Shop order not found");
     }
+    const before = snap.data() as Record<string, unknown>;
+    const prevStatus = String(before.fulfillment_status ?? "unfulfilled");
+    const prevTracking = (before.tracking_number as string | null) ?? null;
 
     const update: Record<string, unknown> = {
       fulfillment_status,
@@ -72,6 +79,42 @@ export const adminUpdateShopOrderFulfillment = onCall(
     }
 
     await ref.update(update);
+
+    const statusChanged = prevStatus !== fulfillment_status;
+    const trackingChanged =
+      tracking_number !== undefined &&
+      (tracking_number.trim() || null) !== prevTracking;
+    if (
+      (statusChanged || trackingChanged) &&
+      fulfillment_status !== "unfulfilled"
+    ) {
+      try {
+        const uid = String(before.uid ?? "");
+        const lines = Array.isArray(before.lines) ? before.lines : [];
+        await sendShopFulfillmentUpdateEmail({
+          db,
+          orderId: order_id,
+          uid,
+          fulfillmentStatus: fulfillment_status,
+          trackingNumber:
+            tracking_number !== undefined ?
+              tracking_number.trim() || null :
+              (before.tracking_number as string | null),
+          lines: lines as Array<{
+            item_id: string;
+            quantity: number;
+            size?: string;
+            category?: string;
+            name?: string;
+          }>,
+          customerEmail: (before.customer_email as string | null) ?? null,
+        });
+      } catch (emailErr) {
+        // Fulfillment save succeeded; email is best-effort.
+        logger.warn("Shop fulfillment email failed", emailErr);
+      }
+    }
+
     return {ok: true, order_id, fulfillment_status};
   }
 );

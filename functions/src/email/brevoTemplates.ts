@@ -24,6 +24,14 @@ export const BREVO_TEMPLATE_IDS = {
   /** After meeting (or admin reject): status → rejected */
   graduation_not_admitted: tpl("BREVO_TPL_GRADUATION_NOT_ADMITTED", 10),
   masters_onboarding_welcome: tpl("BREVO_TPL_MASTERS_ONBOARDING_WELCOME", 11),
+  /** Stripe shop checkout confirmation */
+  payment_shop_order_confirmed: tpl("BREVO_TPL_PAYMENT_SHOP_CONFIRMED", 12),
+  /** Stripe paid event ticket confirmation */
+  payment_event_registration_confirmed: tpl("BREVO_TPL_PAYMENT_EVENT_CONFIRMED", 13),
+  /** Stripe paid course module confirmation */
+  payment_module_purchase_confirmed: tpl("BREVO_TPL_PAYMENT_MODULE_CONFIRMED", 14),
+  /** Admin fulfillment status / tracking update */
+  shop_order_fulfillment_update: tpl("BREVO_TPL_SHOP_FULFILLMENT_UPDATE", 15),
 } as const;
 
 export type BrevoTemplateKey = keyof typeof BREVO_TEMPLATE_IDS;

@@ -6,6 +6,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router";
 import { getSlides, getBlocks, getLesson, getLessonImages, getLessonContent, getCourseSlideCounts, type Slide, type Block, type Lesson, type LessonImage, type LessonContentSlide, type LessonQuiz, type LessonSurveyCheckpoint } from "../../lib/curriculum";
+import { getPaidModuleIds, userHasModuleAccess } from "../../lib/moduleAccess";
 import {
   getCourse,
   getCourseLessonQuiz,
@@ -174,6 +175,32 @@ export function LessonPlayer() {
         setCurriculumId(curriculumIdParam);
         setModuleId(moduleIdParam);
         setChapterId(chapterIdParam);
+
+        const courseIdParam = params.get("courseId");
+        if (courseIdParam && user?.uid) {
+          const [courseData, paidMods] = await Promise.all([
+            getCourse(courseIdParam),
+            getPaidModuleIds(user.uid),
+          ]);
+          if (courseData) {
+            const modIndex = courseData.curriculumMapping?.modules?.findIndex(
+              (m) => m.moduleId === moduleIdParam
+            );
+            const courseModule =
+              modIndex != null && modIndex >= 0 ? courseData.modules[modIndex] : undefined;
+            if (
+              courseModule &&
+              Number(courseModule.price) > 0 &&
+              !userHasModuleAccess(courseModule, paidMods, moduleIdParam)
+            ) {
+              setError(
+                "This module requires purchase. Return to the course page and use Buy module to unlock lessons."
+              );
+              setIsLoading(false);
+              return;
+            }
+          }
+        }
 
         const lessonData = await getLesson(curriculumIdParam, moduleIdParam, chapterIdParam, lessonId!);
         if (!lessonData || !lessonData.is_published) {

@@ -13,6 +13,7 @@ import {
 } from "./paymentTypes";
 import {logPaymentAnalytics, PAYMENT_ANALYTICS} from "./logPaymentAnalytics";
 import type {CheckoutSnapshot} from "./extractCheckoutSnapshot";
+import {sendPurchaseConfirmationEmail} from "../email/paymentOrderEmails";
 
 const APPAREL_CATEGORIES = new Set(["Tees", "Hoodies", "Crewnecks"]);
 
@@ -241,6 +242,25 @@ export async function fulfillStripePayment(params: {
       stripe_checkout_session_id: params.stripeSessionId,
     },
   });
+
+  try {
+    const shopLines =
+      purchaseType === "shop" ?
+        ((await db.collection(SHOP_ORDERS_COLLECTION).doc(orderId).get()).data()?.lines as
+          ShopOrderLineDoc[] | undefined) :
+        undefined;
+    await sendPurchaseConfirmationEmail({
+      db,
+      uid,
+      orderId,
+      purchaseType,
+      metadata,
+      snapshot: checkoutSnapshot,
+      shopLines,
+    });
+  } catch (emailErr) {
+    logger.warn("Purchase confirmation email error (non-fatal)", {orderId, emailErr});
+  }
 
   logger.info(`Payment fulfilled order=${orderId} type=${purchaseType} uid=${uid}`);
 }

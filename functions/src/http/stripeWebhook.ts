@@ -19,6 +19,7 @@ import {extractCheckoutSnapshot} from "../stripe/extractCheckoutSnapshot";
 import {fulfillStripePayment, markPaymentOrderFailed} from "../stripe/fulfillStripePayment";
 import {PAYMENT_ORDERS_COLLECTION, type StripePurchaseType} from "../stripe/paymentTypes";
 import {getStripeClient, resolveStripeSecretKey} from "../stripe/stripeClient";
+import {BREVO_API_KEY} from "../email/brevoClient";
 import {STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET} from "../stripe/stripeSecrets";
 import type {PaymentClientPlatform} from "../stripe/paymentTypes";
 
@@ -40,7 +41,7 @@ function readMetadata(session: Stripe.Checkout.Session): Record<string, string> 
 export const stripeWebhook = onRequest(
   {
     region: "us-central1",
-    secrets: [STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET],
+    secrets: [STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, BREVO_API_KEY],
     invoker: "public", // Stripe servers must POST without Firebase Auth
   },
   async (req, res) => {

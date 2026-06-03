@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Your Mortar shop order is confirmed</title>
+</head>
+<body style="margin:0;padding:0;background-color:#ececec;font-family:Arial,Helvetica,sans-serif;">
+  <span style="display:none!important;visibility:hidden;mso-hide:all;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">
+    Thanks for your Mortar shop order — we're preparing it now.
+  </span>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#ececec;">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+        <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;width:100%;">
+          <tr>
+            <td style="background-color:#871002;padding:24px 32px;border-radius:8px 8px 0 0;">
+              <p style="margin:0;font-size:22px;font-weight:bold;color:#fafcfc;">Mortar Shop</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color:#ffffff;padding:32px;border-left:1px solid #e0e0e0;border-right:1px solid #e0e0e0;">
+              <p style="margin:0 0 16px;font-size:16px;color:#2d2d2d;">Hi {{ params.first_name }},</p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.6;color:#2d2d2d;">
+                Thank you — your shop order is confirmed. Order ID: <strong>{{ params.order_id }}</strong>.
+              </p>
+              <p style="margin:0 0 8px;font-size:14px;font-weight:bold;color:#2d2d2d;">Items</p>
+              <p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#2d2d2d;white-space:pre-wrap;">{{ params.order_lines_plain }}</p>
+              <p style="margin:0 0 8px;font-size:14px;font-weight:bold;color:#2d2d2d;">Amounts</p>
+              <p style="margin:0 0 4px;font-size:15px;color:#2d2d2d;">Subtotal: {{ params.amount_subtotal }}</p>
+              <p style="margin:0 0 4px;font-size:15px;color:#2d2d2d;">Tax: {{ params.amount_tax }}</p>
+              <p style="margin:0 0 4px;font-size:15px;color:#2d2d2d;">Shipping: {{ params.amount_shipping }}</p>
+              <p style="margin:0 0 20px;font-size:15px;font-weight:bold;color:#871002;">Total: {{ params.amount_total }}</p>
+              <p style="margin:0 0 8px;font-size:14px;font-weight:bold;color:#2d2d2d;">Ship to</p>
+              <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#2d2d2d;white-space:pre-wrap;">{{ params.shipping_address_plain }}</p>
+              <p style="margin:0 0 24px;font-size:14px;line-height:1.6;color:#666;">
+                We'll email you again when your order ships.
+              </p>
+              <p style="margin:0;font-size:14px;color:#666;">
+                Questions? <a href="mailto:{{ params.support_email }}" style="color:#871002;">{{ params.support_email }}</a>
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color:#f5f5f5;padding:20px 32px;border-radius:0 0 8px 8px;border:1px solid #e0e0e0;border-top:none;text-align:center;">
+              <p style="margin:0;font-size:12px;color:#888;">© Mortar · <a href="{{ params.platform_url }}" style="color:#871002;">{{ params.platform_url }}</a></p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

@@ -19,6 +19,10 @@ import {
   graduationAdmittedToAlumniParams,
   graduationMeetingTimeSelectedParams,
   graduationNotAdmittedParams,
+  paymentEventConfirmedParams,
+  paymentModuleConfirmedParams,
+  paymentShopConfirmedParams,
+  shopFulfillmentUpdateParams,
 } from "../email/buildEmailParams";
 import {DEFAULT_COURSE_DISPLAY_NAME} from "../email/emailConfig";
 import {defaultCourseEmailContext} from "../email/resolveCourseEmailContext";
@@ -132,6 +136,55 @@ function buildSampleParams(
       first_name: firstName,
       invite_code: "TEST-INVITE-1234",
       expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    });
+  case "payment_shop_order_confirmed":
+    return paymentShopConfirmedParams({
+      userEmail,
+      userName,
+      order_id: "test-order-shop",
+      order_lines_plain: "1 × Mortar Logo Tee · Size M · Tees\n1 × Standard shipping",
+      amount_subtotal: 3500,
+      amount_tax: 287,
+      amount_shipping: 800,
+      amount_total: 4587,
+      shipping_address_plain: {
+        name: "Jordan Test",
+        line1: "123 Main St",
+        city: "Cincinnati",
+        state: "OH",
+        postal_code: "45202",
+        country: "US",
+      },
+    });
+  case "payment_event_registration_confirmed":
+    return paymentEventConfirmedParams({
+      userEmail,
+      userName,
+      order_id: "test-order-event",
+      event_title: "Mortar Networking Mixer",
+      event_date: "Wed, March 16, 2026 · 6:00 PM",
+      event_location: "Mortar HQ — Cincinnati, OH",
+      event_id: "test-event-id",
+      amount_total: 2500,
+    });
+  case "payment_module_purchase_confirmed":
+    return paymentModuleConfirmedParams({
+      userEmail,
+      userName,
+      order_id: "test-order-module",
+      course_title: "Mortar Masters Online",
+      module_title: "First Verse",
+      curriculum_url: "https://mortar-stage-stage.up.railway.app/curriculum/mortar_masters_online",
+      amount_total: 9900,
+    });
+  case "shop_order_fulfillment_update":
+    return shopFulfillmentUpdateParams({
+      userEmail,
+      userName,
+      order_id: "test-order-shop",
+      fulfillment_status: "Shipped",
+      tracking_line: "Tracking number: 1Z999AA10123456784",
+      order_lines_plain: "1 × Mortar Logo Tee · Size M",
     });
   default:
     return {};
