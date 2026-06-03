@@ -233,7 +233,6 @@ export function LessonPlayer() {
           itemCount = slidesData.length;
         }
 
-        const courseIdParam = params.get("courseId");
         const [quizData, surveyCheckpoints, progressData] = await Promise.all([
           courseIdParam ? getCourseLessonQuiz(courseIdParam, lessonId!) : Promise.resolve(null),
           courseIdParam ? getCourseLessonSurveyCheckpoints(courseIdParam, lessonId!) : Promise.resolve([]),

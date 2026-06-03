@@ -84,6 +84,7 @@ export const WEB_ANALYTICS_EVENTS = {
   ADMIN_LESSON_DECK_PUBLISH_CLICKED: "admin_lesson_deck_publish_clicked",
   ADMIN_EVENT_CREATE_SUBMITTED: "admin_event_create_submitted",
   ADMIN_SHOP_ITEM_CREATED: "admin_shop_item_created",
+  /** Stripe Checkout — client + webhook */
   PAYMENT_CHECKOUT_STARTED: "payment_checkout_started",
   PAYMENT_CHECKOUT_REDIRECTED: "payment_checkout_redirected",
   PAYMENT_SUCCEEDED: "payment_succeeded",
