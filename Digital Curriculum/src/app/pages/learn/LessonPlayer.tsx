@@ -193,10 +193,7 @@ export function LessonPlayer() {
               Number(courseModule.price) > 0 &&
               !userHasModuleAccess(courseModule, paidMods, moduleIdParam)
             ) {
-              setError(
-                "This module requires purchase. Return to the course page and use Buy module to unlock lessons."
-              );
-              setIsLoading(false);
+              navigate(`/courses/${courseIdParam}`, { replace: true });
               return;
             }
           }

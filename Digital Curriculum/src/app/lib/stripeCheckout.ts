@@ -45,12 +45,21 @@ export async function checkoutModule(params: {
   curriculumModuleId?: string;
   clientPlatform?: PaymentClientPlatform;
 }): Promise<void> {
+  const origin =
+    typeof window !== "undefined" ? window.location.origin.replace(/\/$/, "") : "";
+  const coursePath = `/courses/${encodeURIComponent(params.courseId)}`;
   await startCheckout(
     {
       purchase_type: "module",
       course_id: params.courseId,
       module_id: params.moduleId,
       client_platform: params.clientPlatform ?? "web",
+      ...(origin
+        ? {
+            success_url: `${origin}/payment/success?course_id=${encodeURIComponent(params.courseId)}`,
+            cancel_url: `${origin}${coursePath}`,
+          }
+        : {}),
     },
     WEB_ANALYTICS_EVENTS.PAYMENT_MODULE_PURCHASE_CLICKED
   );

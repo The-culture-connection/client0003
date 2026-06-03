@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router";
+import { useParams, useNavigate, useSearchParams } from "react-router";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
@@ -30,7 +30,12 @@ import { Edit } from "lucide-react";
 import { useScreenAnalytics } from "../../analytics/useScreenAnalytics";
 import { trackEvent } from "../../analytics/trackEvent";
 import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalyticsContract";
-import { getPaidModuleIds, userHasModuleAccess } from "../../lib/moduleAccess";
+import {
+  getPaidModuleIds,
+  userHasModuleAccess,
+  userOwnsAllPaidModules,
+  unpaidPaidModuleTotalCents,
+} from "../../lib/moduleAccess";
 import { checkoutModule } from "../../lib/stripeCheckout";
 import { Lock } from "lucide-react";
 
@@ -38,6 +43,7 @@ export function CourseDetail() {
   useScreenAnalytics("course_detail");
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const [course, setCourse] = useState<Course | null>(null);
   const [courseProgress, setCourseProgress] = useState<CourseProgress | null>(null);
@@ -110,6 +116,26 @@ export function CourseDetail() {
     loadCourse();
   }, [courseId, user]);
 
+  useEffect(() => {
+    if (!courseId || !user?.uid || searchParams.get("purchase") !== "success") return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const paidMods = await getPaidModuleIds(user.uid);
+        if (!cancelled) setPaidModuleIds(paidMods);
+      } catch (e) {
+        console.error("Refresh paid modules after purchase:", e);
+      } finally {
+        if (!cancelled) {
+          navigate(`/courses/${courseId}`, { replace: true });
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [courseId, user?.uid, searchParams, navigate]);
+
   if (loading) {
     return (
       <div className="p-6 max-w-7xl mx-auto">
@@ -134,8 +160,10 @@ export function CourseDetail() {
     );
   }
 
-  const totalPrice = course.totalPrice || course.modules.reduce((sum, m) => sum + (m.price || 0), 0);
   const totalDurationMonths = course.totalDuration || course.modules.reduce((sum, m) => sum + (m.durationMonths || 0), 0);
+  const ownsAllPaidModules = isAdmin || userOwnsAllPaidModules(course, paidModuleIds);
+  const unpaidTotalDollars = unpaidPaidModuleTotalCents(course, paidModuleIds) / 100;
+  const showCoursePriceBadge = !ownsAllPaidModules && unpaidTotalDollars > 0 && course.currency;
   const courseProgressValue = courseProgress
     ? calculateCourseProgress(
         course,
@@ -198,10 +226,10 @@ export function CourseDetail() {
                   Completed
                 </Badge>
               )}
-              {course.currency && totalPrice > 0 && (
+              {showCoursePriceBadge && (
                 <Badge variant="secondary">
                   <DollarSign className="w-3 h-3 mr-1" />
-                  {totalPrice.toFixed(2)}
+                  {unpaidTotalDollars.toFixed(2)}
                 </Badge>
               )}
             </div>
@@ -296,7 +324,7 @@ export function CourseDetail() {
                       <Badge variant="outline" className="text-xs">
                         Module {module.order || moduleIndex + 1}
                       </Badge>
-                      {module.price > 0 && (
+                      {!hasModulePaidAccess && Number(module.price) > 0 && (
                         <Badge variant="secondary" className="text-xs">
                           <DollarSign className="w-3 h-3 mr-1" />
                           {module.price.toFixed(2)}

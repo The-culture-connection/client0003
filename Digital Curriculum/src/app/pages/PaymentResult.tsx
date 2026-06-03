@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Link, useSearchParams } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
@@ -10,12 +10,15 @@ import { useAuth } from "../components/auth/AuthProvider";
 
 export function PaymentSuccessPage() {
   const [params] = useSearchParams();
+  const navigate = useNavigate();
   const orderId = params.get("order_id");
   const sessionId = params.get("session_id");
   const purchaseType = params.get("type");
+  const courseId = params.get("course_id");
   const { user } = useAuth();
   const reportedRef = useRef(false);
   const cartClearedRef = useRef(false);
+  const moduleRedirectRef = useRef(false);
 
   useEffect(() => {
     if (reportedRef.current) return;
@@ -38,6 +41,16 @@ export function PaymentSuccessPage() {
     clearCart(user.uid);
   }, [purchaseType, user?.uid]);
 
+  useEffect(() => {
+    if (purchaseType !== "module" || !courseId || moduleRedirectRef.current) return;
+    moduleRedirectRef.current = true;
+    navigate(`/courses/${encodeURIComponent(courseId)}?purchase=success`, { replace: true });
+  }, [purchaseType, courseId, navigate]);
+
+  if (purchaseType === "module" && courseId) {
+    return <PaymentSuccessLoading />;
+  }
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6">
       <Card className="max-w-md w-full p-8 text-center">
@@ -51,11 +64,6 @@ export function PaymentSuccessPage() {
           <Button asChild className="bg-accent hover:bg-accent/90 text-accent-foreground">
             <Link to="/dashboard">Back to dashboard</Link>
           </Button>
-          {purchaseType === "module" && (
-            <Button variant="outline" asChild>
-              <Link to="/curriculum">Go to curriculum</Link>
-            </Button>
-          )}
           {purchaseType === "event" && (
             <Button variant="outline" asChild>
               <Link to="/events">View events</Link>
