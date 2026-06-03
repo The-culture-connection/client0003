@@ -16,6 +16,40 @@ import type {CheckoutSnapshot} from "./extractCheckoutSnapshot";
 
 const APPAREL_CATEGORIES = new Set(["Tees", "Hoodies", "Crewnecks"]);
 
+type ShopOrderLineDoc = {
+  item_id: string;
+  quantity: number;
+  size?: string;
+  category?: string;
+  name?: string;
+  unit_price_cents?: number;
+};
+
+async function enrichShopOrderLines(
+  db: Firestore,
+  lines: ShopOrderLineDoc[]
+): Promise<ShopOrderLineDoc[]> {
+  const out: ShopOrderLineDoc[] = [];
+  for (const line of lines) {
+    if (line.name && line.unit_price_cents != null) {
+      out.push(line);
+      continue;
+    }
+    const snap = await db.collection(SHOP_ITEMS_COLLECTION).doc(line.item_id).get();
+    const item = snap.data();
+    const unitDollars = Number(item?.price ?? 0);
+    out.push({
+      ...line,
+      name: line.name ?? String(item?.name ?? line.item_id),
+      category: line.category ?? String(item?.category ?? ""),
+      unit_price_cents:
+        line.unit_price_cents ??
+        (unitDollars > 0 ? Math.round(unitDollars * 100) : undefined),
+    });
+  }
+  return out;
+}
+
 async function registerUserForEvent(
   db: Firestore,
   eventId: string,
@@ -84,14 +118,8 @@ async function fulfillShopOrder(
   linesJson: string,
   snapshot: CheckoutSnapshot
 ): Promise<void> {
-  const lines = JSON.parse(linesJson) as Array<{
-    item_id: string;
-    quantity: number;
-    size?: string;
-    category?: string;
-    name?: string;
-    unit_price_cents?: number;
-  }>;
+  const parsed = JSON.parse(linesJson) as ShopOrderLineDoc[];
+  const lines = await enrichShopOrderLines(db, parsed);
 
   const fulfillment_status: ShopFulfillmentStatus = "unfulfilled";
 

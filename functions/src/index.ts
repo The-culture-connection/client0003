@@ -25,6 +25,7 @@ export {
   onEventNeedsApprovalAdminPush,
   onDigitalStudentDmCreatedAdminPush,
   onDigitalStudentDmReplyAdminPush,
+  onShopOrderCreatedAdminPush,
   scheduledEventReminderPushes,
   adminSendPushNotification,
   getPushNotificationActivity,

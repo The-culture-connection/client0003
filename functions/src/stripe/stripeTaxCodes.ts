@@ -2,13 +2,17 @@ import type {StripePurchaseType} from "./paymentTypes";
 
 /**
  * Stripe Tax product tax codes for Checkout `price_data.product_data.tax_code`.
- * @see https://stripe.com/docs/tax/tax-categories
+ * @see https://stripe.com/docs/tax/tax-codes
  * Mortar policy: taxable one-time products (Ohio); subscriptions N/A (we use `mode: payment` only).
  */
-const TANGIBLE_GOODS = "txcd_20030000";
-const TRAINING_SERVICES = "txcd_92010001";
-const EVENT_ADMISSION = "txcd_19020000";
-const SHIPPING = "txcd_92020001";
+/** Mortar shop — apparel and physical merch */
+const CLOTHING_AND_FOOTWEAR = "txcd_30011000";
+/** Digital Curriculum — paid module (self-study / on-demand) */
+const TRAINING_SELF_STUDY_WEB = "txcd_20060058";
+/** Paid community / curriculum events (instructional sessions) */
+const TRAINING_IN_PERSON_OR_WORKSHOP = "txcd_20060044";
+/** Flat shipping line on shop checkout — Stripe “Shipping” category */
+const SHIPPING = "txcd_92010001";
 
 export function taxCodeForCheckoutLine(
   purchaseType: StripePurchaseType,
@@ -19,12 +23,12 @@ export function taxCodeForCheckoutLine(
   }
   switch (purchaseType) {
   case "shop":
-    return TANGIBLE_GOODS;
+    return CLOTHING_AND_FOOTWEAR;
   case "module":
-    return TRAINING_SERVICES;
+    return TRAINING_SELF_STUDY_WEB;
   case "event":
-    return EVENT_ADMISSION;
+    return TRAINING_IN_PERSON_OR_WORKSHOP;
   default:
-    return TANGIBLE_GOODS;
+    return CLOTHING_AND_FOOTWEAR;
   }
 }

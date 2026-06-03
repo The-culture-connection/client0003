@@ -88,12 +88,12 @@ Prices are resolved **only on the server** from `courses`, `events` / `events_mo
 
 Checkout sessions set **`automatic_tax: { enabled: true }`**. Line items include Stripe **product tax codes** (`functions/src/stripe/stripeTaxCodes.ts`):
 
-| Purchase type | Tax code category |
-|---------------|-------------------|
-| **shop** (apparel, goods) | Tangible goods |
-| **module** | Training / coaching services |
-| **event** (ticket) | Event admission |
-| **shop shipping** line | Shipping |
+| Purchase type | Stripe tax code | Category |
+|---------------|-----------------|----------|
+| **shop** (apparel, goods) | `txcd_30011000` | Clothing & Footwear |
+| **module** | `txcd_20060058` | Training — self-study web-based |
+| **event** (ticket) | `txcd_20060044` | Training / workshop sessions |
+| **shop shipping** line | `txcd_92010001` | Shipping (official; not `txcd_92020001`) |
 
 - **Module & event:** Stripe collects a **billing address** (required).
 - **Shop:** Stripe collects a **US shipping address** (tax uses ship-to where applicable).
@@ -177,3 +177,65 @@ Web (Digital Curriculum) and mobile expansion stream:
 ## Mobile (Expansion)
 
 Paid events open Stripe Checkout in the system browser via `StripeCheckoutService`. After payment, the webhook registers the user; refresh the event screen to see RSVP status.
+
+## Testing without real charges (most accurate path)
+
+Use **Stripe Test mode** end-to-end. You still exercise Checkout, webhooks, tax, shipping address, Firestore `shop_orders`, admin fulfillment, and admin push — but card charges are simulated.
+
+### 1. Test API keys everywhere
+
+| Place | Value |
+|-------|--------|
+| Firebase `STRIPE_SECRET_KEY` | `sk_test_…` from [Stripe test API keys](https://dashboard.stripe.com/test/apikeys) |
+| Stripe Dashboard toggle | **Test mode** ON (top-right) |
+| Webhook endpoint | Create a **test** webhook pointing at your `stripeWebhook` URL with the same event types |
+
+Redeploy functions after changing secrets.
+
+### 2. Test webhook delivery locally (optional, highest fidelity)
+
+With the [Stripe CLI](https://stripe.com/docs/stripe-cli):
+
+```bash
+stripe login
+stripe listen --forward-to https://us-central1-<project-id>.cloudfunctions.net/stripeWebhook
+```
+
+Copy the CLI’s `whsec_…` into `STRIPE_WEBHOOK_SECRET` for that environment, or use the CLI secret only while listening.
+
+### 3. Run a shop checkout in staging
+
+1. Sign in to Digital Curriculum (staging) as a **test learner**.
+2. Add an in-stock shop item (≥ **$0.50** per line).
+3. **Checkout with Stripe** — use test card **`4242 4242 4242 4242`**, any future expiry, any CVC, any ZIP.
+4. Use an **Ohio** shipping address (e.g. Cincinnati) to verify sales tax appears on the Stripe page.
+5. Complete payment → `/payment/success`.
+
+### 4. Verify backend + admin UX
+
+| Check | Where |
+|-------|--------|
+| Webhook succeeded | Stripe Dashboard → Developers → Webhooks → event log |
+| Order doc | Firestore `shop_orders/{orderId}` — `fulfillment_status: unfulfilled`, lines with **name**, tax/shipping cents, **shipping_address** |
+| Admin action strip | **Admin Command Center** → **Shop orders to fulfill** count |
+| Fulfillment panel | **Admin → Shop** — plain-language item details, amounts, ship-to |
+| Push (admins with FCM token) | Notification: “Shop order needs fulfillment” |
+
+### 5. Other purchase types (same test card)
+
+- **Module:** course detail → Buy module (billing address + tax).
+- **Event:** paid event → register with payment.
+
+### 6. Stripe Tax in test mode
+
+Enable Stripe Tax and **Ohio** registration in **test mode** as well (Settings → Tax). If tax is $0, confirm Ohio registration and that the address is in a taxable state.
+
+### 7. What test mode does *not* do
+
+- No money moves to your bank (payouts are live-only).
+- Emails/receipts may differ from production branding.
+- Use **live mode** with a small real charge only when you are ready for a final smoke test.
+
+### 8. Replay a webhook without paying again
+
+Stripe Dashboard → **Developers → Webhooks** → your endpoint → select a `checkout.session.completed` event → **Resend**. Useful to re-test fulfillment if you already have a completed session.

@@ -38,6 +38,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { adminPanelPath } from "../../lib/adminHubNavigation";
 import { useAdminHubActionCounts } from "../../hooks/useAdminHubActionCounts";
+import { formatShopOrderActionPreview } from "../../lib/shopOrderDisplay";
 import { cn } from "../../components/ui/utils";
 import type { MortarPlatformScope } from "../../lib/mortarPlatformScope";
 import { PlatformScopeBadge, PlatformScopeKey } from "../../components/admin/MortarPlatformScope";
@@ -282,6 +283,19 @@ export function AdminCommandCenter() {
       variant: "info",
       scope: "digital_curriculum",
     },
+    {
+      key: "shop_orders",
+      title: "Shop orders to fulfill",
+      description:
+        counts.shopOrdersNeedingFulfillmentPreview[0] != null
+          ? formatShopOrderActionPreview(counts.shopOrdersNeedingFulfillmentPreview[0])
+          : "Paid Mortar shop orders waiting to be packed and shipped.",
+      href: adminPanelPath("shop"),
+      count: counts.shopOrdersNeedingFulfillment,
+      icon: ShoppingBag,
+      variant: "critical",
+      scope: "digital_curriculum",
+    },
   ];
 
   const stripStyles = (active: boolean, variant: ActionStripItem["variant"]) => {
@@ -346,7 +360,7 @@ export function AdminCommandCenter() {
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
           {actionStripItems.map((item) => {
             const active = item.count > 0;
             return (

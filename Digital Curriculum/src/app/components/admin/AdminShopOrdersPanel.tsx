@@ -7,13 +7,12 @@ import { Input } from "../ui/input";
 import { Loader2, Package, Truck } from "lucide-react";
 import {
   FULFILLMENT_STATUS_LABELS,
-  formatCents,
-  formatOrderAddress,
   subscribeShopOrders,
   updateShopOrderFulfillment,
   type ShopFulfillmentStatus,
   type ShopOrder,
 } from "../../lib/shopOrders";
+import { formatShopOrderPlainSummary } from "../../lib/shopOrderDisplay";
 
 type FilterKey = "needs_action" | "all" | "shipped" | "delivered";
 
@@ -40,18 +39,7 @@ function OrderRow({ order }: { order: ShopOrder }) {
     setNotes(order.admin_notes ?? "");
   }, [order.id, order.fulfillment_status, order.tracking_number, order.admin_notes]);
 
-  const createdLabel = order.created_at?.toDate
-    ? order.created_at.toDate().toLocaleString()
-    : "—";
-
-  const lineSummary = order.lines
-    .map((l) => {
-      const qty = l.quantity ?? 1;
-      const label = l.name ?? l.item_id;
-      const size = l.size ? ` (${l.size})` : "";
-      return `${qty}× ${label}${size}`;
-    })
-    .join(", ");
+  const summary = formatShopOrderPlainSummary(order);
 
   const handleSave = async () => {
     setSaving(true);
@@ -73,44 +61,34 @@ function OrderRow({ order }: { order: ShopOrder }) {
   return (
     <div className="rounded-lg border border-border p-4 space-y-3 bg-muted/10">
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <p className="font-semibold text-foreground">Order {order.id.slice(0, 8)}…</p>
-          <p className="text-xs text-muted-foreground">{createdLabel}</p>
-          {order.customer_email && (
-            <p className="text-sm text-muted-foreground mt-1">{order.customer_email}</p>
+        <div className="min-w-0">
+          <p className="font-semibold text-foreground">{summary.headline}</p>
+          {order.lines[0]?.name && (
+            <p className="text-sm text-foreground mt-1 truncate">
+              {order.lines.map((l) => l.name).filter(Boolean).join(", ")}
+            </p>
           )}
         </div>
-        <Badge variant={statusBadgeVariant(order.fulfillment_status)}>
+        <Badge variant={statusBadgeVariant(order.fulfillment_status)} className="shrink-0">
           {FULFILLMENT_STATUS_LABELS[order.fulfillment_status]}
         </Badge>
       </div>
 
-      <p className="text-sm text-foreground">{lineSummary || "No line items"}</p>
-
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
-        <div>
-          <span className="text-muted-foreground">Subtotal</span>
-          <p className="font-medium">{formatCents(order.subtotal_cents, order.currency)}</p>
-        </div>
-        <div>
-          <span className="text-muted-foreground">Tax</span>
-          <p className="font-medium">{formatCents(order.tax_cents, order.currency)}</p>
-        </div>
-        <div>
-          <span className="text-muted-foreground">Shipping</span>
-          <p className="font-medium">{formatCents(order.shipping_cents, order.currency)}</p>
-        </div>
-        <div>
-          <span className="text-muted-foreground">Total</span>
-          <p className="font-medium text-accent">{formatCents(order.total_cents, order.currency)}</p>
-        </div>
-      </div>
-
-      <div className="text-sm">
-        <p className="text-muted-foreground mb-1">Ship to</p>
-        <pre className="whitespace-pre-wrap font-sans text-foreground text-xs bg-muted/30 rounded p-2">
-          {formatOrderAddress(order.shipping_address)}
-        </pre>
+      <div className="space-y-3 text-sm">
+        {summary.sections.map((section) => (
+          <div key={section.title} className="rounded-md bg-muted/25 border border-border/60 p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+              {section.title}
+            </p>
+            <ul className="space-y-1 text-foreground">
+              {section.lines.map((line, i) => (
+                <li key={`${section.title}-${i}`} className="leading-relaxed">
+                  {line}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">

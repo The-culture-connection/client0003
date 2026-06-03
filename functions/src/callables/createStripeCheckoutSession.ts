@@ -81,12 +81,17 @@ export const createStripeCheckoutSession = onCall(
     };
 
     if (input.purchase_type === "shop") {
+      const productLines = resolved.line_items.filter(
+        (li) => li.metadata?.line_type !== "shipping"
+      );
       orderMetadata.shop_lines_json = JSON.stringify(
-        input.lines.map((l) => ({
-          item_id: l.item_id,
-          quantity: l.quantity,
-          ...(l.size != null && l.size !== "" ? {size: l.size} : {}),
-          ...(l.category != null && l.category !== "" ? {category: l.category} : {}),
+        productLines.map((li) => ({
+          item_id: li.metadata.item_id ?? "",
+          quantity: li.quantity,
+          name: li.name,
+          unit_price_cents: li.amount_cents,
+          ...(li.metadata.size ? {size: li.metadata.size} : {}),
+          ...(li.metadata.category ? {category: li.metadata.category} : {}),
         }))
       );
     }

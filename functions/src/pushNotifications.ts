@@ -30,7 +30,8 @@ type PushEventType =
   | "admin_graduation_application"
   | "admin_user_reported"
   | "admin_event_needs_approval"
-  | "admin_digital_dm";
+  | "admin_digital_dm"
+  | "admin_shop_order_needs_fulfillment";
 
 async function assertCallerIsNetworkAdmin(uid: string): Promise<void> {
   const udoc = await db.collection("users").doc(uid).get();
@@ -385,6 +386,76 @@ export const onEventNeedsApprovalAdminPush = onDocumentCreated(
       body: `${title} is waiting for approval.`,
       deepLink: "/admin/events",
       data: {event_id: eventId},
+      source: "trigger",
+    });
+  }
+);
+
+function formatShopLinesPushBody(
+  lines: Array<{name?: string; item_id?: string; quantity?: number; size?: string; category?: string}>
+): string {
+  if (!lines.length) return "A customer paid for a Mortar shop order. Open Admin → Shop to fulfill.";
+  const first = lines[0]!;
+  const name = (typeof first.name === "string" && first.name.trim()) ?
+    first.name.trim() :
+    (typeof first.item_id === "string" ? first.item_id : "item");
+  const qty = typeof first.quantity === "number" && first.quantity > 0 ? first.quantity : 1;
+  let body = `${qty}× ${name}`;
+  if (typeof first.size === "string" && first.size.trim()) body += `, size ${first.size.trim()}`;
+  if (typeof first.category === "string" && first.category.trim()) {
+    body += ` (${first.category.trim()})`;
+  }
+  if (lines.length > 1) body += ` and ${lines.length - 1} more item${lines.length > 2 ? "s" : ""}`;
+  body += ". Pack and ship when ready.";
+  return body;
+}
+
+export const onShopOrderCreatedAdminPush = onDocumentCreated(
+  {region: "us-central1", document: "shop_orders/{orderId}"},
+  async (event) => {
+    const orderId = event.params.orderId as string;
+    const data = event.data?.data() as Record<string, unknown> | undefined;
+    if (!data) return;
+
+    const status = typeof data.status === "string" ? data.status : "";
+    if (status !== "paid") return;
+
+    const fulfillment = typeof data.fulfillment_status === "string" ?
+      data.fulfillment_status :
+      "unfulfilled";
+    if (fulfillment !== "unfulfilled") return;
+
+    const dedupeKey = `shop_order_fulfillment_${orderId}`;
+    const ok = await reminderDedupeOnce(dedupeKey);
+    if (!ok) return;
+
+    const lines = Array.isArray(data.lines) ?
+      (data.lines as Array<{
+        name?: string;
+        item_id?: string;
+        quantity?: number;
+        size?: string;
+        category?: string;
+      }>) :
+      [];
+
+    const adminUids = await loadAdminRecipientUids();
+    if (adminUids.length === 0) return;
+
+    const totalCents = typeof data.total_cents === "number" ? data.total_cents : 0;
+    const totalStr =
+      totalCents > 0 ? ` $${(totalCents / 100).toFixed(2)} paid.` : "";
+
+    await sendPushToUids({
+      type: "admin_shop_order_needs_fulfillment",
+      uids: adminUids,
+      title: "Shop order needs fulfillment",
+      body: `${formatShopLinesPushBody(lines)}${totalStr}`,
+      deepLink: "/admin",
+      data: {
+        order_id: orderId,
+        web_admin_path: "/admin/panel/shop",
+      },
       source: "trigger",
     });
   }
