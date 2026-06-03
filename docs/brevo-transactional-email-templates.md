@@ -201,7 +201,9 @@ sequenceDiagram
 
 ## Admin email testing panel
 
-Staff with **Admin** or **superAdmin** can open **Admin → Email testing** (`/admin/panel/email-testing`). Enter any recipient email and optional first name, then send a sample for each configured Brevo template. Callables: `adminListTestEmailTemplates`, `adminSendTestTransactionalEmail` (skips user preference opt-outs; logs to `email_activity` with tag `admin_test`).
+Staff with **Admin** or **superAdmin** can open **Admin → Email testing** (`/admin/panel/email-testing`). Enter any recipient email and optional first name, then send a sample for each configured Brevo template.
+
+**How the feature works:** The panel lists every key in `functions/src/email/brevoTemplates.ts`, grouped as Course & onboarding, Graduation, Events & admin, and **Payments & shop** (`payment_shop_order_confirmed`, `payment_event_registration_confirmed`, `payment_module_purchase_confirmed`, `shop_order_fulfillment_update`). The web app merges a local catalog so payment rows appear even before Functions deploy; rows marked **deploy required** need `adminListTestEmailTemplates` + `adminSendTestTransactionalEmail` deployed with the latest `brevoTemplates` (IDs 12–15). Callables skip user preference opt-outs; logs to `email_activity` with tag `admin_test`.
 
 ---
 

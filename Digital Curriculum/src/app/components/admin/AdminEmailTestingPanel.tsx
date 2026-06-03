@@ -11,21 +11,10 @@ import {
   sendTestTransactionalEmail,
   type TestEmailTemplateInfo,
 } from "../../lib/adminEmailTesting";
-
-const TEMPLATE_LABELS: Record<string, string> = {
-  course_inactive_7_days: "Course inactive — 7 days",
-  course_inactive_14_days: "Course inactive — 14 days",
-  graduation_meeting_time_selected: "Graduation — meeting time confirmed",
-  graduation_admitted_to_alumni: "Graduation — admitted to alumni",
-  graduation_not_admitted: "Graduation — not admitted",
-  event_announcement_to_registrants: "Event announcement to registrants",
-  admin_custom_announcement: "Admin custom announcement",
-  app_access_code_invite: "App access code invite",
-};
-
-function templateLabel(key: string): string {
-  return TEMPLATE_LABELS[key] ?? key;
-}
+import {
+  BREVO_TEST_EMAIL_SECTION_LABELS,
+  type BrevoTestEmailSection,
+} from "../../lib/brevoTestEmailCatalog";
 
 export function AdminEmailTestingPanel() {
   const [testEmail, setTestEmail] = useState("");
@@ -72,8 +61,9 @@ export function AdminEmailTestingPanel() {
         firstName: firstName.trim() || undefined,
       });
       setLastParams(out.params);
+      const label = templates.find((t) => t.key === templateKey)?.label ?? templateKey;
       setResult(
-        `Sent "${templateLabel(templateKey)}" to ${out.to}` +
+        `Sent "${label}" to ${out.to}` +
           (out.messageId ? ` (messageId: ${out.messageId})` : "") +
           ". Check inbox and Firestore email_activity."
       );
@@ -167,47 +157,78 @@ export function AdminEmailTestingPanel() {
         ) : templates.length === 0 ? (
           <p className="text-sm text-muted-foreground">No templates configured.</p>
         ) : (
-          <div className="space-y-3">
-            {templates.map((tpl) => (
-              <div
-                key={tpl.key}
-                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-lg border border-border bg-card/50"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium text-foreground">{templateLabel(tpl.key)}</p>
-                  <p className="text-xs text-muted-foreground mt-1 font-mono truncate">{tpl.key}</p>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    <Badge variant="secondary" className="text-xs">
-                      Brevo ID {tpl.template_id}
-                    </Badge>
-                    {tpl.preference_category && (
-                      <Badge variant="outline" className="text-xs">
-                        {tpl.preference_category}
-                      </Badge>
-                    )}
+          <div className="space-y-8">
+            {templates.some((t) => t.fromCatalogOnly) && (
+              <p className="text-sm text-amber-700 dark:text-amber-400 border border-amber-500/30 bg-amber-500/10 rounded-md p-3">
+                Some templates (including payment emails) are not on the deployed Functions build yet.
+                Deploy{" "}
+                <code className="text-xs bg-muted px-1 rounded">adminListTestEmailTemplates</code> and{" "}
+                <code className="text-xs bg-muted px-1 rounded">adminSendTestTransactionalEmail</code>{" "}
+                to enable Send test for those rows.
+              </p>
+            )}
+            {(
+              ["course", "graduation", "events", "payments"] as BrevoTestEmailSection[]
+            ).map((section) => {
+              const sectionTemplates = templates.filter((t) => t.section === section);
+              if (sectionTemplates.length === 0) return null;
+              return (
+                <div key={section}>
+                  <h4 className="text-sm font-semibold text-foreground mb-3">
+                    {BREVO_TEST_EMAIL_SECTION_LABELS[section]}
+                  </h4>
+                  <div className="space-y-3">
+                    {sectionTemplates.map((tpl) => (
+                      <div
+                        key={tpl.key}
+                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-lg border border-border bg-card/50"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-foreground">{tpl.label}</p>
+                          <p className="text-xs text-muted-foreground mt-1 font-mono truncate">
+                            {tpl.key}
+                          </p>
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            <Badge variant="secondary" className="text-xs">
+                              Brevo ID {tpl.template_id}
+                            </Badge>
+                            {tpl.fromCatalogOnly && (
+                              <Badge variant="outline" className="text-xs border-amber-500/50">
+                                deploy required
+                              </Badge>
+                            )}
+                            {tpl.preference_category && (
+                              <Badge variant="outline" className="text-xs">
+                                {tpl.preference_category}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={sendingKey !== null || tpl.fromCatalogOnly}
+                          onClick={() => handleSend(tpl.key)}
+                          className="shrink-0 bg-accent hover:bg-accent/90 text-accent-foreground"
+                        >
+                          {sendingKey === tpl.key ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Sending…
+                            </>
+                          ) : (
+                            <>
+                              <Send className="w-4 h-4 mr-2" />
+                              Send test
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    ))}
                   </div>
                 </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={sendingKey !== null}
-                  onClick={() => handleSend(tpl.key)}
-                  className="shrink-0 bg-accent hover:bg-accent/90 text-accent-foreground"
-                >
-                  {sendingKey === tpl.key ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Sending…
-                    </>
-                  ) : (
-                    <>
-                      <Send className="w-4 h-4 mr-2" />
-                      Send test
-                    </>
-                  )}
-                </Button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </Card>

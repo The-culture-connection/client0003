@@ -58,6 +58,11 @@ function preferenceCategoryForTemplate(
   case "admin_custom_announcement":
   case "app_access_code_invite":
     return "admin_messages";
+  case "payment_shop_order_confirmed":
+  case "payment_event_registration_confirmed":
+  case "payment_module_purchase_confirmed":
+  case "shop_order_fulfillment_update":
+    return "admin_messages";
   default:
     return undefined;
   }

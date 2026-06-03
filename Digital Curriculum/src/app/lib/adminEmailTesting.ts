@@ -1,10 +1,15 @@
 import { httpsCallable } from "firebase/functions";
 import { functions } from "./firebase";
+import { mergeTestEmailTemplates } from "./brevoTestEmailCatalog";
 
 export type TestEmailTemplateInfo = {
   key: string;
   template_id: number;
   preference_category: string | null;
+  label: string;
+  section: "course" | "graduation" | "events" | "payments";
+  /** True when Functions list omitted this key — deploy admin email callables to enable send. */
+  fromCatalogOnly: boolean;
 };
 
 export type SendTestTransactionalEmailResult = {
@@ -19,8 +24,14 @@ export type SendTestTransactionalEmailResult = {
 export async function listTestEmailTemplates(): Promise<TestEmailTemplateInfo[]> {
   const fn = httpsCallable(functions, "adminListTestEmailTemplates");
   const res = await fn({});
-  const data = res.data as { templates: TestEmailTemplateInfo[] };
-  return data.templates ?? [];
+  const data = res.data as {
+    templates: Array<{
+      key: string;
+      template_id: number;
+      preference_category: string | null;
+    }>;
+  };
+  return mergeTestEmailTemplates(data.templates ?? []);
 }
 
 export async function sendTestTransactionalEmail(input: {
