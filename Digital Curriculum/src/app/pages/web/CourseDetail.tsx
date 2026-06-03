@@ -272,6 +272,7 @@ export function CourseDetail() {
             .map((module, moduleIndex) => {
               const curriculumModuleId =
                 course.curriculumMapping?.modules?.[moduleIndex]?.moduleId;
+              const moduleCheckoutId = module.id ?? curriculumModuleId;
               const hasModulePaidAccess =
                 isAdmin ||
                 userHasModuleAccess(module, paidModuleIds, curriculumModuleId);
@@ -333,14 +334,20 @@ export function CourseDetail() {
                     <Button
                       size="sm"
                       className="bg-accent hover:bg-accent/90 text-accent-foreground mr-2"
-                      disabled={purchasingModuleId === (module.id ?? module.title)}
+                      disabled={purchasingModuleId === (moduleCheckoutId ?? module.title)}
                       onClick={async () => {
-                        if (!course.id || !module.id) return;
-                        setPurchasingModuleId(module.id);
+                        if (!course.id) return;
+                        if (!moduleCheckoutId) {
+                          alert(
+                            "This module cannot be purchased yet. Please contact support or ask an admin to re-save the course."
+                          );
+                          return;
+                        }
+                        setPurchasingModuleId(moduleCheckoutId);
                         try {
                           await checkoutModule({
                             courseId: course.id,
-                            moduleId: module.id,
+                            moduleId: moduleCheckoutId,
                             curriculumModuleId,
                           });
                         } catch (e) {
@@ -351,7 +358,9 @@ export function CourseDetail() {
                         }
                       }}
                     >
-                      {purchasingModuleId === module.id ? "Redirecting…" : `Buy module · $${Number(module.price).toFixed(2)}`}
+                      {purchasingModuleId === moduleCheckoutId
+                        ? "Redirecting…"
+                        : `Buy module · $${Number(module.price).toFixed(2)}`}
                     </Button>
                   )}
                   <Button

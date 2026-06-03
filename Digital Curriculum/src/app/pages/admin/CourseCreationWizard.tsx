@@ -315,6 +315,7 @@ export function CourseCreationWizard() {
           });
         }
         courseModules.push({
+          id: mapping.modules[index]?.moduleId,
           title: moduleData.title,
           order: index + 1,
           price: parseFloat(moduleData.price),

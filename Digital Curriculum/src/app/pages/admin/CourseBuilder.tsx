@@ -988,6 +988,7 @@ export function CourseBuilder() {
         setModules(accumulatedModules);
 
         const moduleObj: any = {
+          id: moduleId,
           title: moduleData.title || `Module ${moduleIndex + 1}`,
           order: moduleIndex + 1,
           price: parseFloat(moduleData.price || "0"),

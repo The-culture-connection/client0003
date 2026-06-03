@@ -95,7 +95,18 @@ export async function resolveCheckoutPricing(
     }
     const course = courseSnap.data()!;
     const modules = (course.modules as Array<Record<string, unknown>>) ?? [];
-    const mod = modules.find((m) => m.id === input.module_id || m.moduleId === input.module_id);
+    const mappingModules =
+      (course.curriculumMapping as {modules?: Array<{moduleId?: string}>} | undefined)?.modules ??
+      [];
+
+    let modIndex = modules.findIndex(
+      (m) =>
+        String(m.id ?? "") === input.module_id || String(m.moduleId ?? "") === input.module_id
+    );
+    if (modIndex < 0) {
+      modIndex = mappingModules.findIndex((m) => m.moduleId === input.module_id);
+    }
+    const mod = modIndex >= 0 ? modules[modIndex] : undefined;
     if (!mod) {
       throw new HttpsError("not-found", "Module not found in course");
     }
@@ -103,9 +114,7 @@ export async function resolveCheckoutPricing(
     const amountCents = dollarsToCents(price, String(course.currency ?? "usd").toLowerCase());
     const title = String(mod.title ?? "Course module");
     const curriculumModuleId =
-      (course.curriculumMapping as {modules?: Array<{moduleId?: string}>} | undefined)?.modules?.find(
-        (_, idx) => modules[idx]?.id === mod.id || modules[idx] === mod
-      )?.moduleId ?? input.module_id;
+      mappingModules[modIndex]?.moduleId ?? String(mod.id ?? input.module_id);
 
     return {
       currency: String(course.currency ?? "usd").toLowerCase(),
