@@ -131,6 +131,8 @@ class UserProfileRepository {
     String? photoUrl,
     String? businessLogoUrl,
     String? graduatedCityProgram,
+    bool emailOptIn = true,
+    String termsVersion = '2023-07',
   }) async {
     final user = _auth.currentUser;
     if (user == null) throw StateError('Not signed in');
@@ -188,6 +190,16 @@ class UserProfileRepository {
       'onboardingComplete': true,
       'updated_at': FieldValue.serverTimestamp(),
       'expansion_app_registered': true,
+      // Terms of Use agreement
+      'terms_accepted': true,
+      'terms_version': termsVersion,
+      'terms_accepted_at': FieldValue.serverTimestamp(),
+      // Email preferences based on user's opt-in choice
+      'email_opt_out_all': !emailOptIn,
+      'email_pref_course_nudges': emailOptIn,
+      'email_pref_graduation_updates': emailOptIn,
+      'email_pref_events': emailOptIn,
+      'email_pref_admin_messages': emailOptIn,
       if (!alreadyAppRegistered)
         'expansion_app_registered_at': FieldValue.serverTimestamp(),
       if (photoUrl != null && photoUrl.trim().isNotEmpty) 'photo_url': photoUrl.trim(),

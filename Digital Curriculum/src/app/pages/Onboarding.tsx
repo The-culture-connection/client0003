@@ -6,6 +6,7 @@ import { trackEvent } from "../analytics/trackEvent";
 import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalyticsContract";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../lib/firebase";
+import { Step0TermsAndEmail, TERMS_VERSION } from "../components/onboarding/Step0TermsAndEmail";
 import { Step1Identity } from "../components/onboarding/Step1Identity";
 import { Step2Goals } from "../components/onboarding/Step2Goals";
 import { Step3ConfidentSkills } from "../components/onboarding/Step3ConfidentSkills";
@@ -23,8 +24,10 @@ export function OnboardingPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [currentStep, setCurrentStep] = useState(1);
+  // Step 0 = Terms & Email consent; steps 1-7 = profile steps; step 8 = completion
+  const [currentStep, setCurrentStep] = useState(0);
   const [onboardingData, setOnboardingData] = useState<OnboardingData>({});
+  const [emailOptIn, setEmailOptIn] = useState(true);
 
   useEffect(() => {
     if (loading) return;
@@ -38,6 +41,14 @@ export function OnboardingPage() {
       trackEvent(WEB_ANALYTICS_EVENTS.ONBOARDING_COMPLETION_VIEWED, {});
     }
   }, [currentStep]);
+
+  // If user already accepted terms (resumed session), skip step 0
+  useEffect(() => {
+    if (!loading && currentStep === 0) {
+      const alreadyAccepted = onboardingData.onboarding_status && onboardingData.onboarding_status !== "needs_profile";
+      if (alreadyAccepted) setCurrentStep(1);
+    }
+  }, [loading, currentStep, onboardingData.onboarding_status]);
 
   // Load existing onboarding data
   useEffect(() => {
@@ -66,7 +77,8 @@ export function OnboardingPage() {
             onboarding_status: data.onboarding_status || "needs_profile",
           });
 
-          // Determine which step to show based on what's completed
+          // Determine which step to show based on what's completed.
+          // Step 0 (terms) is always skipped on resume since user already agreed.
           if (!data.first_name || !data.last_name || !data.city || !data.state) {
             setCurrentStep(1);
           } else if (!data.business_goals || data.business_goals.length === 0) {
@@ -81,6 +93,10 @@ export function OnboardingPage() {
             setCurrentStep(6);
           } else {
             setCurrentStep(7); // Profile links
+          }
+          // Restore email opt-in preference if previously saved
+          if (typeof data.email_opt_out_all === "boolean") {
+            setEmailOptIn(!data.email_opt_out_all);
           }
         }
       } catch (error) {
@@ -110,13 +126,16 @@ export function OnboardingPage() {
         updated_at: serverTimestamp(),
       };
 
-      // On final onboarding completion, default email permissions to enabled.
+      // On final completion, save email preferences based on user's opt-in choice.
       if (!partial) {
-        dataToSave.email_opt_out_all = false;
-        dataToSave.email_pref_course_nudges = true;
-        dataToSave.email_pref_graduation_updates = true;
-        dataToSave.email_pref_events = true;
-        dataToSave.email_pref_admin_messages = true;
+        dataToSave.email_opt_out_all = !emailOptIn;
+        dataToSave.email_pref_course_nudges = emailOptIn;
+        dataToSave.email_pref_graduation_updates = emailOptIn;
+        dataToSave.email_pref_events = emailOptIn;
+        dataToSave.email_pref_admin_messages = emailOptIn;
+        dataToSave.terms_accepted = true;
+        dataToSave.terms_version = TERMS_VERSION;
+        dataToSave.terms_accepted_at = serverTimestamp();
       }
 
       // Remove undefined values to avoid Firestore issues
@@ -149,6 +168,11 @@ export function OnboardingPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleTermsAccepted = (optIn: boolean) => {
+    setEmailOptIn(optIn);
+    setCurrentStep(1);
   };
 
   const handleStep1Update = (identityData: {
@@ -269,9 +293,18 @@ export function OnboardingPage() {
     );
   }
 
+  // Step 0: Terms & Email consent — shown before the profile steps
+  if (currentStep === 0) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Step0TermsAndEmail onAccept={handleTermsAccepted} />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Progress indicator */}
+      {/* Progress indicator — only shown for profile steps 1-7 */}
       <div className="border-b border-border bg-card">
         <div className="max-w-4xl mx-auto px-8 py-4">
           <div className="flex items-center justify-between mb-2">

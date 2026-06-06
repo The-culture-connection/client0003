@@ -56,6 +56,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   int _weeklyHours = 40;
   int _ownership = 5;
 
+  // Terms & email consent (step 0)
+  bool _termsAccepted = false;
+  bool _emailOptIn = true;
+
   bool _saving = false;
   String? _error;
   bool _onboardingCompletionEventSent = false;
@@ -67,7 +71,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   static const int _maxImageBytes = 10 * 1024 * 1024;
 
   static const _minSkills = 3;
-  static const _pageCount = 7;
+  // 8 pages: 0=Terms, 1=Identity, 2=Goals, 3=ConfidentSkills, 4=DesiredSkills, 5=Tribe, 6=WorkStructure, 7=ProfileLinks
+  static const _pageCount = 8;
+  static const _termsVersion = '2023-07';
 
   @override
   void initState() {
@@ -124,6 +130,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   bool _cohortIdIsBlank() => _cohortId.text.trim().isEmpty;
+
+  bool _validateTerms() {
+    if (!_termsAccepted) {
+      _error = 'You must agree to the Terms of Use to continue.';
+      return false;
+    }
+    _error = null;
+    return true;
+  }
 
   bool _validateStep1(BuildContext context) {
     if (_firstName.text.trim().isEmpty ||
@@ -185,6 +200,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   void _nextStep() {
     if (_stepIndex == 0) {
+      // Step 0: Terms & Email consent
+      if (!_validateTerms()) {
+        setState(() {});
+        return;
+      }
+    } else if (_stepIndex == 1) {
       if (!_validateStep1(context)) {
         unawaited(
           ExpansionAnalytics.log(
@@ -196,7 +217,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         setState(() {});
         return;
       }
-    } else if (_stepIndex == 1) {
+    } else if (_stepIndex == 2) {
       if (!_validateGoals()) {
         unawaited(
           ExpansionAnalytics.log(
@@ -208,7 +229,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         setState(() {});
         return;
       }
-    } else if (_stepIndex == 2) {
+    } else if (_stepIndex == 3) {
       if (!_validateConfident()) {
         unawaited(
           ExpansionAnalytics.log(
@@ -220,7 +241,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         setState(() {});
         return;
       }
-    } else if (_stepIndex == 3) {
+    } else if (_stepIndex == 4) {
       if (!_validateDesired()) {
         unawaited(
           ExpansionAnalytics.log(
@@ -232,7 +253,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         setState(() {});
         return;
       }
-    } else if (_stepIndex == 4) {
+    } else if (_stepIndex == 5) {
       if (!_validateTribe()) {
         unawaited(
           ExpansionAnalytics.log(
@@ -244,7 +265,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         setState(() {});
         return;
       }
-    } else if (_stepIndex == 5) {
+    } else if (_stepIndex == 6) {
       // Work structure — sliders always valid
       setState(() => _error = null);
     } else {
@@ -267,7 +288,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Future<void> _save() async {
-    if (!_validateStep1(context) ||
+    if (!_validateTerms() ||
+        !_validateStep1(context) ||
         !_validateGoals() ||
         !_validateConfident() ||
         !_validateDesired() ||
@@ -324,6 +346,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         businessLogoUrl: logoUrl,
         graduatedCityProgram:
             includeGraduatedCityProgram ? _graduatedCityProgram.text.trim() : null,
+        emailOptIn: _emailOptIn,
+        termsVersion: _termsVersion,
       );
       if (photoUrl != null && photoUrl.isNotEmpty) {
         await FirebaseAuth.instance.currentUser?.updatePhotoURL(photoUrl);
@@ -357,15 +381,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   String _stepSubtitle() {
     const titles = [
-      'About you',
-      'How can we help your business grow?',
-      'Skills you’re confident in',
-      'Skills you want to acquire',
-      'Tribe',
-      'Ideal work structure',
-      'Profile links',
+      ‘Terms & Agreements’,
+      ‘About you’,
+      ‘How can we help your business grow?’,
+      ‘Skills you\’re confident in’,
+      ‘Skills you want to acquire’,
+      ‘Tribe’,
+      ‘Ideal work structure’,
+      ‘Profile links’,
     ];
-    return 'Step ${_stepIndex + 1} of $_pageCount — ${titles[_stepIndex]}';
+    return ‘Step ${_stepIndex + 1} of $_pageCount — ${titles[_stepIndex]}’;
   }
 
   Future<String> _uploadProfileImage(String uid, XFile x, {String subfolder = 'avatar'}) async {
@@ -576,6 +601,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               physics: const NeverScrollableScrollPhysics(),
               onPageChanged: (i) => setState(() => _stepIndex = i),
               children: [
+                _buildStepTerms(context),
                 _buildStepAbout(context, email),
                 _buildStepGoals(context),
                 _buildStepConfidentSkills(context),
@@ -586,6 +612,142 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  static const _termsText = '''Last update: July 2023
+
+These Terms of Use ("Site Terms") state the terms and conditions under which you may use our website and mobile application (the "Sites"). By accessing, browsing, and/or using the Sites you acknowledge that you have read, understood, and agree to be legally bound by the Site Terms and our Privacy Policy.
+
+INTELLECTUAL PROPERTY
+All information and content available on the Sites is the property of Mortar, its affiliates, partners or licensors, and is protected by United States and international laws, including laws governing copyrights and trademarks.
+
+LIMITED LICENSE
+We grant you a limited, non-exclusive, non-sublicensable and revocable license to access and use the Sites for your own personal, non-commercial use. You may not reproduce, modify, distribute, or display the Sites or any Site Content except as permitted herein. You expressly agree to indemnify, defend and hold harmless Mortar against any liability arising out of your use of the Sites or breach of the Site Terms.
+
+CODE OF CONDUCT
+By accessing or using the Sites you agree not to: use the Sites in breach of these Terms; harass, threaten, stalk or cause distress to any person; impersonate another person or entity; introduce viruses or harmful code; gain unauthorized access to any computer system; or engage in conduct constituting a criminal or civil offense.
+
+USER CONTENT
+You are entirely responsible for any content you submit to the Sites. You agree not to post content that is unlawful, defamatory, obscene, harassing, fraudulent, infringes intellectual property rights, contains private information of third parties, or contains viruses or other harmful files. Mortar reserves the right to remove any content that violates these Terms.
+
+RIGHTS TO USER CONTENT
+By posting User Content, you grant Mortar a nonexclusive, royalty-free, perpetual, irrevocable and fully sublicensable right to use, reproduce, modify, adapt, translate, distribute, publish, and create derivative works from such content throughout the world in any media.
+
+DISCLAIMER & LIMITATION OF LIABILITY
+The Sites and all materials are provided "as is" without warranties of any kind. IN NO EVENT SHALL MORTAR BE LIABLE FOR ANY DIRECT, INDIRECT, SPECIAL, PUNITIVE, INCIDENTAL, OR CONSEQUENTIAL DAMAGES ARISING OUT OF OR IN CONNECTION WITH YOUR USE OF THE SITES.
+
+DISPUTES
+These Site Terms are governed by the laws of the United States and the State of Ohio. All disputes shall be resolved in a court of competent jurisdiction located in Hamilton County, Ohio.
+
+CONTACT US
+Mortar, 340 Reading Road, Cincinnati, Ohio 45202
+www.wearemortar.com''';
+
+  Widget _buildStepTerms(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Welcome to Mortar',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Please review and agree to our Terms of Use before continuing.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 16),
+          // Scrollable terms box
+          Container(
+            height: 220,
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(8),
+              color: Colors.grey.shade50,
+            ),
+            child: const SingleChildScrollView(
+              padding: EdgeInsets.all(12),
+              child: Text(
+                _termsText,
+                style: TextStyle(fontSize: 11, height: 1.5, color: Colors.black87),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          // Terms acceptance — required
+          InkWell(
+            onTap: () => setState(() => _termsAccepted = !_termsAccepted),
+            borderRadius: BorderRadius.circular(4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Checkbox(
+                  value: _termsAccepted,
+                  onChanged: (v) => setState(() => _termsAccepted = v ?? false),
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: RichText(
+                      text: TextSpan(
+                        style: Theme.of(context).textTheme.bodyMedium,
+                        children: const [
+                          TextSpan(text: 'I have read and agree to the '),
+                          TextSpan(
+                            text: 'Mortar Terms of Use',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          TextSpan(
+                            text: '  (Required)',
+                            style: TextStyle(color: Colors.red, fontWeight: FontWeight.w500),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Email opt-in — optional
+          InkWell(
+            onTap: () => setState(() => _emailOptIn = !_emailOptIn),
+            borderRadius: BorderRadius.circular(4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Checkbox(
+                  value: _emailOptIn,
+                  onChanged: (v) => setState(() => _emailOptIn = v ?? false),
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Text(
+                      'I agree to receive emails from Mortar about course updates, events, and community news. (Optional — you can change this in your settings)',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey[700]),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (_error != null && _stepIndex == 0) ...[
+            const SizedBox(height: 8),
+            Text(
+              _error!,
+              style: const TextStyle(color: Colors.red, fontSize: 13),
+            ),
+          ],
+          const SizedBox(height: 32),
         ],
       ),
     );
