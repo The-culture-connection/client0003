@@ -13,7 +13,6 @@ const APP_SCHEME = "mortaralumni";
 export const mobilePaymentReturn = onRequest(
   {region: "us-central1"},
   (req, res) => {
-    const type = String(req.query.type ?? "event");
     const eventId = String(req.query.event_id ?? "");
     const orderId = String(req.query.order_id ?? "");
 
