@@ -54,11 +54,12 @@ export const getSurveyIntelligenceReport = onCall(
     }
 
     // Staff-role check via custom claims
-    const claims = request.auth?.token ?? {};
-    const roles: string[] = Array.isArray(claims.roles)
-      ? claims.roles
-      : typeof claims.roles === "string"
-        ? [claims.roles]
+    const claims = request.auth?.token as Record<string, unknown> ?? {};
+    const rawRoles = claims["roles"];
+    const roles: string[] = Array.isArray(rawRoles)
+      ? rawRoles.filter((r): r is string => typeof r === "string")
+      : typeof rawRoles === "string"
+        ? [rawRoles]
         : [];
     const isStaff = roles.some((r) => ["admin", "superAdmin", "staff"].includes(r));
     if (!isStaff) {

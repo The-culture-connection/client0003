@@ -18,7 +18,6 @@ if (getApps().length === 0) {
 const db = getFirestore();
 
 const CONTEXT_TYPES = ["lesson", "quiz", "checkout", "navigation", "community", "general"] as const;
-type ContextType = (typeof CONTEXT_TYPES)[number];
 
 const responseSchema = z.object({
   type: z.enum(["reaction", "sentiment", "slider"]),
