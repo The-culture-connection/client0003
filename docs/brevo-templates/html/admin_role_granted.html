@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>You've been granted admin access to Mortar</title>
+</head>
+<body style="margin:0;padding:0;background-color:#ececec;font-family:Arial,Helvetica,sans-serif;">
+  <span style="display:none!important;visibility:hidden;font-size:1px;">You now have admin access to the Mortar platform.</span>
+  <table role="presentation" width="100%" style="background-color:#ececec;">
+    <tr><td align="center" style="padding:32px 16px;">
+      <table role="presentation" width="600" style="max-width:600px;width:100%;">
+
+        <!-- Header -->
+        <tr><td style="background-color:#871002;padding:24px 32px;border-radius:8px 8px 0 0;">
+          <p style="margin:0;font-size:22px;font-weight:bold;color:#fafcfc;">Admin access granted</p>
+        </td></tr>
+
+        <!-- Body -->
+        <tr><td style="background-color:#fff;padding:32px;border:1px solid #e0e0e0;border-top:none;">
+          <p style="margin:0 0 16px;font-size:16px;color:#2d2d2d;">Hi {{ params.first_name }},</p>
+
+          <p style="margin:0 0 20px;font-size:16px;line-height:1.6;color:#2d2d2d;">
+            You have been granted the <strong>{{ params.role }}</strong> role on the Mortar platform
+            by <strong>{{ params.granted_by_name }}</strong>.
+          </p>
+
+          <!-- Role badge -->
+          <table role="presentation" style="margin:0 0 24px;">
+            <tr><td style="background-color:#871002;padding:10px 20px;border-radius:6px;">
+              <p style="margin:0;font-size:14px;font-weight:bold;color:#fff;letter-spacing:0.5px;">
+                {{ params.role }}
+              </p>
+            </td></tr>
+          </table>
+
+          <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#2d2d2d;">
+            You now have access to the admin portal where you can manage courses, users, events,
+            analytics, badges, and more.
+          </p>
+
+          <!-- CTA button -->
+          <table role="presentation" style="margin:0 0 28px;">
+            <tr><td style="background-color:#871002;padding:12px 28px;border-radius:6px;text-align:center;">
+              <a href="{{ params.platform_url }}" style="color:#fff;font-size:15px;font-weight:bold;text-decoration:none;">
+                Go to Mortar Admin
+              </a>
+            </td></tr>
+          </table>
+
+          <p style="margin:0 0 8px;font-size:13px;color:#888;line-height:1.5;">
+            If you believe this was granted in error, please contact your team administrator immediately.
+          </p>
+
+          <p style="margin:0;font-size:14px;color:#666;">
+            Questions? <a href="mailto:{{ params.support_email }}" style="color:#871002;">{{ params.support_email }}</a>
+          </p>
+        </td></tr>
+
+        <!-- Footer -->
+        <tr><td style="background:#f5f5f5;padding:16px;text-align:center;border-radius:0 0 8px 8px;border:1px solid #e0e0e0;border-top:none;">
+          <p style="margin:0;font-size:12px;color:#888;">
+            <a href="{{ params.platform_url }}" style="color:#871002;">Mortar</a>
+          </p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>

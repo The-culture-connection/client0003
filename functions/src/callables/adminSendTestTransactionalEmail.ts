@@ -12,6 +12,7 @@ import {assertCallerIsNetworkAdmin} from "../helpers/assertNetworkAdmin";
 import {BREVO_API_KEY} from "../email/brevoClient";
 import {
   adminCustomAnnouncementParams,
+  adminRoleGrantedParams,
   appAccessCodeInviteParams,
   courseInactiveParams,
   eventRegistrantParams,
@@ -62,6 +63,8 @@ function preferenceCategoryForTemplate(
   case "payment_event_registration_confirmed":
   case "payment_module_purchase_confirmed":
   case "shop_order_fulfillment_update":
+    return "admin_messages";
+  case "admin_role_granted":
     return "admin_messages";
   default:
     return undefined;
@@ -190,6 +193,13 @@ function buildSampleParams(
       fulfillment_status: "Shipped",
       tracking_line: "Tracking number: 1Z999AA10123456784",
       order_lines_plain: "1 × Mortar Logo Tee · Size M",
+    });
+  case "admin_role_granted":
+    return adminRoleGrantedParams({
+      userEmail,
+      userName,
+      role: "Admin",
+      granted_by_name: "Mortar Admin Team",
     });
   default:
     return {};

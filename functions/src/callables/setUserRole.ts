@@ -13,6 +13,9 @@ import {getFirestore, FieldValue} from "firebase-admin/firestore";
 import {z} from "zod";
 import * as logger from "firebase-functions/logger";
 import {ALL_ROLES, isValidRole} from "../config/roles";
+import {BREVO_API_KEY} from "../email/brevoClient";
+import {sendTransactionalEmail} from "../email/sendTransactionalEmail";
+import {adminRoleGrantedParams, firstNameFrom} from "../email/buildEmailParams";
 
 // Initialize Firebase Admin (only once)
 if (getApps().length === 0) {
@@ -30,7 +33,9 @@ const setUserRoleSchema = z.object({
   action: z.enum(["add", "remove"]),
 });
 
-export const setUserRole = onCall(async (request) => {
+const ADMIN_ROLES = new Set(["Admin", "superAdmin"]);
+
+export const setUserRole = onCall({secrets: [BREVO_API_KEY]}, async (request) => {
   const callerUid = request.auth?.uid;
 
   if (!callerUid) {
@@ -109,6 +114,33 @@ export const setUserRole = onCall(async (request) => {
       action,
       new_roles: newRoles,
     });
+
+    // Send notification email when an admin role is newly granted
+    if (action === "add" && ADMIN_ROLES.has(role) && !currentRoles.includes(role)) {
+      const targetEmail = targetUser.email;
+      if (targetEmail) {
+        const callerDoc = await db.collection("users").doc(callerUid).get();
+        const callerData = callerDoc.data() ?? {};
+        const callerName = firstNameFrom(
+          [callerData.first_name, callerData.last_name].filter(Boolean).join(" "),
+          callerData.email as string | undefined
+        );
+        const params = adminRoleGrantedParams({
+          userEmail: targetEmail,
+          userName: targetUser.displayName ?? undefined,
+          role,
+          granted_by_name: callerName,
+        });
+        sendTransactionalEmail("admin_role_granted", {
+          to: targetEmail,
+          params,
+          tags: ["admin_role_granted"],
+          skipPreferenceCheck: true,
+        }).catch((err) => {
+          logger.warn("setUserRole: admin_role_granted email failed to send", {err, targetEmail, role});
+        });
+      }
+    }
 
     return {
       success: true,

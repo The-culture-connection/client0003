@@ -387,3 +387,17 @@ export function shopFulfillmentUpdateParams(input: {
     ...sharedFooterParams(),
   };
 }
+
+export function adminRoleGrantedParams(input: {
+  userEmail: string;
+  userName?: string;
+  role: string;
+  granted_by_name: string;
+}): JsonObject {
+  return {
+    first_name: firstNameFrom(input.userName, input.userEmail),
+    role: input.role,
+    granted_by_name: input.granted_by_name,
+    ...sharedFooterParams(),
+  };
+}

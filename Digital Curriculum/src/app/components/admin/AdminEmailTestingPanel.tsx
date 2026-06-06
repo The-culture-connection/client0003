@@ -168,7 +168,7 @@ export function AdminEmailTestingPanel() {
               </p>
             )}
             {(
-              ["course", "graduation", "events", "payments"] as BrevoTestEmailSection[]
+              ["course", "graduation", "events", "payments", "admin"] as BrevoTestEmailSection[]
             ).map((section) => {
               const sectionTemplates = templates.filter((t) => t.section === section);
               if (sectionTemplates.length === 0) return null;

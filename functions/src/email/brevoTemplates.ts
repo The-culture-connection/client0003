@@ -32,6 +32,8 @@ export const BREVO_TEMPLATE_IDS = {
   payment_module_purchase_confirmed: tpl("BREVO_TPL_PAYMENT_MODULE_CONFIRMED", 14),
   /** Admin fulfillment status / tracking update */
   shop_order_fulfillment_update: tpl("BREVO_TPL_SHOP_FULFILLMENT_UPDATE", 15),
+  /** Sent to a user when they are granted an admin role */
+  admin_role_granted: tpl("BREVO_TPL_ADMIN_ROLE_GRANTED", 16),
 } as const;
 
 export type BrevoTemplateKey = keyof typeof BREVO_TEMPLATE_IDS;

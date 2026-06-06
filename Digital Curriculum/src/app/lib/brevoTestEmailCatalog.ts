@@ -2,7 +2,7 @@
  * Admin email testing — display labels and Brevo IDs (defaults from brevoTemplates.ts).
  * Merged with `adminListTestEmailTemplates` so new templates appear even before Functions deploy.
  */
-export type BrevoTestEmailSection = "course" | "graduation" | "events" | "payments";
+export type BrevoTestEmailSection = "course" | "graduation" | "events" | "payments" | "admin";
 
 export type BrevoTestEmailCatalogEntry = {
   key: string;
@@ -66,6 +66,12 @@ export const BREVO_TEST_EMAIL_CATALOG: BrevoTestEmailCatalogEntry[] = [
     template_id: 15,
     section: "payments",
   },
+  {
+    key: "admin_role_granted",
+    label: "Admin — role granted notification",
+    template_id: 16,
+    section: "admin",
+  },
 ];
 
 const CATALOG_BY_KEY = new Map(BREVO_TEST_EMAIL_CATALOG.map((e) => [e.key, e]));
@@ -78,13 +84,14 @@ export function brevoTestEmailSection(key: string): BrevoTestEmailSection {
   return CATALOG_BY_KEY.get(key)?.section ?? "events";
 }
 
-const SECTION_ORDER: BrevoTestEmailSection[] = ["course", "graduation", "events", "payments"];
+const SECTION_ORDER: BrevoTestEmailSection[] = ["course", "graduation", "events", "payments", "admin"];
 
 export const BREVO_TEST_EMAIL_SECTION_LABELS: Record<BrevoTestEmailSection, string> = {
   course: "Course & onboarding",
   graduation: "Graduation",
   events: "Events & admin",
   payments: "Payments & shop",
+  admin: "Admin notifications",
 };
 
 /** Merge API list with catalog so payment templates always show in the panel. */
