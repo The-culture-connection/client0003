@@ -15,6 +15,7 @@ import '../utils/relative_time.dart';
 import '../widgets/event_poster_byline.dart';
 import '../widgets/event_rsvp_attendee_tile.dart';
 import '../widgets/event_source_badge.dart';
+import '../widgets/swipe_to_pay_button.dart';
 
 class EventDetailScreen extends StatefulWidget {
   const EventDetailScreen({super.key, required this.eventId});
@@ -25,17 +26,20 @@ class EventDetailScreen extends StatefulWidget {
   State<EventDetailScreen> createState() => _EventDetailScreenState();
 }
 
-class _EventDetailScreenState extends State<EventDetailScreen> {
+class _EventDetailScreenState extends State<EventDetailScreen>
+    with WidgetsBindingObserver {
   final _events = EventsRepository();
   final _stripeCheckout = StripeCheckoutService();
   bool _loading = true;
   bool _busy = false;
+  bool _awaitingCheckoutReturn = false;
   CommunityEvent? _event;
   String? _error;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(
         ExpansionAnalytics.log(
@@ -46,6 +50,44 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       );
     });
     _load();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _awaitingCheckoutReturn) {
+      _awaitingCheckoutReturn = false;
+      _handleCheckoutReturn();
+    }
+  }
+
+  Future<void> _handleCheckoutReturn() async {
+    setState(() => _busy = true);
+    try {
+      await _load();
+      if (!mounted) return;
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      final ev = _event;
+      if (ev != null && uid != null && ev.isRegistered(uid)) {
+        unawaited(
+          ExpansionAnalytics.log(
+            'event_registered',
+            entityId: widget.eventId,
+            sourceScreen: 'event_detail',
+          ),
+        );
+        if (ev.date != null && mounted) {
+          await showPostRegisterCalendarSheet(context, ev);
+        }
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   Future<void> _load() async {
@@ -87,6 +129,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       if (wasRegistered) {
         await _events.unregister(widget.eventId);
       } else if (e.resolvedTicketPriceCents > 0) {
+        _awaitingCheckoutReturn = true;
         await _stripeCheckout.checkoutEventTicket(
           context: context,
           eventId: widget.eventId,
@@ -268,6 +311,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                     const SizedBox(height: 16),
                                     _detailRow(e, Icons.schedule, e.time),
                                     _detailRow(e, Icons.place_outlined, e.location),
+                                    if (e.resolvedTicketPriceCents > 0)
+                                      _detailRow(e, Icons.sell_outlined, '\$${(e.resolvedTicketPriceCents / 100).toStringAsFixed(2)} to register'),
                                     _detailRow(e, Icons.people_outline, '${e.registeredCount} registered'),
                                     if (e.totalSpots != null && e.totalSpots! > 0)
                                       _detailRow(e, Icons.event_seat, '${e.availableSpots ?? 0} spots left of ${e.totalSpots}'),
@@ -297,41 +342,50 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                                         (id) => EventRsvpAttendeeTile(userId: id),
                                       ),
                                     const SizedBox(height: 24),
-                                    SizedBox(
-                                      width: double.infinity,
-                                      child: ElevatedButton(
-                                        onPressed: (!e.isPublished ||
-                                                _busy ||
-                                                u == null ||
-                                                (e.isFull && !e.isRegistered(u)))
-                                            ? null
-                                            : () => _toggleRegister(e),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: AppColors.primary,
-                                          foregroundColor: AppColors.onPrimary,
-                                          padding: const EdgeInsets.symmetric(vertical: 14),
-                                          elevation: e.isMortarHostedEvent ? 4 : 0,
-                                          shadowColor: e.isMortarHostedEvent
-                                              ? AppColors.primary.withValues(alpha: 0.55)
-                                              : Colors.transparent,
+                                    if (u != null &&
+                                        !e.isRegistered(u) &&
+                                        !e.isFull &&
+                                        e.isPublished &&
+                                        e.resolvedTicketPriceCents > 0)
+                                      SwipeToPayButton(
+                                        priceCents: e.resolvedTicketPriceCents,
+                                        busy: _busy,
+                                        onConfirmed: () => _toggleRegister(e),
+                                      )
+                                    else
+                                      SizedBox(
+                                        width: double.infinity,
+                                        child: ElevatedButton(
+                                          onPressed: (!e.isPublished ||
+                                                  _busy ||
+                                                  u == null ||
+                                                  (e.isFull && !e.isRegistered(u)))
+                                              ? null
+                                              : () => _toggleRegister(e),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: AppColors.primary,
+                                            foregroundColor: AppColors.onPrimary,
+                                            padding: const EdgeInsets.symmetric(vertical: 14),
+                                            elevation: e.isMortarHostedEvent ? 4 : 0,
+                                            shadowColor: e.isMortarHostedEvent
+                                                ? AppColors.primary.withValues(alpha: 0.55)
+                                                : Colors.transparent,
+                                          ),
+                                          child: _busy
+                                              ? const SizedBox(
+                                                  height: 22,
+                                                  width: 22,
+                                                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.onPrimary),
+                                                )
+                                              : Text(
+                                                  u != null && e.isRegistered(u)
+                                                      ? 'Unregister'
+                                                      : e.isFull
+                                                          ? 'Event full'
+                                                          : 'Register',
+                                                ),
                                         ),
-                                        child: _busy
-                                            ? const SizedBox(
-                                                height: 22,
-                                                width: 22,
-                                                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.onPrimary),
-                                              )
-                                            : Text(
-                                                u != null && e.isRegistered(u)
-                                                    ? 'Unregister'
-                                                    : e.isFull
-                                                        ? 'Event full'
-                                                        : e.resolvedTicketPriceCents > 0
-                                                            ? 'Pay \$${(e.resolvedTicketPriceCents / 100).toStringAsFixed(2)} & register'
-                                                            : 'Register',
-                                              ),
                                       ),
-                                    ),
                                   ],
                                 ),
                               ),

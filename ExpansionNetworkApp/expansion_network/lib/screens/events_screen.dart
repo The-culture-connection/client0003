@@ -17,6 +17,7 @@ import '../widgets/event_poster_byline.dart';
 import '../widgets/event_rsvp_attendee_tile.dart';
 import '../widgets/event_source_badge.dart';
 import '../widgets/page_header.dart';
+import '../widgets/swipe_to_pay_button.dart';
 
 /// Events list driven by Firestore `events_mobile`.
 class EventsScreen extends StatefulWidget {
@@ -168,6 +169,8 @@ class _EventsScreenState extends State<EventsScreen> {
                                 _row(Icons.schedule, e.time, mortarAccent: e.isMortarHostedEvent),
                                 _row(Icons.place_outlined, e.location, mortarAccent: e.isMortarHostedEvent),
                                 _row(Icons.category_outlined, e.eventType, mortarAccent: e.isMortarHostedEvent),
+                                if (e.resolvedTicketPriceCents > 0)
+                                  _row(Icons.sell_outlined, '\$${(e.resolvedTicketPriceCents / 100).toStringAsFixed(2)} to register', mortarAccent: e.isMortarHostedEvent),
                                 _row(Icons.people_outline, '${e.registeredCount} attending', mortarAccent: e.isMortarHostedEvent),
                                 if (e.registeredCount > 0) ...[
                                   const SizedBox(height: 12),
@@ -191,63 +194,79 @@ class _EventsScreenState extends State<EventsScreen> {
                                     ),
                                 ],
                                 const SizedBox(height: 12),
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: registered
-                                      ? OutlinedButton(
-                                          onPressed: () => context.push('/events/${e.id}'),
-                                          style: e.isMortarHostedEvent
-                                              ? OutlinedButton.styleFrom(
-                                                  foregroundColor: AppColors.primary,
-                                                  side: const BorderSide(color: AppColors.primary, width: 1.5),
-                                                  padding: const EdgeInsets.symmetric(vertical: 12),
-                                                )
-                                              : OutlinedButton.styleFrom(
-                                                  padding: const EdgeInsets.symmetric(vertical: 12),
-                                                ),
-                                          child: const Text('View details'),
-                                        )
-                                      : FilledButton(
-                                          style: FilledButton.styleFrom(
-                                            backgroundColor: AppColors.primary,
-                                            foregroundColor: AppColors.onPrimary,
-                                            elevation: e.isMortarHostedEvent ? 3 : 0,
-                                            shadowColor: e.isMortarHostedEvent
-                                                ? AppColors.primary.withValues(alpha: 0.55)
-                                                : Colors.transparent,
-                                            padding: const EdgeInsets.symmetric(vertical: 12),
-                                          ),
-                                          onPressed: (e.isFull || uid == null)
-                                              ? null
-                                              : () async {
-                                                  final currentUid = uid;
-                                                  try {
-                                                    if (e.resolvedTicketPriceCents > 0) {
-                                                      await StripeCheckoutService().checkoutEventTicket(
-                                                        context: context,
-                                                        eventId: e.id,
-                                                      );
-                                                      return;
-                                                    }
-                                                    await repo.register(e.id);
-                                                    if (!context.mounted) return;
-                                                    final fresh = await repo.getEvent(e.id);
-                                                    if (!context.mounted) return;
-                                                    if (fresh != null &&
-                                                        fresh.date != null &&
-                                                        fresh.isRegistered(currentUid)) {
-                                                      await showPostRegisterCalendarSheet(context, fresh);
-                                                    }
-                                                  } catch (err) {
-                                                    if (!context.mounted) return;
-                                                    ScaffoldMessenger.of(context).showSnackBar(
-                                                      SnackBar(content: Text('$err')),
-                                                    );
-                                                  }
-                                                },
-                                          child: Text(e.isFull ? 'Event full' : 'Register'),
-                                        ),
-                                ),
+                                if (registered)
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: OutlinedButton(
+                                      onPressed: () => context.push('/events/${e.id}'),
+                                      style: e.isMortarHostedEvent
+                                          ? OutlinedButton.styleFrom(
+                                              foregroundColor: AppColors.primary,
+                                              side: const BorderSide(color: AppColors.primary, width: 1.5),
+                                              padding: const EdgeInsets.symmetric(vertical: 12),
+                                            )
+                                          : OutlinedButton.styleFrom(
+                                              padding: const EdgeInsets.symmetric(vertical: 12),
+                                            ),
+                                      child: const Text('View details'),
+                                    ),
+                                  )
+                                else if (!e.isFull &&
+                                    uid != null &&
+                                    e.resolvedTicketPriceCents > 0)
+                                  SwipeToPayButton(
+                                    priceCents: e.resolvedTicketPriceCents,
+                                    onConfirmed: () async {
+                                      try {
+                                        await StripeCheckoutService().checkoutEventTicket(
+                                          context: context,
+                                          eventId: e.id,
+                                        );
+                                      } catch (err) {
+                                        if (!context.mounted) return;
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text('$err')),
+                                        );
+                                      }
+                                    },
+                                  )
+                                else
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: FilledButton(
+                                      style: FilledButton.styleFrom(
+                                        backgroundColor: AppColors.primary,
+                                        foregroundColor: AppColors.onPrimary,
+                                        elevation: e.isMortarHostedEvent ? 3 : 0,
+                                        shadowColor: e.isMortarHostedEvent
+                                            ? AppColors.primary.withValues(alpha: 0.55)
+                                            : Colors.transparent,
+                                        padding: const EdgeInsets.symmetric(vertical: 12),
+                                      ),
+                                      onPressed: (e.isFull || uid == null)
+                                          ? null
+                                          : () async {
+                                              final currentUid = uid;
+                                              try {
+                                                await repo.register(e.id);
+                                                if (!context.mounted) return;
+                                                final fresh = await repo.getEvent(e.id);
+                                                if (!context.mounted) return;
+                                                if (fresh != null &&
+                                                    fresh.date != null &&
+                                                    fresh.isRegistered(currentUid)) {
+                                                  await showPostRegisterCalendarSheet(context, fresh);
+                                                }
+                                              } catch (err) {
+                                                if (!context.mounted) return;
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(content: Text('$err')),
+                                                );
+                                              }
+                                            },
+                                      child: Text(e.isFull ? 'Event full' : 'Register'),
+                                    ),
+                                  ),
                               ],
                             ),
                           ),

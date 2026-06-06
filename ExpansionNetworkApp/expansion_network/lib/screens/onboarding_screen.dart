@@ -266,7 +266,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         return;
       }
     } else if (_stepIndex == 6) {
-      // Work structure — sliders always valid
+      // Work structure -- sliders always valid
       setState(() => _error = null);
     } else {
       return;
@@ -381,16 +381,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   String _stepSubtitle() {
     const titles = [
-      ‘Terms & Agreements’,
-      ‘About you’,
-      ‘How can we help your business grow?’,
-      ‘Skills you\’re confident in’,
-      ‘Skills you want to acquire’,
-      ‘Tribe’,
-      ‘Ideal work structure’,
-      ‘Profile links’,
+      'Terms & Agreements',
+      'About you',
+      'How can we help your business grow?',
+      'Skills you\'re confident in',
+      'Skills you want to acquire',
+      'Tribe',
+      'Ideal work structure',
+      'Profile links',
     ];
-    return ‘Step ${_stepIndex + 1} of $_pageCount — ${titles[_stepIndex]}’;
+    return 'Step ${_stepIndex + 1} of $_pageCount -- ${titles[_stepIndex]}';
   }
 
   Future<String> _uploadProfileImage(String uid, XFile x, {String subfolder = 'avatar'}) async {
@@ -679,7 +679,7 @@ www.wearemortar.com''';
             ),
           ),
           const SizedBox(height: 20),
-          // Terms acceptance — required
+          // Terms acceptance -- required
           InkWell(
             onTap: () => setState(() => _termsAccepted = !_termsAccepted),
             borderRadius: BorderRadius.circular(4),
@@ -716,7 +716,7 @@ www.wearemortar.com''';
             ),
           ),
           const SizedBox(height: 8),
-          // Email opt-in — optional
+          // Email opt-in -- optional
           InkWell(
             onTap: () => setState(() => _emailOptIn = !_emailOptIn),
             borderRadius: BorderRadius.circular(4),
@@ -732,7 +732,7 @@ www.wearemortar.com''';
                   child: Padding(
                     padding: const EdgeInsets.only(top: 12),
                     child: Text(
-                      'I agree to receive emails from Mortar about course updates, events, and community news. (Optional — you can change this in your settings)',
+                      'I agree to receive emails from Mortar about course updates, events, and community news. (Optional -- you can change this in your settings)',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey[700]),
                     ),
                   ),
@@ -880,7 +880,7 @@ www.wearemortar.com''';
               labelText: 'Email',
               border: OutlineInputBorder(),
             ),
-            child: Text(email.isEmpty ? '—' : email, style: const TextStyle(color: AppColors.mutedForeground)),
+            child: Text(email.isEmpty ? '--' : email, style: const TextStyle(color: AppColors.mutedForeground)),
           ),
           if (_error != null && _stepIndex == 0) ...[
             const SizedBox(height: 12),
@@ -1258,8 +1258,8 @@ www.wearemortar.com''';
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text('1 — Strict 9-5', style: Theme.of(context).textTheme.bodySmall),
-                            Text('10 — No set schedule', style: Theme.of(context).textTheme.bodySmall),
+                            Text('1 -- Strict 9-5', style: Theme.of(context).textTheme.bodySmall),
+                            Text('10 -- No set schedule', style: Theme.of(context).textTheme.bodySmall),
                           ],
                         ),
                         const SizedBox(height: 24),
@@ -1328,8 +1328,8 @@ www.wearemortar.com''';
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text('1 — Employee', style: Theme.of(context).textTheme.bodySmall),
-                            Text('10 — Company owner', style: Theme.of(context).textTheme.bodySmall),
+                            Text('1 -- Employee', style: Theme.of(context).textTheme.bodySmall),
+                            Text('10 -- Company owner', style: Theme.of(context).textTheme.bodySmall),
                           ],
                         ),
                       ],
