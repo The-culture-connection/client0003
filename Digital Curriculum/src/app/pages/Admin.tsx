@@ -136,6 +136,7 @@ import { PushNotificationsPanel } from "../components/admin/PushNotificationsPan
 import { MortarInfoAdminPanel } from "../components/admin/MortarInfoAdminPanel";
 import { AnalyticsDashboardPanel } from "../components/admin/AnalyticsDashboardPanel";
 import { AdminGoalReportsPanel } from "../components/admin/AdminGoalReportsPanel";
+import { ImplicitFeedbackReportPanel } from "../components/admin/ImplicitFeedbackReportPanel";
 import { AdminBadgesPanel } from "../components/admin/AdminBadgesPanel";
 import { registerDigitalCurriculumAlumniEligible } from "../lib/expansionEligible";
 import {
@@ -2269,6 +2270,10 @@ export function AdminPage() {
 
         <TabsContent value="reports" className="space-y-6">
           <AdminGoalReportsPanel />
+          <div>
+            <h2 className="text-base font-semibold mb-4">Survey Intelligence</h2>
+            <ImplicitFeedbackReportPanel />
+          </div>
         </TabsContent>
 
         <TabsContent value="badges" className="space-y-6">

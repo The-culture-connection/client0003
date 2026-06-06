@@ -47,6 +47,13 @@ import { useDashboardPassiveEngagement } from "../../analytics/useDashboardPassi
 import { trackEvent } from "../../analytics/trackEvent";
 import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalyticsContract";
 import { WeeklyActivityWidget } from "../../components/dashboard/WeeklyActivityWidget";
+import { useFeedback } from "../../contexts/FeedbackContext";
+import {
+  recordNavStep,
+  hasNavigationDeadEnd,
+  canShowFeedback,
+  recordFeedbackShown,
+} from "../../analytics/feedbackTriggerEngine";
 
 const MOCK_BORDER = "border-2 border-red-500";
 
@@ -63,6 +70,24 @@ export function WebDashboard() {
   useDashboardPassiveEngagement();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { setFeedbackContext, triggerRepulse } = useFeedback();
+
+  // Record this nav step and check for dead-end navigation pattern
+  useEffect(() => {
+    recordNavStep("/dashboard");
+    setFeedbackContext({ context_type: "general", trigger_event: "implicit_feedback_shown" });
+
+    if (hasNavigationDeadEnd() && canShowFeedback("navigation_dead_end")) {
+      trackEvent(WEB_ANALYTICS_EVENTS.NAVIGATION_DEAD_END_FEEDBACK_TRIGGERED, {});
+      recordFeedbackShown("navigation_dead_end");
+      setFeedbackContext({
+        context_type: "navigation",
+        trigger_event: "navigation_dead_end_feedback_triggered",
+      });
+      triggerRepulse();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
   const [progressMap, setProgressMap] = useState<Record<string, CourseProgress>>({});

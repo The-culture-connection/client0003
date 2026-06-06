@@ -11,11 +11,24 @@ export type BadgeRuleOperator = "gte" | "gt" | "lte" | "lt" | "eq";
 /** v1: only `all_time` (reads `user_analytics_summary.counts`). */
 export type BadgeRuleTimeframe = "all_time";
 
-export interface BadgePhase6Rule {
+/** A single condition in a multi-condition badge rule (v2). */
+export interface BadgeCondition {
   metric_key: string;
   operator: BadgeRuleOperator;
   threshold: number;
-  timeframe: BadgeRuleTimeframe;
+  timeframe?: BadgeRuleTimeframe;
+}
+
+export interface BadgePhase6Rule {
+  /** v1 — single condition (backwards-compatible) */
+  metric_key?: string;
+  operator?: BadgeRuleOperator;
+  threshold?: number;
+  timeframe?: BadgeRuleTimeframe;
+  /** v2 — multi-condition: all conditions must pass (AND) or any must pass (OR) */
+  conditions?: BadgeCondition[];
+  /** Logic for multi-condition rules. Defaults to "AND". */
+  logic?: "AND" | "OR";
 }
 
 function readCounts(summary: Record<string, unknown>): Record<string, number> {
@@ -87,6 +100,16 @@ interface BadgeDefRow {
   rule: BadgePhase6Rule;
 }
 
+const ALLOWED_OPS = new Set(["gte", "gt", "lte", "lt", "eq"]);
+
+function parseCondition(c: Record<string, unknown>): BadgeCondition | null {
+  const metric_key = typeof c.metric_key === "string" ? c.metric_key.trim() : "";
+  const operator = c.operator as BadgeRuleOperator;
+  const threshold = typeof c.threshold === "number" ? c.threshold : Number.NaN;
+  if (!metric_key || !Number.isFinite(threshold) || !ALLOWED_OPS.has(operator)) return null;
+  return { metric_key, operator, threshold, timeframe: "all_time" };
+}
+
 function parseBadgeDef(id: string, data: Record<string, unknown>): BadgeDefRow | null {
   const active = data.active !== false;
   const rule = data.rule;
@@ -94,17 +117,6 @@ function parseBadgeDef(id: string, data: Record<string, unknown>): BadgeDefRow |
     return null;
   }
   const r = rule as Record<string, unknown>;
-  const metric_key = typeof r.metric_key === "string" ? r.metric_key.trim() : "";
-  const operator = r.operator as BadgeRuleOperator;
-  const threshold = typeof r.threshold === "number" ? r.threshold : Number.NaN;
-  const timeframe = (r.timeframe as BadgeRuleTimeframe) || "all_time";
-  if (!metric_key || !Number.isFinite(threshold)) return null;
-  const allowedOp = ["gte", "gt", "lte", "lt", "eq"].includes(operator);
-  if (!allowedOp) return null;
-  if (timeframe !== "all_time") {
-    logger.warn("analyticsBadgeEvaluator: unsupported timeframe (skipping badge)", { id, timeframe });
-    return null;
-  }
   const award_mode = data.award_mode === "repeatable" ? "repeatable" : "one_time";
   const rawName =
     typeof data.name === "string" && data.name.trim()
@@ -112,6 +124,30 @@ function parseBadgeDef(id: string, data: Record<string, unknown>): BadgeDefRow |
       : typeof data.title === "string" && data.title.trim()
         ? data.title.trim()
         : id;
+
+  // v2: multi-condition rule
+  if (Array.isArray(r.conditions) && r.conditions.length > 0) {
+    const conditions: BadgeCondition[] = [];
+    for (const c of r.conditions) {
+      if (!c || typeof c !== "object") continue;
+      const parsed = parseCondition(c as Record<string, unknown>);
+      if (parsed) conditions.push(parsed);
+    }
+    if (conditions.length === 0) return null;
+    const logic: "AND" | "OR" = r.logic === "OR" ? "OR" : "AND";
+    return { id, display_name: rawName, active, award_mode, rule: { conditions, logic } };
+  }
+
+  // v1: single-condition rule (backwards-compatible)
+  const metric_key = typeof r.metric_key === "string" ? r.metric_key.trim() : "";
+  const operator = r.operator as BadgeRuleOperator;
+  const threshold = typeof r.threshold === "number" ? r.threshold : Number.NaN;
+  const timeframe = (r.timeframe as BadgeRuleTimeframe) || "all_time";
+  if (!metric_key || !Number.isFinite(threshold) || !ALLOWED_OPS.has(operator)) return null;
+  if (timeframe !== "all_time") {
+    logger.warn("analyticsBadgeEvaluator: unsupported timeframe (skipping badge)", { id, timeframe });
+    return null;
+  }
   return { id, display_name: rawName, active, award_mode, rule: { metric_key, operator, threshold, timeframe } };
 }
 
@@ -142,11 +178,33 @@ export async function evaluateAnalyticsBadgesForUser(
 
   for (let i = 0; i < defs.length; i++) {
     const def = defs[i]!;
-    const metric = readMetric(summaryData, def.rule.metric_key);
-    const target = Math.max(
-      0,
-      targetAwardUnits(def.award_mode, def.rule.operator, metric, def.rule.threshold)
-    );
+    const rule = def.rule;
+
+    let target: number;
+    let primaryMetricKey: string;
+    let primaryMetricValue: number;
+
+    if (rule.conditions && rule.conditions.length > 0) {
+      // v2: multi-condition evaluation
+      const logic = rule.logic ?? "AND";
+      const conditionUnits = rule.conditions.map((cond) => {
+        const m = readMetric(summaryData, cond.metric_key);
+        return targetAwardUnits(def.award_mode, cond.operator, m, cond.threshold);
+      });
+      // AND: minimum units across all conditions; OR: maximum
+      target = Math.max(0, logic === "OR" ? Math.max(...conditionUnits) : Math.min(...conditionUnits));
+      // Use the first condition's metric as the primary for progress display
+      primaryMetricKey = rule.conditions[0]!.metric_key;
+      primaryMetricValue = readMetric(summaryData, primaryMetricKey);
+    } else {
+      // v1: single-condition
+      const metric_key = rule.metric_key ?? "";
+      const metric = readMetric(summaryData, metric_key);
+      target = Math.max(0, targetAwardUnits(def.award_mode, rule.operator!, metric, rule.threshold!));
+      primaryMetricKey = metric_key;
+      primaryMetricValue = metric;
+    }
+
     const snap = awardedSnaps[i]!;
     const prev = snap.exists ? (snap.data() as Record<string, unknown>) : {};
     const prevTimes = typeof prev.times_awarded === "number" && prev.times_awarded >= 0 ? prev.times_awarded : 0;
@@ -154,8 +212,8 @@ export async function evaluateAnalyticsBadgesForUser(
       def.award_mode === "one_time" ? Math.min(1, Math.max(prevTimes, target)) : Math.max(prevTimes, target);
 
     progressByBadge[def.id] = {
-      metric_key: def.rule.metric_key,
-      metric_value: metric,
+      metric_key: primaryMetricKey,
+      metric_value: primaryMetricValue,
       times_awarded: nextTimes,
     };
 
@@ -201,7 +259,7 @@ export async function evaluateAnalyticsBadgesForUser(
         times_awarded: nextTimes,
         first_awarded_at: prevTimes === 0 ? Timestamp.now() : firstAt,
         last_awarded_at: Timestamp.now(),
-        last_metric_value: metric,
+        last_metric_value: primaryMetricValue,
         award_mode: def.award_mode,
         rule_snapshot: def.rule,
       },

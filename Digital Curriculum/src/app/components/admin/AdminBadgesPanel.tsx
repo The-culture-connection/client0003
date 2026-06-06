@@ -37,6 +37,16 @@ const METRIC_KEY_OPTIONS = [
   "admin_lesson_deck_publish_clicked",
   "admin_event_create_submitted",
   "admin_shop_item_created",
+  // Implicit feedback layer counters
+  "implicit_feedback_submitted",
+  "helpful_taps",
+  "not_helpful_taps",
+  "confusion_signals_sent",
+  // Engagement depth
+  "badges_viewed",
+  "badge_progress_viewed",
+  "lesson_abandonment_feedback_triggered",
+  "quiz_confusion_feedback_triggered",
 ] as const;
 
 /** Counters incremented by Expansion mobile Phase-4 rollups (`expansionMobileEventRollup`). */
@@ -190,6 +200,11 @@ export function AdminBadgesPanel() {
   const [metricKey, setMetricKey] = useState<string>(METRIC_KEY_OPTIONS[0]);
   const [operator, setOperator] = useState<string>("gte");
   const [threshold, setThreshold] = useState("1");
+  const [ruleMode, setRuleMode] = useState<"single" | "multi">("single");
+  const [conditions, setConditions] = useState<Array<{ metric_key: string; operator: string; threshold: string }>>([
+    { metric_key: METRIC_KEY_OPTIONS[0], operator: "gte", threshold: "1" },
+  ]);
+  const [conditionLogic, setConditionLogic] = useState<"AND" | "OR">("AND");
   const [imageSource, setImageSource] = useState<"url" | "upload" | "bank">("bank");
   const [imageUrl, setImageUrl] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -283,9 +298,22 @@ export function AdminBadgesPanel() {
     setAwardMode(b.award_mode === "repeatable" ? "repeatable" : "one_time");
     setPlatform(normalizePlatformFromDoc(b.platform));
     const r = b.rule;
-    setMetricKey(typeof r?.metric_key === "string" ? r.metric_key : METRIC_KEY_OPTIONS[0]);
-    setOperator(typeof r?.operator === "string" ? r.operator : "gte");
-    setThreshold(String(r?.threshold ?? 1));
+    // Restore rule mode from doc
+    if (Array.isArray((r as Record<string, unknown> | undefined)?.conditions) && ((r as Record<string, unknown>).conditions as unknown[]).length > 0) {
+      setRuleMode("multi");
+      const rawConditions = (r as Record<string, unknown>).conditions as Array<Record<string, unknown>>;
+      setConditions(rawConditions.map((c) => ({
+        metric_key: typeof c.metric_key === "string" ? c.metric_key : METRIC_KEY_OPTIONS[0],
+        operator: typeof c.operator === "string" ? c.operator : "gte",
+        threshold: String(typeof c.threshold === "number" ? c.threshold : 1),
+      })));
+      setConditionLogic((r as Record<string, unknown>).logic === "OR" ? "OR" : "AND");
+    } else {
+      setRuleMode("single");
+      setMetricKey(typeof r?.metric_key === "string" ? r.metric_key : METRIC_KEY_OPTIONS[0]);
+      setOperator(typeof r?.operator === "string" ? r.operator : "gte");
+      setThreshold(String(r?.threshold ?? 1));
+    }
     if (b.image_url) {
       const fromBank = bankAssets.some((a) => a.image_url === b.image_url);
       if (fromBank) {
@@ -392,11 +420,28 @@ export function AdminBadgesPanel() {
         setSavingBadge(false);
         return;
       }
-      const th = Number(threshold);
-      if (!Number.isFinite(th)) {
-        setError("Threshold must be a number.");
-        setSavingBadge(false);
-        return;
+      let rulePayload: Record<string, unknown>;
+      if (ruleMode === "multi") {
+        const parsedConditions = conditions.map((c) => ({
+          metric_key: c.metric_key,
+          operator: c.operator,
+          threshold: Number(c.threshold),
+          timeframe: "all_time",
+        }));
+        if (parsedConditions.some((c) => !Number.isFinite(c.threshold))) {
+          setError("All condition thresholds must be valid numbers.");
+          setSavingBadge(false);
+          return;
+        }
+        rulePayload = { conditions: parsedConditions, logic: conditionLogic };
+      } else {
+        const th = Number(threshold);
+        if (!Number.isFinite(th)) {
+          setError("Threshold must be a number.");
+          setSavingBadge(false);
+          return;
+        }
+        rulePayload = { metric_key: metricKey, operator, threshold: th, timeframe: "all_time" };
       }
       const img = await resolveImageUrlForSave();
       const payload: Record<string, unknown> = {
@@ -407,12 +452,7 @@ export function AdminBadgesPanel() {
         tier: tier.trim() || null,
         active,
         award_mode: awardMode,
-        rule: {
-          metric_key: metricKey,
-          operator,
-          threshold: th,
-          timeframe: "all_time",
-        },
+        rule: rulePayload,
         updated_at: serverTimestamp(),
       };
       if (img) payload.image_url = img;
@@ -636,43 +676,129 @@ export function AdminBadgesPanel() {
               </select>
             </div>
 
-            <div className="border border-border rounded-md p-3 space-y-2 bg-muted/20">
-              <p className="text-sm font-medium text-foreground">Rule</p>
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Metric</Label>
-                <select
-                  value={metricKey}
-                  onChange={(e) => setMetricKey(e.target.value)}
-                  className="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground text-sm"
-                >
-                  {metricKeyChoices.map((k) => (
-                    <option key={k} value={k}>
-                      {k}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Operator</Label>
-                  <select
-                    value={operator}
-                    onChange={(e) => setOperator(e.target.value)}
-                    className="w-full px-2 py-2 rounded-md border border-border bg-background text-foreground text-sm"
+            <div className="border border-border rounded-md p-3 space-y-3 bg-muted/20">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-foreground">Rule</p>
+                <div className="flex gap-1 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setRuleMode("single")}
+                    className={`px-2 py-1 rounded-md border transition-colors ${ruleMode === "single" ? "bg-primary text-primary-foreground border-primary" : "border-border bg-background text-muted-foreground"}`}
                   >
-                    {OPERATORS.map((o) => (
-                      <option key={o} value={o}>
-                        {o}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Threshold</Label>
-                  <Input value={threshold} onChange={(e) => setThreshold(e.target.value)} className="bg-background text-sm" />
+                    Single
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRuleMode("multi")}
+                    className={`px-2 py-1 rounded-md border transition-colors ${ruleMode === "multi" ? "bg-primary text-primary-foreground border-primary" : "border-border bg-background text-muted-foreground"}`}
+                  >
+                    Multi-condition
+                  </button>
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground">Timeframe: all_time (fixed in v1)</p>
+
+              {ruleMode === "single" ? (
+                <>
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground">Metric</Label>
+                    <select
+                      value={metricKey}
+                      onChange={(e) => setMetricKey(e.target.value)}
+                      className="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground text-sm"
+                    >
+                      {metricKeyChoices.map((k) => (
+                        <option key={k} value={k}>{k}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Operator</Label>
+                      <select
+                        value={operator}
+                        onChange={(e) => setOperator(e.target.value)}
+                        className="w-full px-2 py-2 rounded-md border border-border bg-background text-foreground text-sm"
+                      >
+                        {OPERATORS.map((o) => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Threshold</Label>
+                      <Input value={threshold} onChange={(e) => setThreshold(e.target.value)} className="bg-background text-sm" />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Timeframe: all_time (fixed in v1)</p>
+                </>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    {conditions.map((cond, idx) => (
+                      <div key={idx} className="flex flex-col gap-1 border border-border rounded-md p-2 bg-background">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-muted-foreground font-medium">Condition {idx + 1}</span>
+                          {conditions.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => setConditions((prev) => prev.filter((_, i) => i !== idx))}
+                              className="text-xs text-destructive hover:underline"
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
+                        <select
+                          value={cond.metric_key}
+                          onChange={(e) => setConditions((prev) => prev.map((c, i) => i === idx ? { ...c, metric_key: e.target.value } : c))}
+                          className="w-full px-2 py-1.5 rounded border border-border bg-background text-foreground text-xs"
+                        >
+                          {metricKeyChoices.map((k) => <option key={k} value={k}>{k}</option>)}
+                        </select>
+                        <div className="grid grid-cols-2 gap-2">
+                          <select
+                            value={cond.operator}
+                            onChange={(e) => setConditions((prev) => prev.map((c, i) => i === idx ? { ...c, operator: e.target.value } : c))}
+                            className="w-full px-2 py-1.5 rounded border border-border bg-background text-foreground text-xs"
+                          >
+                            {OPERATORS.map((o) => <option key={o} value={o}>{o}</option>)}
+                          </select>
+                          <Input
+                            value={cond.threshold}
+                            onChange={(e) => setConditions((prev) => prev.map((c, i) => i === idx ? { ...c, threshold: e.target.value } : c))}
+                            placeholder="Threshold"
+                            className="bg-background text-xs h-8"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setConditions((prev) => [...prev, { metric_key: metricKeyChoices[0] ?? METRIC_KEY_OPTIONS[0], operator: "gte", threshold: "1" }])}
+                      className="text-xs text-primary hover:underline"
+                    >
+                      + Add condition
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Label className="text-xs text-muted-foreground">Logic:</Label>
+                    {(["AND", "OR"] as const).map((l) => (
+                      <label key={l} className="flex items-center gap-1 text-xs cursor-pointer">
+                        <input type="radio" checked={conditionLogic === l} onChange={() => setConditionLogic(l)} />
+                        {l}
+                      </label>
+                    ))}
+                  </div>
+                  {conditions.length > 0 && (
+                    <p className="text-xs text-muted-foreground bg-muted/40 rounded p-2 leading-relaxed">
+                      Award when user has {conditions.map((c, i) => (
+                        <span key={i}>
+                          {i > 0 && <strong> {conditionLogic} </strong>}
+                          <code className="rounded bg-muted px-1">{c.operator} {c.threshold} {c.metric_key}</code>
+                        </span>
+                      ))}
+                    </p>
+                  )}
+                </>
+              )}
             </div>
 
             <div className="space-y-2 border border-border rounded-md p-3 bg-muted/20">

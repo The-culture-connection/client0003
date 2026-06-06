@@ -43,12 +43,20 @@ import { ChevronLeft, ChevronRight, LogOut, Loader2 } from "lucide-react";
 import { useScreenAnalytics } from "../../analytics/useScreenAnalytics";
 import { trackEvent } from "../../analytics/trackEvent";
 import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalyticsContract";
+import { useFeedback } from "../../contexts/FeedbackContext";
+import {
+  canShowFeedback,
+  recordFeedbackShown,
+  incrementSessionCount,
+  getSessionCount,
+} from "../../analytics/feedbackTriggerEngine";
 
 export function LessonPlayer() {
   useScreenAnalytics("lesson_player");
   const { lessonId } = useParams<{ lessonId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { setFeedbackContext, triggerRepulse, openModal } = useFeedback();
 
   const [lesson, setLesson] = useState<Lesson | null>(null);
   const [slides, setSlides] = useState<Slide[]>([]);
@@ -90,6 +98,19 @@ export function LessonPlayer() {
 
   const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
   const courseId = params.get("courseId") || undefined;
+
+  // Set the feedback widget context whenever lessonId/courseId/slideIndex changes
+  useEffect(() => {
+    setFeedbackContext({
+      context_type: "lesson",
+      trigger_event: "implicit_feedback_shown",
+      metadata: {
+        lesson_id: lessonId,
+        course_id: courseId,
+        slide_index: currentSlideIndex,
+      },
+    });
+  }, [lessonId, courseId, currentSlideIndex, setFeedbackContext]);
 
   const activeSurvey =
     surveys.find((s) => s.id === activeSurveyId) ?? null;
@@ -340,6 +361,28 @@ export function LessonPlayer() {
       lesson_id: lessonId ?? null,
       course_id: courseId ?? null,
     });
+
+    // Trigger abandonment feedback if user exits before 70% completion
+    const completionRatio = itemCount > 0 ? currentSlideIndex / itemCount : 0;
+    if (completionRatio < 0.7 && canShowFeedback("lesson_abandonment")) {
+      trackEvent(WEB_ANALYTICS_EVENTS.LESSON_ABANDONMENT_FEEDBACK_TRIGGERED, {
+        lesson_id: lessonId ?? null,
+        course_id: courseId ?? null,
+        slide_index: currentSlideIndex,
+        completion_ratio: Math.round(completionRatio * 100),
+      });
+      recordFeedbackShown("lesson_abandonment");
+      setFeedbackContext({
+        context_type: "lesson",
+        trigger_event: "lesson_abandonment_feedback_triggered",
+        metadata: {
+          lesson_id: lessonId,
+          course_id: courseId,
+          slide_index: currentSlideIndex,
+        },
+      });
+      triggerRepulse();
+    }
     if (!user || !courseId || !lessonId) {
       navigate(courseId ? `/courses/${courseId}` : "/curriculum");
       return;
@@ -732,6 +775,26 @@ export function LessonPlayer() {
           course_id: courseId,
           score_percent: pct,
         });
+        incrementSessionCount("quiz_failed");
+        const quizFailCount = getSessionCount("quiz_failed");
+        if (quizFailCount >= 2 && canShowFeedback("quiz_confusion")) {
+          trackEvent(WEB_ANALYTICS_EVENTS.QUIZ_CONFUSION_FEEDBACK_TRIGGERED, {
+            lesson_id: lessonId,
+            course_id: courseId,
+            fail_count: quizFailCount,
+          });
+          recordFeedbackShown("quiz_confusion");
+          setFeedbackContext({
+            context_type: "quiz",
+            trigger_event: "quiz_confusion_feedback_triggered",
+            metadata: {
+              lesson_id: lessonId,
+              course_id: courseId,
+              quiz_attempt_count: quizFailCount,
+            },
+          });
+          openModal();
+        }
       }
       setProgress((prev) => ({
         ...prev!,

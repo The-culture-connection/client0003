@@ -913,6 +913,27 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // --- Survey / Implicit Feedback Layer ---
+    match /survey_responses/{docId} {
+      allow create: if isSignedIn() && request.resource.data.user_id == request.auth.uid;
+      allow read: if hasStaffClaim();
+      allow update, delete: if false;
+    }
+
+    match /survey_templates/{docId} {
+      allow read: if isSignedIn();
+      allow write: if hasStaffClaim();
+    }
+
+    match /survey_triggers/{docId} {
+      allow read: if isSignedIn();
+      allow write: if hasStaffClaim();
+    }
+
+    match /survey_summaries/{docId} {
+      allow read, write: if hasStaffClaim();
+    }
+
     // --- Deny everything else ---
     match /{document=**} {
       allow read, write: if false;

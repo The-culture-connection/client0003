@@ -1,28 +1,30 @@
-# Lesson 7 — Always Be Closing
+# Lesson 7 — added to course
 
-**Module 2 (Verse Two)** — order 2 after Lesson 6
+Added: 2026-06-06
 
 | Field | Value |
 |-------|-------|
 | **courseId** | `5yOpMeJR9KkbNzdPtQ0E` |
-| **moduleId** | `hatLrWdDIWhb3ndNZjxV` |
-| **chapterId** | `jdgMbIrLo5vi8PGjovr2` |
-| **lessonId** | `HuwkrnCxu5c6hURkDP1y` |
-| **Canva** | https://mortarengagementengines.my.canva.site/lesson-7 |
+| **curriculumId** | `SLpBKFr786sTNwaRMbUF` |
+| **moduleId** | `d0PrAHvpIgm123jQXXrv` |
+| **chapterId** | `5XkSdIzP4FHmSKSJhb0U` |
+| **lessonId** | `uDNDUvqUQZjfUd49oc9S` |
 
 ## Content
 
-- **45 screens** (44 PNGs + YouTube slide 24)
-- **Skipped:** survey UI 26, 44–48, 50; quiz UI 53
-- **7 surveys** (18 questions), **6 quiz questions**
-
-## Module 2 order
-
-1. The Medium Is the Message  
-2. **Always Be Closing**  
+- **45 playlist items** (images + YouTube; survey UI slides 26, 44, 45, 46, 47, 48, 50 skipped; quiz UI slide 53 skipped)
+- **7 survey checkpoints**
+- **6 quiz questions** (edit in Course Builder if placeholders)
 
 ## Learn URL
 
 ```
-/learn/lesson/HuwkrnCxu5c6hURkDP1y?courseId=5yOpMeJR9KkbNzdPtQ0E&curriculumId=SLpBKFr786sTNwaRMbUF&moduleId=hatLrWdDIWhb3ndNZjxV&chapterId=jdgMbIrLo5vi8PGjovr2
+http://localhost:5173/learn/lesson/uDNDUvqUQZjfUd49oc9S?courseId=5yOpMeJR9KkbNzdPtQ0E&curriculumId=SLpBKFr786sTNwaRMbUF&moduleId=d0PrAHvpIgm123jQXXrv&chapterId=5XkSdIzP4FHmSKSJhb0U
+```
+
+## Re-run
+
+```bash
+npm run export:lesson5-screens
+npm run add:lesson5
 ```

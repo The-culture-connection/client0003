@@ -1,28 +1,30 @@
-# Lesson 2 — The Four-One-One
+# Lesson 2 — added to course
 
-Added to course `5yOpMeJR9KkbNzdPtQ0E` (order **2**, after Release Party, before Fade In)
+Added: 2026-06-06
 
 | Field | Value |
 |-------|-------|
-| **lessonId** | `DJoLVrSTwQoJyjxhHXL8` |
-| **Canva** | https://mortarengagementengines.my.canva.site/lesson-2 |
+| **courseId** | `5yOpMeJR9KkbNzdPtQ0E` |
+| **curriculumId** | `SLpBKFr786sTNwaRMbUF` |
+| **moduleId** | `kCUhSJJI0mg3cDaTVDTN` |
+| **chapterId** | `VDINgFM0Q2GEFUSo1uLu` |
+| **lessonId** | `gB2t6mAvjf66oxJodLvu` |
 
 ## Content
 
-- **16 screens** (14 PNGs + 2 YouTube: slides 3 & 14)
-- **Skipped:** survey UI 7, 8, 15, 17, 19; quiz UI 20
-- **5 survey checkpoints** (16 questions total)
-- **3 quiz questions**
-
-## Course order
-
-1. Release Party  
-2. **The Four-One-One**  
-3. Fade In  
-4. Internal Reflection  
+- **16 playlist items** (images + YouTube; survey UI slides 7, 8, 15, 17, 19 skipped; quiz UI slide 20 skipped)
+- **5 survey checkpoints**
+- **3 quiz questions** (edit in Course Builder if placeholders)
 
 ## Learn URL
 
 ```
-/learn/lesson/DJoLVrSTwQoJyjxhHXL8?courseId=5yOpMeJR9KkbNzdPtQ0E&curriculumId=SLpBKFr786sTNwaRMbUF&moduleId=kCUhSJJI0mg3cDaTVDTN&chapterId=VDINgFM0Q2GEFUSo1uLu
+http://localhost:5173/learn/lesson/gB2t6mAvjf66oxJodLvu?courseId=5yOpMeJR9KkbNzdPtQ0E&curriculumId=SLpBKFr786sTNwaRMbUF&moduleId=kCUhSJJI0mg3cDaTVDTN&chapterId=VDINgFM0Q2GEFUSo1uLu
+```
+
+## Re-run
+
+```bash
+npm run export:lesson5-screens
+npm run add:lesson5
 ```

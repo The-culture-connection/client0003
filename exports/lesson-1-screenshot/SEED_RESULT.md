@@ -1,6 +1,6 @@
 # Lesson 1 — added to course
 
-Added: 2026-05-28
+Added: 2026-06-06
 
 | Field | Value |
 |-------|-------|
@@ -8,7 +8,7 @@ Added: 2026-05-28
 | **curriculumId** | `SLpBKFr786sTNwaRMbUF` |
 | **moduleId** | `kCUhSJJI0mg3cDaTVDTN` |
 | **chapterId** | `VDINgFM0Q2GEFUSo1uLu` |
-| **lessonId** | `8j6eOtUnWG1xMBimLc25` |
+| **lessonId** | `Asb98AB2Rwi680fG8ynT` |
 
 ## Content
 
@@ -19,7 +19,7 @@ Added: 2026-05-28
 ## Learn URL
 
 ```
-http://localhost:5173/learn/lesson/8j6eOtUnWG1xMBimLc25?courseId=5yOpMeJR9KkbNzdPtQ0E&curriculumId=SLpBKFr786sTNwaRMbUF&moduleId=kCUhSJJI0mg3cDaTVDTN&chapterId=VDINgFM0Q2GEFUSo1uLu
+http://localhost:5173/learn/lesson/Asb98AB2Rwi680fG8ynT?courseId=5yOpMeJR9KkbNzdPtQ0E&curriculumId=SLpBKFr786sTNwaRMbUF&moduleId=kCUhSJJI0mg3cDaTVDTN&chapterId=VDINgFM0Q2GEFUSo1uLu
 ```
 
 ## Re-run

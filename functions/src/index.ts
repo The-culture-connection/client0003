@@ -72,6 +72,8 @@ export { getCourseFile } from "./callables/getCourseFile";
 export { awardCourseModuleBadges } from "./callables/awardCourseModuleBadges";
 export { importPptxDeck } from "./callables/importPptxDeck";
 export { analyzeLessonSurvey } from "./callables/analyzeLessonSurvey";
+export { writeSurveyResponse } from "./callables/writeSurveyResponse";
+export { getSurveyIntelligenceReport } from "./callables/getSurveyIntelligenceReport";
 export { joinGroup, leaveGroup, deleteMobileGroup } from "./callables/groupMembership";
 export {
   adminCreateMobileGroup,
@@ -90,6 +92,8 @@ export {adminSendCustomAnnouncementEmail} from "./callables/adminSendCustomAnnou
 export {createStripeCheckoutSession} from "./callables/createStripeCheckoutSession";
 export {adminUpdateShopOrderFulfillment} from "./callables/adminUpdateShopOrderFulfillment";
 export {stripeWebhook} from "./http/stripeWebhook";
+
+export { onSurveyResponseCreated } from "./analytics/triggers/onSurveyResponseCreated";
 
 export {
   onGroupThreadVoteWrite,

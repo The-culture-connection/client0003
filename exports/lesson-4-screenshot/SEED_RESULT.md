@@ -1,6 +1,6 @@
-# Lesson 4 — mortar-stage seed result
+# Lesson 4 — added to course
 
-Seeded: 2026-05-28
+Added: 2026-06-06
 
 | Field | Value |
 |-------|-------|
@@ -8,26 +8,23 @@ Seeded: 2026-05-28
 | **curriculumId** | `SLpBKFr786sTNwaRMbUF` |
 | **moduleId** | `kCUhSJJI0mg3cDaTVDTN` |
 | **chapterId** | `VDINgFM0Q2GEFUSo1uLu` |
-| **lessonId** | `WhIpw7eIjAyWAEMSiOq6` |
+| **lessonId** | `wk0URrdBrIEZykAqJmiY` |
 
-## Content (v2 — updated)
+## Content
 
-- **19 playlist items**: 17 content PNGs + **2 YouTube-only screens** (PPT slides 1 & 12 skipped — embed only, like surveys/quiz)
-- **Skipped PPT slides**: survey UI 6,8,10,16,18,23–25,27–30 + quiz UI 26
-- **12 survey checkpoints** with lesson-specific questions (native UI, not survey PNG slides)
-- **3-question quiz** at end (native MCQ in player)
+- **19 playlist items** (images + YouTube; survey UI slides 6, 8, 10, 16, 18, 23, 24, 25, 27, 28, 29, 30 skipped; quiz UI slide 26 skipped)
+- **12 survey checkpoints**
+- **3 quiz questions** (edit in Course Builder if placeholders)
 
-## Learn URL (local dev)
+## Learn URL
 
 ```
-/learn/lesson/WhIpw7eIjAyWAEMSiOq6?courseId=5yOpMeJR9KkbNzdPtQ0E&curriculumId=SLpBKFr786sTNwaRMbUF&moduleId=kCUhSJJI0mg3cDaTVDTN&chapterId=VDINgFM0Q2GEFUSo1uLu
+http://localhost:5173/learn/lesson/wk0URrdBrIEZykAqJmiY?courseId=5yOpMeJR9KkbNzdPtQ0E&curriculumId=SLpBKFr786sTNwaRMbUF&moduleId=kCUhSJJI0mg3cDaTVDTN&chapterId=VDINgFM0Q2GEFUSo1uLu
 ```
 
-## Re-seed
+## Re-run
 
 ```bash
-npm run export:lesson4-screens
-npm run seed:lesson4
+npm run export:lesson5-screens
+npm run add:lesson5
 ```
-
-Survey question text uses placeholders (3 open-text questions per checkpoint). Edit in **Course Builder** or update `build-manifest.js` and re-seed.

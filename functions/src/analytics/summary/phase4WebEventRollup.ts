@@ -318,6 +318,32 @@ function rollupDeltaForEventName(eventName: string): RollupDelta | null {
   case WEB_ANALYTICS_EVENTS.DISCUSSIONS_SEARCH_CHANGED:
     return { userCounter: "discussions_search_changed", dailyCounter: "discussions_search_changed", communityCounter: null, courseCounter: null };
 
+  // --- Implicit Feedback Layer ---
+  case WEB_ANALYTICS_EVENTS.IMPLICIT_FEEDBACK_SUBMITTED:
+    return { userCounter: "implicit_feedback_submitted", dailyCounter: "implicit_feedback_submitted", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.IMPLICIT_FEEDBACK_SHOWN:
+    return { userCounter: "implicit_feedback_shown", dailyCounter: "implicit_feedback_shown", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.IMPLICIT_FEEDBACK_DISMISSED:
+    return { userCounter: "implicit_feedback_dismissed", dailyCounter: "implicit_feedback_dismissed", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.CONTENT_HELPFUL_TAPPED:
+    return { userCounter: "helpful_taps", dailyCounter: "helpful_taps", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.CONTENT_NOT_HELPFUL_TAPPED:
+    return { userCounter: "not_helpful_taps", dailyCounter: "not_helpful_taps", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.LESSON_CONFUSION_SIGNAL_SELECTED:
+    return { userCounter: "confusion_signals_sent", dailyCounter: "confusion_signals_sent", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.LESSON_ABANDONMENT_FEEDBACK_TRIGGERED:
+    return { userCounter: "lesson_abandonment_feedback_triggered", dailyCounter: "lesson_abandonment_feedback_triggered", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.QUIZ_CONFUSION_FEEDBACK_TRIGGERED:
+    return { userCounter: "quiz_confusion_feedback_triggered", dailyCounter: "quiz_confusion_feedback_triggered", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.NAVIGATION_DEAD_END_FEEDBACK_TRIGGERED:
+    return { userCounter: "navigation_dead_end_feedback_triggered", dailyCounter: "navigation_dead_end_feedback_triggered", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.CHECKOUT_HESITATION_FEEDBACK_TRIGGERED:
+    return { userCounter: "checkout_hesitation_feedback_triggered", dailyCounter: "checkout_hesitation_feedback_triggered", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.BADGE_EARNED_VIEWED:
+    return { userCounter: "badges_viewed", dailyCounter: "badges_viewed", communityCounter: null, courseCounter: null };
+  case WEB_ANALYTICS_EVENTS.BADGE_PROGRESS_VIEWED:
+    return { userCounter: "badge_progress_viewed", dailyCounter: "badge_progress_viewed", communityCounter: null, courseCounter: null };
+
   case WEB_ANALYTICS_EVENTS.PAYMENT_CHECKOUT_STARTED:
   case WEB_ANALYTICS_EVENTS.PAYMENT_CHECKOUT_REDIRECTED:
     return { userCounter: eventName, dailyCounter: eventName, communityCounter: null, courseCounter: null };

@@ -2,6 +2,7 @@
   "version": 2,
   "lessonId": "L4",
   "lessonTitle": "Fade In",
+  "lessonNumber": 4,
   "terminology": "screen",
   "sourcePptx": "course-content/Lesson4.pptx",
   "canvaUrl": "https://mortarengagementengines.my.canva.site/survey",
@@ -463,7 +464,6 @@
     "enabled": true,
     "maxAttempts": 3,
     "passPercentage": 70,
-    "canvaSlide": 26,
     "questions": [
       {
         "order": 0,
@@ -492,6 +492,15 @@
         "optionD": "—",
         "correctAnswer": "B"
       }
-    ]
+    ],
+    "canvaSlide": 26
+  },
+  "course": {
+    "courseId": "5yOpMeJR9KkbNzdPtQ0E",
+    "curriculumId": "SLpBKFr786sTNwaRMbUF",
+    "moduleId": "kCUhSJJI0mg3cDaTVDTN",
+    "chapterId": "VDINgFM0Q2GEFUSo1uLu",
+    "lessonOrder": 4,
+    "moduleLessonOrder": 4
   }
 }
