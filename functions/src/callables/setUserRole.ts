@@ -115,30 +115,35 @@ export const setUserRole = onCall({secrets: [BREVO_API_KEY]}, async (request) =>
       new_roles: newRoles,
     });
 
-    // Send notification email when an admin role is newly granted
+    // Send notification email when an admin role is newly granted.
+    // Must be awaited — Cloud Functions terminates on return, so fire-and-forget never resolves.
     if (action === "add" && ADMIN_ROLES.has(role) && !currentRoles.includes(role)) {
       const targetEmail = targetUser.email;
       if (targetEmail) {
-        const callerDoc = await db.collection("users").doc(callerUid).get();
-        const callerData = callerDoc.data() ?? {};
-        const callerName = firstNameFrom(
-          [callerData.first_name, callerData.last_name].filter(Boolean).join(" "),
-          callerData.email as string | undefined
-        );
-        const params = adminRoleGrantedParams({
-          userEmail: targetEmail,
-          userName: targetUser.displayName ?? undefined,
-          role,
-          granted_by_name: callerName,
-        });
-        sendTransactionalEmail("admin_role_granted", {
-          to: targetEmail,
-          params,
-          tags: ["admin_role_granted"],
-          skipPreferenceCheck: true,
-        }).catch((err) => {
-          logger.warn("setUserRole: admin_role_granted email failed to send", {err, targetEmail, role});
-        });
+        try {
+          const callerDoc = await db.collection("users").doc(callerUid).get();
+          const callerData = callerDoc.data() ?? {};
+          const callerName = firstNameFrom(
+            [callerData.first_name, callerData.last_name].filter(Boolean).join(" "),
+            callerData.email as string | undefined
+          );
+          const params = adminRoleGrantedParams({
+            userEmail: targetEmail,
+            userName: targetUser.displayName ?? undefined,
+            role,
+            granted_by_name: callerName,
+          });
+          await sendTransactionalEmail("admin_role_granted", {
+            to: targetEmail,
+            params,
+            tags: ["admin_role_granted"],
+            skipPreferenceCheck: true,
+          });
+          logger.info("setUserRole: admin_role_granted email sent", {targetEmail, role});
+        } catch (emailErr) {
+          // Log but don't fail the role update — the role change already succeeded.
+          logger.warn("setUserRole: admin_role_granted email failed", {emailErr, targetEmail, role});
+        }
       }
     }
 

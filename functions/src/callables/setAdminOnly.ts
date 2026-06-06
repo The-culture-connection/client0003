@@ -17,6 +17,9 @@ import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { z } from "zod";
 import * as logger from "firebase-functions/logger";
 import { assertCallerIsNetworkAdmin } from "../helpers/assertNetworkAdmin";
+import { BREVO_API_KEY } from "../email/brevoClient";
+import { sendTransactionalEmail } from "../email/sendTransactionalEmail";
+import { adminRoleGrantedParams, firstNameFrom } from "../email/buildEmailParams";
 
 if (getApps().length === 0) {
   initializeApp();
@@ -30,7 +33,7 @@ const setAdminOnlySchema = z.object({
   level: z.enum(["Admin", "superAdmin"]).default("Admin"),
 });
 
-export const setAdminOnly = onCall(async (request) => {
+export const setAdminOnly = onCall({ secrets: [BREVO_API_KEY] }, async (request) => {
   const callerUid = request.auth?.uid;
   if (!callerUid) {
     throw new HttpsError("unauthenticated", "User must be authenticated");
@@ -84,6 +87,35 @@ export const setAdminOnly = onCall(async (request) => {
       new_roles: newRoles,
       by: callerUid,
     });
+
+    // Send notification email to the newly promoted admin.
+    const targetEmail = targetUser.email;
+    if (targetEmail) {
+      try {
+        const callerDoc = await db.collection("users").doc(callerUid).get();
+        const callerData = callerDoc.data() ?? {};
+        const callerName = firstNameFrom(
+          [callerData.first_name, callerData.last_name].filter(Boolean).join(" "),
+          callerData.email as string | undefined
+        );
+        const params = adminRoleGrantedParams({
+          userEmail: targetEmail,
+          userName: targetUser.displayName ?? undefined,
+          role: level,
+          granted_by_name: callerName,
+        });
+        await sendTransactionalEmail("admin_role_granted", {
+          to: targetEmail,
+          params,
+          tags: ["admin_role_granted"],
+          skipPreferenceCheck: true,
+        });
+        logger.info("setAdminOnly: admin_role_granted email sent", { targetEmail, level });
+      } catch (emailErr) {
+        // Email failure must not block the role update response.
+        logger.warn("setAdminOnly: admin_role_granted email failed", { emailErr, targetEmail, level });
+      }
+    }
 
     return {
       success: true,
