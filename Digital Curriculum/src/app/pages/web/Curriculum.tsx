@@ -41,9 +41,18 @@ import { getLessonPlayerPath } from "../../lib/lessonPlayerUrl";
 import { useScreenAnalytics } from "../../analytics/useScreenAnalytics";
 import { trackEvent } from "../../analytics/trackEvent";
 import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalyticsContract";
+import { useFeedback } from "../../contexts/FeedbackContext";
+import { recordNavStep } from "../../analytics/feedbackTriggerEngine";
 
 export function WebCurriculum() {
   useScreenAnalytics("curriculum");
+  const { setFeedbackContext } = useFeedback();
+
+  useEffect(() => {
+    recordNavStep("/curriculum");
+    setFeedbackContext({ context_type: "lesson", trigger_event: "implicit_feedback_shown" });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const navigate = useNavigate();
   const { user } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);

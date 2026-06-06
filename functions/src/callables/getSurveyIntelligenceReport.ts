@@ -79,24 +79,24 @@ export const getSurveyIntelligenceReport = onCall(
     const afterTs = Timestamp.fromMillis(afterMs);
     const beforeTs = Timestamp.fromMillis(beforeMs);
 
-    // Query survey_responses
-    let q = db
+    // Query survey_responses by date range only (avoids composite index requirement).
+    // Context and course_id filtering is done in-memory after fetch.
+    const baseQ = db
       .collection(ANALYTICS_COLLECTIONS.SURVEY_RESPONSES)
       .where("created_at", ">=", afterTs)
-      .where("created_at", "<=", beforeTs);
-
-    if (context_type) q = q.where("context_type", "==", context_type);
-    if (course_id) q = q.where("metadata.course_id", "==", course_id);
+      .where("created_at", "<=", beforeTs)
+      .limit(10_000);
 
     let snap;
     try {
-      snap = await q.limit(10_000).get();
+      snap = await baseQ.get();
     } catch (err) {
       logger.error("getSurveyIntelligenceReport: query failed", err);
-      throw new HttpsError("internal", "Query failed.");
+      throw new HttpsError("internal", "Failed to load survey responses. Check Firestore indexes.");
     }
 
-    // Aggregate
+    // Aggregate (counting only docs that pass in-memory filters)
+    let response_count = 0;
     const reaction_breakdown: Record<string, number> = {};
     const confusion_signal_counts: Record<string, number> = {};
     const by_context: Record<string, { count: number; breakdown: Record<string, number> }> = {};
@@ -107,6 +107,15 @@ export const getSurveyIntelligenceReport = onCall(
     for (const doc of snap.docs) {
       const d = doc.data();
       const ctx = typeof d.context_type === "string" ? d.context_type : "general";
+
+      // In-memory filter for context_type and course_id
+      if (context_type && ctx !== context_type) continue;
+      if (course_id) {
+        const meta = d.metadata as Record<string, unknown> | undefined;
+        if (meta?.course_id !== course_id) continue;
+      }
+
+      response_count++;
       const resp = d.response as { type?: string; value?: unknown; label?: string } | undefined;
       const label = typeof resp?.label === "string" ? resp.label : "unknown";
       const value = resp?.value;
@@ -152,45 +161,43 @@ export const getSurveyIntelligenceReport = onCall(
       .slice(0, 10)
       .map(([label_key, count]) => ({ label: label_key, count }));
 
-    // Exposure count: query analytics_events for trigger events in the window
+    // Exposure count: query analytics_events by date range only, filter event_name in-memory
+    // (avoids needing a composite index on created_at + event_name).
+    const triggerEventSet = new Set([
+      "implicit_feedback_shown",
+      "lesson_abandonment_feedback_triggered",
+      "quiz_confusion_feedback_triggered",
+      "navigation_dead_end_feedback_triggered",
+      "checkout_hesitation_feedback_triggered",
+    ]);
+    const contextTriggerMap: Record<string, Set<string>> = {
+      lesson: new Set(["implicit_feedback_shown", "lesson_abandonment_feedback_triggered"]),
+      quiz: new Set(["quiz_confusion_feedback_triggered"]),
+      checkout: new Set(["checkout_hesitation_feedback_triggered"]),
+      navigation: new Set(["navigation_dead_end_feedback_triggered"]),
+      community: new Set(["implicit_feedback_shown"]),
+      general: new Set(["implicit_feedback_shown"]),
+    };
+    const relevantTriggers = context_type ? (contextTriggerMap[context_type] ?? triggerEventSet) : triggerEventSet;
+
     let exposure_count = 0;
     try {
-      const triggerEvents = [
-        "implicit_feedback_shown",
-        "lesson_abandonment_feedback_triggered",
-        "quiz_confusion_feedback_triggered",
-        "navigation_dead_end_feedback_triggered",
-        "checkout_hesitation_feedback_triggered",
-      ];
-      let expQ = db
+      const expSnap = await db
         .collection(ANALYTICS_COLLECTIONS.LEGACY_EVENTS)
         .where("created_at", ">=", afterTs)
         .where("created_at", "<=", beforeTs)
-        .where("event_name", "in", triggerEvents);
-      if (context_type) {
-        // Filter by trigger events relevant to the context_type
-        const contextTriggerMap: Record<string, string[]> = {
-          lesson: ["implicit_feedback_shown", "lesson_abandonment_feedback_triggered"],
-          quiz: ["quiz_confusion_feedback_triggered"],
-          checkout: ["checkout_hesitation_feedback_triggered"],
-          navigation: ["navigation_dead_end_feedback_triggered"],
-          community: ["implicit_feedback_shown"],
-          general: ["implicit_feedback_shown"],
-        };
-        const relevantTriggers = contextTriggerMap[context_type] ?? triggerEvents;
-        expQ = db
-          .collection(ANALYTICS_COLLECTIONS.LEGACY_EVENTS)
-          .where("created_at", ">=", afterTs)
-          .where("created_at", "<=", beforeTs)
-          .where("event_name", "in", relevantTriggers);
+        .limit(50_000)
+        .get();
+      for (const d of expSnap.docs) {
+        const eventName = d.data().event_name;
+        if (typeof eventName === "string" && relevantTriggers.has(eventName)) {
+          exposure_count++;
+        }
       }
-      const expSnap = await expQ.limit(50_000).get();
-      exposure_count = expSnap.size;
     } catch (err) {
       logger.warn("getSurveyIntelligenceReport: exposure query failed", err);
     }
 
-    const response_count = snap.size;
     const participation_rate =
       exposure_count > 0 ? Math.round((response_count / exposure_count) * 10000) / 10000 : null;
     const avg_slider_sentiment =

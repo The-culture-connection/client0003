@@ -3,11 +3,12 @@
  *
  * First appearance: pulses for 8 seconds to attract attention.
  * After 8s (or after session has seen it): static button, always visible.
- * Repulse: re-triggers a 3s pulse when meaningful context changes
- * (e.g. lesson abandonment, quiz confusion).
+ * Repulse (3s): re-triggers on page navigation or meaningful context changes
+ * (lesson abandonment, quiz confusion, etc.).
  */
 
 import { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router";
 import { MessageCircle } from "lucide-react";
 import { useFeedback } from "../../contexts/FeedbackContext";
 import { FeedbackModal } from "./FeedbackModal";
@@ -19,9 +20,17 @@ const REPULSE_DURATION_MS = 3_000;
 
 export function ImplicitFeedbackWidget() {
   const { feedbackState, isOpen, openModal, closeModal, clearRepulse } = useFeedback();
+  const location = useLocation();
 
   const [showPulse, setShowPulse] = useState(false);
   const pulseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isFirstRender = useRef(true);
+
+  function startPulse(durationMs: number) {
+    if (pulseTimerRef.current) clearTimeout(pulseTimerRef.current);
+    setShowPulse(true);
+    pulseTimerRef.current = setTimeout(() => setShowPulse(false), durationMs);
+  }
 
   // On mount: decide whether to start the initial pulse
   useEffect(() => {
@@ -34,38 +43,37 @@ export function ImplicitFeedbackWidget() {
     })();
 
     if (!alreadyPulsed) {
-      setShowPulse(true);
-      pulseTimerRef.current = setTimeout(() => {
-        setShowPulse(false);
-        try {
-          sessionStorage.setItem(PULSED_STORAGE_KEY, "1");
-        } catch {
-          /* ignore */
-        }
-      }, INITIAL_PULSE_DURATION_MS);
+      startPulse(INITIAL_PULSE_DURATION_MS);
+      try {
+        sessionStorage.setItem(PULSED_STORAGE_KEY, "1");
+      } catch {
+        /* ignore */
+      }
     }
 
     return () => {
       if (pulseTimerRef.current) clearTimeout(pulseTimerRef.current);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Repulse when context changes and repulse flag is set
+  // Pulse on every page navigation (skip the very first render to avoid double-pulse)
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    startPulse(REPULSE_DURATION_MS);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
+
+  // Repulse when a meaningful event sets the repulse flag (abandonment, quiz confusion, etc.)
   useEffect(() => {
     if (!feedbackState.repulse) return;
-
-    if (pulseTimerRef.current) clearTimeout(pulseTimerRef.current);
-    setShowPulse(true);
+    startPulse(REPULSE_DURATION_MS);
     clearRepulse();
-
-    pulseTimerRef.current = setTimeout(() => {
-      setShowPulse(false);
-    }, REPULSE_DURATION_MS);
-
-    return () => {
-      if (pulseTimerRef.current) clearTimeout(pulseTimerRef.current);
-    };
-  }, [feedbackState.repulse, clearRepulse]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [feedbackState.repulse]);
 
   function handleButtonClick() {
     trackFeedbackShown(feedbackState.context_type, feedbackState.trigger_event);
