@@ -92,6 +92,7 @@ export {adminSendCustomAnnouncementEmail} from "./callables/adminSendCustomAnnou
 export {createStripeCheckoutSession} from "./callables/createStripeCheckoutSession";
 export {adminUpdateShopOrderFulfillment} from "./callables/adminUpdateShopOrderFulfillment";
 export {stripeWebhook} from "./http/stripeWebhook";
+export {mobilePaymentReturn} from "./http/mobilePaymentReturn";
 
 export { onSurveyResponseCreated } from "./analytics/triggers/onSurveyResponseCreated";
 

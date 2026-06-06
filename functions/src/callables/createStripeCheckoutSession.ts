@@ -33,7 +33,14 @@ if (getApps().length === 0) {
 
 const db = getFirestore();
 
+const MOBILE_RETURN_BASE =
+  process.env.MOBILE_PAYMENT_RETURN_URL?.trim() ||
+  "https://us-central1-mortar-stage.cloudfunctions.net/mobilePaymentReturn";
+
 function defaultSuccessUrl(platform: string): string {
+  if (platform === "ios" || platform === "android") {
+    return `${MOBILE_RETURN_BASE}?platform=${platform}`;
+  }
   const base = process.env.DIGITAL_CURRICULUM_PLATFORM_URL?.trim() || DEFAULT_PLATFORM_URL;
   return `${base.replace(/\/$/, "")}/payment/success?platform=${platform}`;
 }
@@ -158,7 +165,7 @@ export const createStripeCheckoutSession = onCall(
             },
           },
         })),
-        success_url: `${successUrl}${successUrl.includes("?") ? "&" : "?"}session_id={CHECKOUT_SESSION_ID}&order_id=${orderId}&type=${purchaseType}`,
+        success_url: `${successUrl}${successUrl.includes("?") ? "&" : "?"}session_id={CHECKOUT_SESSION_ID}&order_id=${orderId}&type=${purchaseType}${resolved.metadata.event_id ? `&event_id=${resolved.metadata.event_id}` : ""}`,
         cancel_url: `${cancelUrl}${cancelUrl.includes("?") ? "&" : "?"}order_id=${orderId}&type=${purchaseType}`,
         metadata: stripeMetadata,
       });

@@ -1,3 +1,4 @@
+import 'package:app_links/app_links.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -34,6 +35,15 @@ Future<void> main() async {
       router.go(deepLink);
     },
   );
+
+  final appLinks = AppLinks();
+  appLinks.uriLinkStream.listen((uri) {
+    final path = uri.path;
+    if (path.isNotEmpty) {
+      router.go(path);
+    }
+  });
+
   runApp(
     ChangeNotifierProvider.value(
       value: authController,
