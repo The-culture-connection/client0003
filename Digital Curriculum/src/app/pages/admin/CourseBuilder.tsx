@@ -870,6 +870,13 @@ export function CourseBuilder() {
           let lessonId = lessonData.lessonId;
           const slides = lessonData.slides ?? [];
           const hasContent = slides.length > 0;
+          // Guard against clobbering existing (e.g. migrated) lesson content: only
+          // (re)write slides when the admin actually uploaded new media, or the
+          // lesson is brand new. A preexisting lesson that was merely opened/loaded
+          // (all slides are existing, no new files) is left untouched.
+          const lessonPreexisted = !!lessonId;
+          const hasNewUploads = slides.some((s) => s.file || s.videoFile);
+          const shouldWriteContent = hasContent && (!lessonPreexisted || hasNewUploads);
 
           if (!lessonId) {
             lessonId = await createLesson(
@@ -884,7 +891,7 @@ export function CourseBuilder() {
             accumulatedModules[moduleIndex].lessons[lessonIndex].lessonId = lessonId;
           }
 
-          if (hasContent && lessonId) {
+          if (shouldWriteContent && lessonId) {
             try {
               accumulatedModules[moduleIndex].lessons[lessonIndex].imageUploadStatus = "uploading";
               setModules(accumulatedModules);
@@ -1072,23 +1079,29 @@ export function CourseBuilder() {
                     correctAnswer: q.correctAnswer,
                   }))
               : [];
-            await setCourseLessonQuiz(courseIdToUse, lesson.lessonId, {
-              enabled: quizEnabled && validQuestions.length > 0,
-              maxAttempts: Math.max(1, lesson.quizMaxAttempts ?? 3),
-              passPercentage: Math.min(100, Math.max(0, lesson.quizPassPercentage ?? 70)),
-              questions: validQuestions,
-            });
+            // Only write a quiz when the admin actually has an enabled quiz with
+            // questions — never overwrite an existing quiz with a disabled/empty
+            // default (this was wiping migrated quizzes when lessons were opened).
+            if (quizEnabled && validQuestions.length > 0) {
+              await setCourseLessonQuiz(courseIdToUse, lesson.lessonId, {
+                enabled: true,
+                maxAttempts: Math.max(1, lesson.quizMaxAttempts ?? 3),
+                passPercentage: Math.min(100, Math.max(0, lesson.quizPassPercentage ?? 70)),
+                questions: validQuestions,
+              });
+            }
             for (const s of lesson.surveys ?? []) {
               if (s.generatePdfOnComplete && !s.dataroomFolderId) {
                 alert("Select a Data Room folder for each survey that exports a PDF.");
                 return null;
               }
             }
-            await setCourseLessonSurveyCheckpoints(
-              courseIdToUse,
-              lesson.lessonId,
-              draftSurveysToCheckpoints(lesson)
-            );
+            // Only write surveys when there are some — don't wipe existing (e.g.
+            // migrated) survey checkpoints with an empty list.
+            const updateCheckpoints = draftSurveysToCheckpoints(lesson);
+            if (updateCheckpoints.length > 0) {
+              await setCourseLessonSurveyCheckpoints(courseIdToUse, lesson.lessonId, updateCheckpoints);
+            }
           }
         }
         alert("Course updated!");
@@ -1126,23 +1139,27 @@ export function CourseBuilder() {
                     correctAnswer: q.correctAnswer,
                   }))
               : [];
-            await setCourseLessonQuiz(courseId, lesson.lessonId, {
-              enabled: quizEnabled && validQuestions.length > 0,
-              maxAttempts: Math.max(1, lesson.quizMaxAttempts ?? 3),
-              passPercentage: Math.min(100, Math.max(0, lesson.quizPassPercentage ?? 70)),
-              questions: validQuestions,
-            });
+            // Only write a quiz when the admin actually has an enabled quiz with
+            // questions — never overwrite an existing quiz with a disabled/empty default.
+            if (quizEnabled && validQuestions.length > 0) {
+              await setCourseLessonQuiz(courseId, lesson.lessonId, {
+                enabled: true,
+                maxAttempts: Math.max(1, lesson.quizMaxAttempts ?? 3),
+                passPercentage: Math.min(100, Math.max(0, lesson.quizPassPercentage ?? 70)),
+                questions: validQuestions,
+              });
+            }
             for (const s of lesson.surveys ?? []) {
               if (s.generatePdfOnComplete && !s.dataroomFolderId) {
                 alert("Select a Data Room folder for each survey that exports a PDF.");
                 return null;
               }
             }
-            await setCourseLessonSurveyCheckpoints(
-              courseId,
-              lesson.lessonId,
-              draftSurveysToCheckpoints(lesson)
-            );
+            // Only write surveys when there are some — don't wipe existing checkpoints.
+            const createCheckpoints = draftSurveysToCheckpoints(lesson);
+            if (createCheckpoints.length > 0) {
+              await setCourseLessonSurveyCheckpoints(courseId, lesson.lessonId, createCheckpoints);
+            }
           }
         }
         alert("Course saved as draft!");

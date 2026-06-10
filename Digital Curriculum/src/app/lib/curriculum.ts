@@ -107,6 +107,13 @@ export interface LessonImage {
 
 export type LessonVideoProvider = "youtube" | "hosted" | "external";
 
+/** A clickable link/button rendered beneath an image slide (e.g. "Visit SCORE",
+ * "Download the Business Canvas"). Captured from the source slide's hyperlinks. */
+export interface SlideLink {
+  label: string;
+  url: string;
+}
+
 /** Clickable emoji hotspot on an image slide */
 export interface SlidePopup {
   id: string;
@@ -129,6 +136,8 @@ export interface LessonContentSlide {
   alt_text?: string;
   /** Interactive emoji popups overlaid on image slides */
   popups?: SlidePopup[];
+  /** Clickable link buttons rendered beneath the slide image */
+  links?: SlideLink[];
   // Video slide (YouTube, uploaded file, or external URL e.g. Canva CDN)
   video_provider?: LessonVideoProvider;
   video_id?: string;

@@ -68,6 +68,10 @@ node_modules/
 .env.*.local
 *.env
 
+# Secrets — service-account keys & API credentials (never commit)
+*firebase-adminsdk*.json
+Thinkificapiinfo
+
 # dataconnect generated files
 .dataconnect
 
@@ -87,3 +91,5 @@ build/
 .next/
 out/
 *.tsbuildinfo
+
+preview/

@@ -1,0 +1,4 @@
+# Secrets & generated artifacts — never commit
+.env
+course-ids.json
+*firebase-adminsdk*.json

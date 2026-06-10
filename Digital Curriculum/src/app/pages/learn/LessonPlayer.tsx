@@ -35,8 +35,8 @@ import { functions } from "../../lib/firebase";
 import { httpsCallable } from "firebase/functions";
 import { SlideRenderer } from "../../components/curriculum/SlideRenderer";
 import { MediaVideoBlock } from "../../components/curriculum/MediaVideoBlock";
-import { SlideImageWithPopups } from "../../components/curriculum/SlideImageWithPopups";
 import { LessonScreenRenderer } from "../../components/curriculum/LessonScreenRenderer";
+import { LessonSlideScreen } from "../../components/curriculum/LessonSlideScreen";
 import { useLessonScreenPreload } from "../../hooks/useLessonScreenPreload";
 import { Button } from "../../components/ui/button";
 import { ChevronLeft, ChevronRight, LogOut, Loader2 } from "lucide-react";
@@ -588,6 +588,24 @@ export function LessonPlayer() {
       setShowSurveyView(false);
       setActiveSurveyId(null);
 
+      // Navigate immediately — BEFORE the slow progress refresh / PDF upload —
+      // otherwise the survey view closes and the previous slide stays on screen
+      // until those awaits finish (the "previous slide appears" bug).
+      const moreAtSameSlide = surveys.filter(
+        (s) =>
+          s.id !== submittedSurveyId &&
+          !isSurveySubmitted(s.id) &&
+          s.afterSlideIndex === afterIdx
+      );
+      if (moreAtSameSlide.length > 0) {
+        openSurveyCheckpoint(moreAtSameSlide[0]);
+      } else if (afterIdx === -1 && hasQuiz && !userPassed) {
+        setShowQuizView(true);
+      } else if (afterIdx >= 0 && afterIdx < itemCount - 1) {
+        setCurrentSlideIndex(afterIdx + 1);
+        window.scrollTo(0, 0);
+      }
+
       const refreshed = await getCourseProgress(user.uid, courseId);
       setProgress(refreshed ?? null);
 
@@ -607,28 +625,13 @@ export function LessonPlayer() {
         }
       }
 
-      if (afterIdx >= 0 && afterIdx < itemCount - 1) {
-        setCurrentSlideIndex(afterIdx + 1);
-        window.scrollTo(0, 0);
+      // Already navigated above; if more surveys remained at this slide or the
+      // quiz opened, skip the course-completion check.
+      if (moreAtSameSlide.length > 0 || (afterIdx === -1 && hasQuiz && !userPassed)) {
+        return;
       }
 
       const progressAfter = refreshed;
-      const moreAtSameSlide = surveys.filter(
-        (s) =>
-          s.id !== submittedSurveyId &&
-          !isLessonSurveyCheckpointSubmitted(progressAfter, lessonId, s.id) &&
-          s.afterSlideIndex === afterIdx
-      );
-      if (moreAtSameSlide.length > 0) {
-        openSurveyCheckpoint(moreAtSameSlide[0]);
-        return;
-      }
-
-      if (afterIdx === -1 && hasQuiz && !userPassed) {
-        setShowQuizView(true);
-        return;
-      }
-
       const course = await getCourse(courseId);
       if (progressAfter && course) {
         await syncModuleCompletionAndAwardBadges(progressAfter, course);
@@ -1090,21 +1093,12 @@ export function LessonPlayer() {
           <>
             {isMediaLesson && currentContentSlide ? (
               currentContentSlide.type === "image" ? (
-                useImmersiveScreens ? (
-                  <LessonScreenRenderer
-                    src={currentContentSlide.image_url!}
-                    alt={currentContentSlide.alt_text ?? `Screen ${currentSlideIndex + 1}`}
-                    popups={currentContentSlide.popups}
-                    className="h-full"
-                  />
-                ) : (
-                  <SlideImageWithPopups
-                    src={currentContentSlide.image_url!}
-                    alt={currentContentSlide.alt_text ?? `Slide ${currentSlideIndex + 1}`}
-                    popups={currentContentSlide.popups}
-                    className="min-h-[calc(100vh-80px)]"
-                  />
-                )
+                <LessonSlideScreen
+                  src={currentContentSlide.image_url!}
+                  alt={currentContentSlide.alt_text ?? `Slide ${currentSlideIndex + 1}`}
+                  popups={currentContentSlide.popups}
+                  links={currentContentSlide.links}
+                />
               ) : (
                 <MediaVideoBlock
                   videoProvider={currentContentSlide.video_provider}

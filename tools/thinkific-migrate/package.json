@@ -1,0 +1,14 @@
+{
+  "name": "thinkific-migrate",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Migrate the MORTAR MASTERS course from Thinkific into the Digital Curriculum (Firestore).",
+  "scripts": {
+    "setup": "node setup-course.js",
+    "setup:dry-run": "node setup-course.js --dry-run",
+    "thinkific:list": "node list-thinkific.js"
+  },
+  "dependencies": {
+    "puppeteer-core": "^23.11.1"
+  }
+}
