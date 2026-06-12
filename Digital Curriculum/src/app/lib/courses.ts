@@ -68,6 +68,12 @@ export interface Course {
   createdAt: Timestamp;
   updatedAt: Timestamp;
   status?: "draft" | "published" | "archived";
+  /**
+   * Bumped (to Date.now()) by the admin "Publish update to assignees" action.
+   * When a learner's `syncedContentVersion` is behind this, their completion is
+   * re-opened so they get the latest course content. See reconcileCourseContentVersion.
+   */
+  contentVersion?: number;
   totalDuration?: number; // Total course duration in minutes
   totalPrice?: number; // Total price of all modules (calculated)
   curriculumMapping?: {
@@ -218,6 +224,21 @@ export async function updateCourse(
     console.error("Error updating course:", error);
     throw error;
   }
+}
+
+/**
+ * Stamp the course with a new content version ("Publish update to assignees").
+ * Every assigned learner whose progress is synced to an older version will be
+ * re-opened to the latest content on their next visit (see
+ * reconcileCourseContentVersion). Returns the new version.
+ */
+export async function bumpCourseContentVersion(courseId: string): Promise<number> {
+  const version = Date.now();
+  await updateDoc(doc(db, "courses", courseId), {
+    contentVersion: version,
+    updatedAt: serverTimestamp(),
+  });
+  return version;
 }
 
 /**

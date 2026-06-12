@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp, deleteField } from "firebase/firestore";
 import { db } from "./firebase";
 import { Timestamp } from "firebase/firestore";
 import { invalidateCache } from "./cache";
@@ -7,6 +7,7 @@ import {
   lessonSurveyProgressKey,
   LEGACY_LESSON_SURVEY_ID,
 } from "./courses";
+import type { Course } from "./courses";
 
 export interface CourseProgress {
   userId: string;
@@ -32,6 +33,12 @@ export interface CourseProgress {
   /** Latest AI survey feedback written by callable `analyzeLessonSurvey` */
   surveyAiFeedback?: Record<string, string>;
   surveyAiAnalyzedAt?: Record<string, Timestamp>;
+  /**
+   * The course `contentVersion` this progress has been reconciled to. When the
+   * course is bumped to a newer version (admin "Publish update"), the learner is
+   * re-opened to the latest content. See reconcileCourseContentVersion.
+   */
+  syncedContentVersion?: number;
 }
 
 /**
@@ -54,6 +61,56 @@ export async function getCourseProgress(
     console.error("Error getting course progress:", error);
     throw error;
   }
+}
+
+/**
+ * Sync a learner's progress to the course's latest content version.
+ *
+ * If the admin has pushed a course update (course.contentVersion is newer than
+ * the learner's syncedContentVersion), re-open the course: a learner who had
+ * completed it is reset so they must re-finish the updated content (their
+ * certificate is re-issued on re-completion). In-progress learners simply get
+ * stamped to the new version — their live progress % already reflects new
+ * content. Returns the (possibly updated) progress.
+ */
+export async function reconcileCourseContentVersion(
+  userId: string,
+  course: Course | null,
+  progress: CourseProgress | null
+): Promise<CourseProgress | null> {
+  if (!course?.id || !course.contentVersion || !progress) return progress;
+  const synced = progress.syncedContentVersion ?? 0;
+  if (synced >= course.contentVersion) return progress;
+
+  const wasCompleted = progress.completed === true || !!progress.completedAt;
+  const updates: Record<string, unknown> = {
+    syncedContentVersion: course.contentVersion,
+    updatedAt: serverTimestamp(),
+  };
+  const next: CourseProgress = { ...progress, syncedContentVersion: course.contentVersion };
+
+  if (wasCompleted) {
+    const reset = {
+      completed: false,
+      progress: 0,
+      lessonsCompleted: {},
+      modulesCompleted: {},
+      pagesViewed: {},
+      quizPassed: {},
+      surveySubmitted: {},
+    };
+    Object.assign(updates, reset, { completedAt: deleteField() });
+    Object.assign(next, reset, { completedAt: undefined });
+  }
+
+  try {
+    await updateDoc(doc(db, "courseProgress", `${userId}_${course.id}`), updates);
+    invalidateCache(`progress:${userId}`);
+  } catch (error) {
+    console.error("Error reconciling course content version:", error);
+    return progress;
+  }
+  return next;
 }
 
 /**

@@ -18,6 +18,7 @@ import {
 } from "../../lib/courses";
 import {
   getCourseProgress,
+  reconcileCourseContentVersion,
   updateLessonSlideProgress,
   setLessonCompleted,
   recordLessonQuizAttempt,
@@ -258,7 +259,14 @@ export function LessonPlayer() {
         ]);
         setQuiz(quizData?.enabled && (quizData.questions?.length ?? 0) > 0 ? quizData : null);
         setSurveys(surveyCheckpoints);
-        setProgress(progressData ?? null);
+        // Re-open to the latest content if the admin pushed an update since this
+        // learner last synced (keeps the deep-link/resume path in sync too).
+        let syncedProgress = progressData ?? null;
+        if (courseIdParam && user && progressData) {
+          const courseForSync = await getCourse(courseIdParam);
+          syncedProgress = await reconcileCourseContentVersion(user.uid, courseForSync, progressData);
+        }
+        setProgress(syncedProgress);
         setActiveSurveyId(null);
         setShowSurveyView(false);
         setSurveyAnswers([]);
@@ -270,8 +278,8 @@ export function LessonPlayer() {
         const slideIndexParam = params.get("slideIndex");
         if (slideIndexParam !== null && slideIndexParam !== "") {
           initialIndex = Math.max(0, parseInt(slideIndexParam, 10) || 0);
-        } else if (user && courseIdParam && progressData?.pagesViewed?.[lessonId!]) {
-          initialIndex = Math.max(0, (progressData.pagesViewed[lessonId!] || 1) - 1);
+        } else if (user && courseIdParam && syncedProgress?.pagesViewed?.[lessonId!]) {
+          initialIndex = Math.max(0, (syncedProgress.pagesViewed[lessonId!] || 1) - 1);
         }
         setCurrentSlideIndex(Math.min(initialIndex, Math.max(0, itemCount - 1)));
         setIsLoading(false);

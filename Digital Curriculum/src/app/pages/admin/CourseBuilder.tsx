@@ -65,6 +65,7 @@ import {
 import {
   createCourse,
   updateCourse,
+  bumpCourseContentVersion,
   setCourseLessonQuiz,
   setCourseLessonSurveyCheckpoints,
   getCourse,
@@ -198,6 +199,7 @@ export function CourseBuilder() {
   const [isLoadingEdit, setIsLoadingEdit] = useState(!!editingCourseId);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isPushingUpdate, setIsPushingUpdate] = useState(false);
 
   // Course Metadata
   const [courseTitle, setCourseTitle] = useState("");
@@ -1373,6 +1375,31 @@ export function CourseBuilder() {
     }
   };
 
+  /**
+   * Push the current content to all assignees. Saves any pending edits first,
+   * then bumps the course content version so every assigned learner is re-opened
+   * to the latest content on their next visit (completed learners must re-finish).
+   */
+  const handlePublishUpdate = async () => {
+    const courseIdForUpdate = await handleSaveCourse();
+    if (!courseIdForUpdate) {
+      alert("Could not save the course, so the update was not pushed.");
+      return;
+    }
+    setIsPushingUpdate(true);
+    try {
+      await bumpCourseContentVersion(courseIdForUpdate);
+      alert(
+        "Update pushed to assignees. Everyone assigned will get the latest content on their next visit, and anyone who had completed the course will be re-opened to finish the new material."
+      );
+    } catch (e) {
+      console.error("Error pushing course update:", e);
+      alert("Failed to push the update. Please try again.");
+    } finally {
+      setIsPushingUpdate(false);
+    }
+  };
+
   const handleDeleteCourse = async () => {
     if (!editingCourseId) return;
     setIsDeleting(true);
@@ -2529,6 +2556,27 @@ export function CourseBuilder() {
         </div>
 
         <div className="flex gap-2">
+          {editingCourseId && (
+            <Button
+              onClick={handlePublishUpdate}
+              disabled={!courseTitle.trim() || isSaving || isPublishing || isPushingUpdate}
+              variant="outline"
+              title="Save edits and push the latest content to everyone assigned. Completed learners are re-opened to finish the new material."
+            >
+              {isPushingUpdate ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Pushing update...
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4 mr-2" />
+                  Push update to assignees
+                </>
+              )}
+            </Button>
+          )}
+
           <Button
             onClick={handleSaveCourse}
             disabled={!courseTitle.trim() || isSaving || isPublishing}

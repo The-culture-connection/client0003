@@ -22,6 +22,7 @@ import {
   getCourseProgress,
   calculateCourseProgress,
   isLessonSurveysCompleteByCount,
+  reconcileCourseContentVersion,
   type CourseProgress,
 } from "../../lib/courseProgress";
 import { getCourseSlideCounts } from "../../lib/curriculum";
@@ -75,8 +76,15 @@ export function CourseDetail() {
           getCurrentUserWithRoles(),
           getPaidModuleIds(user.uid),
         ]);
+        // Re-open the course to the latest content if the admin pushed an update
+        // after this learner last synced (resets a completed learner to re-finish).
+        const reconciledProgress = await reconcileCourseContentVersion(
+          user.uid,
+          courseData,
+          progressData
+        );
         setCourse(courseData);
-        setCourseProgress(progressData);
+        setCourseProgress(reconciledProgress);
         setPaidModuleIds(paidMods);
         const roles = userWithRoles?.roles ?? [];
         setIsAdmin(roles.includes("Admin") || roles.includes("superAdmin"));
