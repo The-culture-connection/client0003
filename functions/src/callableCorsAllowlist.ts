@@ -16,6 +16,11 @@ export const callableCorsAllowlist: (string | RegExp)[] = [
   "https://mortar-dev.web.app",
   "https://mortar-stage.firebaseapp.com",
   "https://mortar-stage.web.app",
-  // Railway service hostnames (e.g. `mortar-stage-stage.up.railway.app`).
-  /^https:\/\/[a-z0-9][a-z0-9-]{0,61}(\.[a-z0-9][a-z0-9-]{0,61})*\.up\.railway\.app$/i,
+  // Production Firebase hosting (project `mortar-9d29d`).
+  "https://mortar-9d29d.firebaseapp.com",
+  "https://mortar-9d29d.web.app",
+  // Mortar Railway service hostnames only (e.g. `mortar-stage-stage`, `mortar-web-staging`,
+  // `mortar-prod-*`). Scoped to the `mortar-` prefix so an unrelated attacker-controlled
+  // `*.up.railway.app` deployment cannot pass the allowlist.
+  /^https:\/\/mortar-[a-z0-9-]{1,61}\.up\.railway\.app$/i,
 ];

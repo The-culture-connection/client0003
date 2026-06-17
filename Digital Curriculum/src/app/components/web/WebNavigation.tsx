@@ -304,16 +304,25 @@ export function WebNavigation() {
                               className="h-8 w-8"
                               onClick={async () => {
                                 if (!api) return;
-                                await releaseStock({
-                                  itemId: line.itemId,
-                                  size: line.size,
-                                  quantity: line.quantity,
-                                  category: line.category,
-                                }).catch(console.error);
-                                api.removeLine({ itemId: line.itemId, size: line.size });
-                                trackEvent(WEB_ANALYTICS_EVENTS.CART_LINE_REMOVE_CLICKED, {
-                                  item_id: line.itemId,
-                                });
+                                try {
+                                  // Only drop the cart line if the reserved stock is actually
+                                  // released — otherwise a failed release would orphan the
+                                  // reservation with no way for the user to free it.
+                                  await releaseStock({
+                                    itemId: line.itemId,
+                                    size: line.size,
+                                    quantity: line.quantity,
+                                    category: line.category,
+                                  });
+                                  api.removeLine({ itemId: line.itemId, size: line.size });
+                                  trackEvent(WEB_ANALYTICS_EVENTS.CART_LINE_REMOVE_CLICKED, {
+                                    item_id: line.itemId,
+                                  });
+                                } catch (err) {
+                                  // Keep the line so the stock isn't orphaned; the user can retry.
+                                  // eslint-disable-next-line no-console
+                                  console.error("releaseStock failed; keeping cart line", err);
+                                }
                               }}
                               title="Remove"
                             >

@@ -24,6 +24,10 @@ class ExploreListingsRepository {
 
   static const int maxSkillsPerListing = 30;
 
+  /// Cap the Explore feeds so a growing listings collection can't stream unbounded reads
+  /// into every client. Ordered by `created_at desc`, so this is the most-recent N.
+  static const int _exploreFeedLimit = 100;
+
   static void _validateCurriculumSkillList(List<String> skills) {
     if (skills.isEmpty) {
       throw ArgumentError('Select at least one curriculum skill.');
@@ -42,7 +46,7 @@ class ExploreListingsRepository {
   CollectionReference<Map<String, dynamic>> get _skills => _db.collection('expansion_skills');
 
   Stream<List<ExploreJob>> watchJobs() {
-    return _jobs.orderBy('created_at', descending: true).snapshots().map(
+    return _jobs.orderBy('created_at', descending: true).limit(_exploreFeedLimit).snapshots().map(
           (snap) => snap.docs
               .map((d) => ExploreJob.fromDoc(d.id, d.data()))
               .whereType<ExploreJob>()
@@ -51,7 +55,7 @@ class ExploreListingsRepository {
   }
 
   Stream<List<ExploreSkillListing>> watchSkillListings() {
-    return _skills.orderBy('created_at', descending: true).snapshots().map(
+    return _skills.orderBy('created_at', descending: true).limit(_exploreFeedLimit).snapshots().map(
           (snap) => snap.docs
               .map((d) => ExploreSkillListing.fromDoc(d.id, d.data()))
               .whereType<ExploreSkillListing>()

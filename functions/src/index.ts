@@ -7,6 +7,7 @@ import "./firebaseGlobalOptions";
 export * from "./expansionInvite";
 
 export { onUserCreated } from "./triggers/onUserCreated";
+export { syncRolesToClaims } from "./triggers/syncRolesToClaims";
 export { onUserReportCreated } from "./triggers/onUserReportCreated";
 export { onMatchProfileWrite } from "./triggers/onMatchProfileWrite";
 export { scheduledNudgeIncompleteProfiles } from "./triggers/scheduledNudgeIncompleteProfiles";

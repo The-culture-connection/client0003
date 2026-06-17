@@ -11,7 +11,7 @@
  */
 
 import {getApps, initializeApp} from "firebase-admin/app";
-import {getFirestore} from "firebase-admin/firestore";
+import {FieldValue, getFirestore} from "firebase-admin/firestore";
 import {onRequest} from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import Stripe from "stripe";
@@ -94,8 +94,16 @@ export const stripeWebhook = onRequest(
         const clientPlatform = (metadata.client_platform ?? "web") as PaymentClientPlatform;
 
         if (!orderId || !uid || !purchaseType) {
-          logger.error("checkout.session.completed missing metadata", {orderId, uid, purchaseType});
-          res.status(400).send("Missing metadata");
+          // Signature is already verified, so this is a genuine Stripe event that simply was
+          // not created by Mortar (or lost its metadata). Ack 200 and skip side-effects — a
+          // 4xx/5xx would make Stripe retry this non-actionable event for ~3 days.
+          logger.warn("checkout.session.completed missing metadata; skipping", {
+            sessionId: session.id,
+            orderId: orderId ?? null,
+            uid: uid ?? null,
+            purchaseType: purchaseType ?? null,
+          });
+          res.json({received: true, skipped: "missing_metadata"});
           return;
         }
 
@@ -138,7 +146,7 @@ export const stripeWebhook = onRequest(
           });
           if (event.type === "checkout.session.expired") {
             await db.collection(PAYMENT_ORDERS_COLLECTION).doc(orderId).set(
-              {status: "expired", updated_at: new Date()},
+              {status: "expired", updated_at: FieldValue.serverTimestamp()},
               {merge: true}
             );
           }

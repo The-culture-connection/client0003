@@ -68,12 +68,31 @@ class _EventDetailScreenState extends State<EventDetailScreen>
 
   Future<void> _handleCheckoutReturn() async {
     setState(() => _busy = true);
+    final uid = FirebaseAuth.instance.currentUser?.uid;
     try {
-      await _load();
+      // Registration is fulfilled server-side by the Stripe webhook, which can lag the
+      // app's return from checkout. Poll a few times (breaking as soon as it lands) so the
+      // user doesn't see a stale "not registered" state immediately after paying.
+      const attempts = 5;
+      const gap = Duration(milliseconds: 1500);
+      var registered = false;
+      for (var i = 0; i < attempts; i++) {
+        final e = await _events.getEvent(widget.eventId);
+        if (!mounted) return;
+        setState(() => _event = e);
+        if (e != null && uid != null && e.isRegistered(uid)) {
+          registered = true;
+          break;
+        }
+        if (i < attempts - 1) {
+          await Future<void>.delayed(gap);
+          if (!mounted) return;
+        }
+      }
+
       if (!mounted) return;
-      final uid = FirebaseAuth.instance.currentUser?.uid;
       final ev = _event;
-      if (ev != null && uid != null && ev.isRegistered(uid)) {
+      if (registered && ev != null) {
         unawaited(
           ExpansionAnalytics.log(
             'event_registered',
@@ -81,9 +100,24 @@ class _EventDetailScreenState extends State<EventDetailScreen>
             sourceScreen: 'event_detail',
           ),
         );
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("You're registered for this event.")),
+        );
         if (ev.date != null && mounted) {
           await showPostRegisterCalendarSheet(context, ev);
         }
+      } else {
+        // We can't tell from the app alone whether the user paid or cancelled, so the
+        // message stays conditional rather than falsely confirming a payment.
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            duration: Duration(seconds: 6),
+            content: Text(
+              'Finishing up — if you completed checkout, your spot will appear '
+              'shortly. Pull down to refresh in a moment.',
+            ),
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _busy = false);

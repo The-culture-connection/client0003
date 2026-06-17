@@ -434,7 +434,14 @@ export const runExpansionUserMatching = onCall({ invoker: "public" }, async (req
     }
   }
 
-  const snap = await db.collection("users").where("networkAccess", "==", true).get();
+  // Bound the read: we only need to know whether the eligible set exceeds the cap, so
+  // cap + 1 is enough to detect "too many" below without streaming the entire users
+  // collection into function memory.
+  const snap = await db
+    .collection("users")
+    .where("networkAccess", "==", true)
+    .limit(MAX_ELIGIBLE_USERS + 1)
+    .get();
 
   const eligible: EligibleUser[] = [];
   for (const doc of snap.docs) {

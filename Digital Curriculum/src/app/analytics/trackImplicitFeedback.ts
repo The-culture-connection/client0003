@@ -73,23 +73,37 @@ export function trackImplicitFeedback(payload: ImplicitFeedbackPayload): void {
   const sessionId = getOrCreateAnalyticsSessionId();
   const screenName = getActiveScreenName();
 
-  writeSurveyResponseFn({
-    session_id: sessionId,
-    screen_name: screenName ?? undefined,
-    context_type,
-    trigger_event,
-    response: {
-      type: response.type,
-      value: response.value,
-      label: response.label,
-    },
-    metadata: payload.metadata ?? {},
-  }).catch((err) => {
-    if (import.meta.env.DEV) {
-      // eslint-disable-next-line no-console
-      console.warn("[mortar:feedback] writeSurveyResponse failed", err);
+  // Persist to survey_responses. Non-blocking, but retried on transient failure so user
+  // feedback isn't silently lost (it feeds reporting); gives up quietly after a few tries.
+  void (async () => {
+    const reqBody = {
+      session_id: sessionId,
+      screen_name: screenName ?? undefined,
+      context_type,
+      trigger_event,
+      response: {
+        type: response.type,
+        value: response.value,
+        label: response.label,
+      },
+      metadata: payload.metadata ?? {},
+    };
+    for (let attempt = 0; attempt <= 2; attempt++) {
+      try {
+        await writeSurveyResponseFn(reqBody);
+        return;
+      } catch (err) {
+        if (attempt === 2) {
+          if (import.meta.env.DEV) {
+            // eslint-disable-next-line no-console
+            console.warn("[mortar:feedback] writeSurveyResponse failed", err);
+          }
+          return;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
+      }
     }
-  });
+  })();
 }
 
 /** Fire the implicit_feedback_shown event when the widget is displayed. */

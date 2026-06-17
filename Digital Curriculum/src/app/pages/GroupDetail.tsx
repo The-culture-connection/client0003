@@ -27,7 +27,7 @@ import {
   type Group,
   type GroupMessage,
 } from "../lib/groups";
-import { onSnapshot, collection, query, orderBy, limit, doc, getDoc } from "firebase/firestore";
+import { onSnapshot, collection, query, orderBy, limit, doc, getDoc, where, documentId, getDocs } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useScreenAnalytics } from "../analytics/useScreenAnalytics";
 import { trackEvent } from "../analytics/trackEvent";
@@ -110,28 +110,27 @@ export function GroupDetailPage() {
       if (toFetch.length === 0) return;
 
       try {
-        const results = await Promise.all(
-          toFetch.map(async (sid) => {
-            const userRef = doc(db, "users", sid);
-            const snap = await getDoc(userRef);
-            return { sid, snap };
-          })
-        );
-
         const nextMap: Record<string, string> = {};
-        for (const r of results) {
-          const name =
-            r.snap.exists()
-              ? (() => {
-                  const data = r.snap.data() as any;
-                  return (
-                    [data?.first_name, data?.last_name].filter(Boolean).join(" ") ||
-                    data?.display_name ||
-                    "User"
-                  );
-                })()
-              : "User";
-          nextMap[r.sid] = name;
+        // Batch the lookups: Firestore `in` allows up to 10 ids per query, so this turns
+        // an N-document N+1 into ceil(N/10) queries.
+        for (let i = 0; i < toFetch.length; i += 10) {
+          const chunk = toFetch.slice(i, i + 10);
+          const snap = await getDocs(
+            query(collection(db, "users"), where(documentId(), "in", chunk))
+          );
+          const found = new Set<string>();
+          snap.forEach((d) => {
+            const data = d.data() as any;
+            nextMap[d.id] =
+              [data?.first_name, data?.last_name].filter(Boolean).join(" ") ||
+              data?.display_name ||
+              "User";
+            found.add(d.id);
+          });
+          // Ids with no user doc still get a fallback so they aren't re-fetched every render.
+          for (const sid of chunk) {
+            if (!found.has(sid)) nextMap[sid] = "User";
+          }
         }
 
         if (!cancelled) {

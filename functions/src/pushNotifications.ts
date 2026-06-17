@@ -19,6 +19,17 @@ const messaging = getMessaging();
 const PUSH_ACTIVITY = "push_notifications_activity";
 const PUSH_DEDUPE = "push_notification_dedupes";
 
+/**
+ * FCM error codes that mean a token is permanently dead and should be pruned from the
+ * user doc. Transient codes (unavailable, internal, quota) are intentionally excluded so
+ * we don't drop tokens that would succeed on retry.
+ */
+const DEAD_TOKEN_CODES = new Set<string>([
+  "messaging/registration-token-not-registered",
+  "messaging/invalid-registration-token",
+  "messaging/invalid-argument",
+]);
+
 type PushEventType =
   | "badge_earned"
   | "badge_available"
@@ -65,14 +76,14 @@ async function loadTokensForUid(uid: string): Promise<string[]> {
 async function loadAdminRecipientUids(): Promise<string[]> {
   const byUid = new Set<string>();
 
-  const [admins, superAdmins, singleRoleAdmins, singleRoleSupers] = await Promise.all([
-    db.collection("users").where("roles", "array-contains", "Admin").select().limit(2500).get(),
-    db.collection("users").where("roles", "array-contains", "superAdmin").select().limit(2500).get(),
-    db.collection("users").where("role", "==", "Admin").select().limit(2500).get(),
-    db.collection("users").where("role", "==", "superAdmin").select().limit(2500).get(),
+  // Two queries instead of four: `array-contains-any` covers the `roles[]` array form and
+  // `in` covers the legacy single `role` field, each for both Admin and superAdmin.
+  const [byRolesArray, byRoleField] = await Promise.all([
+    db.collection("users").where("roles", "array-contains-any", ["Admin", "superAdmin"]).select().limit(2500).get(),
+    db.collection("users").where("role", "in", ["Admin", "superAdmin"]).select().limit(2500).get(),
   ]);
 
-  for (const snap of [admins, superAdmins, singleRoleAdmins, singleRoleSupers]) {
+  for (const snap of [byRolesArray, byRoleField]) {
     for (const d of snap.docs) byUid.add(d.id);
   }
   return Array.from(byUid);
@@ -86,6 +97,8 @@ async function logPushActivity(params: {
   targetUids: string[];
   successCount: number;
   failureCount: number;
+  prunedCount?: number;
+  errorCodes?: Record<string, number>;
   data?: Record<string, unknown>;
   source: "trigger" | "scheduler" | "admin";
   actorUid?: string;
@@ -98,11 +111,54 @@ async function logPushActivity(params: {
     target_uids: params.targetUids,
     success_count: params.successCount,
     failure_count: params.failureCount,
+    pruned_count: params.prunedCount ?? 0,
+    error_codes: params.errorCodes ?? {},
     source: params.source,
     actor_uid: params.actorUid ?? null,
     data: params.data ?? {},
     created_at: FieldValue.serverTimestamp(),
   });
+}
+
+/**
+ * Remove permanently-dead FCM tokens from the owning user docs. `tokenToUids` maps each
+ * token to the uid(s) it was loaded from, so a dead token is pruned from every owner: it is
+ * removed from the `fcm_tokens` array and, if it matches the single `fcm_token` field, that
+ * field is deleted. Returns the number of (uid, token) prunings performed.
+ */
+async function pruneDeadTokens(
+  tokenToUids: Map<string, Set<string>>,
+  deadTokens: string[]
+): Promise<number> {
+  const uidToDead = new Map<string, Set<string>>();
+  for (const token of deadTokens) {
+    const owners = tokenToUids.get(token);
+    if (!owners) continue;
+    for (const uid of owners) {
+      if (!uidToDead.has(uid)) uidToDead.set(uid, new Set());
+      uidToDead.get(uid)!.add(token);
+    }
+  }
+
+  let pruned = 0;
+  await Promise.all(
+    Array.from(uidToDead.entries()).map(async ([uid, tokens]) => {
+      const ref = db.collection("users").doc(uid);
+      const update: Record<string, unknown> = {
+        fcm_tokens: FieldValue.arrayRemove(...Array.from(tokens)),
+      };
+      const snap = await ref.get();
+      const cur = snap.data()?.fcm_token;
+      if (typeof cur === "string" && tokens.has(cur.trim())) {
+        update.fcm_token = FieldValue.delete();
+      }
+      await ref.set(update, {merge: true}).catch((err) => {
+        logger.warn("pruneDeadTokens: failed to update user", {uid, err});
+      });
+      pruned += tokens.size;
+    })
+  );
+  return pruned;
 }
 
 async function sendPushToUids(params: {
@@ -114,18 +170,33 @@ async function sendPushToUids(params: {
   data?: Record<string, string>;
   source: "trigger" | "scheduler" | "admin";
   actorUid?: string;
-}): Promise<{success: number; failure: number}> {
-  const uidSet = new Set(params.uids.filter((x) => x.trim().length > 0));
-  if (uidSet.size === 0) {
-    return {success: 0, failure: 0};
+  /**
+   * When set, the send is gated by a dedupe marker: if a notification with this key was
+   * already sent, this call is a no-op. Makes trigger retries / duplicate writes idempotent.
+   * (Scheduled reminders dedupe per-uid themselves and do not pass this.)
+   */
+  dedupeKey?: string;
+}): Promise<{success: number; failure: number; pruned: number}> {
+  if (params.dedupeKey) {
+    const fresh = await reminderDedupeOnce(params.dedupeKey);
+    if (!fresh) return {success: 0, failure: 0, pruned: 0};
   }
 
-  const tokenSet = new Set<string>();
+  const uidSet = new Set(params.uids.filter((x) => x.trim().length > 0));
+  if (uidSet.size === 0) {
+    return {success: 0, failure: 0, pruned: 0};
+  }
+
+  // token -> set of uids it was loaded from, so dead tokens can be pruned from every owner.
+  const tokenToUids = new Map<string, Set<string>>();
   for (const uid of uidSet) {
     const tokens = await loadTokensForUid(uid);
-    for (const t of tokens) tokenSet.add(t);
+    for (const t of tokens) {
+      if (!tokenToUids.has(t)) tokenToUids.set(t, new Set());
+      tokenToUids.get(t)!.add(uid);
+    }
   }
-  const tokens = Array.from(tokenSet);
+  const tokens = Array.from(tokenToUids.keys());
   if (tokens.length === 0) {
     await logPushActivity({
       type: params.type,
@@ -139,11 +210,13 @@ async function sendPushToUids(params: {
       source: params.source,
       actorUid: params.actorUid,
     });
-    return {success: 0, failure: 0};
+    return {success: 0, failure: 0, pruned: 0};
   }
 
   let success = 0;
   let failure = 0;
+  const deadTokens: string[] = [];
+  const errorCodes: Record<string, number> = {};
   for (let i = 0; i < tokens.length; i += 500) {
     const chunk = tokens.slice(i, i + 500);
     const response = await messaging.sendEachForMulticast({
@@ -165,6 +238,25 @@ async function sendPushToUids(params: {
     });
     success += response.successCount;
     failure += response.failureCount;
+    // Inspect per-token results: a bad token never aborts the batch (sendEachForMulticast
+    // resolves per token), but we record the error code and queue dead tokens for pruning.
+    response.responses.forEach((r, idx) => {
+      if (r.success || !r.error) return;
+      const code = r.error.code ?? "unknown";
+      errorCodes[code] = (errorCodes[code] ?? 0) + 1;
+      if (DEAD_TOKEN_CODES.has(code)) {
+        const tok = chunk[idx];
+        if (tok) deadTokens.push(tok);
+      }
+    });
+  }
+
+  let pruned = 0;
+  if (deadTokens.length > 0) {
+    pruned = await pruneDeadTokens(tokenToUids, deadTokens).catch((err) => {
+      logger.warn("sendPushToUids: pruneDeadTokens failed", {err});
+      return 0;
+    });
   }
 
   await logPushActivity({
@@ -175,11 +267,13 @@ async function sendPushToUids(params: {
     targetUids: Array.from(uidSet),
     successCount: success,
     failureCount: failure,
+    prunedCount: pruned,
+    errorCodes,
     data: params.data,
     source: params.source,
     actorUid: params.actorUid,
   });
-  return {success, failure};
+  return {success, failure, pruned};
 }
 
 function listAddedStrings(before: unknown, after: unknown): string[] {
@@ -214,6 +308,7 @@ export const onUserBadgeEarnedPush = onDocumentWritten(
       deepLink: "/profile/achievements",
       data: {badge_id: latestBadge},
       source: "trigger",
+      dedupeKey: `badge_earned_${uid}_${latestBadge}`,
     });
   }
 );
@@ -239,6 +334,7 @@ export const onBadgeDefinitionCreatedPush = onDocumentCreated(
       deepLink: "/profile/achievements",
       data: {badge_id: badgeId},
       source: "trigger",
+      dedupeKey: `badge_available_${badgeId}`,
     });
   }
 );
@@ -247,6 +343,7 @@ export const onDirectMessageCreatedPush = onDocumentCreated(
   {region: "us-central1", document: "dm_threads/{threadId}/messages/{messageId}"},
   async (event) => {
     const threadId = event.params.threadId as string;
+    const messageId = event.params.messageId as string;
     const data = event.data?.data() as Record<string, unknown> | undefined;
     if (!data) return;
 
@@ -265,11 +362,17 @@ export const onDirectMessageCreatedPush = onDocumentCreated(
       deepLink: `/messages/direct/${senderId}`,
       data: {thread_id: threadId},
       source: "trigger",
+      dedupeKey: `dm_${threadId}_${messageId}`,
     });
   }
 );
 
-async function notifyGroupMembers(groupId: string, authorId: string, deepLink: string): Promise<void> {
+async function notifyGroupMembers(
+  groupId: string,
+  authorId: string,
+  deepLink: string,
+  dedupeKey: string
+): Promise<void> {
   const groupSnap = await db.collection("groups_mobile").doc(groupId).get();
   if (!groupSnap.exists) return;
   const members = Array.isArray(groupSnap.data()?.GroupMembers) ? (groupSnap.data()?.GroupMembers as string[]) : [];
@@ -284,6 +387,7 @@ async function notifyGroupMembers(groupId: string, authorId: string, deepLink: s
     deepLink,
     data: {group_id: groupId},
     source: "trigger",
+    dedupeKey,
   });
 }
 
@@ -296,7 +400,12 @@ export const onMobileGroupThreadPush = onDocumentCreated(
     if (!data) return;
     const authorId = typeof data.author_id === "string" ? data.author_id : "";
     if (!authorId) return;
-    await notifyGroupMembers(groupId, authorId, `/groups/${groupId}?thread=${threadId}`);
+    await notifyGroupMembers(
+      groupId,
+      authorId,
+      `/groups/${groupId}?thread=${threadId}`,
+      `gm_thread_${groupId}_${threadId}`
+    );
   }
 );
 
@@ -305,11 +414,17 @@ export const onMobileGroupCommentPush = onDocumentCreated(
   async (event) => {
     const groupId = event.params.groupId as string;
     const threadId = event.params.threadId as string;
+    const commentId = event.params.commentId as string;
     const data = event.data?.data() as Record<string, unknown> | undefined;
     if (!data) return;
     const authorId = typeof data.author_id === "string" ? data.author_id : "";
     if (!authorId) return;
-    await notifyGroupMembers(groupId, authorId, `/groups/${groupId}?thread=${threadId}`);
+    await notifyGroupMembers(
+      groupId,
+      authorId,
+      `/groups/${groupId}?thread=${threadId}`,
+      `gm_comment_${groupId}_${commentId}`
+    );
   }
 );
 
@@ -338,6 +453,7 @@ export const onGraduationApplicationCreatedAdminPush = onDocumentCreated(
         web_admin_path: "/admin/panel/graduation",
       },
       source: "trigger",
+      dedupeKey: `admin_grad_${applicationId}`,
     });
   }
 );
@@ -361,6 +477,7 @@ export const onUserReportedAdminPush = onDocumentCreated(
       deepLink: "/admin/reports",
       data: {report_id: reportId, reported_uid: reportedUid},
       source: "trigger",
+      dedupeKey: `admin_report_${reportId}`,
     });
   }
 );
@@ -387,6 +504,7 @@ export const onEventNeedsApprovalAdminPush = onDocumentCreated(
       deepLink: "/admin/events",
       data: {event_id: eventId},
       source: "trigger",
+      dedupeKey: `admin_event_${eventId}`,
     });
   }
 );
@@ -484,6 +602,7 @@ export const onDigitalStudentDmCreatedAdminPush = onDocumentCreated(
         web_admin_path: "/admin/panel/messages",
       },
       source: "trigger",
+      dedupeKey: `admin_dm_${dmId}`,
     });
   }
 );
@@ -492,6 +611,7 @@ export const onDigitalStudentDmReplyAdminPush = onDocumentCreated(
   {region: "us-central1", document: "Digital Student DMs/{dmId}/replies/{replyId}"},
   async (event) => {
     const dmId = event.params.dmId as string;
+    const replyId = event.params.replyId as string;
     const data = event.data?.data() as Record<string, unknown> | undefined;
     if (!data) return;
 
@@ -512,6 +632,7 @@ export const onDigitalStudentDmReplyAdminPush = onDocumentCreated(
         web_admin_path: "/admin/panel/messages",
       },
       source: "trigger",
+      dedupeKey: `admin_dmreply_${replyId}`,
     });
   }
 );

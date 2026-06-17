@@ -74,7 +74,9 @@ class PushNotificationsService {
       await _handleDeepLinkFromMessage(initial);
     }
 
-    await _logPushDebugInfo();
+    if (kDebugMode) {
+      await _logPushDebugInfo();
+    }
   }
 
   Future<void> syncTokenForCurrentUser() async {
@@ -102,6 +104,45 @@ class PushNotificationsService {
     }
 
     await _firestore.collection('users').doc(uid).set(payload, SetOptions(merge: true));
+  }
+
+  /// Detach this device's FCM token on logout. Must be called **before**
+  /// `FirebaseAuth.signOut()` so `currentUser` is still available to scope the write.
+  /// Removes the token from the user doc (so the backend stops targeting this device)
+  /// and deletes it on-device so a fresh token is minted on the next login.
+  Future<void> removeTokenForCurrentUser() async {
+    final uid = _auth.currentUser?.uid;
+    String? token;
+    try {
+      token = await _messaging.getToken();
+    } catch (_) {
+      token = null;
+    }
+
+    if (uid != null && token != null && token.isNotEmpty) {
+      final update = <String, dynamic>{
+        'fcm_tokens': FieldValue.arrayRemove([token]),
+        'updated_at': FieldValue.serverTimestamp(),
+      };
+      try {
+        final snap = await _firestore.collection('users').doc(uid).get();
+        if (snap.data()?['fcm_token'] == token) {
+          update['fcm_token'] = FieldValue.delete();
+        }
+        await _firestore.collection('users').doc(uid).set(
+              update,
+              SetOptions(merge: true),
+            );
+      } catch (e) {
+        debugPrint('PushNotificationsService: removeToken doc update failed: $e');
+      }
+    }
+
+    try {
+      await _messaging.deleteToken();
+    } catch (e) {
+      debugPrint('PushNotificationsService: deleteToken failed: $e');
+    }
   }
 
   Future<void> _handleDeepLinkFromMessage(RemoteMessage message) async {

@@ -12,6 +12,11 @@ const ingestFn = httpsCallable(functions, "ingestWebAnalytics");
 
 const MAX_IN_FLIGHT = 3;
 const DEDUPE_WINDOW_MS = 2000;
+// Retry transient ingest failures (network blips, exhausted connection slots) so analytics
+// events aren't silently dropped — which would make reports under-count. Bounded so a hard
+// outage can't grow the queue unboundedly.
+const MAX_RETRIES = 2;
+const RETRY_BASE_MS = 1000;
 
 let inFlight = 0;
 const queue: Array<() => Promise<void>> = [];
@@ -55,12 +60,21 @@ export function enqueueIngestWebAnalytics(body: IngestWebAnalyticsRequest): void
   if (shouldSkipDuplicate(body)) return;
 
   queue.push(async () => {
-    try {
-      await ingestFn(prepareIngestWebAnalyticsRequest(body));
-    } catch (e) {
-      if (import.meta.env.DEV) {
-        // eslint-disable-next-line no-console
-        console.warn("[mortar:analytics:ingest_failed]", body.event_name, e);
+    const payload = prepareIngestWebAnalyticsRequest(body);
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        await ingestFn(payload);
+        return;
+      } catch (e) {
+        if (attempt === MAX_RETRIES) {
+          if (import.meta.env.DEV) {
+            // eslint-disable-next-line no-console
+            console.warn("[mortar:analytics:ingest_failed]", body.event_name, e);
+          }
+          return;
+        }
+        // Linear backoff before retrying the transient failure.
+        await new Promise((resolve) => setTimeout(resolve, RETRY_BASE_MS * (attempt + 1)));
       }
     }
   });

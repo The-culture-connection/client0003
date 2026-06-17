@@ -11,6 +11,7 @@ import '../models/community_event.dart';
 import '../profile/profile_edit_sections.dart';
 import '../profile/profile_utils.dart';
 import '../services/events_repository.dart';
+import '../services/push_notifications_service.dart';
 import '../services/user_profile_repository.dart';
 import '../theme/app_theme.dart';
 import '../utils/relative_time.dart';
@@ -140,6 +141,9 @@ class _ProfileBody extends StatelessWidget {
                       unawaited(
                         ExpansionAnalytics.log('profile_sign_out_clicked', sourceScreen: 'profile'),
                       );
+                      // Detach this device's FCM token before sign-out so the backend
+                      // stops targeting it (must run while currentUser is still set).
+                      await PushNotificationsService().removeTokenForCurrentUser();
                       await FirebaseAuth.instance.signOut();
                       if (context.mounted) context.go('/');
                     },
