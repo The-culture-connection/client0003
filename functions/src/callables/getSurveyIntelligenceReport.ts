@@ -5,6 +5,7 @@
 
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { initializeApp, getApps } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
 import { getFirestore, Timestamp } from "firebase-admin/firestore";
 import { z } from "zod";
 import * as logger from "firebase-functions/logger";
@@ -15,7 +16,32 @@ if (getApps().length === 0) {
   initializeApp();
 }
 
+const auth = getAuth();
 const db = getFirestore();
+
+/** Roles are case-insensitive ("Admin" === "admin"); normalize before comparing. */
+function normalizeRoles(input: unknown): string[] {
+  if (!Array.isArray(input)) return [];
+  return input
+    .filter((r): r is string => typeof r === "string")
+    .map((r) => r.trim().toLowerCase())
+    .filter((r) => r.length > 0);
+}
+
+/** Fresh server-side check: custom claims + Firestore roles (works even if the token lags). */
+async function assertAnalyticsAdmin(uid: string): Promise<void> {
+  const [userRecord, userDoc] = await Promise.all([
+    auth.getUser(uid),
+    db.collection("users").doc(uid).get(),
+  ]);
+  const merged = new Set<string>([
+    ...normalizeRoles(userRecord.customClaims?.roles),
+    ...normalizeRoles(userDoc.data()?.roles),
+  ]);
+  if (!merged.has("admin") && !merged.has("superadmin")) {
+    throw new HttpsError("permission-denied", "Admin or superAdmin only.");
+  }
+}
 
 const CONTEXT_TYPES = ["lesson", "quiz", "checkout", "navigation", "community", "general"] as const;
 
@@ -53,17 +79,11 @@ export const getSurveyIntelligenceReport = onCall(
       throw new HttpsError("unauthenticated", "Sign in required.");
     }
 
-    // Staff-role check via custom claims
-    const claims = request.auth?.token as Record<string, unknown> ?? {};
-    const rawRoles = claims["roles"];
-    const roles: string[] = Array.isArray(rawRoles)
-      ? rawRoles.filter((r): r is string => typeof r === "string")
-      : typeof rawRoles === "string"
-        ? [rawRoles]
-        : [];
-    const isStaff = roles.some((r) => ["admin", "superAdmin", "staff"].includes(r));
-    if (!isStaff) {
-      throw new HttpsError("permission-denied", "Staff access required.");
+    // Trust the verified token first (fast path), then fall back to a fresh server lookup
+    // for environments where the token's claims lag a recent role change. Case-insensitive.
+    const tokenRoles = normalizeRoles(request.auth?.token?.roles);
+    if (!tokenRoles.includes("admin") && !tokenRoles.includes("superadmin")) {
+      await assertAnalyticsAdmin(uid);
     }
 
     const parsed = requestSchema.safeParse(request.data);

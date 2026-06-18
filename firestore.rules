@@ -388,18 +388,25 @@ service cloud.firestore {
     }
 
     // --- Direct messages (1:1 threads) ---
-    function dmThreadDoc(threadId) {
-      return get(/databases/$(database)/documents/dm_threads/$(threadId));
-    }
-
-    function dmParticipantIds(threadId) {
-      return dmThreadDoc(threadId).data.participant_ids;
+    // Thread id is the two participant uids joined by '_' in sorted order ("a_b"), so the
+    // caller is a participant iff their uid is the prefix ("uid_…") or suffix ("…_uid").
+    // Deriving this from the id (instead of get()-ing the thread doc) lets the first message
+    // of a brand-new conversation be created in the SAME batch as the thread, and lets an
+    // empty conversation be opened — while still exposing the thread only to its two uids.
+    // (Firebase uids carry no regex metacharacters; seed uids add only '_', which is safe.)
+    function dmCallerInThreadId(threadId) {
+      return isSignedIn()
+        && (threadId.matches(request.auth.uid + '_.*')
+          || threadId.matches('.*_' + request.auth.uid));
     }
 
     match /dm_threads/{threadId} {
-      allow read: if isSignedIn()
-        && resource.data.participant_ids is list
-        && request.auth.uid in resource.data.participant_ids;
+      // Id-derived participant check (not resource.data) so reading a NOT-YET-CREATED thread
+      // returns "does not exist" instead of erroring: the app calls threadRef.get() before
+      // sending the first message, and a resource-based rule denies that get on a missing doc
+      // (resource is null), which blocked starting a new conversation. Works for list queries
+      // too — every doc matching `participant_ids array-contains uid` has uid in its thread id.
+      allow read: if dmCallerInThreadId(threadId);
       allow create: if isSignedIn()
         && callerNotContentSuspended()
         && request.resource.data.participant_ids is list
@@ -425,13 +432,9 @@ service cloud.firestore {
     }
 
     match /dm_threads/{threadId}/messages/{msgId} {
-      allow read: if isSignedIn()
-        && dmThreadDoc(threadId).exists
-        && request.auth.uid in dmParticipantIds(threadId);
-      allow create: if isSignedIn()
+      allow read: if dmCallerInThreadId(threadId);
+      allow create: if dmCallerInThreadId(threadId)
         && callerNotContentSuspended()
-        && dmThreadDoc(threadId).exists
-        && request.auth.uid in dmParticipantIds(threadId)
         && request.resource.data.sender_id == request.auth.uid
         && request.resource.data.text is string
         && request.resource.data.text.size() > 0
@@ -556,17 +559,6 @@ service cloud.firestore {
     }
 
     // --- Mobile-only groups (Expansion app); threads mirror `Groups` ---
-    function mobileGroupDoc(groupId) {
-      return get(/databases/$(database)/documents/groups_mobile/$(groupId));
-    }
-
-    function isMobileGroupMember(groupId) {
-      return mobileGroupDoc(groupId).exists
-        && mobileGroupDoc(groupId).data.keys().hasAll(['GroupMembers'])
-        && mobileGroupDoc(groupId).data.GroupMembers is list
-        && request.auth.uid in mobileGroupDoc(groupId).data.GroupMembers;
-    }
-
     /** Optional `category` on `groups_mobile` — must match app allowlist when present. */
     function mobileGroupCategoryOk() {
       return !request.resource.data.keys().hasAny(['category'])
@@ -610,55 +602,52 @@ service cloud.firestore {
         || (isSignedIn() && resource.data.get('createdBy', '') == request.auth.uid);
     }
 
+    // Communities are universal: any signed-in user may read and participate, regardless of
+    // role or group membership. Authorship is still enforced (you can only edit/delete your
+    // own content / vote as yourself) and content is validated; staff is a non-denying override.
     match /groups_mobile/{groupId}/threads/{threadId} {
-      allow read: if isSignedIn() && (hasStaffClaim() || isMobileGroupMember(groupId));
-      allow create: if isSignedIn() && callerNotContentSuspended() && isMobileGroupMember(groupId)
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && callerNotContentSuspended()
         && request.resource.data.author_id == request.auth.uid
         && request.resource.data.body is string
         && request.resource.data.body.size() > 0
         && request.resource.data.body.size() <= 20000
         && request.resource.data.author_name is string;
       allow update: if hasStaffClaim()
-        || (isSignedIn() && isMobileGroupMember(groupId)
+        || (isSignedIn()
           && resource.data.author_id == request.auth.uid
           && groupThreadAuthorUpdateKeys());
       allow delete: if hasStaffClaim()
-        || (isSignedIn() && isMobileGroupMember(groupId)
-          && resource.data.author_id == request.auth.uid);
+        || (isSignedIn() && resource.data.author_id == request.auth.uid);
     }
 
     match /groups_mobile/{groupId}/threads/{threadId}/comments/{commentId} {
-      allow read: if isSignedIn() && (hasStaffClaim() || isMobileGroupMember(groupId));
-      allow create: if isSignedIn() && callerNotContentSuspended() && isMobileGroupMember(groupId)
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && callerNotContentSuspended()
         && request.resource.data.author_id == request.auth.uid
         && request.resource.data.body is string
         && request.resource.data.body.size() > 0
         && request.resource.data.body.size() <= 10000
         && request.resource.data.author_name is string;
       allow update: if hasStaffClaim()
-        || (isSignedIn() && isMobileGroupMember(groupId)
+        || (isSignedIn()
           && resource.data.author_id == request.auth.uid
           && request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['body', 'updated_at']));
       allow delete: if hasStaffClaim()
-        || (isSignedIn() && isMobileGroupMember(groupId)
-          && resource.data.author_id == request.auth.uid);
+        || (isSignedIn() && resource.data.author_id == request.auth.uid);
     }
 
     match /groups_mobile/{groupId}/threads/{threadId}/votes/{voterId} {
-      allow read: if isSignedIn() && (hasStaffClaim() || isMobileGroupMember(groupId));
-      allow create, update: if isSignedIn() && isMobileGroupMember(groupId)
-        && request.auth.uid == voterId
-        && voteValueOk();
-      allow delete: if isSignedIn() && isMobileGroupMember(groupId) && request.auth.uid == voterId;
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && request.auth.uid == voterId && voteValueOk();
+      allow delete: if isSignedIn() && request.auth.uid == voterId;
     }
 
     match /groups_mobile/{groupId}/threads/{threadId}/comments/{commentId}/votes/{voterId} {
-      allow read: if isSignedIn() && (hasStaffClaim() || isMobileGroupMember(groupId));
-      allow create, update: if isSignedIn() && isMobileGroupMember(groupId)
-        && request.auth.uid == voterId
-        && voteValueOk();
-      allow delete: if isSignedIn() && isMobileGroupMember(groupId) && request.auth.uid == voterId;
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && request.auth.uid == voterId && voteValueOk();
+      allow delete: if isSignedIn() && request.auth.uid == voterId;
     }
 
     match /badge_definitions/{badgeId} {
