@@ -185,7 +185,7 @@ export function WebNavigation() {
             <Link to={logoTo} className="text-xl font-bold text-foreground shrink-0">
               Mortar
             </Link>
-            {adminMinimalHeader && staffViewToggle}
+            {adminMinimalHeader && <span data-tour="admin-view-toggle">{staffViewToggle}</span>}
             {showStudentNavLinks && (
               <div className="flex items-center gap-1 flex-wrap min-w-0">
                 {navItems.map((item) => {

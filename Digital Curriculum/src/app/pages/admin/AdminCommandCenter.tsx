@@ -36,7 +36,9 @@ import {
   RefreshCw,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { HelpCircle } from "lucide-react";
 import { adminPanelPath } from "../../lib/adminHubNavigation";
+import { AdminTour, startAdminTour } from "../../components/tour/AdminTour";
 import { useAdminHubActionCounts } from "../../hooks/useAdminHubActionCounts";
 import { formatShopOrderActionPreview } from "../../lib/shopOrderDisplay";
 import { cn } from "../../components/ui/utils";
@@ -316,6 +318,7 @@ export function AdminCommandCenter() {
 
   return (
     <div className="p-6 max-w-[1600px] mx-auto">
+      <AdminTour />
       <div className="mb-8">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="min-w-0">
@@ -329,13 +332,29 @@ export function AdminCommandCenter() {
               Choose a tool below. Detail screens keep this hub available in the side rail.
             </p>
           </div>
-          <Badge className="bg-accent/10 text-accent border-accent/30 text-sm px-3 py-1 shrink-0">ADMIN ACCESS</Badge>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => startAdminTour()}
+              data-tour="admin-help"
+              className="gap-1.5 border-border text-muted-foreground hover:text-foreground"
+              title="Take a tour of the admin hub"
+            >
+              <HelpCircle className="w-4 h-4" />
+              Tour
+            </Button>
+            <Badge className="bg-accent/10 text-accent border-accent/30 text-sm px-3 py-1">ADMIN ACCESS</Badge>
+          </div>
         </div>
-        <PlatformScopeKey className="mt-3 pt-3 border-t border-border/40" />
+        <div data-tour="admin-scope-key">
+          <PlatformScopeKey className="mt-3 pt-3 border-t border-border/40" />
+        </div>
       </div>
 
       {/* Action items — live counts; visually emphasized when work is waiting */}
-      <section className="mb-8">
+      <section className="mb-8" data-tour="admin-action-items">
         <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
           <div className="flex items-center gap-2 flex-wrap">
             <h2 className="text-xl font-bold text-foreground">Action items</h2>
@@ -445,7 +464,7 @@ export function AdminCommandCenter() {
             <p className="text-sm text-muted-foreground">Jump into each management area.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" data-tour="admin-tools">
             {adminTools.map((tool, idx) => (
               <Card
                 key={idx}
@@ -482,7 +501,7 @@ export function AdminCommandCenter() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card className="p-5 bg-gradient-to-br from-accent/20 via-card to-card border-accent/30">
+          <Card className="p-5 bg-gradient-to-br from-accent/20 via-card to-card border-accent/30" data-tour="admin-quick-actions">
             <h2 className="text-lg font-bold text-foreground mb-4">Quick actions</h2>
             <div className="space-y-2">
               <Button
