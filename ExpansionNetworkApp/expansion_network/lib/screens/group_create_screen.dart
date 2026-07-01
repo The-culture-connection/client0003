@@ -62,7 +62,10 @@ class _GroupCreateScreenState extends State<GroupCreateScreen> {
         sourceScreen: 'group_create',
       );
       if (!mounted) return;
-      context.go('/groups/$id');
+      // Replace this create screen (instead of go(), which wipes the whole
+      // stack and leaves nothing to pop) so the new group's detail sits on top
+      // of the Groups tab — back then returns to /groups with the tab view.
+      context.pushReplacement('/groups/$id');
     } catch (e) {
       unawaited(
         ExpansionAnalytics.log(
