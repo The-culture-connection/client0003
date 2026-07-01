@@ -7,6 +7,8 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router";
 import { getSlides, getBlocks, getLesson, getLessonImages, getLessonContent, getCourseSlideCounts, type Slide, type Block, type Lesson, type LessonImage, type LessonContentSlide, type LessonQuiz, type LessonSurveyCheckpoint } from "../../lib/curriculum";
 import { getPaidModuleIds, userHasModuleAccess } from "../../lib/moduleAccess";
+import { getCurrentUserWithRoles } from "../../lib/auth";
+import { isStaffAdminRole } from "../../lib/adminHubNavigation";
 import {
   getCourse,
   getCourseLessonQuiz,
@@ -200,11 +202,16 @@ export function LessonPlayer() {
 
         const courseIdParam = params.get("courseId");
         if (courseIdParam && user?.uid) {
-          const [courseData, paidMods] = await Promise.all([
+          const [courseData, paidMods, currentUser] = await Promise.all([
             getCourse(courseIdParam),
             getPaidModuleIds(user.uid),
+            // Admins/superAdmins get every module for free — same role check the
+            // admin dashboard uses to gate the admin experience. Fail open to
+            // non-admin (paywalled) if the roles lookup errors.
+            getCurrentUserWithRoles().catch(() => null),
           ]);
-          if (courseData) {
+          const isAdmin = isStaffAdminRole(currentUser?.roles);
+          if (!isAdmin && courseData) {
             const modIndex = courseData.curriculumMapping?.modules?.findIndex(
               (m) => m.moduleId === moduleIdParam
             );
