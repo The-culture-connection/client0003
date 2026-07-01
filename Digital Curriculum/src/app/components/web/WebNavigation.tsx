@@ -1,5 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router";
-import { LayoutDashboard, BookOpen, FolderOpen, Award, Users, LogOut, Shield, ShoppingBag, Bell, ShoppingCart, X, GraduationCap, Crown } from "lucide-react";
+import { LayoutDashboard, BookOpen, FolderOpen, Award, Users, LogOut, Shield, ShoppingBag, Bell, ShoppingCart, X, GraduationCap, Crown, HelpCircle } from "lucide-react";
+import { StudentTour, startTour } from "../tour/StudentTour";
 import { Button } from "../ui/button";
 import { useAuth } from "../auth/AuthProvider";
 import { useState, useEffect } from "react";
@@ -28,17 +29,18 @@ interface NavItem {
   path: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
+  tour?: string; // data-tour anchor slug for the guided walkthrough
   roles?: string[]; // Legacy: use allowedRoles instead
   allowedRoles?: string[];
   deniedRoles?: string[];
 }
 
 const allNavItems: NavItem[] = [
-  { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard }, // Available to all
-  { path: "/curriculum", label: "Curriculum", icon: BookOpen }, // Available to all
-  { path: "/data-room", label: "Data Room", icon: FolderOpen }, // Available to all
-  { path: "/community", label: "Community Hub", icon: Users }, // Available to all
-  { path: "/shop", label: "Shop Mortar", icon: ShoppingBag }, // Available to all
+  { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard, tour: "dashboard" }, // Available to all
+  { path: "/curriculum", label: "Curriculum", icon: BookOpen, tour: "curriculum" }, // Available to all
+  { path: "/data-room", label: "Data Room", icon: FolderOpen, tour: "data-room" }, // Available to all
+  { path: "/community", label: "Community Hub", icon: Users, tour: "community" }, // Available to all
+  { path: "/shop", label: "Shop Mortar", icon: ShoppingBag, tour: "shop" }, // Available to all
   {
     path: "/admin/auth",
     label: "Admin",
@@ -198,6 +200,7 @@ export function WebNavigation() {
                     <Link
                       key={item.path}
                       to={item.path}
+                      data-tour={item.tour ? `nav-${item.tour}` : undefined}
                       onClick={() =>
                         trackEvent(WEB_ANALYTICS_EVENTS.NAV_LINK_CLICKED, {
                           path: item.path,
@@ -224,7 +227,7 @@ export function WebNavigation() {
               {showStudentNavLinks && hasStaffAdminAccess && staffViewToggle}
               <DropdownMenu open={notificationsOpen} onOpenChange={setNotificationsOpen}>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="relative">
+                  <Button variant="ghost" size="icon" className="relative" data-tour="nav-notifications">
                     <Bell className="w-5 h-5 text-muted-foreground" />
                     {unreadCount > 0 && (
                       <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-[10px] font-medium text-accent-foreground">
@@ -271,7 +274,7 @@ export function WebNavigation() {
                 }}
               >
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="relative">
+                  <Button variant="ghost" size="icon" className="relative" data-tour="nav-cart">
                     <ShoppingCart className="w-5 h-5 text-muted-foreground" />
                     {itemCount > 0 && (
                       <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-[10px] font-medium text-accent-foreground">
@@ -398,6 +401,19 @@ export function WebNavigation() {
                 userId={user.uid}
                 accountLabel={user.email ?? user.displayName ?? undefined}
               />
+              {showStudentNavLinks && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => startTour()}
+                  data-tour="help"
+                  title="Take a tour of the app"
+                  aria-label="Take a tour of the app"
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <HelpCircle className="w-5 h-5" />
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -411,6 +427,7 @@ export function WebNavigation() {
           )}
         </div>
       </div>
+      {showStudentNavLinks && <StudentTour />}
     </nav>
   );
 }

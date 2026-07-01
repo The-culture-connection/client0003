@@ -2,14 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, BookOpen, FolderOpen, Users, BarChart3 } from "lucide-react";
+import { LayoutDashboard, BookOpen, FolderOpen, Users, BarChart3, HelpCircle } from "lucide-react";
+import { startTour } from "@/components/tour/DashboardTour";
 
 const navItems = [
-  { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { path: "/curriculum", label: "Curriculum", icon: BookOpen },
-  { path: "/data-room", label: "Data Room", icon: FolderOpen },
-  { path: "/community", label: "Community Hub", icon: Users },
-  { path: "/analytics", label: "Analytics", icon: BarChart3 },
+  { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard, tour: "dashboard" },
+  { path: "/curriculum", label: "Curriculum", icon: BookOpen, tour: "curriculum" },
+  { path: "/data-room", label: "Data Room", icon: FolderOpen, tour: "data-room" },
+  { path: "/community", label: "Community Hub", icon: Users, tour: "community" },
+  { path: "/analytics", label: "Analytics", icon: BarChart3, tour: "analytics" },
 ];
 
 export function WebNavigation() {
@@ -33,6 +34,7 @@ export function WebNavigation() {
                   <Link
                     key={item.path}
                     href={item.path}
+                    data-tour={`nav-${item.tour}`}
                     className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
                       isActive
                         ? "bg-accent text-accent-foreground"
@@ -47,6 +49,18 @@ export function WebNavigation() {
               })}
             </div>
           </div>
+          <button
+            type="button"
+            onClick={() => startTour()}
+            data-tour="help"
+            title="Take a tour of the dashboard"
+            aria-label="Take a tour of the dashboard"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            style={{ color: 'var(--muted-foreground)' }}
+          >
+            <HelpCircle className="w-4 h-4" />
+            <span className="hidden sm:inline">Tour</span>
+          </button>
         </div>
       </div>
     </nav>

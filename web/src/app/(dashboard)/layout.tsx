@@ -5,6 +5,7 @@ import { WebNavigation } from "@/components/navigation/WebNavigation";
 import { MobileNavigation } from "@/components/navigation/MobileNavigation";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { OnboardingGate } from "@/components/auth/OnboardingGate";
+import { DashboardTour } from "@/components/tour/DashboardTour";
 
 export default function DashboardLayout({
   children,
@@ -24,6 +25,7 @@ export default function DashboardLayout({
             <main className={isMobile ? "pb-20" : ""}>
               {children}
             </main>
+            {!isMobile && <DashboardTour />}
           </div>
         </OnboardingGate>
       )}
