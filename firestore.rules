@@ -462,7 +462,10 @@ service cloud.firestore {
     }
 
     match /courseProgress/{docId} {
-      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      // resource is null for a get() on a not-yet-created progress doc — allow it
+      // (returns an empty snapshot, leaks nothing) so new learners can open a
+      // course before they have any progress. Existing docs still require ownership.
+      allow read: if isSignedIn() && (resource == null || resource.data.userId == request.auth.uid);
       allow create: if isSignedIn()
         && request.resource.data.userId == request.auth.uid;
       allow update, delete: if isSignedIn()
