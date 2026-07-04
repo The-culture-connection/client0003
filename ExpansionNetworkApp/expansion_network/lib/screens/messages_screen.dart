@@ -55,29 +55,13 @@ class _MessagesScreenState extends State<MessagesScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.arrow_back, color: AppColors.mutedForeground),
-                          onPressed: () {
-                            if (context.canPop()) {
-                              context.pop();
-                            } else {
-                              context.go('/explore');
-                            }
-                          },
-                        ),
-                        Expanded(
-                          child: Text(
-                            'Messages',
-                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w500),
-                          ),
-                        ),
-                      ],
+                    Text(
+                      'Messages',
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w500),
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      'Direct conversations. Open Explore to message someone from a job or skill card.',
+                      'Direct conversations. Message someone from their card anywhere in the app.',
                       style: TextStyle(fontSize: 12, color: AppColors.mutedForeground),
                     ),
                   ],

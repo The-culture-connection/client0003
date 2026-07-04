@@ -16,6 +16,7 @@
     "seed": "node infra/scripts/seed.js",
     "seed:dev:expansion-mock": "npm --prefix infra/scripts run seed:dev:expansion-mock",
     "seed:stage:expansion-mock": "npm --prefix infra/scripts run seed:stage:expansion-mock",
+    "seed:dev:conference-mock": "npm --prefix infra/scripts run seed:dev:conference-mock",
     "export:lesson-4": "npm --prefix tools/course-migration-export run export:lesson-4",
     "export:lesson4-screens": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/lesson-migrate/export-pptx.ps1 -ConfigPath tools/lesson-migrate/lesson-4.config.json && node tools/lesson-migrate/build-manifest.js lesson-4.config.json",
     "add:lesson4": "node infra/scripts/add-lesson-to-course.js tools/lesson-migrate/lesson-4.config.json",

@@ -98,11 +98,11 @@ class _LandingScreenState extends State<LandingScreen> {
                 ),
                 onPressed: () {
                   unawaited(
-                    ExpansionAnalytics.log('landing_claim_invite_clicked', sourceScreen: 'landing'),
+                    ExpansionAnalytics.log('landing_sign_up_clicked', sourceScreen: 'landing'),
                   );
-                  context.push('/auth/claim');
+                  context.push('/auth/sign-up');
                 },
-                child: const Text('Claim with invite'),
+                child: const Text('Sign up'),
               ),
               const SizedBox(height: 12),
               OutlinedButton(
@@ -118,6 +118,16 @@ class _LandingScreenState extends State<LandingScreen> {
                   context.push('/auth/sign-in');
                 },
                 child: const Text('Sign in'),
+              ),
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: () {
+                  unawaited(
+                    ExpansionAnalytics.log('landing_claim_invite_clicked', sourceScreen: 'landing'),
+                  );
+                  context.push('/auth/claim');
+                },
+                child: const Text('Have an Expansion Network invite code?'),
               ),
               const SizedBox(height: 32),
             ],

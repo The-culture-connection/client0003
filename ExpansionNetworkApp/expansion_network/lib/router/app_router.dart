@@ -3,10 +3,19 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../auth/auth_controller.dart';
+import '../commons/widgets/commons_shell.dart';
+import '../conference/screens/conference_lobby_screen.dart';
+import '../conference/screens/conference_schedule_screen.dart';
+import '../conference/screens/conference_session_detail_screen.dart';
+import '../conference/widgets/conference_coming_soon_screen.dart';
+import '../conference/widgets/conference_shell.dart';
+import '../mortarverse/screens/mortarverse_chooser_screen.dart';
 import '../screens/admin_events_screen.dart';
 import '../screens/admin_reports_screen.dart';
 import '../screens/auth_claim_screen.dart';
 import '../screens/auth_sign_in_screen.dart';
+import '../screens/auth_sign_up_screen.dart';
+import '../screens/expansion_enter_code_screen.dart';
 import '../screens/chat_room_screen.dart';
 import '../screens/direct_chat_screen.dart';
 import '../screens/create_post_screen.dart';
@@ -60,8 +69,14 @@ GoRouter createAppRouter(AuthController auth) {
       if (loc == '/session') {
         final loggedIn = auth.user != null;
         if (!loggedIn) return '/';
+        // Onboarding (the shared profile questionnaire) applies to every
+        // signed-in account, regardless of Expansion access — see
+        // AuthController._applySessionForUser's NO_EXPANSION_ACCESS branch.
         if (auth.needsExpansionOnboarding == true) return '/onboarding';
-        return '/home';
+        // Every fresh session passes through the "Welcome to the Mortarverse"
+        // animation before the chooser (WelcomeMortarverseIntroScreen forwards
+        // to /mortarverse on its own once it finishes).
+        return '/welcome-intro';
       }
 
       final loggedIn = auth.user != null;
@@ -84,7 +99,7 @@ GoRouter createAppRouter(AuthController auth) {
         return '/onboarding';
       }
       if (loggedIn && doneOnboarding && publicAuth) {
-        return '/home';
+        return '/mortarverse';
       }
       return null;
     },
@@ -92,6 +107,68 @@ GoRouter createAppRouter(AuthController auth) {
       GoRoute(
         path: '/session',
         builder: (context, state) => const SessionGateScreen(),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/mortarverse',
+        builder: (context, state) => const MortarverseChooserScreen(),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/conference/schedule/:sessionId',
+        builder: (context, state) {
+          final sessionId = state.pathParameters['sessionId']!;
+          return ConferenceSessionDetailScreen(sessionId: sessionId);
+        },
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/conference/community',
+        builder: (context, state) => const ConferenceComingSoonScreen(
+          title: 'Community Hub',
+          icon: Icons.forum_rounded,
+          description: 'Discussions and topic rooms arrive in a later update.',
+        ),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/conference/sponsors',
+        builder: (context, state) => const ConferenceComingSoonScreen(
+          title: 'Sponsor Hall',
+          icon: Icons.storefront_rounded,
+          description: 'Sponsor booths and giveaways arrive in a later update.',
+        ),
+      ),
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) {
+          return ConferenceShell(navigationShell: navigationShell);
+        },
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/conference/lobby',
+                pageBuilder: (context, state) => const NoTransitionPage<void>(child: ConferenceLobbyScreen()),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/conference/network',
+                pageBuilder: (context, state) => const NoTransitionPage<void>(child: ConferenceNetworkScreen()),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/conference/schedule',
+                pageBuilder: (context, state) => NoTransitionPage<void>(child: ConferenceScheduleScreen()),
+              ),
+            ],
+          ),
+        ],
       ),
       GoRoute(
         path: '/welcome-intro',
@@ -108,6 +185,15 @@ GoRouter createAppRouter(AuthController auth) {
       GoRoute(
         path: '/auth/claim',
         builder: (context, state) => const AuthClaimScreen(),
+      ),
+      GoRoute(
+        path: '/auth/sign-up',
+        builder: (context, state) => const AuthSignUpScreen(),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/expansion/enter-code',
+        builder: (context, state) => const ExpansionEnterCodeScreen(),
       ),
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,
@@ -154,14 +240,6 @@ GoRouter createAppRouter(AuthController auth) {
               ),
             ],
           ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/profile',
-                pageBuilder: (context, state) => const NoTransitionPage<void>(child: ProfileScreen()),
-              ),
-            ],
-          ),
         ],
       ),
       GoRoute(
@@ -174,10 +252,36 @@ GoRouter createAppRouter(AuthController auth) {
         path: '/matching',
         builder: (context, state) => const MatchingScreen(),
       ),
-      GoRoute(
-        parentNavigatorKey: _rootNavigatorKey,
-        path: '/messages',
-        builder: (context, state) => const MessagesScreen(),
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) {
+          return CommonsShell(navigationShell: navigationShell);
+        },
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/commons/profile',
+                pageBuilder: (context, state) => const NoTransitionPage<void>(child: ProfileScreen()),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/commons/messages',
+                pageBuilder: (context, state) => const NoTransitionPage<void>(child: MessagesScreen()),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/commons/badges',
+                pageBuilder: (context, state) => const NoTransitionPage<void>(child: AchievementsScreen()),
+              ),
+            ],
+          ),
+        ],
       ),
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,

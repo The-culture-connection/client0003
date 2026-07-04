@@ -279,6 +279,19 @@ service cloud.firestore {
             .hasOnly(['registered_users', 'updated_at', 'available_spots']));
     }
 
+    // Conference App (Phase 1): read-only for any signed-in user so the Mortarverse
+    // chooser and Conference screens can render. Write access (create/update conferences,
+    // ticket-based access) is server-only via callables from Phase 2 onward.
+    match /conferences/{conferenceId} {
+      allow read: if isSignedIn();
+      allow write: if hasStaffClaim();
+
+      match /sessions/{sessionId} {
+        allow read: if isSignedIn();
+        allow write: if hasStaffClaim();
+      }
+    }
+
     match /events_mobile/{eventId} {
       allow read: if eventReadableByMember();
       allow create: if isSignedIn()
@@ -401,12 +414,22 @@ service cloud.firestore {
     }
 
     match /dm_threads/{threadId} {
-      // Id-derived participant check (not resource.data) so reading a NOT-YET-CREATED thread
-      // returns "does not exist" instead of erroring: the app calls threadRef.get() before
-      // sending the first message, and a resource-based rule denies that get on a missing doc
-      // (resource is null), which blocked starting a new conversation. Works for list queries
-      // too — every doc matching `participant_ids array-contains uid` has uid in its thread id.
-      allow read: if dmCallerInThreadId(threadId);
+      // `get` and `list` need genuinely different rules, not one combined `allow read` —
+      // Firestore's list-query validator rejects a query unless the rule matches the query's
+      // own filter, and OR-ing that check with the id-pattern check (still needed for a `get()`
+      // on a not-yet-created thread, where `resource` is null) was not enough to satisfy it in
+      // practice, even though the id-pattern is true for every result by construction.
+      //
+      // `get`: threadRef.get() runs before the first message is sent, when the thread may not
+      // exist yet (resource == null) — the id-pattern check needs no resource.data access, so it
+      // works for both existing and not-yet-created threads.
+      allow get: if dmCallerInThreadId(threadId);
+      // `list`: watchMyThreadDocs()'s `where('participant_ids', arrayContains: uid)` query — must
+      // reference the exact field the query filters on for Firestore to statically prove it safe.
+      // Confirmed against the Firestore emulator (@firebase/rules-unit-testing): adding an
+      // `is list` type-guard here — even harmlessly `&&`-ed in — breaks that provability check
+      // and the query is rejected outright, so this intentionally has no type guard.
+      allow list: if request.auth.uid in resource.data.participant_ids;
       allow create: if isSignedIn()
         && callerNotContentSuspended()
         && request.resource.data.participant_ids is list

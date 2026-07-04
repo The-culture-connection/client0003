@@ -52,6 +52,7 @@ class AuthController extends ChangeNotifier {
   User? _user;
   bool _loading = true;
   bool? _needsExpansionOnboarding;
+  bool _hasExpansionAccess = false;
   String? _accessDeniedMessage;
 
   List<String>? _expansionOnboardingRoles;
@@ -60,6 +61,13 @@ class AuthController extends ChangeNotifier {
   User? get user => _user;
   bool get loading => _loading;
   bool? get needsExpansionOnboarding => _needsExpansionOnboarding;
+
+  /// True only once `initializeUserSession` returns `READY_FOR_HOME` /
+  /// `REQUIRES_ONBOARDING` (an Expansion-eligible account). False — but still
+  /// signed in, not revoked — for `NO_EXPANSION_ACCESS` (any other account:
+  /// open sign-up, or Conference-only). [needsExpansionOnboarding] is only
+  /// meaningful when this is true.
+  bool get hasExpansionAccess => _hasExpansionAccess;
 
   List<String> get expansionOnboardingRoles =>
       List<String>.unmodifiable(_expansionOnboardingRoles ?? const <String>[]);
@@ -77,6 +85,7 @@ class AuthController extends ChangeNotifier {
     if (user == null) {
       _iosSessionSettleUid = null;
       _needsExpansionOnboarding = null;
+      _hasExpansionAccess = false;
       _expansionOnboardingRoles = null;
       _provisionedCohortId = null;
       _loading = false;
@@ -137,6 +146,28 @@ class AuthController extends ChangeNotifier {
         return;
       }
 
+      if (state == 'NO_EXPANSION_ACCESS') {
+        // Signed in fine — this account just isn't Expansion-eligible (yet).
+        // Unlike UNAUTHORIZED, do NOT sign out: the Mortarverse chooser and
+        // Conference app remain open; only entering the Expansion Network
+        // itself is gated (via the "Enter invite code" screen). Onboarding
+        // (the shared profile questionnaire) still applies universally —
+        // it is not an Expansion-only gate.
+        expansionReleaseTrace('session: NO_EXPANSION_ACCESS reason=$reason');
+        _hasExpansionAccess = false;
+        _expansionOnboardingRoles = null;
+        _provisionedCohortId = null;
+        _needsExpansionOnboarding = await _profileRepository.needsExpansionOnboarding(user.uid);
+        await ExpansionAnalytics.log(
+          'session_initialize_backend_no_expansion_access',
+          entityId: user.uid,
+          sourceScreen: 'session',
+          extra: <String, Object?>{'reason': reason ?? ''},
+        );
+        return;
+      }
+
+      _hasExpansionAccess = true;
       final role = data['role'] as String?;
       if (role != null && kExpansionNetworkAllowedRoles.contains(role)) {
         _expansionOnboardingRoles = [role];

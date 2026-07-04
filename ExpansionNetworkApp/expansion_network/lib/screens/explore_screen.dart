@@ -167,10 +167,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
             child: PageHeader(
               title: 'Explore',
               subtitle: 'Jobs, skills, and network search',
-              trailing: IconButton(
-                icon: const Icon(Icons.notifications_outlined, color: AppColors.foreground),
-                onPressed: () => context.push('/messages'),
-              ),
             ),
           ),
           SliverPadding(

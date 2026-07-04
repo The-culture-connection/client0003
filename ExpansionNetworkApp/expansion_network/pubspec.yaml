@@ -97,6 +97,7 @@ flutter:
 
   assets:
     - assets/Welcome.gif
+    - assets/conference/shop_storefront.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

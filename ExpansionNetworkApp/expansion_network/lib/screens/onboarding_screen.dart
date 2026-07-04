@@ -303,12 +303,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     });
     unawaited(ExpansionAnalytics.log('onboarding_save_submitted', sourceScreen: 'onboarding'));
     try {
+      // Empty is expected (and fine) for an account with no Expansion role yet —
+      // onboarding is universal now (open sign-up / Conference-only accounts go
+      // through it too); `saveExpansionProfile` saves normally with an empty
+      // `roles` list rather than granting any Expansion role.
       final roles = context.read<AuthController>().expansionOnboardingRoles;
-      if (roles.isEmpty) {
-        setState(() => _error =
-            'Your alumni roles could not be loaded. Sign out and sign in again, or contact support.');
-        return;
-      }
       final includeGraduatedCityProgram = _needsAlumniCityProgram(context);
       final uid = FirebaseAuth.instance.currentUser?.uid;
       if (uid == null) throw StateError('Not signed in');
@@ -747,6 +746,15 @@ www.wearemortar.com''';
               style: const TextStyle(color: Colors.red, fontSize: 13),
             ),
           ],
+          const SizedBox(height: 24),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+            ),
+            onPressed: _nextStep,
+            child: const Text('Continue'),
+          ),
           const SizedBox(height: 32),
         ],
       ),
@@ -1405,7 +1413,7 @@ www.wearemortar.com''';
                     ),
                   ),
                 ),
-                if (_error != null && _stepIndex == 6) ...[
+                if (_error != null && _stepIndex == 7) ...[
                   const SizedBox(height: 12),
                   Text(_error!, style: const TextStyle(color: Colors.redAccent)),
                 ],

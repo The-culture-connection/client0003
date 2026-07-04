@@ -14,7 +14,6 @@ import '../services/events_repository.dart';
 import '../services/push_notifications_service.dart';
 import '../services/user_profile_repository.dart';
 import '../theme/app_theme.dart';
-import '../widgets/expansion_shell.dart';
 import '../utils/relative_time.dart';
 import '../utils/staff_claims.dart';
 import '../widgets/profile_section_card.dart';
@@ -137,6 +136,16 @@ class _ProfileBody extends StatelessWidget {
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
                   ),
                   const Spacer(),
+                  IconButton(
+                    onPressed: () {
+                      unawaited(
+                        ExpansionAnalytics.log('profile_exit_to_mortarverse_clicked', sourceScreen: 'profile'),
+                      );
+                      context.go('/mortarverse');
+                    },
+                    icon: const Icon(Icons.logout_rounded, color: AppColors.mutedForeground),
+                    tooltip: 'Back to the Mortarverse',
+                  ),
                   TextButton(
                     onPressed: () async {
                       unawaited(
@@ -149,11 +158,6 @@ class _ProfileBody extends StatelessWidget {
                       if (context.mounted) context.go('/');
                     },
                     child: const Text('Sign out'),
-                  ),
-                  IconButton(
-                    onPressed: () => ExpansionShell.replayTour(),
-                    icon: const Icon(Icons.help_outline_rounded, color: AppColors.mutedForeground),
-                    tooltip: 'Take a tour of the app',
                   ),
                   IconButton(
                     onPressed: () => context.push('/profile/edit'),

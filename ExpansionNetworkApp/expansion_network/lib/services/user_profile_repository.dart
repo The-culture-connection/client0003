@@ -138,8 +138,13 @@ class UserProfileRepository {
     if (user == null) throw StateError('Not signed in');
     final uid = user.uid;
     final email = user.email ?? '';
+    // Onboarding is universal (Expansion, Conference-only, and open sign-up
+    // accounts all complete the same profile here) — only reject when [roles]
+    // was actually supplied but every entry was invalid/unrecognized. A
+    // genuinely empty [roles] (no Expansion affiliation yet) is expected and
+    // just means `roles` is saved empty; it does not grant Expansion access.
     final sanitizedRoles = AlumniAccessRepository.filterAllowedRoles(roles);
-    if (sanitizedRoles.isEmpty) {
+    if (roles.isNotEmpty && sanitizedRoles.isEmpty) {
       throw StateError(
         'No allowed Expansion Network roles. Expected one of: '
         '${kExpansionNetworkAllowedRoles.join(", ")}.',

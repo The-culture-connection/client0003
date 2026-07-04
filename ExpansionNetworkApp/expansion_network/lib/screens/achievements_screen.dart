@@ -12,6 +12,7 @@ import '../models/badge_definition.dart';
 import '../services/badge_repository.dart';
 import '../services/user_profile_repository.dart';
 import '../theme/app_theme.dart';
+import '../widgets/profile_user_blocks.dart' show ProfileCertificatesPlaceholderCard;
 
 /// Reads `badge_definitions` + current user `badges.earned` / `gamification`.
 class AchievementsScreen extends StatefulWidget {
@@ -44,7 +45,7 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
               if (context.canPop()) {
                 context.pop();
               } else {
-                context.go('/profile');
+                context.go('/commons/profile');
               }
             },
           ),
@@ -115,6 +116,8 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
                     ),
                     const SizedBox(height: 20),
                     _progressCard(counters),
+                    const SizedBox(height: 16),
+                    const ProfileCertificatesPlaceholderCard(),
                   ],
                 );
               }
@@ -130,6 +133,8 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
                   ),
                   const SizedBox(height: 8),
                   ...defs.map((d) => _BadgeTile(definition: d, unlocked: earned.contains(d.id))),
+                  const SizedBox(height: 16),
+                  const ProfileCertificatesPlaceholderCard(),
                 ],
               );
             },

@@ -30,8 +30,8 @@ class _ExpansionShellState extends State<ExpansionShell> {
   // Stable keys anchored to each bottom-nav icon so the coach-mark tour can
   // spotlight them. NavigationBar renders both the unselected and selected
   // icon, so we keep a key for each and target whichever the tour needs.
-  final List<GlobalKey> _iconKeys = List.generate(5, (_) => GlobalKey());
-  final List<GlobalKey> _selectedIconKeys = List.generate(5, (_) => GlobalKey());
+  final List<GlobalKey> _iconKeys = List.generate(4, (_) => GlobalKey());
+  final List<GlobalKey> _selectedIconKeys = List.generate(4, (_) => GlobalKey());
   TutorialCoachMark? _activeTour;
 
   static const _destinations = [
@@ -70,15 +70,6 @@ class _ExpansionShellState extends State<ExpansionShell> {
       tourBody:
           'Post a job, offer a skill, or search the member network — then '
           'message anyone directly from their card.',
-    ),
-    _NavSpec(
-      label: 'Profile',
-      icon: Icons.person_outline_rounded,
-      selectedIcon: Icons.person_rounded,
-      tourTitle: 'Profile',
-      tourBody:
-          'View and edit your info, goals and skills, and see the achievement '
-          'badges you\'ve earned. Sign out from here too.',
     ),
   ];
 
@@ -132,8 +123,30 @@ class _ExpansionShellState extends State<ExpansionShell> {
     return Scaffold(
       body: SafeArea(
         bottom: false,
-        child: BadgeEarnedSessionListener(
-          child: widget.navigationShell,
+        child: Stack(
+          children: [
+            BadgeEarnedSessionListener(
+              child: widget.navigationShell,
+            ),
+            Positioned(
+              top: 8,
+              right: 8,
+              child: Material(
+                color: Colors.black.withValues(alpha: 0.55),
+                shape: const CircleBorder(),
+                child: IconButton(
+                  onPressed: () {
+                    unawaited(
+                      ExpansionAnalytics.log('expansion_exit_to_mortarverse_clicked', sourceScreen: 'main_shell'),
+                    );
+                    context.go('/mortarverse');
+                  },
+                  icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 20),
+                  tooltip: 'Back to the Mortarverse',
+                ),
+              ),
+            ),
+          ],
         ),
       ),
       bottomNavigationBar: SafeArea(
