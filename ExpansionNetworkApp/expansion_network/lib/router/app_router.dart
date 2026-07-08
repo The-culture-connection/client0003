@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../auth/auth_controller.dart';
 import '../commons/widgets/commons_shell.dart';
+import '../conference/screens/conference_gate_screen.dart';
 import '../conference/screens/conference_lobby_screen.dart';
 import '../conference/screens/conference_schedule_screen.dart';
 import '../conference/screens/conference_session_detail_screen.dart';
@@ -112,6 +113,11 @@ GoRouter createAppRouter(AuthController auth) {
         parentNavigatorKey: _rootNavigatorKey,
         path: '/mortarverse',
         builder: (context, state) => const MortarverseChooserScreen(),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/conference/gate',
+        builder: (context, state) => const ConferenceGateScreen(),
       ),
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,

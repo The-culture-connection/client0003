@@ -1,0 +1,511 @@
+/**
+ * Conference Center: ticket buyers, ticket codes, redemption / entry.
+ *
+ * Adapted from `expansionInvite.ts` (eligibleUsers + inviteCodes) to a
+ * conference-scoped shape:
+ *   conferences/{id}/ticketBuyers/{normalizedEmail}  — roster (like eligibleUsers)
+ *   conferences/{id}/ticketCodes/{autoId}            — codes    (like inviteCodes)
+ *   conferences/{id}/attendees/{uid}                 — access record checked at entry
+ *
+ * Only the single latest code per buyer is valid (revoke-on-reissue = lost-code
+ * flow). Conference users are already signed in, so redemption consumes the code
+ * for an authed uid (like `finalizeInviteClaim`) — it does NOT create accounts.
+ *
+ * Phase A: no email is sent — generated codes are returned to the admin UI.
+ * Automated ticket emails are Phase B/C.
+ */
+import { getApps, initializeApp } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
+import {
+  DocumentData,
+  DocumentReference,
+  FieldValue,
+  Timestamp,
+  getFirestore,
+} from "firebase-admin/firestore";
+import { HttpsError, onCall } from "firebase-functions/v2/https";
+
+import { callableCorsAllowlist } from "./callableCorsAllowlist";
+
+if (getApps().length === 0) {
+  initializeApp();
+}
+const db = getFirestore();
+const auth = getAuth();
+
+const defaultCallableOptions = {
+  invoker: "public" as const,
+  cors: callableCorsAllowlist,
+};
+
+const CONFERENCES = "conferences";
+const TICKET_BUYERS = "ticketBuyers";
+const TICKET_CODES = "ticketCodes";
+const ATTENDEES = "attendees";
+const USERS = "users";
+const ELIGIBLE = "eligibleUsers";
+
+const DEFAULT_EXPIRATION_DAYS = 180;
+
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+function randomTicketCode(): string {
+  // Unambiguous alphabet (no 0/O/1/I), matching the invite pattern.
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let s = "";
+  for (let i = 0; i < 10; i++) {
+    s += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return s;
+}
+
+function maskedPreview(code: string): string {
+  if (code.length <= 4) return "****";
+  return `${code.slice(0, 2)}****${code.slice(-2)}`;
+}
+
+/** Admin/superAdmin gate — mirrors expansionInvite.assertCallerIsNetworkAdmin. */
+async function assertCallerIsAdmin(uid: string): Promise<void> {
+  const udoc = await db.collection(USERS).doc(uid).get();
+  const roles: string[] = Array.isArray(udoc.data()?.roles)
+    ? (udoc.data()?.roles as string[])
+    : [];
+  const single = udoc.data()?.role as string | undefined;
+  const eligible = single ? [single, ...roles] : roles;
+  if (eligible.includes("Admin") || eligible.includes("superAdmin")) {
+    return;
+  }
+  const user = await auth.getUser(uid);
+  const em = user.email ? normalizeEmail(user.email) : "";
+  if (em) {
+    const es = await db.collection(ELIGIBLE).doc(em).get();
+    const r = es.data()?.role as string | undefined;
+    if (r === "Admin" || r === "superAdmin") return;
+  }
+  throw new HttpsError("permission-denied", "Admin or superAdmin only.");
+}
+
+function conferenceRef(conferenceId: string): DocumentReference {
+  return db.collection(CONFERENCES).doc(conferenceId);
+}
+
+async function assertConferenceExists(conferenceId: string): Promise<DocumentData> {
+  const snap = await conferenceRef(conferenceId).get();
+  if (!snap.exists) {
+    throw new HttpsError("not-found", "Conference not found.");
+  }
+  return snap.data()!;
+}
+
+/**
+ * Generate a fresh code for a buyer: revoke the previous latest code, create a
+ * new ticketCodes doc, and point the buyer's latestTicketCodeId at it.
+ */
+async function internalGenerateTicketCode(
+  conferenceId: string,
+  normalizedEmail: string,
+  createdByUid: string,
+  expirationDays: number,
+): Promise<{ ticketId: string; plainCode: string; expiresAt: Date }> {
+  const conf = conferenceRef(conferenceId);
+  const buyerRef = conf.collection(TICKET_BUYERS).doc(normalizedEmail);
+  const buyerSnap = await buyerRef.get();
+  const prevId = buyerSnap.data()?.latestTicketCodeId as string | undefined;
+  if (prevId) {
+    await conf.collection(TICKET_CODES).doc(prevId).update({
+      revoked: true,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  }
+
+  const code = randomTicketCode();
+  const codeRef = conf.collection(TICKET_CODES).doc();
+  const expiresAt = new Date(Date.now() + expirationDays * 86400000);
+
+  await codeRef.set({
+    ticketId: codeRef.id,
+    conferenceId,
+    normalizedEmail,
+    code,
+    codePreview: maskedPreview(code),
+    expiresAt,
+    used: false,
+    usedAt: null,
+    usedByUid: null,
+    revoked: false,
+    createdByUid,
+    createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+
+  return { ticketId: codeRef.id, plainCode: code, expiresAt };
+}
+
+/** Upsert a buyer roster row and attach a freshly generated code. */
+async function internalUpsertBuyerWithCode(
+  conferenceId: string,
+  emailRaw: string,
+  source: string,
+  createdByUid: string,
+  expirationDays: number,
+): Promise<{ normalizedEmail: string; ticketId: string; plainCode: string; expiresAt: Date }> {
+  const normalizedEmail = normalizeEmail(emailRaw);
+  const buyerRef = conferenceRef(conferenceId).collection(TICKET_BUYERS).doc(normalizedEmail);
+  const existed = (await buyerRef.get()).exists;
+  const now = FieldValue.serverTimestamp();
+
+  await buyerRef.set(
+    {
+      email: emailRaw.trim(),
+      normalizedEmail,
+      source,
+      updatedAt: now,
+      ...(existed ? {} : { redeemed: false, createdAt: now }),
+    },
+    { merge: true },
+  );
+
+  const out = await internalGenerateTicketCode(
+    conferenceId,
+    normalizedEmail,
+    createdByUid,
+    expirationDays,
+  );
+
+  await buyerRef.update({
+    latestTicketCodeId: out.ticketId,
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+
+  return { normalizedEmail, ...out };
+}
+
+// ---------------------------------------------------------------------------
+// Redemption validation (latest code only), mirrors loadInviteClaimContext.
+// ---------------------------------------------------------------------------
+
+interface TicketClaimContext {
+  normalizedEmail: string;
+  buyerRef: DocumentReference;
+  buyer: DocumentData;
+  codeRef: DocumentReference;
+  code: DocumentData;
+}
+
+type LoadTicketResult =
+  | { ok: false; client: { ok: false; code: string; message?: string } }
+  | { ok: true; ctx: TicketClaimContext; alreadyConsumedByUid: string | null };
+
+/** Enforce the conference's active window + not-closed status. */
+function checkConferenceWindow(
+  conf: DocumentData,
+): { ok: false; client: { ok: false; code: string; message?: string } } | { ok: true } {
+  if (conf.status === "closed") {
+    return {
+      ok: false,
+      client: { ok: false, code: "CONFERENCE_CLOSED", message: "This conference has closed." },
+    };
+  }
+  const nowMs = Date.now();
+  const activeFrom = conf.activeFrom as Timestamp | undefined;
+  const activeUntil = conf.activeUntil as Timestamp | undefined;
+  if (activeFrom && activeFrom.toMillis() > nowMs) {
+    return {
+      ok: false,
+      client: {
+        ok: false,
+        code: "NOT_ACTIVE_YET",
+        message: "This conference isn't open yet. Your code will work once it starts.",
+      },
+    };
+  }
+  if (activeUntil && activeUntil.toMillis() < nowMs) {
+    return {
+      ok: false,
+      client: { ok: false, code: "WINDOW_CLOSED", message: "This conference has ended." },
+    };
+  }
+  return { ok: true };
+}
+
+async function loadTicketClaimContext(
+  conferenceId: string,
+  emailRaw: string,
+  codeTrimmed: string,
+): Promise<LoadTicketResult> {
+  const normalizedEmail = normalizeEmail(emailRaw);
+  const conf = conferenceRef(conferenceId);
+  const buyerRef = conf.collection(TICKET_BUYERS).doc(normalizedEmail);
+  const buyerSnap = await buyerRef.get();
+
+  if (!buyerSnap.exists) {
+    return {
+      ok: false,
+      client: {
+        ok: false,
+        code: "NOT_A_BUYER",
+        message: "We couldn't find a ticket for this account at this conference.",
+      },
+    };
+  }
+
+  const buyer = buyerSnap.data()!;
+  const latestId = buyer.latestTicketCodeId as string | null | undefined;
+  if (!latestId) {
+    return { ok: false, client: { ok: false, code: "NO_CODE", message: "This ticket code is invalid." } };
+  }
+
+  const codeRef = conf.collection(TICKET_CODES).doc(latestId);
+  const codeSnap = await codeRef.get();
+  if (!codeSnap.exists) {
+    return { ok: false, client: { ok: false, code: "INVALID_CODE", message: "This ticket code is invalid." } };
+  }
+
+  const codeDoc = codeSnap.data()!;
+  if (codeDoc.revoked === true) {
+    return { ok: false, client: { ok: false, code: "REVOKED", message: "This ticket code is no longer valid." } };
+  }
+
+  const exp = codeDoc.expiresAt as Timestamp | undefined;
+  if (exp && exp.toMillis() < Date.now()) {
+    return {
+      ok: false,
+      client: {
+        ok: false,
+        code: "EXPIRED",
+        message: "This ticket code has expired. Please contact support for a new one.",
+      },
+    };
+  }
+
+  if ((codeDoc.normalizedEmail as string) !== normalizedEmail) {
+    return { ok: false, client: { ok: false, code: "INVALID_CODE", message: "This ticket code is invalid." } };
+  }
+
+  const storedCode = (codeDoc.code as string | undefined)?.trim();
+  if (!storedCode || storedCode !== codeTrimmed) {
+    return { ok: false, client: { ok: false, code: "INVALID_CODE", message: "This ticket code is invalid." } };
+  }
+
+  let alreadyConsumedByUid: string | null = null;
+  if (codeDoc.used === true) {
+    alreadyConsumedByUid = (codeDoc.usedByUid as string) || null;
+  }
+
+  return {
+    ok: true,
+    ctx: { normalizedEmail, buyerRef, buyer, codeRef, code: codeDoc },
+    alreadyConsumedByUid,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Callables
+// ---------------------------------------------------------------------------
+
+/** Admin: generate (or reissue) a ticket code for one buyer email. */
+export const generateConferenceTicketCode = onCall(defaultCallableOptions, async (request) => {
+  if (!request.auth?.uid) throw new HttpsError("unauthenticated", "Sign in required.");
+  await assertCallerIsAdmin(request.auth.uid);
+
+  const conferenceId = (request.data?.conferenceId as string | undefined)?.trim();
+  const emailRaw = request.data?.email as string | undefined;
+  const source = (request.data?.source as string) || "admin_console";
+  const expirationDays = Number(request.data?.expirationDays) || DEFAULT_EXPIRATION_DAYS;
+  if (!conferenceId || !emailRaw) {
+    throw new HttpsError("invalid-argument", "conferenceId and email are required.");
+  }
+  await assertConferenceExists(conferenceId);
+
+  const out = await internalUpsertBuyerWithCode(
+    conferenceId,
+    emailRaw,
+    source,
+    request.auth.uid,
+    expirationDays,
+  );
+
+  return {
+    ok: true,
+    conferenceId,
+    normalizedEmail: out.normalizedEmail,
+    ticketId: out.ticketId,
+    code: out.plainCode,
+    codePreview: maskedPreview(out.plainCode),
+    expiresAt: out.expiresAt.toISOString(),
+  };
+});
+
+/** Admin: bulk-add buyers (each gets a fresh code). Up to 500 per call. */
+export const bulkAddConferenceTicketBuyers = onCall(defaultCallableOptions, async (request) => {
+  if (!request.auth?.uid) throw new HttpsError("unauthenticated", "Sign in required.");
+  await assertCallerIsAdmin(request.auth.uid);
+
+  const conferenceId = (request.data?.conferenceId as string | undefined)?.trim();
+  const emails = request.data?.emails as string[] | undefined;
+  const expirationDays = Number(request.data?.expirationDays) || DEFAULT_EXPIRATION_DAYS;
+  if (!conferenceId) throw new HttpsError("invalid-argument", "conferenceId is required.");
+  if (!Array.isArray(emails) || emails.length === 0) {
+    throw new HttpsError("invalid-argument", "emails array is required.");
+  }
+  if (emails.length > 500) {
+    throw new HttpsError("invalid-argument", "Maximum 500 emails per call.");
+  }
+  await assertConferenceExists(conferenceId);
+
+  const results: { email: string; code: string; codePreview: string }[] = [];
+  const seen = new Set<string>();
+  for (const emailRaw of emails) {
+    if (!emailRaw || typeof emailRaw !== "string") continue;
+    const normalized = normalizeEmail(emailRaw);
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    const out = await internalUpsertBuyerWithCode(
+      conferenceId,
+      emailRaw,
+      "bulk_upload",
+      request.auth.uid,
+      expirationDays,
+    );
+    results.push({
+      email: out.normalizedEmail,
+      code: out.plainCode,
+      codePreview: maskedPreview(out.plainCode),
+    });
+  }
+
+  return { ok: true, written: results.length, results };
+});
+
+/** Admin: revoke a ticket code (lost-code flow = revoke then regenerate). */
+export const revokeConferenceTicketCode = onCall(defaultCallableOptions, async (request) => {
+  if (!request.auth?.uid) throw new HttpsError("unauthenticated", "Sign in required.");
+  await assertCallerIsAdmin(request.auth.uid);
+
+  const conferenceId = (request.data?.conferenceId as string | undefined)?.trim();
+  const ticketCodeId = (request.data?.ticketCodeId as string | undefined)?.trim();
+  if (!conferenceId || !ticketCodeId) {
+    throw new HttpsError("invalid-argument", "conferenceId and ticketCodeId are required.");
+  }
+
+  await conferenceRef(conferenceId).collection(TICKET_CODES).doc(ticketCodeId).update({
+    revoked: true,
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+  return { ok: true };
+});
+
+/** Authed user: redeem the code from their ticket to unlock the conference. */
+export const redeemConferenceTicketCode = onCall(defaultCallableOptions, async (request) => {
+  if (!request.auth?.uid) throw new HttpsError("unauthenticated", "Sign in required.");
+  const uid = request.auth.uid;
+
+  const conferenceId = (request.data?.conferenceId as string | undefined)?.trim();
+  const codeInput = (request.data?.code as string | undefined)?.trim();
+  if (!conferenceId || !codeInput) {
+    throw new HttpsError("invalid-argument", "conferenceId and code are required.");
+  }
+
+  const record = await auth.getUser(uid);
+  const emailRaw = record.email;
+  if (!emailRaw) {
+    throw new HttpsError("failed-precondition", "Your account has no email.");
+  }
+
+  const conf = await assertConferenceExists(conferenceId);
+  const windowCheck = checkConferenceWindow(conf);
+  if (!windowCheck.ok) {
+    return { ...windowCheck.client, redeemFailed: true };
+  }
+
+  const loaded = await loadTicketClaimContext(conferenceId, emailRaw, codeInput);
+  if (!loaded.ok) {
+    return { ...loaded.client, redeemFailed: true };
+  }
+
+  const { ctx, alreadyConsumedByUid } = loaded;
+  if (alreadyConsumedByUid != null) {
+    if (alreadyConsumedByUid === uid) {
+      return { ok: true, alreadyDone: true, state: "READY" };
+    }
+    return {
+      ok: false,
+      code: "USED",
+      message: "This ticket code has already been used on another account.",
+      redeemFailed: true,
+    };
+  }
+
+  const attendeeRef = conferenceRef(conferenceId).collection(ATTENDEES).doc(uid);
+  const alreadyAttendee = (await attendeeRef.get()).exists;
+
+  const batch = db.batch();
+  batch.update(ctx.codeRef, {
+    used: true,
+    usedAt: FieldValue.serverTimestamp(),
+    usedByUid: uid,
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+  batch.set(
+    ctx.buyerRef,
+    {
+      redeemed: true,
+      redeemedByUid: uid,
+      redeemedAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    },
+    { merge: true },
+  );
+  batch.set(attendeeRef, {
+    uid,
+    email: emailRaw.trim(),
+    normalizedEmail: ctx.normalizedEmail,
+    ticketCodeId: ctx.codeRef.id,
+    redeemedAt: FieldValue.serverTimestamp(),
+  });
+  if (!alreadyAttendee) {
+    batch.update(conferenceRef(conferenceId), {
+      attendeeCount: FieldValue.increment(1),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  }
+  await batch.commit();
+
+  return { ok: true, state: "READY", conferenceId };
+});
+
+/** Authed user: non-consuming validity check for inline UI feedback. */
+export const validateConferenceTicketCode = onCall(defaultCallableOptions, async (request) => {
+  if (!request.auth?.uid) throw new HttpsError("unauthenticated", "Sign in required.");
+  const uid = request.auth.uid;
+
+  const conferenceId = (request.data?.conferenceId as string | undefined)?.trim();
+  const codeInput = (request.data?.code as string | undefined)?.trim();
+  if (!conferenceId || !codeInput) {
+    throw new HttpsError("invalid-argument", "conferenceId and code are required.");
+  }
+
+  const record = await auth.getUser(uid);
+  const emailRaw = record.email;
+  if (!emailRaw) {
+    throw new HttpsError("failed-precondition", "Your account has no email.");
+  }
+
+  const conf = await assertConferenceExists(conferenceId);
+  const windowCheck = checkConferenceWindow(conf);
+  if (!windowCheck.ok) {
+    return { valid: false, code: windowCheck.client.code, message: windowCheck.client.message };
+  }
+
+  const loaded = await loadTicketClaimContext(conferenceId, emailRaw, codeInput);
+  if (!loaded.ok) {
+    return { valid: false, code: loaded.client.code, message: loaded.client.message };
+  }
+  if (loaded.alreadyConsumedByUid != null && loaded.alreadyConsumedByUid !== uid) {
+    return { valid: false, code: "USED", message: "This ticket code has already been used." };
+  }
+
+  return { valid: true, code: "OK" };
+});

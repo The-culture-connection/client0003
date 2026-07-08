@@ -118,7 +118,10 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
                                     ? null
                                     : () {
                                         CurrentConferenceHolder.instance.conferenceId = conference.id;
-                                        context.go('/conference/lobby');
+                                        // Land on the ticket gate ("first click")
+                                        // screen; it routes on to the lobby once
+                                        // the user has redeemed a ticket code.
+                                        context.go('/conference/gate');
                                       },
                               );
                             },

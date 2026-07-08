@@ -5,6 +5,13 @@
 import "./firebaseGlobalOptions";
 
 export * from "./expansionInvite";
+export {
+  generateConferenceTicketCode,
+  bulkAddConferenceTicketBuyers,
+  revokeConferenceTicketCode,
+  redeemConferenceTicketCode,
+  validateConferenceTicketCode,
+} from "./conferenceTickets";
 
 export { onUserCreated } from "./triggers/onUserCreated";
 export { syncRolesToClaims } from "./triggers/syncRolesToClaims";

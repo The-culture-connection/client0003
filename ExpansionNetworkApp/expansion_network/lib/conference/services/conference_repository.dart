@@ -37,6 +37,32 @@ class ConferenceRepository {
     return Conference.fromDoc(snap.docs.first.id, snap.docs.first.data());
   }
 
+  /// Conferences a buyer can currently enter or purchase into: `status == 'active'`,
+  /// soonest first. Used by the Conference Center gate ("first click") screen.
+  Future<List<Conference>> fetchUpcomingConferences({int limit = 20}) async {
+    final snap = await _conferences
+        .where('status', isEqualTo: 'active')
+        .orderBy('startDate', descending: false)
+        .limit(limit)
+        .get();
+    return snap.docs
+        .map((d) => Conference.fromDoc(d.id, d.data()))
+        .whereType<Conference>()
+        .toList();
+  }
+
+  /// Whether [uid] has redeemed a ticket for [conferenceId] — the entry gate.
+  /// Reads `conferences/{id}/attendees/{uid}` (a user may read their own record
+  /// per `firestore.rules`).
+  Future<bool> hasAttendeeAccess(String conferenceId, String uid) async {
+    final snap = await _conferences
+        .doc(conferenceId)
+        .collection('attendees')
+        .doc(uid)
+        .get();
+    return snap.exists;
+  }
+
   Stream<List<ConferenceSession>> watchSessions(String conferenceId) {
     return _conferences
         .doc(conferenceId)

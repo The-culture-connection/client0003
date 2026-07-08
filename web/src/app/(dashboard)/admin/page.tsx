@@ -23,6 +23,7 @@ import { EligibleUsersAdminPanel } from "@/components/admin/EligibleUsersAdminPa
 import { MobileModerationPanel } from "@/components/admin/MobileModerationPanel";
 import { MobileAnalyticsSummariesPanel } from "@/components/admin/MobileAnalyticsSummariesPanel";
 import { AdminBadgesPanel } from "@/components/admin/AdminBadgesPanel";
+import { ConferencesAdminPanel } from "@/components/admin/ConferencesAdminPanel";
 
 function isAdminUser(roles: string[] | undefined) {
   const r = roles ?? [];
@@ -82,6 +83,10 @@ export default function AdminDashboard() {
           <TabsTrigger value="badges" className="gap-1">
             <Award className="w-3.5 h-3.5" />
             Badges
+          </TabsTrigger>
+          <TabsTrigger value="conferences" className="gap-1">
+            <Calendar className="w-3.5 h-3.5" />
+            Conferences
           </TabsTrigger>
         </TabsList>
 
@@ -216,6 +221,15 @@ export default function AdminDashboard() {
             still read <code className="text-xs bg-muted px-1 rounded">user_analytics_summary</code> on the server.
           </p>
           <AdminBadgesPanel />
+        </TabsContent>
+
+        <TabsContent value="conferences" className="mt-4">
+          <p className="text-sm text-muted-foreground mb-4 max-w-3xl">
+            Create and price conferences in <code className="text-xs bg-muted px-1 rounded">conferences</code>, set the{" "}
+            <strong>active window</strong>, and issue/track unique ticket codes. Codes redeem into{" "}
+            <code className="text-xs bg-muted px-1 rounded">conferences/&#123;id&#125;/attendees</code> via server callables.
+          </p>
+          <ConferencesAdminPanel />
         </TabsContent>
       </Tabs>
     </div>

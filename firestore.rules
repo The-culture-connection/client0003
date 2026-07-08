@@ -290,6 +290,25 @@ service cloud.firestore {
         allow read: if isSignedIn();
         allow write: if hasStaffClaim();
       }
+
+      // Ticket-auth (Phase A): buyer roster and codes are server-only (written by
+      // callables via the Admin SDK, which bypasses rules). Never client-readable —
+      // codes are plaintext. Staff read allowed for the admin codes view.
+      match /ticketBuyers/{buyerEmail} {
+        allow read: if hasStaffClaim();
+        allow write: if false;
+      }
+      match /ticketCodes/{ticketCodeId} {
+        allow read: if hasStaffClaim();
+        allow write: if false;
+      }
+
+      // Attendee access record (server-written on redemption). A user may read
+      // their own record so the app can gate entry; staff may read all.
+      match /attendees/{uid} {
+        allow read: if isSignedIn() && (request.auth.uid == uid || hasStaffClaim());
+        allow write: if false;
+      }
     }
 
     match /events_mobile/{eventId} {
