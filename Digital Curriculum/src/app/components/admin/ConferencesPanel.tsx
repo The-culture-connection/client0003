@@ -1,5 +1,3 @@
-"use client";
-
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   addDoc,
@@ -14,13 +12,12 @@ import {
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { httpsCallable } from "firebase/functions";
-import { db, storage, functions } from "@/lib/firebase";
-import { useAuth } from "@/components/auth/AuthProvider";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
+import { db, storage, functions } from "../../lib/firebase";
+import { Card } from "../ui/card";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Textarea } from "../ui/textarea";
+import { Label } from "../ui/label";
 import { Loader2, Check, Trash2, KeyRound, Upload } from "lucide-react";
 
 const CONFERENCES = "conferences";
@@ -69,8 +66,7 @@ function localInputToTs(v: string): Timestamp | null {
   return Number.isNaN(d.getTime()) ? null : Timestamp.fromDate(d);
 }
 
-export function ConferencesAdminPanel() {
-  const { user } = useAuth();
+export function ConferencesPanel() {
   const [conferences, setConferences] = useState<ConferenceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -186,7 +182,7 @@ export function ConferencesAdminPanel() {
   }, []);
 
   const resolveHeroImageUrl = async (): Promise<string> => {
-    if (heroImageFile && user) {
+    if (heroImageFile) {
       const safe = heroImageFile.name.replace(/[^a-zA-Z0-9.-]/g, "_");
       const path = `conferences/${Date.now()}_${safe}`;
       const storageRef = ref(storage, path);

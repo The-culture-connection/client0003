@@ -113,6 +113,16 @@ export function AdminCommandCenter() {
       scope: "both",
     },
     {
+      icon: Calendar,
+      title: "Conferences",
+      description: "Create & price conferences, issue and track ticket codes",
+      href: adminPanelPath("conferences"),
+      gradient: "from-amber-500/20 to-amber-500/5",
+      iconColor: "text-amber-500",
+      stats: "Tickets",
+      scope: "both",
+    },
+    {
       icon: UserCog,
       title: "Role & admins",
       description: "Manage admin access and user roles",

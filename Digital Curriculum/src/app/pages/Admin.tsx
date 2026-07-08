@@ -138,6 +138,7 @@ import { AnalyticsDashboardPanel } from "../components/admin/AnalyticsDashboardP
 import { AdminGoalReportsPanel } from "../components/admin/AdminGoalReportsPanel";
 import { ImplicitFeedbackReportPanel } from "../components/admin/ImplicitFeedbackReportPanel";
 import { AdminBadgesPanel } from "../components/admin/AdminBadgesPanel";
+import { ConferencesPanel } from "../components/admin/ConferencesPanel";
 import { registerDigitalCurriculumAlumniEligible } from "../lib/expansionEligible";
 import {
   formatAvailabilityWindowLabel,
@@ -1153,6 +1154,10 @@ export function AdminPage() {
           <TabsTrigger value="shop">
             <ShoppingBag className="w-4 h-4 mr-2" />
             Shop
+          </TabsTrigger>
+          <TabsTrigger value="conferences">
+            <Calendar className="w-4 h-4 mr-2" />
+            Conferences
           </TabsTrigger>
         </TabsList>
 
@@ -2278,6 +2283,11 @@ export function AdminPage() {
 
         <TabsContent value="badges" className="space-y-6">
           <AdminBadgesPanel />
+        </TabsContent>
+
+        {/* Conference Center — create/price conferences, active window, ticket codes */}
+        <TabsContent value="conferences" className="space-y-6">
+          <ConferencesPanel />
         </TabsContent>
 
         {/* Expansion Network — eligible users & invite codes */}
