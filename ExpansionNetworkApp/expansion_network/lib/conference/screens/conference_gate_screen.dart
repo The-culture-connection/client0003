@@ -35,12 +35,14 @@ class ConferenceGateScreen extends StatefulWidget {
 }
 
 class _ConferenceGateScreenState extends State<ConferenceGateScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   final _code = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   final ConferenceRepository _repo = ConferenceRepository();
   final ConferenceTicketService _tickets = ConferenceTicketService();
   final StripeCheckoutService _checkout = StripeCheckoutService();
+  final ScrollController _scroll = ScrollController();
+  final FocusNode _codeFocus = FocusNode();
 
   late final AnimationController _glow;
   late final List<Offset> _stars;
@@ -51,10 +53,14 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
   String? _conferenceId;
   String? _buyingId;
   List<Conference> _upcoming = const [];
+  // Conferences the user already has access to (redeemed) / has paid for.
+  Set<String> _accessIds = {};
+  Set<String> _ticketIds = {};
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _glow = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2200),
@@ -66,9 +72,57 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _glow.dispose();
     _code.dispose();
+    _scroll.dispose();
+    _codeFocus.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Returning from Stripe Checkout (browser) → refresh so the button reflects
+    // the new ticket. The webhook may lag a moment, so re-check shortly after too.
+    if (state == AppLifecycleState.resumed && !_initializing) {
+      _refreshEntitlements();
+      Future.delayed(const Duration(seconds: 4), () {
+        if (mounted) _refreshEntitlements();
+      });
+    }
+  }
+
+  /// Re-load which conferences the user can enter / has paid for.
+  Future<void> _refreshEntitlements() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    try {
+      final access = await _repo.accessibleConferenceIds(uid, _upcoming.map((c) => c.id));
+      final tickets = await _repo.purchasedConferenceIds(uid);
+      if (!mounted) return;
+      setState(() {
+        _accessIds = access;
+        _ticketIds = tickets;
+      });
+    } catch (_) {
+      // Best-effort; leave the buttons as they are on failure.
+    }
+  }
+
+  void _enter(Conference c) {
+    CurrentConferenceHolder.instance.conferenceId = c.id;
+    context.go('/conference/lobby');
+  }
+
+  void _promptCode(Conference c) {
+    setState(() => _conferenceId = c.id);
+    if (_scroll.hasClients) {
+      _scroll.animateTo(0, duration: const Duration(milliseconds: 350), curve: Curves.easeOut);
+    }
+    _codeFocus.requestFocus();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Enter the code from your ticket email to go in.')),
+    );
   }
 
   Future<void> _bootstrap() async {
@@ -84,7 +138,7 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
 
       final upcoming = await _repo.fetchUpcomingConferences();
 
-      // Already have access? Skip the gate.
+      // Already have access to the tapped conference? Skip the gate.
       final uid = FirebaseAuth.instance.currentUser?.uid;
       if (conferenceId != null && uid != null) {
         final hasAccess = await _repo.hasAttendeeAccess(conferenceId, uid);
@@ -95,10 +149,21 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
         }
       }
 
+      // Which of the upcoming conferences the user already holds / has paid for,
+      // so their cards show "Enter" / "Enter code" instead of "Buy"/"Register".
+      var accessIds = <String>{};
+      var ticketIds = <String>{};
+      if (uid != null) {
+        accessIds = await _repo.accessibleConferenceIds(uid, upcoming.map((c) => c.id));
+        ticketIds = await _repo.purchasedConferenceIds(uid);
+      }
+
       if (!mounted) return;
       setState(() {
         _conferenceId = conferenceId;
         _upcoming = upcoming;
+        _accessIds = accessIds;
+        _ticketIds = ticketIds;
         _initializing = false;
       });
     } catch (e) {
@@ -275,6 +340,7 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
               child: Transform.translate(offset: Offset(0, (1 - t) * 24), child: child),
             ),
             child: SingleChildScrollView(
+              controller: _scroll,
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -382,6 +448,7 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
               const SizedBox(height: 20),
               TextFormField(
                 controller: _code,
+                focusNode: _codeFocus,
                 autocorrect: false,
                 textAlign: TextAlign.center,
                 textCapitalization: TextCapitalization.characters,
@@ -588,30 +655,57 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
             ),
           ),
           const SizedBox(width: 10),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: ConferenceColors.goldAlpha(0.16),
-              foregroundColor: ConferenceColors.gold,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: BorderSide(color: ConferenceColors.goldAlpha(0.5)),
-              ),
-            ),
-            onPressed: _buyingId == null ? () => _buyTicket(c) : null,
-            child: _buyingId == c.id
-                ? const SizedBox(
-                    height: 18,
-                    width: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: ConferenceColors.gold),
-                  )
-                : Text(
-                    c.isFree ? 'Register' : 'Buy',
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-          ),
+          _buildCardAction(c),
         ],
       ),
+    );
+  }
+
+  /// Reflects the user's state for [c]: entered → "Enter", paid but not redeemed
+  /// → "Enter code", otherwise "Buy"/"Register".
+  Widget _buildCardAction(Conference c) {
+    if (_buyingId == c.id) {
+      return const SizedBox(
+        width: 44,
+        height: 40,
+        child: Center(
+          child: SizedBox(
+            height: 18,
+            width: 18,
+            child: CircularProgressIndicator(strokeWidth: 2, color: ConferenceColors.gold),
+          ),
+        ),
+      );
+    }
+
+    final hasAccess = _accessIds.contains(c.id);
+    final hasTicket = _ticketIds.contains(c.id);
+
+    final String label;
+    final VoidCallback onTap;
+    if (hasAccess) {
+      label = 'Enter';
+      onTap = () => _enter(c);
+    } else if (hasTicket) {
+      label = 'Enter code';
+      onTap = () => _promptCode(c);
+    } else {
+      label = c.isFree ? 'Register' : 'Buy';
+      onTap = () => _buyTicket(c);
+    }
+
+    return FilledButton(
+      style: FilledButton.styleFrom(
+        backgroundColor: hasAccess ? ConferenceColors.gold : ConferenceColors.goldAlpha(0.16),
+        foregroundColor: hasAccess ? Colors.black : ConferenceColors.gold,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: ConferenceColors.goldAlpha(0.5)),
+        ),
+      ),
+      onPressed: _buyingId == null ? onTap : null,
+      child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
     );
   }
 }

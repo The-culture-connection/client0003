@@ -63,6 +63,38 @@ class ConferenceRepository {
     return snap.exists;
   }
 
+  /// Of [conferenceIds], the ones [uid] already has entry access to (redeemed).
+  Future<Set<String>> accessibleConferenceIds(
+    String uid,
+    Iterable<String> conferenceIds,
+  ) async {
+    final ids = <String>{};
+    for (final id in conferenceIds) {
+      if (await hasAttendeeAccess(id, uid)) ids.add(id);
+    }
+    return ids;
+  }
+
+  /// Conference ids [uid] has a completed (paid) ticket order for — read from
+  /// their own `payment_orders` (client-readable). Covers the "bought but not
+  /// yet redeemed" state so the gate can show "Enter code" instead of "Buy".
+  Future<Set<String>> purchasedConferenceIds(String uid) async {
+    final snap = await _db
+        .collection('payment_orders')
+        .where('uid', isEqualTo: uid)
+        .get();
+    final ids = <String>{};
+    for (final d in snap.docs) {
+      final data = d.data();
+      if (data['status'] == 'completed' && data['purchase_type'] == 'conference') {
+        final meta = data['metadata'];
+        final cid = meta is Map ? meta['conference_id'] as String? : null;
+        if (cid != null && cid.isNotEmpty) ids.add(cid);
+      }
+    }
+    return ids;
+  }
+
   Stream<List<ConferenceSession>> watchSessions(String conferenceId) {
     return _conferences
         .doc(conferenceId)
