@@ -1,10 +1,15 @@
 import 'dart:async';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../services/expansion_session_service.dart'
+    show userMessageForFirebaseCallableError;
+import '../current_conference_holder.dart';
 import '../services/conference_calendar.dart';
+import '../services/conference_ticket_service.dart';
 import '../theme/conference_colors.dart';
 import '../widgets/conference_scope.dart';
 
@@ -23,11 +28,17 @@ class ConferenceLobbyScreen extends StatefulWidget {
 
 enum _LobbyTab { explore, missions, map }
 
-class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen> {
+class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen>
+    with WidgetsBindingObserver {
   _LobbyTab _tab = _LobbyTab.explore;
   bool _quickActionsOpen = false;
   Timer? _tickerTimer;
   int _tickerIndex = 0;
+
+  final ConferenceTicketService _tickets = ConferenceTicketService();
+  bool _checkingIn = false;
+  bool? _checkedInToday; // null = status not loaded yet
+  int _todayCount = 0;
 
   static const _liveActivities = [
     '🎯 Sarah just connected with 3 founders',
@@ -85,22 +96,77 @@ class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _tickerTimer = Timer.periodic(const Duration(seconds: 4), (_) {
       if (!mounted) return;
       setState(() => _tickerIndex = (_tickerIndex + 1) % _liveActivities.length);
     });
+    _loadCheckInStatus();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _tickerTimer?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Refresh the check-in status when returning to the app (e.g. a new day).
+    if (state == AppLifecycleState.resumed) _loadCheckInStatus();
   }
 
   void _showComingSoon(BuildContext context, String label) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('$label is coming in a later update.')),
     );
+  }
+
+  /// Non-writing status read so the button reflects today's state on load.
+  Future<void> _loadCheckInStatus() async {
+    final conferenceId = CurrentConferenceHolder.instance.conferenceId;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (conferenceId == null || uid == null) return;
+    try {
+      final res = await _tickets.checkIn(conferenceId: conferenceId, peek: true);
+      if (!mounted) return;
+      setState(() {
+        _checkedInToday = res['checkedInToday'] == true;
+        _todayCount = (res['todayCount'] as num?)?.toInt() ?? 0;
+      });
+    } catch (_) {
+      // Best-effort — leave the button in its default state.
+    }
+  }
+
+  Future<void> _handleCheckIn() async {
+    final conferenceId = CurrentConferenceHolder.instance.conferenceId;
+    if (conferenceId == null || _checkingIn || _checkedInToday == true) return;
+    setState(() => _checkingIn = true);
+    try {
+      final res = await _tickets.checkIn(conferenceId: conferenceId);
+      if (!mounted) return;
+      final already = res['alreadyToday'] == true;
+      setState(() {
+        _checkedInToday = true;
+        _todayCount = (res['todayCount'] as num?)?.toInt() ?? _todayCount;
+        _checkingIn = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(already
+              ? "You're already checked in for today."
+              : "You're checked in for today! 🎉"),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _checkingIn = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(userMessageForFirebaseCallableError(e))),
+      );
+    }
   }
 
   @override
@@ -125,6 +191,7 @@ class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen> {
             child: CustomScrollView(
               slivers: [
                 SliverToBoxAdapter(child: _HeroBanner(conference: conference, tickerText: _liveActivities[_tickerIndex])),
+                SliverToBoxAdapter(child: _buildCheckInCard(context)),
                 SliverToBoxAdapter(child: _buildTabBar()),
                 SliverToBoxAdapter(child: _buildTabContent(context, conference?.mapImageUrl)),
                 const SliverToBoxAdapter(child: SizedBox(height: 140)),
@@ -134,6 +201,99 @@ class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen> {
         ],
       ),
       floatingActionButton: _buildQuickActionsFab(context),
+    );
+  }
+
+  /// Prominent daily check-in CTA in the lobby (resets each conference-local day).
+  Widget _buildCheckInCard(BuildContext context) {
+    final checkedIn = _checkedInToday == true;
+    final countLabel = _todayCount > 0
+        ? '$_todayCount checked in today'
+        : 'Be the first to check in today';
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: ConferenceColors.goldAlpha(checkedIn ? 0.5 : 0.3)),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [ConferenceColors.goldAlpha(0.10), Colors.black.withValues(alpha: 0.4)],
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: ConferenceColors.goldAlpha(0.12),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: ConferenceColors.gold, width: 1.4),
+              ),
+              child: Icon(
+                checkedIn ? Icons.how_to_reg_rounded : Icons.location_on_rounded,
+                color: ConferenceColors.gold,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    checkedIn ? "YOU'RE CHECKED IN" : 'DAILY CHECK-IN',
+                    style: const TextStyle(
+                      color: ConferenceColors.gold,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    countLabel,
+                    style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            if (_checkingIn)
+              const SizedBox(
+                width: 44,
+                height: 40,
+                child: Center(
+                  child: SizedBox(
+                    height: 18,
+                    width: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: ConferenceColors.gold),
+                  ),
+                ),
+              )
+            else
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: checkedIn ? ConferenceColors.goldAlpha(0.16) : ConferenceColors.gold,
+                  foregroundColor: checkedIn ? ConferenceColors.gold : Colors.black,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: ConferenceColors.goldAlpha(0.5)),
+                  ),
+                ),
+                onPressed: checkedIn ? null : _handleCheckIn,
+                child: Text(
+                  checkedIn ? 'Checked in ✓' : 'Check In',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -238,6 +398,8 @@ class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen> {
                     if (conference != null) {
                       showAddToCalendarSheet(context, conference);
                     }
+                  } else if (action.label == 'Check In') {
+                    _handleCheckIn();
                   } else {
                     _showComingSoon(context, action.label);
                   }

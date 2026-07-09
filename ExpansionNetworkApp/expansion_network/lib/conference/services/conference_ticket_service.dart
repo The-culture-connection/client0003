@@ -38,6 +38,20 @@ class ConferenceTicketService {
     return Map<String, dynamic>.from(result.data as Map);
   }
 
+  /// Authenticated — daily check-in for a conference. `peek:true` reads status
+  /// without writing. Returns `{checkedInToday, todayCount, isAttendee?, ...}`.
+  Future<Map<String, dynamic>> checkIn({
+    required String conferenceId,
+    bool peek = false,
+  }) async {
+    final callable = _functions.httpsCallable('checkInToConference');
+    final result = await callable.call(<String, dynamic>{
+      'conferenceId': conferenceId,
+      'peek': peek,
+    });
+    return Map<String, dynamic>.from(result.data as Map);
+  }
+
   /// Authenticated — non-consuming validity check. Returns `{valid, code, message?}`.
   Future<Map<String, dynamic>> validateConferenceTicketCode({
     required String conferenceId,

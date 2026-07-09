@@ -41,6 +41,7 @@ interface ConferenceRow {
   mapImageUrl?: string;
   heroSponsor?: { name?: string; logoUrl?: string };
   attendeeCount?: number;
+  checkInTotal?: number;
 }
 
 interface TicketCodeRow {
@@ -51,6 +52,12 @@ interface TicketCodeRow {
   usedByUid?: string;
   revoked?: boolean;
   expiresAt?: Timestamp;
+}
+
+interface CheckinDayRow {
+  id: string; // date key YYYY-MM-DD
+  date?: string;
+  count?: number;
 }
 
 /** `<input type="datetime-local">` value ↔ Firestore Timestamp. */
@@ -100,6 +107,7 @@ export function ConferencesPanel() {
   const [bulkEmails, setBulkEmails] = useState("");
   const [codeBusy, setCodeBusy] = useState(false);
   const [lastGenerated, setLastGenerated] = useState<{ email: string; code: string }[]>([]);
+  const [checkinDays, setCheckinDays] = useState<CheckinDayRow[]>([]);
 
   useEffect(() => {
     const unsub = onSnapshot(
@@ -137,6 +145,24 @@ export function ConferencesPanel() {
         setError(e.message);
         setCodesLoading(false);
       },
+    );
+    return () => unsub();
+  }, [selectedConfId]);
+
+  // Live daily check-in counts for the selected conference.
+  useEffect(() => {
+    if (!selectedConfId) {
+      setCheckinDays([]);
+      return;
+    }
+    const unsub = onSnapshot(
+      query(collection(db, CONFERENCES, selectedConfId, "checkinDays")),
+      (snap) => {
+        const rows: CheckinDayRow[] = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<CheckinDayRow, "id">) }));
+        rows.sort((a, b) => (b.date ?? b.id).localeCompare(a.date ?? a.id)); // newest first
+        setCheckinDays(rows);
+      },
+      (e) => setError(e.message),
     );
     return () => unsub();
   }, [selectedConfId]);
@@ -321,6 +347,14 @@ export function ConferencesPanel() {
     [conferences, selectedConfId],
   );
   const redeemedCount = useMemo(() => codes.filter((c) => c.used).length, [codes]);
+  const checkinsToday = useMemo(() => {
+    // `checkinDays` is sorted newest-first; the top row is the latest day with any check-ins.
+    return checkinDays[0]?.count ?? 0;
+  }, [checkinDays]);
+  const checkinsCumulative = useMemo(
+    () => checkinDays.reduce((sum, d) => sum + (d.count ?? 0), 0),
+    [checkinDays],
+  );
 
   return (
     <div className="space-y-8">
@@ -466,7 +500,7 @@ export function ConferencesPanel() {
                   <p className="font-medium text-foreground truncate">{c.name || c.id}</p>
                   <p className="text-xs text-muted-foreground">
                     <span className="rounded bg-muted/80 px-1 py-0.5 font-mono">{c.status ?? "draft"}</span>{" "}
-                    · {((c.priceCents ?? 0) / 100).toFixed(2)} {(c.currency ?? "usd").toUpperCase()} · {c.attendeeCount ?? 0} attendees
+                    · {((c.priceCents ?? 0) / 100).toFixed(2)} {(c.currency ?? "usd").toUpperCase()} · {c.attendeeCount ?? 0} attendees · {c.checkInTotal ?? 0} check-ins
                   </p>
                 </div>
                 <div className="flex gap-1 shrink-0">
@@ -497,6 +531,46 @@ export function ConferencesPanel() {
               {codes.length} code(s), {redeemedCount} redeemed. Codes are shown once at generation — copy them now.
               Lost-code flow: generate a new code (auto-revokes the old one) or revoke below.
             </p>
+          </div>
+
+          {/* Daily check-ins */}
+          <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-3">
+            <div className="flex flex-wrap items-center gap-4">
+              <div>
+                <p className="text-2xl font-bold text-foreground tabular-nums">{checkinsToday}</p>
+                <p className="text-xs text-muted-foreground">checked in on the latest day</p>
+              </div>
+              <div className="border-l border-border pl-4">
+                <p className="text-2xl font-bold text-foreground tabular-nums">{selectedConf.checkInTotal ?? checkinsCumulative}</p>
+                <p className="text-xs text-muted-foreground">cumulative check-ins (all days)</p>
+              </div>
+              <div className="border-l border-border pl-4">
+                <p className="text-2xl font-bold text-foreground tabular-nums">{selectedConf.attendeeCount ?? 0}</p>
+                <p className="text-xs text-muted-foreground">ticketed attendees</p>
+              </div>
+            </div>
+            {checkinDays.length > 0 ? (
+              <div className="overflow-x-auto rounded-md border border-border bg-background/60">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/40">
+                      <th className="p-2 font-medium">Day</th>
+                      <th className="p-2 font-medium text-right">Check-ins</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {checkinDays.map((d) => (
+                      <tr key={d.id} className="border-b border-border/70 last:border-0">
+                        <td className="p-2 font-mono text-muted-foreground">{d.date ?? d.id}</td>
+                        <td className="p-2 text-right text-foreground tabular-nums">{d.count ?? 0}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">No check-ins yet.</p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

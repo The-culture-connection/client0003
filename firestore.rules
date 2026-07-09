@@ -309,6 +309,14 @@ service cloud.firestore {
         allow read: if isSignedIn() && (request.auth.uid == uid || hasStaffClaim());
         allow write: if false;
       }
+
+      // Daily check-in counters (server-written via the checkInToConference
+      // callable). Staff read for the admin dashboard; per-user check-in state
+      // lives on the attendees/{uid} doc above.
+      match /checkinDays/{dateKey} {
+        allow read: if hasStaffClaim();
+        allow write: if false;
+      }
     }
 
     match /events_mobile/{eventId} {

@@ -50,10 +50,33 @@ const CONFERENCES = "conferences";
 const TICKET_BUYERS = "ticketBuyers";
 const TICKET_CODES = "ticketCodes";
 const ATTENDEES = "attendees";
+const CHECKIN_DAYS = "checkinDays";
 const USERS = "users";
 const ELIGIBLE = "eligibleUsers";
 
 const DEFAULT_EXPIRATION_DAYS = 180;
+const DEFAULT_CHECKIN_TIMEZONE = "America/New_York";
+
+/**
+ * Conference-local day key (`YYYY-MM-DD`) so daily check-ins reset at local
+ * midnight rather than UTC. `en-CA` formats as `YYYY-MM-DD`. Falls back to the
+ * default timezone if the conference's `timezone` is missing/invalid.
+ */
+function conferenceDayKey(timezone?: string | null): string {
+  const tz = typeof timezone === "string" && timezone.trim() ? timezone.trim() : DEFAULT_CHECKIN_TIMEZONE;
+  const fmt = (zone: string) =>
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: zone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
+  try {
+    return fmt(tz);
+  } catch {
+    return fmt(DEFAULT_CHECKIN_TIMEZONE);
+  }
+}
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
@@ -555,6 +578,87 @@ export const registerFreeConferenceTicket = onCall(callableWithBrevo, async (req
   });
 
   return { ok: true, code: gen.plainCode, conferenceId };
+});
+
+/**
+ * Authed attendee: daily check-in for a conference. Resets each conference-local
+ * day (`conferenceDayKey`). Records the check-in on the user's own attendee doc
+ * and rolls it into a per-day cumulative counter + a conference-level total.
+ * Pass `peek:true` to read status without writing (used by the lobby on load).
+ */
+export const checkInToConference = onCall(defaultCallableOptions, async (request) => {
+  if (!request.auth?.uid) throw new HttpsError("unauthenticated", "Sign in required.");
+  const uid = request.auth.uid;
+
+  const conferenceId = (request.data?.conferenceId as string | undefined)?.trim();
+  if (!conferenceId) throw new HttpsError("invalid-argument", "conferenceId is required.");
+  const peek = request.data?.peek === true;
+
+  const conf = await assertConferenceExists(conferenceId);
+  const todayKey = conferenceDayKey(conf.timezone as string | undefined);
+
+  const attendeeRef = conferenceRef(conferenceId).collection(ATTENDEES).doc(uid);
+  const dayRef = conferenceRef(conferenceId).collection(CHECKIN_DAYS).doc(todayKey);
+
+  // Status-only read for the lobby — never writes.
+  if (peek) {
+    const [attSnap, daySnap] = await Promise.all([attendeeRef.get(), dayRef.get()]);
+    const isAttendee = attSnap.exists;
+    const checkedInToday = isAttendee && attSnap.data()?.lastCheckInDate === todayKey;
+    const todayCount = (daySnap.data()?.count as number | undefined) ?? 0;
+    return { checkedInToday, todayCount, isAttendee, todayKey };
+  }
+
+  // Idempotent per day: the transaction reads the attendee doc, so a rapid
+  // double-tap re-runs and sees today's key already set (no double count).
+  const outcome = await db.runTransaction(async (tx) => {
+    const attSnap = await tx.get(attendeeRef);
+    if (!attSnap.exists) {
+      throw new HttpsError(
+        "failed-precondition",
+        "You need a ticket to check in to this conference.",
+      );
+    }
+    const alreadyToday = attSnap.data()?.lastCheckInDate === todayKey;
+    if (!alreadyToday) {
+      tx.set(
+        attendeeRef,
+        {
+          lastCheckInDate: todayKey,
+          lastCheckInAt: FieldValue.serverTimestamp(),
+          checkInCount: FieldValue.increment(1),
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      );
+      tx.set(
+        dayRef,
+        {
+          date: todayKey,
+          conferenceId,
+          count: FieldValue.increment(1),
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      );
+      tx.update(conferenceRef(conferenceId), {
+        checkInTotal: FieldValue.increment(1),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    }
+    return { alreadyToday };
+  });
+
+  const daySnap = await dayRef.get();
+  const todayCount = (daySnap.data()?.count as number | undefined) ?? 1;
+
+  return {
+    ok: true,
+    checkedInToday: true,
+    alreadyToday: outcome.alreadyToday,
+    todayCount,
+    todayKey,
+  };
 });
 
 /** Authed user: non-consuming validity check for inline UI feedback. */

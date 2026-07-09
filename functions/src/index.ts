@@ -11,6 +11,7 @@ export {
   revokeConferenceTicketCode,
   redeemConferenceTicketCode,
   registerFreeConferenceTicket,
+  checkInToConference,
   validateConferenceTicketCode,
 } from "./conferenceTickets";
 

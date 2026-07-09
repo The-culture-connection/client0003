@@ -17,6 +17,7 @@ class Conference {
     this.heroSponsorLogoUrl,
     this.mapImageUrl,
     this.attendeeCount = 0,
+    this.checkInTotal = 0,
     this.priceCents = 0,
     this.currency = 'usd',
     this.activeFrom,
@@ -37,6 +38,9 @@ class Conference {
   final String? heroSponsorLogoUrl;
   final String? mapImageUrl;
   final int attendeeCount;
+
+  /// All-time cumulative check-ins across all days (server-maintained).
+  final int checkInTotal;
 
   /// Ticket price in cents (0 = free). Charged via Stripe in a later phase.
   final int priceCents;
@@ -82,6 +86,7 @@ class Conference {
       heroSponsorLogoUrl: heroSponsor?['logoUrl'] as String?,
       mapImageUrl: data['mapImageUrl'] as String?,
       attendeeCount: (data['attendeeCount'] as num?)?.toInt() ?? 0,
+      checkInTotal: (data['checkInTotal'] as num?)?.toInt() ?? 0,
       priceCents: (data['priceCents'] as num?)?.toInt() ?? 0,
       currency: data['currency'] as String? ?? 'usd',
       activeFrom: _toDate(data['activeFrom']),
