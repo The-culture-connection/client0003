@@ -64,13 +64,8 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            if (context.canPop()) {
-              context.pop();
-            } else {
-              context.go('/profile');
-            }
-          },
+          tooltip: 'Back to the Mortarverse',
+          onPressed: () => context.go('/mortarverse'),
         ),
         title: const Text('Achievements'),
         backgroundColor: AppColors.background,

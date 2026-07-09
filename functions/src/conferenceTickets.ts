@@ -26,6 +26,8 @@ import {
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 
 import { callableCorsAllowlist } from "./callableCorsAllowlist";
+import { BREVO_API_KEY } from "./email/brevoClient";
+import { sendConferenceTicketConfirmationEmail } from "./email/conferenceTicketEmail";
 
 if (getApps().length === 0) {
   initializeApp();
@@ -36,6 +38,12 @@ const auth = getAuth();
 const defaultCallableOptions = {
   invoker: "public" as const,
   cors: callableCorsAllowlist,
+};
+
+/** Options for callables that send Brevo email (free registration). */
+const callableWithBrevo = {
+  ...defaultCallableOptions,
+  secrets: [BREVO_API_KEY],
 };
 
 const CONFERENCES = "conferences";
@@ -180,6 +188,26 @@ async function internalUpsertBuyerWithCode(
   });
 
   return { normalizedEmail, ...out };
+}
+
+/**
+ * Generate (and email-ready return) a ticket code for a paid purchase.
+ * Called from Stripe fulfillment — `buyerUid` is the purchaser's account uid so
+ * the code is tied to the email that account will redeem with. Reuses the same
+ * upsert + revoke-previous logic as admin-issued codes.
+ */
+export async function internalGenerateConferenceTicketForPurchase(
+  conferenceId: string,
+  emailRaw: string,
+  buyerUid: string,
+): Promise<{ normalizedEmail: string; ticketId: string; plainCode: string; expiresAt: Date }> {
+  return internalUpsertBuyerWithCode(
+    conferenceId,
+    emailRaw,
+    "stripe_purchase",
+    buyerUid,
+    DEFAULT_EXPIRATION_DAYS,
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -474,6 +502,59 @@ export const redeemConferenceTicketCode = onCall(defaultCallableOptions, async (
   await batch.commit();
 
   return { ok: true, state: "READY", conferenceId };
+});
+
+/**
+ * Authed user: register for a FREE conference. Auto-issues a unique code, emails
+ * it (confirmation + active window), and returns it so the app can redeem
+ * immediately. Rejects paid conferences (those go through Stripe checkout).
+ */
+export const registerFreeConferenceTicket = onCall(callableWithBrevo, async (request) => {
+  if (!request.auth?.uid) throw new HttpsError("unauthenticated", "Sign in required.");
+  const uid = request.auth.uid;
+
+  const conferenceId = (request.data?.conferenceId as string | undefined)?.trim();
+  if (!conferenceId) throw new HttpsError("invalid-argument", "conferenceId is required.");
+
+  const conf = await assertConferenceExists(conferenceId);
+  if (conf.status === "closed") {
+    throw new HttpsError("failed-precondition", "This conference is closed.");
+  }
+  if (Number(conf.priceCents ?? 0) > 0) {
+    throw new HttpsError("failed-precondition", "This conference requires a ticket purchase.");
+  }
+
+  const record = await auth.getUser(uid);
+  const emailRaw = record.email;
+  if (!emailRaw) {
+    throw new HttpsError("failed-precondition", "Your account has no email.");
+  }
+
+  const gen = await internalUpsertBuyerWithCode(
+    conferenceId,
+    emailRaw,
+    "free_registration",
+    uid,
+    DEFAULT_EXPIRATION_DAYS,
+  );
+
+  const udoc = await db.collection(USERS).doc(uid).get();
+  const userName =
+    (udoc.data()?.displayName as string | undefined) ??
+    (udoc.data()?.name as string | undefined);
+
+  await sendConferenceTicketConfirmationEmail({
+    db,
+    to: emailRaw.trim(),
+    recipientUid: uid,
+    userName,
+    conferenceId,
+    ticketCode: gen.plainCode,
+    amountCents: 0,
+    currency: String(conf.currency ?? "usd"),
+  });
+
+  return { ok: true, code: gen.plainCode, conferenceId };
 });
 
 /** Authed user: non-consuming validity check for inline UI feedback. */

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>You're in — {{ params.conference_name }}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#ececec;font-family:Arial,Helvetica,sans-serif;">
+  <span style="display:none!important;visibility:hidden;mso-hide:all;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">
+    Your ticket is confirmed. Here's your Conference Center access code and when it goes live.
+  </span>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#ececec;">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+        <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;width:100%;">
+          <tr>
+            <td style="background-color:#871002;padding:24px 32px;border-radius:8px 8px 0 0;">
+              <p style="margin:0;font-size:22px;font-weight:bold;color:#fafcfc;">Mortar</p>
+              <p style="margin:8px 0 0;font-size:13px;color:#f0d4d0;">Conference Center</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color:#ffffff;padding:32px;border-left:1px solid #e0e0e0;border-right:1px solid #e0e0e0;">
+              <p style="margin:0 0 16px;font-size:16px;color:#2d2d2d;">Hi {{ params.first_name }},</p>
+              <p style="margin:0 0 16px;font-size:16px;line-height:1.6;color:#2d2d2d;">
+                You're in! Your ticket to <strong>{{ params.conference_name }}</strong> is confirmed and paid.
+                We can't wait to see you there.
+              </p>
+              <p style="margin:0 0 20px;font-size:16px;line-height:1.6;color:#2d2d2d;">
+                Here's your personal Conference Center access code — keep it handy:
+              </p>
+
+              <!-- Access code -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 20px;">
+                <tr>
+                  <td style="padding:20px 24px;background-color:#f5f5f5;border-radius:8px;border:1px solid #e0e0e0;">
+                    <p style="margin:0 0 8px;font-size:14px;font-weight:bold;color:#2d2d2d;">Conference Center Code:</p>
+                    <p style="margin:0;font-size:28px;font-weight:bold;letter-spacing:4px;color:#871002;font-family:'Courier New',Courier,monospace;">{{ params.ticket_code }}</p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Active window callout -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 24px;">
+                <tr>
+                  <td style="padding:16px 20px;background-color:#fff8e6;border-radius:8px;border:1px solid #ecd9a6;">
+                    <p style="margin:0 0 4px;font-size:13px;font-weight:bold;letter-spacing:0.5px;text-transform:uppercase;color:#8a6a00;">Your code goes live</p>
+                    <p style="margin:0;font-size:17px;font-weight:bold;color:#5c4700;">{{ params.code_active_label }}</p>
+                    <p style="margin:8px 0 0;font-size:13px;line-height:1.5;color:#6b5a1f;">
+                      The code only unlocks the Conference Center during the event window, so if it doesn't work yet, check back at the time above.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0 0 12px;font-size:14px;font-weight:bold;color:#2d2d2d;">How to get in:</p>
+              <ol style="margin:0 0 24px;padding-left:20px;font-size:15px;line-height:1.7;color:#2d2d2d;">
+                <li>Open the Mortar app and head to the <strong>Mortarverse</strong>.</li>
+                <li>Tap <strong>Conference Center</strong>.</li>
+                <li>Enter the code above to unlock {{ params.conference_name }}.</li>
+              </ol>
+
+              <!-- Order summary -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 24px;">
+                <tr>
+                  <td style="padding:16px 20px;background-color:#fafafa;border-radius:8px;border:1px solid #ededed;">
+                    <p style="margin:0 0 10px;font-size:13px;font-weight:bold;letter-spacing:0.5px;text-transform:uppercase;color:#6b6b6b;">Order summary</p>
+                    <p style="margin:0 0 4px;font-size:14px;color:#2d2d2d;"><strong>Conference:</strong> {{ params.conference_name }}</p>
+                    <p style="margin:0 0 4px;font-size:14px;color:#2d2d2d;"><strong>When:</strong> {{ params.conference_date }}</p>
+                    <p style="margin:0 0 4px;font-size:14px;color:#2d2d2d;"><strong>Where:</strong> {{ params.conference_location }}</p>
+                    <p style="margin:0 0 4px;font-size:14px;color:#2d2d2d;"><strong>Amount paid:</strong> {{ params.amount_total }}</p>
+                    <p style="margin:0;font-size:13px;color:#9a9a9a;">Order #{{ params.order_id }}</p>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0 0 24px;font-size:14px;line-height:1.6;color:#2d2d2d;">
+                Lost your code or need a hand? Just reply to this email or reach us at
+                <a href="mailto:{{ params.support_email }}" style="color:#871002;">{{ params.support_email }}</a>.
+              </p>
+              <p style="margin:0 0 8px;font-size:16px;line-height:1.6;color:#2d2d2d;">See you at the conference!</p>
+              <p style="margin:0;font-size:16px;line-height:1.6;color:#2d2d2d;">
+                Best,<br />
+                The MORTAR Team
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color:#f5f5f5;padding:24px 32px;border-radius:0 0 8px 8px;border:1px solid #e0e0e0;border-top:none;">
+              <p style="margin:0;font-size:12px;color:#9a9a9a;">© Mortar · Conference Center</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

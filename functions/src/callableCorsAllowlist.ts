@@ -23,4 +23,8 @@ export const callableCorsAllowlist: (string | RegExp)[] = [
   // `mortar-prod-*`). Scoped to the `mortar-` prefix so an unrelated attacker-controlled
   // `*.up.railway.app` deployment cannot pass the allowlist.
   /^https:\/\/mortar-[a-z0-9-]{1,61}\.up\.railway\.app$/i,
+  // Conference App Railway service hostnames (e.g. `conference-app-changes-dev`,
+  // `conference-app-stage`, `conference-app-prod`). Scoped to the `conference-app-`
+  // prefix for the same reason as the `mortar-` rule above.
+  /^https:\/\/conference-app-[a-z0-9-]{1,61}\.up\.railway\.app$/i,
 ];

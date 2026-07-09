@@ -10,6 +10,7 @@ export {
   bulkAddConferenceTicketBuyers,
   revokeConferenceTicketCode,
   redeemConferenceTicketCode,
+  registerFreeConferenceTicket,
   validateConferenceTicketCode,
 } from "./conferenceTickets";
 

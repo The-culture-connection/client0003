@@ -4,6 +4,7 @@ import {z} from "zod";
 import {
   COLLECTION_EVENTS,
   COLLECTION_EVENTS_MOBILE,
+  CONFERENCES_COLLECTION,
   COURSES_COLLECTION,
   SHOP_ITEMS_COLLECTION,
   type StripePurchaseType,
@@ -38,6 +39,13 @@ export const createCheckoutInputSchema = z.discriminatedUnion("purchase_type", [
   z.object({
     purchase_type: z.literal("shop"),
     lines: z.array(shopLineSchema).min(1).max(24),
+    success_url: z.string().url().optional(),
+    cancel_url: z.string().url().optional(),
+    client_platform: z.enum(["web", "ios", "android"]).default("web"),
+  }),
+  z.object({
+    purchase_type: z.literal("conference"),
+    conference_id: z.string().min(1),
     success_url: z.string().url().optional(),
     cancel_url: z.string().url().optional(),
     client_platform: z.enum(["web", "ios", "android"]).default("web"),
@@ -231,6 +239,43 @@ export async function resolveCheckoutPricing(
         purchase_type: "shop",
         line_count: String(lineItems.length),
         flat_shipping_cents: String(shippingCents),
+      },
+    };
+  }
+  case "conference": {
+    const confSnap = await db.collection(CONFERENCES_COLLECTION).doc(input.conference_id).get();
+    if (!confSnap.exists) {
+      throw new HttpsError("not-found", "Conference not found");
+    }
+    const conf = confSnap.data()!;
+    if (conf.status === "closed") {
+      throw new HttpsError("failed-precondition", "This conference is closed.");
+    }
+    const currency = String(conf.currency ?? "usd").toLowerCase();
+    const cents = Number(conf.priceCents ?? 0);
+    if (!Number.isFinite(cents) || cents <= 0) {
+      throw new HttpsError("failed-precondition", "This conference is free — no payment required.");
+    }
+    if (currency === "usd" && cents < MIN_CHARGE_CENTS_USD) {
+      throw new HttpsError(
+        "failed-precondition",
+        `Minimum charge is $${(MIN_CHARGE_CENTS_USD / 100).toFixed(2)} (ticket price is too low for Stripe)`
+      );
+    }
+    const title = String(conf.name ?? "Conference ticket");
+    return {
+      currency,
+      line_items: [
+        {
+          name: `${title} — Ticket`,
+          amount_cents: Math.round(cents),
+          quantity: 1,
+          metadata: {conference_id: input.conference_id},
+        },
+      ],
+      metadata: {
+        purchase_type: "conference",
+        conference_id: input.conference_id,
       },
     };
   }

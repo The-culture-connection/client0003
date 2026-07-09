@@ -6,8 +6,9 @@ export const SHOP_ITEMS_COLLECTION = "shopItems";
 export const COLLECTION_EVENTS = "events";
 export const COLLECTION_EVENTS_MOBILE = "events_mobile";
 export const COURSES_COLLECTION = "courses";
+export const CONFERENCES_COLLECTION = "conferences";
 
-export type StripePurchaseType = "module" | "event" | "shop";
+export type StripePurchaseType = "module" | "event" | "shop" | "conference";
 
 export type PaymentOrderStatus = "pending" | "completed" | "failed" | "expired";
 

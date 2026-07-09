@@ -26,6 +26,18 @@ class ConferenceTicketService {
     return Map<String, dynamic>.from(result.data as Map);
   }
 
+  /// Authenticated — register for a FREE conference. Auto-issues a code, emails
+  /// it, and returns `{ok, code, conferenceId}` so the app can redeem right away.
+  Future<Map<String, dynamic>> registerFreeConferenceTicket({
+    required String conferenceId,
+  }) async {
+    final callable = _functions.httpsCallable('registerFreeConferenceTicket');
+    final result = await callable.call(<String, dynamic>{
+      'conferenceId': conferenceId,
+    });
+    return Map<String, dynamic>.from(result.data as Map);
+  }
+
   /// Authenticated — non-consuming validity check. Returns `{valid, code, message?}`.
   Future<Map<String, dynamic>> validateConferenceTicketCode({
     required String conferenceId,

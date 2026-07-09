@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../services/conference_calendar.dart';
 import '../theme/conference_colors.dart';
 import '../widgets/conference_scope.dart';
 
@@ -74,6 +75,7 @@ class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen> {
   ];
 
   static const _quickActions = [
+    _QuickAction(label: 'Add to Calendar', icon: Icons.event_available_rounded),
     _QuickAction(label: 'Scan QR', icon: Icons.qr_code_scanner_rounded),
     _QuickAction(label: 'Start Chat', icon: Icons.chat_bubble_rounded),
     _QuickAction(label: 'Check In', icon: Icons.location_on_rounded),
@@ -231,7 +233,14 @@ class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen> {
                 action: action,
                 onTap: () {
                   setState(() => _quickActionsOpen = false);
-                  _showComingSoon(context, action.label);
+                  if (action.label == 'Add to Calendar') {
+                    final conference = ConferenceScope.of(context).conference;
+                    if (conference != null) {
+                      showAddToCalendarSheet(context, conference);
+                    }
+                  } else {
+                    _showComingSoon(context, action.label);
+                  }
                 },
               ),
             ),
