@@ -27,10 +27,18 @@ interface SponsorRow {
   ctaUrl?: string;
   perks?: string[];
   booth?: string;
+  mapFloorId?: string;
+  mapRoomId?: string;
   giveawayPrize?: string;
   giveawayInstructions?: string;
   contactInfo?: string;
   logoUrl?: string;
+}
+
+interface FloorLite {
+  id: string;
+  name?: string;
+  rooms?: { id: string; name: string; x: number; y: number }[];
 }
 
 export function ConferenceSponsorsPanel({ conferenceId }: { conferenceId: string }) {
@@ -52,6 +60,17 @@ export function ConferenceSponsorsPanel({ conferenceId }: { conferenceId: string
   const [contactInfo, setContactInfo] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
   const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [roomId, setRoomId] = useState("");
+  const [floors, setFloors] = useState<FloorLite[]>([]);
+
+  useEffect(() => {
+    const unsub = onSnapshot(
+      query(collection(db, "conferences", conferenceId, "floors")),
+      (snap) => setFloors(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<FloorLite, "id">) }))),
+      () => {},
+    );
+    return () => unsub();
+  }, [conferenceId]);
 
   useEffect(() => {
     const unsub = onSnapshot(
@@ -84,6 +103,7 @@ export function ConferenceSponsorsPanel({ conferenceId }: { conferenceId: string
     setContactInfo("");
     setLogoUrl("");
     setLogoFile(null);
+    setRoomId("");
   }, []);
 
   const loadIntoForm = (s: SponsorRow) => {
@@ -100,6 +120,7 @@ export function ConferenceSponsorsPanel({ conferenceId }: { conferenceId: string
     setContactInfo(s.contactInfo ?? "");
     setLogoUrl(s.logoUrl ?? "");
     setLogoFile(null);
+    setRoomId(s.mapRoomId ?? "");
   };
 
   const resolveLogo = async (): Promise<string> => {
@@ -126,6 +147,18 @@ export function ConferenceSponsorsPanel({ conferenceId }: { conferenceId: string
         .split(/[\n,]+/)
         .map((p) => p.trim())
         .filter(Boolean);
+
+      // Optional link to a venue-map room pin.
+      let mapFloorId: string | null = null;
+      let mapRoomId: string | null = null;
+      if (roomId) {
+        const floor = floors.find((f) => (f.rooms ?? []).some((r) => r.id === roomId));
+        if (floor) {
+          mapFloorId = floor.id;
+          mapRoomId = roomId;
+        }
+      }
+
       const payload: Record<string, unknown> = {
         companyName: companyName.trim(),
         packageLevel: packageLevel.trim() || null,
@@ -134,6 +167,8 @@ export function ConferenceSponsorsPanel({ conferenceId }: { conferenceId: string
         ctaUrl: ctaUrl.trim() || null,
         perks: perkList,
         booth: booth.trim() || null,
+        mapFloorId,
+        mapRoomId,
         giveawayPrize: giveawayPrize.trim() || null,
         giveawayInstructions: giveawayInstructions.trim() || null,
         contactInfo: contactInfo.trim() || null,
@@ -200,6 +235,24 @@ export function ConferenceSponsorsPanel({ conferenceId }: { conferenceId: string
         <div className="space-y-2">
           <Label className="text-foreground">Booth placement</Label>
           <Input value={booth} onChange={(e) => setBooth(e.target.value)} className="bg-background" placeholder="Booth A1" />
+        </div>
+        <div className="space-y-2">
+          <Label className="text-foreground">Map room (optional)</Label>
+          <select
+            value={roomId}
+            onChange={(e) => setRoomId(e.target.value)}
+            className="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground"
+          >
+            <option value="">Not on the map</option>
+            {floors.map((f) => (
+              <optgroup key={f.id} label={f.name || "Floor"}>
+                {(f.rooms ?? []).map((r) => (
+                  <option key={r.id} value={r.id}>{r.name}</option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+          {roomId ? <p className="text-xs text-muted-foreground">Shown on the venue map; tapping the pin lists this sponsor.</p> : null}
         </div>
         <div className="space-y-2">
           <Label className="text-foreground">Contact info</Label>

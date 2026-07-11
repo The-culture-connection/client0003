@@ -13,6 +13,8 @@ class ConferenceSponsor {
     this.giveawayInstructions,
     this.contactInfo,
     this.logoUrl,
+    this.mapFloorId,
+    this.mapRoomId,
   });
 
   final String id;
@@ -34,6 +36,10 @@ class ConferenceSponsor {
   final String? giveawayInstructions;
   final String? contactInfo;
   final String? logoUrl;
+
+  /// Optional link to a venue-map room pin.
+  final String? mapFloorId;
+  final String? mapRoomId;
 
   bool get hasGiveaway => (giveawayPrize?.trim().isNotEmpty ?? false);
 
@@ -61,6 +67,8 @@ class ConferenceSponsor {
       giveawayInstructions: data['giveawayInstructions'] as String?,
       contactInfo: data['contactInfo'] as String?,
       logoUrl: data['logoUrl'] as String?,
+      mapFloorId: data['mapFloorId'] as String?,
+      mapRoomId: data['mapRoomId'] as String?,
     );
   }
 }

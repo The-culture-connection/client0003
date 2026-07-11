@@ -133,6 +133,11 @@ class ConferenceRepository {
     return ConferenceSession.fromDoc(snap.id, snap.data());
   }
 
+  Future<ConferenceSponsor?> fetchSponsor(String conferenceId, String sponsorId) async {
+    final snap = await _conferences.doc(conferenceId).collection('sponsors').doc(sponsorId).get();
+    return ConferenceSponsor.fromDoc(snap.id, snap.data());
+  }
+
   /// Venue floor plans (+ embedded room pins), sorted by order then name.
   Stream<List<ConferenceFloor>> watchFloors(String conferenceId) {
     return _conferences

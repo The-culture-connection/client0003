@@ -10,6 +10,7 @@ import '../conference/screens/conference_map_screen.dart';
 import '../conference/screens/conference_schedule_screen.dart';
 import '../conference/screens/conference_session_chat_screen.dart';
 import '../conference/screens/conference_session_detail_screen.dart';
+import '../conference/screens/conference_sponsor_detail_screen.dart';
 import '../conference/screens/conference_sponsors_screen.dart';
 import '../conference/widgets/conference_coming_soon_screen.dart';
 import '../conference/widgets/conference_shell.dart';
@@ -159,6 +160,12 @@ GoRouter createAppRouter(AuthController auth) {
         parentNavigatorKey: _rootNavigatorKey,
         path: '/conference/sponsors',
         builder: (context, state) => const ConferenceSponsorsScreen(),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/conference/sponsor/:sponsorId',
+        builder: (context, state) =>
+            ConferenceSponsorDetailScreen(sponsorId: state.pathParameters['sponsorId']!),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {

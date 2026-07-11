@@ -316,7 +316,10 @@ class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
   Widget _buildSponsorCard(ConferenceSponsor s) {
     final tierColor = _tierColor(s.packageLevel);
     final hasCta = (s.ctaUrl?.trim().isNotEmpty ?? false);
-    return Container(
+    return GestureDetector(
+      onTap: () => context.push('/conference/sponsor/${s.id}'),
+      behavior: HitTestBehavior.opaque,
+      child: Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.05),
@@ -470,6 +473,7 @@ class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
             ),
           ],
         ],
+      ),
       ),
     );
   }
