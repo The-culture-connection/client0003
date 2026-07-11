@@ -19,6 +19,8 @@ import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
 import { Label } from "../ui/label";
 import { Loader2, Check, Trash2, KeyRound, Upload } from "lucide-react";
+import { ConferenceSessionsPanel } from "./ConferenceSessionsPanel";
+import { ConferenceSponsorsPanel } from "./ConferenceSponsorsPanel";
 
 const CONFERENCES = "conferences";
 
@@ -654,6 +656,9 @@ export function ConferencesPanel() {
           </div>
         </Card>
       ) : null}
+
+      {selectedConfId ? <ConferenceSessionsPanel conferenceId={selectedConfId} /> : null}
+      {selectedConfId ? <ConferenceSponsorsPanel conferenceId={selectedConfId} /> : null}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/conference.dart';
 import '../models/conference_session.dart';
+import '../models/conference_sponsor.dart';
 
 /// Read-only access to `conferences/{conferenceId}` and its `sessions` subcollection.
 class ConferenceRepository {
@@ -119,5 +120,21 @@ class ConferenceRepository {
         .doc(sessionId)
         .get();
     return ConferenceSession.fromDoc(snap.id, snap.data());
+  }
+
+  /// Sponsor booths for a conference, sorted by company name.
+  Stream<List<ConferenceSponsor>> watchSponsors(String conferenceId) {
+    return _conferences
+        .doc(conferenceId)
+        .collection('sponsors')
+        .snapshots()
+        .map((snap) {
+      final list = snap.docs
+          .map((d) => ConferenceSponsor.fromDoc(d.id, d.data()))
+          .whereType<ConferenceSponsor>()
+          .toList();
+      list.sort((a, b) => a.companyName.toLowerCase().compareTo(b.companyName.toLowerCase()));
+      return list;
+    });
   }
 }

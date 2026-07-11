@@ -11,6 +11,11 @@ class ConferenceSession {
     this.endTime,
     this.roomLabel,
     this.capacity,
+    this.track,
+    this.level,
+    this.speakerTitle,
+    this.speakerPhotoUrl,
+    this.registeredCount,
   });
 
   final String id;
@@ -21,6 +26,16 @@ class ConferenceSession {
   final DateTime? endTime;
   final String? roomLabel;
   final int? capacity;
+
+  /// Optional presentation fields (shown when present) — e.g. "AI/ML",
+  /// "Intermediate", the speaker's role, and how many have registered.
+  final String? track;
+  final String? level;
+  final String? speakerTitle;
+  final String? speakerPhotoUrl;
+  final int? registeredCount;
+
+  String? get primarySpeaker => speakerNames.isNotEmpty ? speakerNames.first : null;
 
   static ConferenceSession? fromDoc(String id, Map<String, dynamic>? data) {
     if (data == null) return null;
@@ -36,6 +51,11 @@ class ConferenceSession {
       endTime: _toDate(data['endTime']),
       roomLabel: data['roomLabel'] as String?,
       capacity: (data['capacity'] as num?)?.toInt(),
+      track: data['track'] as String?,
+      level: data['level'] as String?,
+      speakerTitle: data['speakerTitle'] as String?,
+      speakerPhotoUrl: data['speakerPhotoUrl'] as String?,
+      registeredCount: (data['registeredCount'] as num?)?.toInt(),
     );
   }
 

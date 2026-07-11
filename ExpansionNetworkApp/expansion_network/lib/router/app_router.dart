@@ -8,6 +8,7 @@ import '../conference/screens/conference_gate_screen.dart';
 import '../conference/screens/conference_lobby_screen.dart';
 import '../conference/screens/conference_schedule_screen.dart';
 import '../conference/screens/conference_session_detail_screen.dart';
+import '../conference/screens/conference_sponsors_screen.dart';
 import '../conference/widgets/conference_coming_soon_screen.dart';
 import '../conference/widgets/conference_shell.dart';
 import '../mortarverse/screens/mortarverse_chooser_screen.dart';
@@ -139,11 +140,7 @@ GoRouter createAppRouter(AuthController auth) {
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,
         path: '/conference/sponsors',
-        builder: (context, state) => const ConferenceComingSoonScreen(
-          title: 'Sponsor Hall',
-          icon: Icons.storefront_rounded,
-          description: 'Sponsor booths and giveaways arrive in a later update.',
-        ),
+        builder: (context, state) => const ConferenceSponsorsScreen(),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
