@@ -261,6 +261,11 @@ export function ConferenceSponsorsPanel({ conferenceId }: { conferenceId: string
         <div className="space-y-2">
           <Label className="text-foreground">Logo</Label>
           <Input type="file" accept="image/*" className="bg-background" onChange={(e) => setLogoFile(e.target.files?.[0] ?? null)} />
+          <p className="text-xs text-muted-foreground">
+            Use a <strong>square (1:1) PNG</strong> — e.g. <strong>512×512 px</strong> — with a
+            transparent background and the logo centered with ~10–15% padding. The logo tile is
+            square, so non-square images get cropped on the sides.
+          </p>
           {logoUrl && !logoFile ? <p className="text-xs text-muted-foreground truncate">Current: {logoUrl}</p> : null}
         </div>
         <div className="space-y-2">
