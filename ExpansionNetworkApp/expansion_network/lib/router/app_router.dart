@@ -7,6 +7,7 @@ import '../commons/widgets/commons_shell.dart';
 import '../conference/screens/conference_gate_screen.dart';
 import '../conference/screens/conference_lobby_screen.dart';
 import '../conference/screens/conference_schedule_screen.dart';
+import '../conference/screens/conference_session_chat_screen.dart';
 import '../conference/screens/conference_session_detail_screen.dart';
 import '../conference/screens/conference_sponsors_screen.dart';
 import '../conference/widgets/conference_coming_soon_screen.dart';
@@ -126,6 +127,14 @@ GoRouter createAppRouter(AuthController auth) {
         builder: (context, state) {
           final sessionId = state.pathParameters['sessionId']!;
           return ConferenceSessionDetailScreen(sessionId: sessionId);
+        },
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/conference/session/:sessionId/chat',
+        builder: (context, state) {
+          final sessionId = state.pathParameters['sessionId']!;
+          return ConferenceSessionChatScreen(sessionId: sessionId);
         },
       ),
       GoRoute(

@@ -16,6 +16,7 @@ class ConferenceSession {
     this.speakerTitle,
     this.speakerPhotoUrl,
     this.registeredCount,
+    this.registeredUsers = const [],
   });
 
   final String id;
@@ -35,7 +36,17 @@ class ConferenceSession {
   final String? speakerPhotoUrl;
   final int? registeredCount;
 
+  /// Uids who have RSVP'd ("going"). Client-toggled (see ConferenceSessionService).
+  final List<String> registeredUsers;
+
   String? get primarySpeaker => speakerNames.isNotEmpty ? speakerNames.first : null;
+
+  /// Live count of attendees going — prefers the RSVP array, falls back to the
+  /// admin-set display count.
+  int get goingCount => registeredUsers.isNotEmpty ? registeredUsers.length : (registeredCount ?? 0);
+
+  bool isGoing(String? uid) => uid != null && registeredUsers.contains(uid);
+  bool get isFull => capacity != null && capacity! > 0 && goingCount >= capacity!;
 
   static ConferenceSession? fromDoc(String id, Map<String, dynamic>? data) {
     if (data == null) return null;
@@ -56,6 +67,10 @@ class ConferenceSession {
       speakerTitle: data['speakerTitle'] as String?,
       speakerPhotoUrl: data['speakerPhotoUrl'] as String?,
       registeredCount: (data['registeredCount'] as num?)?.toInt(),
+      registeredUsers: (data['registered_users'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
     );
   }
 

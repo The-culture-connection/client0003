@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../utils/safe_launch_url.dart';
+import '../current_conference_holder.dart';
 import '../models/conference_sponsor.dart';
 import '../services/conference_repository.dart';
 import '../theme/conference_colors.dart';
 import '../widgets/conference_background.dart';
-import '../widgets/conference_scope.dart';
 
 /// Sponsor Hall — ports `Conference App Figma Mockup/src/app/pages/ConferenceSponsors.tsx`,
 /// bound to the live `conferences/{id}/sponsors` collection. Package levels drive
@@ -93,12 +93,19 @@ class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final conferenceId = ConferenceScope.of(context).conferenceId;
+    // Sponsor Hall is a standalone route (outside the conference shell), so the
+    // conference id comes from the ambient holder set on entry, not ConferenceScope.
+    final conferenceId = CurrentConferenceHolder.instance.conferenceId;
     return Scaffold(
       backgroundColor: ConferenceColors.background,
       body: ConferenceGridBackground(
         child: SafeArea(
-          child: StreamBuilder<List<ConferenceSponsor>>(
+          child: conferenceId == null
+              ? CustomScrollView(slivers: [
+                  SliverToBoxAdapter(child: _buildHeader()),
+                  SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.all(20), child: _emptyState())),
+                ])
+              : StreamBuilder<List<ConferenceSponsor>>(
             stream: _repository.watchSponsors(conferenceId),
             builder: (context, snapshot) {
               if (!snapshot.hasData) {

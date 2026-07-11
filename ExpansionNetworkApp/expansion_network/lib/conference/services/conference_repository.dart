@@ -110,6 +110,16 @@ class ConferenceRepository {
         );
   }
 
+  /// Live single session (for the detail screen — reflects RSVP changes).
+  Stream<ConferenceSession?> watchSession(String conferenceId, String sessionId) {
+    return _conferences
+        .doc(conferenceId)
+        .collection('sessions')
+        .doc(sessionId)
+        .snapshots()
+        .map((snap) => ConferenceSession.fromDoc(snap.id, snap.data()));
+  }
+
   Future<ConferenceSession?> fetchSession(
     String conferenceId,
     String sessionId,

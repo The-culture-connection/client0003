@@ -129,6 +129,11 @@ service cloud.firestore {
       allow read, write: if isOwner(userId);
     }
 
+    // Bookmarked conference sessions (doc id = sessionId).
+    match /users/{userId}/saved_sessions/{sessionId} {
+      allow read, write: if isOwner(userId);
+    }
+
     // Expansion Network — Cloud Function `runExpansionUserMatching` writes; owner reads matches.
     match /users/{userId}/expansion_matches/{matchUserId} {
       allow read: if isSignedIn() && isOwner(userId);
@@ -288,7 +293,27 @@ service cloud.firestore {
 
       match /sessions/{sessionId} {
         allow read: if isSignedIn();
-        allow write: if hasStaffClaim();
+        allow create, delete: if hasStaffClaim();
+        // Attendees may RSVP: toggle only their own membership in registered_users
+        // (key allowlist mirrors the events RSVP rule).
+        allow update: if hasStaffClaim()
+          || (isSignedIn()
+            && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['registered_users', 'updated_at']));
+
+        // Per-session chat room — any signed-in attendee can read/post; messages
+        // are author-scoped and immutable.
+        match /messages/{msgId} {
+          allow read: if isSignedIn();
+          allow create: if isSignedIn()
+            && callerNotContentSuspended()
+            && request.resource.data.sender_id == request.auth.uid
+            && request.resource.data.text is string
+            && request.resource.data.text.size() > 0
+            && request.resource.data.text.size() <= 10000
+            && request.resource.data.keys().hasOnly(['sender_id', 'author_name', 'text', 'created_at']);
+          allow update, delete: if false;
+        }
       }
 
       // Sponsor booths (admin-managed; read by any signed-in attendee).
