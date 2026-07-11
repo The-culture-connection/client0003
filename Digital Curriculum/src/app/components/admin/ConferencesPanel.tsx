@@ -18,7 +18,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
 import { Label } from "../ui/label";
-import { Loader2, Check, Trash2, KeyRound, Upload } from "lucide-react";
+import { Loader2, Check, Trash2, SlidersHorizontal, Upload } from "lucide-react";
 import { ConferenceSessionsPanel } from "./ConferenceSessionsPanel";
 import { ConferenceSponsorsPanel } from "./ConferenceSponsorsPanel";
 
@@ -258,17 +258,17 @@ export function ConferencesPanel() {
 
       if (editingId) {
         await setDoc(doc(db, CONFERENCES, editingId), payload, { merge: true });
-        setSuccess(`Updated “${name.trim()}”.`);
+        setSuccess(`Saved changes to “${name.trim()}”.`);
+        // Stay on the manage page with the form still populated.
       } else {
-        const created = await addDoc(collection(db, CONFERENCES), {
+        await addDoc(collection(db, CONFERENCES), {
           ...payload,
           attendeeCount: 0,
           createdAt: serverTimestamp(),
         });
-        setSuccess(`Created “${name.trim()}”.`);
-        setSelectedConfId(created.id);
+        setSuccess(`Created “${name.trim()}”. Open it with Manage to add sessions & sponsors.`);
+        resetForm();
       }
-      resetForm();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Save failed");
     } finally {
@@ -285,6 +285,23 @@ export function ConferencesPanel() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "Delete failed");
     }
+  };
+
+  // Open the full-page manage view for a conference (metadata form + codes +
+  // check-ins + sessions + sponsors), and return to the list.
+  const openManage = (c: ConferenceRow) => {
+    loadIntoForm(c);
+    setSelectedConfId(c.id);
+    setError(null);
+    setSuccess(null);
+    if (typeof window !== "undefined") window.scrollTo({ top: 0 });
+  };
+  const backToList = () => {
+    setSelectedConfId(null);
+    resetForm();
+    setError(null);
+    setSuccess(null);
+    if (typeof window !== "undefined") window.scrollTo({ top: 0 });
   };
 
   const runCallable = async (fn: string, data: Record<string, unknown>) => {
@@ -369,23 +386,29 @@ export function ConferencesPanel() {
         </Card>
       ) : null}
 
-      {/* Create / edit conference */}
+      {selectedConfId ? (
+        <div className="flex items-center gap-3 flex-wrap">
+          <Button type="button" variant="outline" size="sm" onClick={backToList}>
+            ← Back to conferences
+          </Button>
+          <span className="text-sm text-muted-foreground">
+            Managing <strong className="text-foreground">{selectedConf?.name || selectedConfId}</strong>
+          </span>
+        </div>
+      ) : null}
+
+      {/* Create / edit conference metadata */}
       <Card className="p-6 space-y-4">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h2 className="text-xl font-semibold text-foreground">
-              {editingId ? "Edit conference" : "Create conference"}
+              {selectedConfId ? "Conference details" : "Create conference"}
             </h2>
             <p className="text-sm text-muted-foreground mt-1">
               Stored in <code className="text-xs bg-muted px-1 rounded">conferences</code>. The{" "}
               <strong>active window</strong> (Active from / until) controls when a ticket code will unlock entry.
             </p>
           </div>
-          {editingId ? (
-            <Button type="button" variant="outline" size="sm" onClick={resetForm}>
-              New conference
-            </Button>
-          ) : null}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -480,7 +503,8 @@ export function ConferencesPanel() {
         </Button>
       </Card>
 
-      {/* Conference list */}
+      {/* Conference list (hidden while managing one) */}
+      {!selectedConfId ? (
       <Card className="p-6 space-y-4">
         <h2 className="text-xl font-semibold text-foreground">Conferences</h2>
         {loading ? (
@@ -506,11 +530,8 @@ export function ConferencesPanel() {
                   </p>
                 </div>
                 <div className="flex gap-1 shrink-0">
-                  <Button type="button" variant="outline" size="sm" onClick={() => setSelectedConfId(c.id)}>
-                    <KeyRound className="w-3.5 h-3.5 mr-1" /> Codes
-                  </Button>
-                  <Button type="button" variant="outline" size="sm" onClick={() => loadIntoForm(c)}>
-                    Edit
+                  <Button type="button" variant="outline" size="sm" onClick={() => openManage(c)}>
+                    <SlidersHorizontal className="w-3.5 h-3.5 mr-1" /> Manage
                   </Button>
                   <Button type="button" variant="ghost" size="sm" className="text-destructive" onClick={() => void deleteConference(c.id, c.name || c.id)}>
                     <Trash2 className="w-3.5 h-3.5" />
@@ -521,6 +542,7 @@ export function ConferencesPanel() {
           </ul>
         )}
       </Card>
+      ) : null}
 
       {/* Codes management */}
       {selectedConf ? (
