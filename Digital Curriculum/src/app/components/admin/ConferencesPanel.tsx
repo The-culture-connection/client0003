@@ -21,6 +21,7 @@ import { Label } from "../ui/label";
 import { Loader2, Check, Trash2, SlidersHorizontal, Upload } from "lucide-react";
 import { ConferenceSessionsPanel } from "./ConferenceSessionsPanel";
 import { ConferenceSponsorsPanel } from "./ConferenceSponsorsPanel";
+import { ConferenceMapPanel } from "./ConferenceMapPanel";
 
 const CONFERENCES = "conferences";
 
@@ -681,6 +682,7 @@ export function ConferencesPanel() {
 
       {selectedConfId ? <ConferenceSessionsPanel conferenceId={selectedConfId} /> : null}
       {selectedConfId ? <ConferenceSponsorsPanel conferenceId={selectedConfId} /> : null}
+      {selectedConfId ? <ConferenceMapPanel conferenceId={selectedConfId} /> : null}
     </div>
   );
 }

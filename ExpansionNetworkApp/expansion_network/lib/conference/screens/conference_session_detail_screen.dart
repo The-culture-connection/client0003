@@ -279,6 +279,25 @@ class _ConferenceSessionDetailScreenState extends State<ConferenceSessionDetailS
               ),
             ],
           ),
+          if (session.mapRoomId != null) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: ConferenceColors.gold,
+                  side: BorderSide(color: ConferenceColors.goldAlpha(0.5)),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: () => context.push(
+                  '/conference/map?floor=${session.mapFloorId ?? ''}&room=${session.mapRoomId}',
+                ),
+                icon: const Icon(Icons.place_rounded, size: 18),
+                label: const Text('Find on map', style: TextStyle(fontWeight: FontWeight.w700)),
+              ),
+            ),
+          ],
         ],
       ),
     );

@@ -17,6 +17,8 @@ class ConferenceSession {
     this.speakerPhotoUrl,
     this.registeredCount,
     this.registeredUsers = const [],
+    this.mapFloorId,
+    this.mapRoomId,
   });
 
   final String id;
@@ -38,6 +40,10 @@ class ConferenceSession {
 
   /// Uids who have RSVP'd ("going"). Client-toggled (see ConferenceSessionService).
   final List<String> registeredUsers;
+
+  /// Optional link to a venue-map room pin (`conferences/{id}/floors/*.rooms`).
+  final String? mapFloorId;
+  final String? mapRoomId;
 
   String? get primarySpeaker => speakerNames.isNotEmpty ? speakerNames.first : null;
 
@@ -71,6 +77,8 @@ class ConferenceSession {
               ?.map((e) => e.toString())
               .toList() ??
           const [],
+      mapFloorId: data['mapFloorId'] as String?,
+      mapRoomId: data['mapRoomId'] as String?,
     );
   }
 

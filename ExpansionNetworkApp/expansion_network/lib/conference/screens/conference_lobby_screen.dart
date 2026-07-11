@@ -710,77 +710,75 @@ class _MissionTile extends StatelessWidget {
 class _MapTabContent extends StatelessWidget {
   const _MapTabContent({required this.mapImageUrl});
 
+  /// Legacy single map image (still used as a preview thumbnail if present).
   final String? mapImageUrl;
 
   @override
   Widget build(BuildContext context) {
+    final hasPreview = mapImageUrl != null && mapImageUrl!.isNotEmpty;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'CONFERENCE MAP',
+          'VENUE MAP',
           style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontWeight: FontWeight.w700, letterSpacing: 1),
         ),
         const SizedBox(height: 12),
-        Container(
-          width: double.infinity,
-          height: 200,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            color: Colors.white.withValues(alpha: 0.05),
-            border: Border.all(color: ConferenceColors.goldAlpha(0.2)),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: (mapImageUrl == null || mapImageUrl!.isEmpty)
-              ? Center(
-                  child: Text('Map not available yet.', style: TextStyle(color: Colors.grey.shade500)),
-                )
-              : Image.network(
-                  mapImageUrl!,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Center(
-                    child: Text('Could not load the venue map.', style: TextStyle(color: Colors.grey.shade500)),
+        GestureDetector(
+          onTap: () => context.push('/conference/map'),
+          child: Container(
+            width: double.infinity,
+            height: 200,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              color: Colors.white.withValues(alpha: 0.05),
+              border: Border.all(color: ConferenceColors.goldAlpha(0.2)),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                if (hasPreview)
+                  Image.network(mapImageUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const SizedBox())
+                else
+                  Center(
+                    child: Icon(Icons.map_rounded, size: 48, color: ConferenceColors.goldAlpha(0.5)),
+                  ),
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(color: Colors.black.withValues(alpha: hasPreview ? 0.35 : 0)),
                   ),
                 ),
+                const Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.open_in_full_rounded, color: ConferenceColors.gold),
+                      SizedBox(height: 6),
+                      Text('Tap to explore', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
         const SizedBox(height: 16),
-        Container(
+        SizedBox(
           width: double.infinity,
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('LOCATIONS', style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 12, letterSpacing: 1)),
-              const SizedBox(height: 10),
-              _legendRow('Main Stage', 1),
-              _legendRow('Breakout Rooms', 0.6),
-              _legendRow('Sponsor Hall', 0.4),
-            ],
+          child: FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: ConferenceColors.gold,
+              foregroundColor: Colors.black,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () => context.push('/conference/map'),
+            icon: const Icon(Icons.map_rounded, size: 18),
+            label: const Text('OPEN VENUE MAP', style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 0.8)),
           ),
         ),
       ],
-    );
-  }
-
-  Widget _legendRow(String label, double opacity) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        children: [
-          Container(
-            width: 10,
-            height: 10,
-            decoration: BoxDecoration(shape: BoxShape.circle, color: ConferenceColors.goldAlpha(opacity)),
-          ),
-          const SizedBox(width: 8),
-          Text(label, style: TextStyle(color: Colors.grey.shade400, fontSize: 13)),
-        ],
-      ),
     );
   }
 }

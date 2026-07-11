@@ -6,6 +6,7 @@ import '../auth/auth_controller.dart';
 import '../commons/widgets/commons_shell.dart';
 import '../conference/screens/conference_gate_screen.dart';
 import '../conference/screens/conference_lobby_screen.dart';
+import '../conference/screens/conference_map_screen.dart';
 import '../conference/screens/conference_schedule_screen.dart';
 import '../conference/screens/conference_session_chat_screen.dart';
 import '../conference/screens/conference_session_detail_screen.dart';
@@ -120,6 +121,14 @@ GoRouter createAppRouter(AuthController auth) {
         parentNavigatorKey: _rootNavigatorKey,
         path: '/conference/gate',
         builder: (context, state) => const ConferenceGateScreen(),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/conference/map',
+        builder: (context, state) => ConferenceMapScreen(
+          initialFloorId: state.uri.queryParameters['floor'],
+          highlightRoomId: state.uri.queryParameters['room'],
+        ),
       ),
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,

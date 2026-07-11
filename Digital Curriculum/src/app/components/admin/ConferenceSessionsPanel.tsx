@@ -25,11 +25,19 @@ interface SessionRow {
   description?: string;
   track?: string;
   roomLabel?: string;
+  mapFloorId?: string;
+  mapRoomId?: string;
   speakerNames?: string[];
   speakerTitle?: string;
   speakerPhotoUrl?: string;
   startTime?: Timestamp;
   endTime?: Timestamp;
+}
+
+interface FloorLite {
+  id: string;
+  name?: string;
+  rooms?: { id: string; name: string; x: number; y: number }[];
 }
 
 function tsToLocalInput(ts?: Timestamp): string {
@@ -58,9 +66,23 @@ export function ConferenceSessionsPanel({ conferenceId }: { conferenceId: string
   const [speaker, setSpeaker] = useState("");
   const [speakerTitle, setSpeakerTitle] = useState("");
   const [where, setWhere] = useState("");
+  const [roomId, setRoomId] = useState(""); // "" = custom/free-text
   const [description, setDescription] = useState("");
   const [photoUrl, setPhotoUrl] = useState("");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [floors, setFloors] = useState<FloorLite[]>([]);
+
+  useEffect(() => {
+    const unsub = onSnapshot(
+      query(collection(db, "conferences", conferenceId, "floors")),
+      (snap) => {
+        const rows: FloorLite[] = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<FloorLite, "id">) }));
+        setFloors(rows);
+      },
+      () => {},
+    );
+    return () => unsub();
+  }, [conferenceId]);
 
   useEffect(() => {
     const unsub = onSnapshot(
@@ -88,6 +110,7 @@ export function ConferenceSessionsPanel({ conferenceId }: { conferenceId: string
     setSpeaker("");
     setSpeakerTitle("");
     setWhere("");
+    setRoomId("");
     setDescription("");
     setPhotoUrl("");
     setPhotoFile(null);
@@ -102,6 +125,7 @@ export function ConferenceSessionsPanel({ conferenceId }: { conferenceId: string
     setSpeaker(s.speakerNames?.[0] ?? "");
     setSpeakerTitle(s.speakerTitle ?? "");
     setWhere(s.roomLabel ?? "");
+    setRoomId(s.mapRoomId ?? "");
     setDescription(s.description ?? "");
     setPhotoUrl(s.speakerPhotoUrl ?? "");
     setPhotoFile(null);
@@ -127,11 +151,28 @@ export function ConferenceSessionsPanel({ conferenceId }: { conferenceId: string
         return;
       }
       const photo = await resolvePhoto();
+
+      // Room: a picked map room wins (links the session to a pin); else free text.
+      let mapFloorId: string | null = null;
+      let mapRoomId: string | null = null;
+      let roomLabel: string | null = where.trim() || null;
+      if (roomId) {
+        const floor = floors.find((f) => (f.rooms ?? []).some((r) => r.id === roomId));
+        const room = floor?.rooms?.find((r) => r.id === roomId);
+        if (floor && room) {
+          mapFloorId = floor.id;
+          mapRoomId = room.id;
+          roomLabel = room.name;
+        }
+      }
+
       const payload: Record<string, unknown> = {
         title: name.trim(),
         description: description.trim(),
         track: category.trim() || null,
-        roomLabel: where.trim() || null,
+        roomLabel,
+        mapFloorId,
+        mapRoomId,
         speakerNames: speaker.trim() ? [speaker.trim()] : [],
         speakerTitle: speakerTitle.trim() || null,
         speakerPhotoUrl: photo || null,
@@ -197,8 +238,26 @@ export function ConferenceSessionsPanel({ conferenceId }: { conferenceId: string
           <Input type="datetime-local" value={endAt} onChange={(e) => setEndAt(e.target.value)} className="bg-background" />
         </div>
         <div className="space-y-2">
-          <Label className="text-foreground">Where</Label>
-          <Input value={where} onChange={(e) => setWhere(e.target.value)} className="bg-background" placeholder="Main Stage" />
+          <Label className="text-foreground">Where (room)</Label>
+          <select
+            value={roomId}
+            onChange={(e) => setRoomId(e.target.value)}
+            className="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground"
+          >
+            <option value="">Custom / free text…</option>
+            {floors.map((f) => (
+              <optgroup key={f.id} label={f.name || "Floor"}>
+                {(f.rooms ?? []).map((r) => (
+                  <option key={r.id} value={r.id}>{r.name}</option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+          {roomId ? (
+            <p className="text-xs text-muted-foreground">Linked to a map pin — a "Find on map" button appears in the app.</p>
+          ) : (
+            <Input value={where} onChange={(e) => setWhere(e.target.value)} className="bg-background" placeholder="Main Stage (free text)" />
+          )}
         </div>
         <div className="space-y-2">
           <Label className="text-foreground">Presenter</Label>

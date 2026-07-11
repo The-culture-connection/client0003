@@ -322,6 +322,12 @@ service cloud.firestore {
         allow write: if hasStaffClaim();
       }
 
+      // Venue floor plans + embedded room pins (admin-managed; read by attendees).
+      match /floors/{floorId} {
+        allow read: if isSignedIn();
+        allow write: if hasStaffClaim();
+      }
+
       // Ticket-auth (Phase A): buyer roster and codes are server-only (written by
       // callables via the Admin SDK, which bypasses rules). Never client-readable —
       // codes are plaintext. Staff read allowed for the admin codes view.

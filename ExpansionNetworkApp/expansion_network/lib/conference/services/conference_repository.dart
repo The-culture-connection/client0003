@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/conference.dart';
+import '../models/conference_floor.dart';
 import '../models/conference_session.dart';
 import '../models/conference_sponsor.dart';
 
@@ -130,6 +131,24 @@ class ConferenceRepository {
         .doc(sessionId)
         .get();
     return ConferenceSession.fromDoc(snap.id, snap.data());
+  }
+
+  /// Venue floor plans (+ embedded room pins), sorted by order then name.
+  Stream<List<ConferenceFloor>> watchFloors(String conferenceId) {
+    return _conferences
+        .doc(conferenceId)
+        .collection('floors')
+        .snapshots()
+        .map((snap) {
+      final list = snap.docs
+          .map((d) => ConferenceFloor.fromDoc(d.id, d.data()))
+          .whereType<ConferenceFloor>()
+          .toList();
+      list.sort((a, b) => a.order != b.order
+          ? a.order.compareTo(b.order)
+          : a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      return list;
+    });
   }
 
   /// Sponsor booths for a conference, sorted by company name.
