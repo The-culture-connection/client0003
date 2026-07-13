@@ -13,6 +13,7 @@ import '../conference/screens/conference_session_detail_screen.dart';
 import '../conference/screens/conference_sponsor_detail_screen.dart';
 import '../conference/screens/conference_sponsors_screen.dart';
 import '../conference/widgets/conference_coming_soon_screen.dart';
+import '../conference/screens/conference_networking_screen.dart';
 import '../conference/widgets/conference_shell.dart';
 import '../mortarverse/screens/mortarverse_chooser_screen.dart';
 import '../screens/admin_events_screen.dart';
@@ -163,6 +164,11 @@ GoRouter createAppRouter(AuthController auth) {
       ),
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,
+        path: '/conference/network',
+        builder: (context, state) => const ConferenceNetworkingScreen(),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
         path: '/conference/sponsor/:sponsorId',
         builder: (context, state) =>
             ConferenceSponsorDetailScreen(sponsorId: state.pathParameters['sponsorId']!),
@@ -183,8 +189,9 @@ GoRouter createAppRouter(AuthController auth) {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/conference/network',
-                pageBuilder: (context, state) => const NoTransitionPage<void>(child: ConferenceNetworkScreen()),
+                path: '/conference/sponsor-hall',
+                pageBuilder: (context, state) =>
+                    const NoTransitionPage<void>(child: ConferenceSponsorsScreen(showBack: false)),
               ),
             ],
           ),

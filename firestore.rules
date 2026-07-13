@@ -354,6 +354,25 @@ service cloud.firestore {
         allow read: if hasStaffClaim();
         allow write: if false;
       }
+
+      // Networking zone: discoverable attendee snapshots (server-written via the
+      // networking callables). Any signed-in attendee can read the deck; a user's
+      // swipes are readable only by that user (this is the mutual-match secret).
+      match /networkingProfiles/{uid} {
+        allow read: if isSignedIn();
+        allow write: if false;
+        match /swipes/{targetUid} {
+          allow read: if isSignedIn() && request.auth.uid == uid;
+          allow write: if false;
+        }
+      }
+
+      // Mutual matches (server-written on a reciprocal like). Only the two
+      // participants may read their own match.
+      match /matches/{pairId} {
+        allow read: if isSignedIn() && request.auth.uid in resource.data.users;
+        allow write: if false;
+      }
     }
 
     match /events_mobile/{eventId} {

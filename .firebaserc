@@ -6,7 +6,8 @@
     "stage": "mortar-stage",
     "staging": "mortar-stage",
     "production": "mortar-9d29d",
-    "prod": "mortar-9d29d"
+    "prod": "mortar-9d29d",
+    "demo": "mortar-demo"
   },
   "targets": {},
   "etags": {}

@@ -12,7 +12,11 @@ import '../widgets/conference_background.dart';
 /// bound to the live `conferences/{id}/sponsors` collection. Package levels drive
 /// the filter tabs and tier badges; giveaways and CTAs come from the sponsor doc.
 class ConferenceSponsorsScreen extends StatefulWidget {
-  const ConferenceSponsorsScreen({super.key});
+  const ConferenceSponsorsScreen({super.key, this.showBack = true});
+
+  /// Standalone route → show a Back affordance. As a shell tab → hide it (and
+  /// leave room at the bottom for the floating pill nav).
+  final bool showBack;
 
   @override
   State<ConferenceSponsorsScreen> createState() => _ConferenceSponsorsScreenState();
@@ -130,7 +134,8 @@ class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
                   if (levels.isNotEmpty) SliverToBoxAdapter(child: _buildTabs(levels)),
                   if (giveaways.isNotEmpty) SliverToBoxAdapter(child: _buildGiveaways(giveaways)),
                   SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
+                    padding: EdgeInsets.fromLTRB(
+                        20, 0, 20, widget.showBack ? 32 : MediaQuery.of(context).viewPadding.bottom + 96),
                     sliver: sponsors.isEmpty
                         ? SliverToBoxAdapter(child: _emptyState())
                         : SliverList.list(children: [
@@ -173,18 +178,20 @@ class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          GestureDetector(
-            onTap: _back,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.arrow_back, size: 18, color: Colors.grey.shade400),
-                const SizedBox(width: 6),
-                Text('Back', style: TextStyle(color: Colors.grey.shade400, fontSize: 13)),
-              ],
+          if (widget.showBack) ...[
+            GestureDetector(
+              onTap: _back,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.arrow_back, size: 18, color: Colors.grey.shade400),
+                  const SizedBox(width: 6),
+                  Text('Back', style: TextStyle(color: Colors.grey.shade400, fontSize: 13)),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 14),
+            const SizedBox(height: 14),
+          ],
           const Row(
             children: [
               Icon(Icons.business_center_rounded, size: 24, color: ConferenceColors.gold),

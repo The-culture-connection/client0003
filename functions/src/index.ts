@@ -14,6 +14,12 @@ export {
   checkInToConference,
   validateConferenceTicketCode,
 } from "./conferenceTickets";
+export {
+  ensureNetworkingProfile,
+  setNetworkingEnabled,
+  recordConferenceSwipe,
+  undoConferenceSwipe,
+} from "./conferenceNetworking";
 
 export { onUserCreated } from "./triggers/onUserCreated";
 export { syncRolesToClaims } from "./triggers/syncRolesToClaims";

@@ -21,7 +21,7 @@ class ConferenceShell extends StatefulWidget {
 
   static const _destinations = [
     _NavSpec(label: 'Lobby', icon: Icons.storefront_outlined, selectedIcon: Icons.storefront_rounded),
-    _NavSpec(label: 'Network', icon: Icons.groups_outlined, selectedIcon: Icons.groups_rounded),
+    _NavSpec(label: 'Sponsors', icon: Icons.business_center_outlined, selectedIcon: Icons.business_center_rounded),
     _NavSpec(label: 'Events', icon: Icons.event_note_outlined, selectedIcon: Icons.event_note_rounded),
   ];
 
