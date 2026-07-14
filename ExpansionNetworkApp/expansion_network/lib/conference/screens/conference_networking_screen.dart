@@ -55,7 +55,10 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
   void initState() {
     super.initState();
     _anim = AnimationController(vsync: this, duration: const Duration(milliseconds: 260))
-      ..addListener(() => setState(() => _drag = _tween.evaluate(_anim)))
+      ..addListener(() {
+        if (_mode == _Anim.none) return;
+        setState(() => _drag = _tween.evaluate(_anim));
+      })
       ..addStatusListener((s) {
         if (s != AnimationStatus.completed) return;
         if (_mode == _Anim.exit) _onExitComplete();
@@ -128,6 +131,7 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
 
   // ---- Swipe mechanics ----
   void _snapBack() {
+    if (_anim.isAnimating) return;
     _mode = _Anim.snap;
     _tween = Tween(begin: _drag, end: Offset.zero);
     _anim.forward(from: 0);
@@ -342,9 +346,11 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
                 if (_anim.isAnimating) return;
                 setState(() => _drag += d.delta);
               },
-              onPanEnd: (_) {
-                if (_drag.dx.abs() > 110) {
-                  _fly(_drag.dx > 0);
+              onPanEnd: (details) {
+                if (_anim.isAnimating) return;
+                final vx = details.velocity.pixelsPerSecond.dx;
+                if (_drag.dx.abs() > 110 || vx.abs() > 800) {
+                  _fly(vx.abs() > 800 ? vx > 0 : _drag.dx > 0);
                 } else {
                   _snapBack();
                 }

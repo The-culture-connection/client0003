@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:add_2_calendar/add_2_calendar.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -86,9 +88,38 @@ Future<void> addConferenceToCalendar(Conference c) async {
   );
 }
 
-/// Bottom-sheet prompt offering to add the conference to the user's calendar.
-Future<void> showAddToCalendarSheet(BuildContext context, Conference c) {
-  return showModalBottomSheet<void>(
+/// Try the native iOS/Android "add event" UI (single-reminder only).
+Future<bool> _tryNativeCalendarAdd(Conference c) async {
+  if (kIsWeb) return false;
+  if (!Platform.isIOS && !Platform.isAndroid) return false;
+  try {
+    final start = c.startDate ?? DateTime.now().add(const Duration(days: 7));
+    final end = c.endDate ?? start.add(const Duration(hours: 2));
+    final description = c.description.trim().isEmpty
+        ? 'Your Mortar conference.'
+        : c.description.trim();
+    return await Add2Calendar.addEvent2Cal(Event(
+      title: c.name,
+      description: description,
+      location: (c.location?.trim().isNotEmpty ?? false) ? c.location!.trim() : null,
+      startDate: start,
+      endDate: end,
+      iosParams: const IOSParams(reminder: Duration(days: 2)),
+      androidParams: const AndroidParams(),
+    ));
+  } catch (_) {
+    return false;
+  }
+}
+
+/// Opens the native calendar add UI. If that fails or is dismissed, falls back
+/// to a bottom-sheet with an .ics share option.
+Future<void> showAddToCalendarSheet(BuildContext context, Conference c) async {
+  final nativeOk = await _tryNativeCalendarAdd(c);
+  if (nativeOk || !context.mounted) return;
+
+  // Native add was not available or was dismissed — offer the .ics fallback.
+  await showModalBottomSheet<void>(
     context: context,
     backgroundColor: ConferenceColors.atmosphere,
     isScrollControlled: false,

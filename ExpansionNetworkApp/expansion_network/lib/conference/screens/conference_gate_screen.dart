@@ -52,6 +52,7 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
   String? _error;
   String? _conferenceId;
   String? _buyingId;
+  String? _checkoutConferenceId;
   List<Conference> _upcoming = const [];
   // Conferences the user already has access to (redeemed) / has paid for.
   Set<String> _accessIds = {};
@@ -82,13 +83,61 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Returning from Stripe Checkout (browser) → refresh so the button reflects
-    // the new ticket. The webhook may lag a moment, so re-check shortly after too.
     if (state == AppLifecycleState.resumed && !_initializing) {
-      _refreshEntitlements();
-      Future.delayed(const Duration(seconds: 4), () {
-        if (mounted) _refreshEntitlements();
-      });
+      final checkoutId = _checkoutConferenceId;
+      if (checkoutId != null) {
+        _checkoutConferenceId = null;
+        _handleCheckoutReturn(checkoutId);
+      } else {
+        _refreshEntitlements();
+        Future.delayed(const Duration(seconds: 4), () {
+          if (mounted) _refreshEntitlements();
+        });
+      }
+    }
+  }
+
+  /// After returning from Stripe Checkout, poll for attendee access. If the
+  /// webhook already admitted the user, show the calendar prompt and enter.
+  Future<void> _handleCheckoutReturn(String conferenceId) async {
+    setState(() => _busy = true);
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) return;
+
+      bool hasAccess = false;
+      for (var i = 0; i < 5; i++) {
+        hasAccess = await _repo.hasAttendeeAccess(conferenceId, uid);
+        if (hasAccess || !mounted) break;
+        if (i < 4) await Future<void>.delayed(const Duration(milliseconds: 1500));
+        if (!mounted) return;
+      }
+
+      await _refreshEntitlements();
+      if (!mounted) return;
+
+      if (hasAccess) {
+        CurrentConferenceHolder.instance.conferenceId = conferenceId;
+        final conf = await _repo.fetchConference(conferenceId);
+        if (!mounted) return;
+        if (conf?.startDate != null) {
+          await showAddToCalendarSheet(context, conf!);
+        }
+        if (!mounted) return;
+        context.go('/conference/lobby');
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            duration: Duration(seconds: 6),
+            content: Text(
+              'Finishing up — if you completed checkout, your code will arrive '
+              'by email. Enter it above to get in.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
@@ -216,10 +265,19 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
         code: _code.text,
       );
       if (data['ok'] != true) {
-        final code = data['code'] as String?;
-        final msg = data['message'] as String?;
-        setState(() => _error = msg ?? _mapError(code));
-        return;
+        // The server may have auto-redeemed the code during free registration
+        // or via the Stripe webhook.  If the current user already has access,
+        // treat it as success rather than showing an error.
+        final uid = FirebaseAuth.instance.currentUser?.uid;
+        final alreadyIn =
+            uid != null && await _repo.hasAttendeeAccess(conferenceId, uid);
+        if (!mounted) return;
+        if (!alreadyIn) {
+          final code = data['code'] as String?;
+          final msg = data['message'] as String?;
+          setState(() => _error = msg ?? _mapError(code));
+          return;
+        }
       }
       if (!mounted) return;
       CurrentConferenceHolder.instance.conferenceId = conferenceId;
@@ -254,10 +312,10 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
     }
     setState(() => _buyingId = c.id);
     try {
-      // Opens Stripe Checkout in the browser. On payment, the webhook generates
-      // and emails the buyer's unique code, which they redeem above.
+      _checkoutConferenceId = c.id;
       await _checkout.checkoutConferenceTicket(context: context, conferenceId: c.id);
     } catch (e) {
+      _checkoutConferenceId = null;
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(userMessageForFirebaseCallableError(e))),
