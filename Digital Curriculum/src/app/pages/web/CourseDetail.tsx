@@ -338,7 +338,7 @@ export function CourseDetail() {
                           {module.price.toFixed(2)}
                         </Badge>
                       )}
-                      {module.durationMonths && module.durationMonths > 0 && (
+                      {(module.durationMonths ?? 0) > 0 && (
                         <Badge variant="secondary" className="text-xs">
                           <Clock className="w-3 h-3 mr-1" />
                           {startedAtDate
@@ -528,7 +528,7 @@ export function CourseDetail() {
                                     )}
                                     {hasSurveyForLesson && (
                                       <span className="flex items-center gap-1.5">
-                                        {courseProgress?.surveySubmitted?.[lessonIdForProgress] ? (
+                                        {isLessonSurveysCompleteByCount(courseProgress, lessonIdForProgress, surveyCountForLesson) ? (
                                           <CheckCircle2 className="w-3.5 h-3.5 text-green-600 shrink-0" />
                                         ) : (
                                           <span className="w-3.5 h-3.5 rounded-full border border-muted-foreground/50 shrink-0" />

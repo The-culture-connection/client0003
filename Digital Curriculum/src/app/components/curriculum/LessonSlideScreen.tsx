@@ -30,8 +30,11 @@ export function LessonSlideScreen({
 
   return (
     <div className="w-full h-full flex flex-col items-center justify-center gap-4 p-4 md:p-6">
-      {/* 16:9 screen — vertical scroll for tall slides */}
-      <div className="w-full max-w-5xl aspect-video overflow-y-auto rounded-xl bg-white shadow-2xl ring-1 ring-black/10">
+      {/* Viewer window — sized to the viewport height (not a fixed 16:9
+          letterbox) so more of each tall slide is visible at once; vertical
+          scroll for the rest. Background matches the slides' dark theme
+          (#2e2e2e) so short slides don't show a white filler block. */}
+      <div className="w-full max-w-5xl h-[72vh] min-h-[420px] overflow-y-auto rounded-xl bg-[#2e2e2e] shadow-2xl ring-1 ring-black/10">
         <div className="relative w-full">
           <img src={src} alt={alt} className="w-full block" draggable={false} />
           {popups.map((popup) => (

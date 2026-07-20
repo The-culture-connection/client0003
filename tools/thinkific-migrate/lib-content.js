@@ -131,6 +131,12 @@ function htmlToSegments(html) {
       pushHtml(html.slice(last, m.index));
       const ytId = extractYouTubeId(src);
       if (ytId) segs.push({ kind: "video", provider: "youtube", videoId: ytId, url: src });
+      // Gap-fix 1.2: Thinkific-hosted media player embeds (Wistia-backed).
+      // Classified 2026-07-20: all 11 unknowns in this course are
+      // /api/course_player/v2/contents/{id}/play/{mediaId} lesson-intro videos.
+      // migrate-lesson.js resolves the Wistia id and re-hosts via wistia-map.json.
+      else if (/\/api\/course_player\/v2\/contents\/\d+\/play\//.test(src))
+        segs.push({ kind: "thinkific_video", url: src });
       else segs.push({ kind: "unknown", html: tok, note: `iframe ${src || "(no src)"}` });
       last = m.index + tok.length;
       continue;
@@ -163,6 +169,12 @@ async function fetchChapterItems(chapterId) {
   for (const cid of contentIds) {
     await sleep(SPACING);
     const meta = (await player.content(cid)).content;
+    if (!meta) {
+      // Draft/removed items can return { content: null } — skip (they're
+      // excluded by the global draft skip anyway).
+      console.warn(`  (content ${cid} returned null meta — skipped; draft or removed in Thinkific)`);
+      continue;
+    }
     const seg = SEG[meta.contentable_type];
     let body = null;
     if (seg && meta.contentable_id) {
@@ -208,6 +220,8 @@ function mapItemsToMortar(items, opts = {}) {
       }
       else if (seg.kind === "video")
         slides.push({ kind: "video", provider: seg.provider, videoId: seg.videoId, url: seg.url, _name: label });
+      else if (seg.kind === "thinkific_video")
+        slides.push({ kind: "thinkific_video", url: seg.url, _name: label });
       else if (seg.kind === "gif") slides.push({ kind: "gif", url: seg.url, _name: label });
       else flags.push(`Unrecognized media in "${name}" → ${seg.note}. NEEDS REVIEW (not migrated).`);
     }
@@ -215,6 +229,11 @@ function mapItemsToMortar(items, opts = {}) {
 
   for (const it of items) {
     const name = it.content.name || it.type;
+    // Gap-fix 1.5: globally skip draft items (not visible to learners in Thinkific).
+    if (it.content.draft === true) {
+      flags.push(`Slide "${name}" is draft in Thinkific → skipped (global draft skip).`);
+      continue;
+    }
     if (skipNames.has(name.toLowerCase().trim())) {
       flags.push(`Slide "${name}" dropped per manual override.`);
       continue;
@@ -232,7 +251,23 @@ function mapItemsToMortar(items, opts = {}) {
       const links = files
         .map((f) => `<p><a href="${f.download_url}" target="_blank" rel="noopener">⬇ ${htmlToText(f.label || f.file_name || "Download")}</a></p>`)
         .join("");
+      const before = slides.length;
       pushSegments((d.html_description || "") + links, name);
+      // Gap-fix 1.1: mark download files for re-hosting at write time (the
+      // Thinkific download_url is signed and expires). migrate-lesson.js
+      // fetches each file, uploads it to Storage, and swaps the URL in the
+      // slide html + link buttons before rendering.
+      const dlMeta = files.map((f, i) => ({
+        url: f.download_url,
+        file_name: String(f.file_name || f.label || `download_${i}`).replace(/[^\w.\-]+/g, "_"),
+        label: htmlToText(f.label || f.file_name || "Download"),
+      }));
+      for (let si = before; si < slides.length; si++) {
+        const s = slides[si];
+        if (s.kind !== "render") continue;
+        const mine = dlMeta.filter((m) => s.html.includes(m.url));
+        if (mine.length) s._downloads = mine;
+      }
       continue;
     }
 

@@ -1035,7 +1035,9 @@ export function LessonPlayer() {
                       <div key={i} className="rounded-lg border border-gray-700 p-4 bg-gray-900/50">
                         <p className="font-medium mb-3">{q.question}</p>
                         <div className="space-y-2">
-                          {(["A", "B", "C", "D"] as const).map((opt) => (
+                          {(["A", "B", "C", "D"] as const)
+                            .filter((opt) => String(q[`option${opt}` as keyof typeof q] ?? "").trim() !== "")
+                            .map((opt) => (
                             <label
                               key={opt}
                               className="flex items-center gap-3 cursor-pointer rounded p-2 hover:bg-gray-800"
