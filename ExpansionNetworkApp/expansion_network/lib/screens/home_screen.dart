@@ -81,13 +81,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
                     icon: const Icon(Icons.storefront_outlined),
-                    label: const Text('Mortar shop'),
+                    label: const Text('MORTAR shop'),
                     onPressed: () async {
                       final u = Uri.parse(_kMortarShopUrl);
                       final ok = await safeLaunchExternalUrl(
                         u,
                         messengerContext: context,
-                        userFailureMessage: 'Could not open Mortar shop',
+                        userFailureMessage: 'Could not open MORTAR shop',
                       );
                       if (ok && context.mounted) {
                         await ExpansionAnalytics.log(
@@ -376,7 +376,7 @@ class _MortarInfoHomeCardState extends State<_MortarInfoHomeCard> {
     final repo = MortarInfoRepository();
     final scheme = Theme.of(context).colorScheme;
     return _CardShell(
-      title: 'Mortar info',
+      title: 'MORTAR info',
       child: StreamBuilder<List<MortarInfoPost>>(
         stream: repo.watchPublishedPosts(limit: 1),
         builder: (context, snap) {
@@ -436,7 +436,7 @@ class _MortarInfoHomeCardState extends State<_MortarInfoHomeCard> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Your Mortar HQ',
+                            'Your MORTAR HQ',
                             style: TextStyle(
                               fontWeight: FontWeight.w700,
                               fontSize: 14,

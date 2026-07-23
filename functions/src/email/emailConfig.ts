@@ -10,7 +10,7 @@ export const DEFAULT_PLATFORM_URL =
   "https://mortar-stage-stage.up.railway.app";
 
 export const DEFAULT_EXPANSION_APP_NAME =
-  process.env.EXPANSION_APP_DISPLAY_NAME?.trim() || "Mortar Expansion Network";
+  process.env.EXPANSION_APP_DISPLAY_NAME?.trim() || "MORTAR Expansion Network";
 
 /** Deep link or marketing URL for invite redemption (Flutter / web). */
 export const DEFAULT_EXPANSION_REDEEM_URL =

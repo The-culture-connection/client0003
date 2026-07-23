@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../../components/auth/AuthProvider";
+import { formatQuizQuestionPrompt } from "../../lib/quizText";
 import {
   listQuizzesForUser,
   fetchQuizQuestions,
@@ -160,7 +161,8 @@ export function WebQuizzes() {
 
             {q && (
               <div className="mb-8">
-                <h2 className="text-xl text-foreground mb-6">{q.prompt}</h2>
+                <h2 className="text-xl text-foreground mb-2">{formatQuizQuestionPrompt(q.prompt)}</h2>
+                <p className="text-sm text-muted-foreground mb-6">Select one answer.</p>
                 <div className="space-y-3">
                   {q.options.map((option, idx) => (
                     <label

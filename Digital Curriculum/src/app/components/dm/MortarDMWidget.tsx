@@ -169,10 +169,10 @@ export function MortarDMWidget() {
       <button
         onClick={() => setIsOpen(true)}
         className="fixed top-20 right-6 z-50 px-4 py-2 rounded-full bg-accent hover:bg-accent/90 text-accent-foreground shadow-lg flex items-center gap-2 transition-all hover:scale-105"
-        aria-label="DM Mortar"
+        aria-label="DM MORTAR"
       >
         <MessageSquare className="w-5 h-5" />
-        <span className="font-medium text-sm">DM Mortar</span>
+        <span className="font-medium text-sm">DM MORTAR</span>
       </button>
 
       {/* DM Dialog */}
@@ -189,10 +189,10 @@ export function MortarDMWidget() {
 
             <div className="p-6 border-b border-border">
               <h2 className="text-xl font-bold text-foreground mb-1">
-                Message Mortar
+                Message MORTAR
               </h2>
               <p className="text-sm text-muted-foreground">
-                Send a message to the Mortar team or view your conversation history.
+                Send a message to the MORTAR team or view your conversation history.
               </p>
             </div>
 
@@ -346,7 +346,7 @@ export function MortarDMWidget() {
                           Start a conversation
                         </p>
                         <p className="text-sm text-muted-foreground mb-4">
-                          Send your first message to Mortar below
+                          Send your first message to MORTAR below
                         </p>
                         <div className="space-y-2">
                           <Textarea

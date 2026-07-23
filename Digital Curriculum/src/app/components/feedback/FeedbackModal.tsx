@@ -59,7 +59,7 @@ const CONTEXT_CONFIG: Record<
     component: "slider",
   },
   general: {
-    prompt: "How are you feeling about Mortar?",
+    prompt: "How are you feeling about MORTAR?",
     component: "sentiment",
   },
 };

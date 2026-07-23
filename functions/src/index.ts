@@ -95,6 +95,9 @@ export {adminUpdateShopOrderFulfillment} from "./callables/adminUpdateShopOrderF
 export {stripeWebhook} from "./http/stripeWebhook";
 export {mobilePaymentReturn} from "./http/mobilePaymentReturn";
 
+export {syncUsersToHubspot} from "./hubspot/syncUsersToHubspot";
+export {adminRunHubspotSync} from "./callables/adminRunHubspotSync";
+
 export { onSurveyResponseCreated } from "./analytics/triggers/onSurveyResponseCreated";
 
 export {

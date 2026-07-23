@@ -22,7 +22,7 @@ const panelLinks: { label: string; tab: AdminPanelTabSlug }[] = [
   { label: "Mobile analytics", tab: "mobile-analytics" },
   { label: "Email Management", tab: "email-management" },
   { label: "Email testing", tab: "email-testing" },
-  { label: "Mortar Info", tab: "mortar-info" },
+  { label: "MORTAR Info", tab: "mortar-info" },
   { label: "Direct messages", tab: "messages" },
   { label: "Courses", tab: "courses" },
   { label: "Shop", tab: "shop" },

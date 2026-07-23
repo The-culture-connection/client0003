@@ -77,7 +77,7 @@ export function PublicCertificatePage() {
           <div className="inline-flex items-center justify-center mx-auto w-12 h-12 rounded-full bg-accent/10">
             <Award className="w-6 h-6 text-accent" />
           </div>
-          <h1 className="text-2xl font-semibold text-foreground">Mortar Certificate</h1>
+          <h1 className="text-2xl font-semibold text-foreground">MORTAR Certificate</h1>
           <p className="text-muted-foreground">This certificate is proudly presented to</p>
           <p className="text-4xl italic text-foreground">{data.recipientName || "Learner"}</p>
           <p className="text-muted-foreground uppercase tracking-wide">For Learning The Follow Essential Skill</p>

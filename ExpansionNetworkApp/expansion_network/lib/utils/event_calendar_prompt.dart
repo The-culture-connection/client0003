@@ -209,7 +209,7 @@ Event _nativeAdd2Event(CommunityEvent event, DateTime start, DateTime end) {
     if (buf.isNotEmpty) buf.writeln();
     buf.write('Time: ${event.time.trim()}');
   }
-  final desc = buf.isEmpty ? 'Mortar Alumni Network event' : buf.toString();
+  final desc = buf.isEmpty ? 'MORTAR Alumni Network event' : buf.toString();
   return Event(
     title: event.title,
     description: desc,

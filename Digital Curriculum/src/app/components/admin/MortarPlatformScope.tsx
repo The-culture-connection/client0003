@@ -12,7 +12,7 @@ export const PLATFORM_SCOPE_META: Record<
   digital_curriculum: {
     label: "Digital Curriculum",
     shortLabel: "Web",
-    hint: "Mortar Masters web app — courses, web groups & events hub, shop, learner DMs, web analytics.",
+    hint: "MORTAR Masters web app — courses, web groups & events hub, shop, learner DMs, web analytics.",
     icon: BookOpen,
     badgeClass:
       "border-sky-500/55 bg-sky-950/45 text-sky-100 shadow-[inset_0_1px_0_0_rgba(56,189,248,0.12)]",

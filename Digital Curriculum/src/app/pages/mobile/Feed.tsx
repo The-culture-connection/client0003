@@ -22,7 +22,7 @@ const INITIAL_POSTS: FeedPost[] = [
     avatar: "SJ",
     time: "2h ago",
     content:
-      "Just landed my dream job at a tech startup! Mortar's program gave me the skills and confidence I needed. Forever grateful! 🚀",
+      "Just landed my dream job at a tech startup! MORTAR's program gave me the skills and confidence I needed. Forever grateful! 🚀",
     likes: 24,
     comments: 8,
   },
@@ -73,7 +73,7 @@ export function MobileFeed() {
     const text = `${post.author}: ${post.content.slice(0, 120)}${post.content.length > 120 ? "…" : ""}`;
     try {
       if (navigator.share) {
-        await navigator.share({ title: "Mortar feed", text });
+        await navigator.share({ title: "MORTAR feed", text });
         toast.success("Shared");
         return;
       }

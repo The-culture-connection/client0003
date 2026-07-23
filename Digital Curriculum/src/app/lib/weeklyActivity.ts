@@ -62,7 +62,7 @@ const EVENT_LABELS: Record<string, string> = {
   [WEB_ANALYTICS_EVENTS.DATA_ROOM_CERTIFICATE_DOWNLOAD_CLICKED]: "Downloaded a certificate",
   [WEB_ANALYTICS_EVENTS.DATA_ROOM_SURVEY_PDF_DOWNLOAD_CLICKED]: "Downloaded a survey PDF",
   [WEB_ANALYTICS_EVENTS.NOTIFICATION_ITEM_CLICKED]: "Opened a notification",
-  [WEB_ANALYTICS_EVENTS.NAV_LINK_CLICKED]: "Navigated in Mortar",
+  [WEB_ANALYTICS_EVENTS.NAV_LINK_CLICKED]: "Navigated in MORTAR",
 };
 
 function humanizeEventName(eventName: string): string {

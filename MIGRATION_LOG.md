@@ -137,3 +137,53 @@ Four issues, four fixes:
 4. **M1.2 still showed old white/broken renders** — the predicted stale-cache issue (same URL + `max-age=1y`). Pipeline fixed for good: `migrate-lesson.js` now clears the lesson's `screens/` prefix and writes **content-addressed filenames** (`slide_{i}_{md5:8}.png`) — every re-render gets new URLs. Also `lib-render.js` now clips trailing blank space (empty fitvids wrappers left by extracted videos) via DOM content-bottom measurement, and waits on `load`+`img.decode()` (networkidle0 stalls on large data-URI documents). M1.2 + M2.1 re-written under the new scheme.
 
 ⚠ The three app patches (`LessonSlideScreen.tsx`, `LessonPlayer.tsx`, `CourseDetail.tsx`) are committed to the repo but need a **redeploy of the Digital Curriculum web app** (Railway) to take effect. Other 13 lessons keep their old-style filenames until next re-render — harmless (their content is current), and any future re-render auto-migrates them.
+
+### Session 2 (cont.) — Skills, badges, certificates, subtitles (Phase 4.4 items)
+
+Grace-approved scope: skills on the 4 skill lessons; module certs+badges triggered by ALL lessons complete (no end-of-module test exists); course cert+badge with "Digital MORTAR MASTER" honorific; subtitles displayed in app. Challenges list deferred (marked draft).
+
+**Data (live now on mortar-stage):**
+- Badge artwork generated (MORTAR-styled, 1024px) → Storage `badge_bank/*` + `badge_bank` docs + `badge_definitions`: `module-foundations-complete`, `module-the-core-complete`, `module-really-real-complete` (Tier I, awarded via existing `awardCourseModuleBadges` callable through `modules[].completionBadgeIds`), `digital-mortar-master` (course badge; metric rule lessons_completed≥15 + conditions quizzes_passed≥13 as engine-driven safety net).
+- Both courses (original + demo): `modules[].skills` (Foundations→Personal Finance I; The Core→Branding & Marketing I, Business Finance I, Pitch Your Business I), `modules[].completionBadgeIds`, `modules[].lessons[].subtitle/skill`.
+- 16 curriculum lesson docs: `subtitle` + `skill` fields set from course-ids.json.
+- Scripts committed: `make-badges.js`, `wire-skills-badges.js`.
+
+**App (committed, needs redeploy — same deploy as earlier UI patches):**
+- `dataroom.ts`: new `awardSkillAndCertificate()` (template-PDF cert into dataroom, idempotent; optional `confident_skills` profile add).
+- `LessonPlayer.tsx`: per-lesson skill cert+profile skill when a skill lesson fully completes (both completion paths); module completion certificate on newly-completed module (alongside badge callable); course certificate "Digital MORTAR MASTER" at 100%; lesson subtitle in player header.
+- `CourseDetail.tsx`: subtitle under lesson titles (module skills chips already rendered by existing code).
+- `curriculum.ts`/`courses.ts`: Lesson types gained `subtitle`/`skill`.
+
+⚠ Known gap: in the ORIGINAL course, module 3 mapping includes the M3.4 shell (0 slides, can't be completed) → Really Real badge/cert and course 100% unreachable there until M3.4 is excluded from `curriculumMapping` or given content (Phase 4 decision). The demo course excludes M3.4, so the full flow is testable there end-to-end.
+⚠ Certificate wording: the PDF template draws recipient name + one line (skill/module/honorific). If the printed template text doesn't read "For Successfully Completing the MORTAR Masters: Online Entrepreneurship Academy", adjust template or drawing in `dataroom.ts` `generateTemplateCertificatePdfUpload`.
+
+### Session 2 (cont.) — Challenge badges (Grace's engagement list)
+
+8 `badge_definitions` created (tier "Challenge", platform digital_curriculum) with generated artwork in `badge_bank`. Script: `make-challenge-badges.js`.
+
+ACTIVE (metric exists in the badge engine):
+| Badge | Rule |
+|---|---|
+| All About You | onboarding_completions ≥ 1 |
+| Opening Track | lessons_completed ≥ 2 — closest proxy for "completed The Release Party" (engine has no per-lesson metric; Welcome + Release Party = first 2 lessons) |
+| Freestyle Session | discussions_created ≥ 1 |
+| Call & Response *(suggested name)* | discussion_replies ≥ 1 |
+| Wrapped | lessons_completed ≥ 15 (all three modules) |
+
+INACTIVE drafts (visible in Badge Management; rename + activate when ready):
+- **Studio Time** — learning-hours goal: no hours metric in `user_analytics_summary.counts` yet (though `trackLessonTime` callable exists — a rollup counter would enable it); threshold needs avg-completion-time data.
+- **Album Drop** — full course within N days: engine timeframe is `all_time` in v1; needs a windowed rule + timing data.
+- **Outro** — end-of-course survey: survey submissions aren't rolled up as a metric; needs a counter added.
+
+Follow-up options for the three drafts: add `lesson_time_minutes` / `surveys_submitted` counters to the analytics rollup, and a windowed-timeframe rule mode. Per-lesson badge targeting ("completed lesson X") would also make Opening Track exact instead of a proxy.
+
+### Session 2 (cont.) — MORTAR branding sweep
+
+Replaced user-facing "Mortar" → "MORTAR" (word-boundary, exact-case, comment lines untouched, identifiers/URLs/bundle-ids unaffected) across:
+- **Digital Curriculum** `src/` (~54 strings: nav/headers, Login, PasswordGate, tour, DM widget, weekly activity, Terms of Use, email defaults "MORTAR Team"/"Open MORTAR", shop, admin panels) + `index.html` title ("Overall Project UI" → "MORTAR").
+- **Cloud Functions** `src/` (transactional email test payloads, email defaults, push notification copy, mobile payment return page, "MORTAR Expansion Network" display default).
+- **Expansion mobile (Flutter)** `lib/` (~20 strings: app title, landing "MORTAR Alumni Network", home/feed/onboarding/Terms, event calendar text) + **launcher names**: Android `android:label` and iOS `CFBundleDisplayName`/`CFBundleName` → "MORTAR Alumni Network".
+- **web/** Next.js app + **UI/** prototype `src/` (same treatment).
+- **Firestore display data**: curricula description ("MORTAR Masters"), 2 events ("MORTAR HQ"). Courses/badges already used MORTAR.
+
+Verification: zero non-comment `\bMortar\b` matches remain in the four codebases. Edits were made in place on disk (git diff shows the full change set for review). Takes effect on: Digital Curriculum redeploy (pending anyway), functions deploy, next mobile app build (launcher name change requires reinstall), web/ redeploy if that surface is used.

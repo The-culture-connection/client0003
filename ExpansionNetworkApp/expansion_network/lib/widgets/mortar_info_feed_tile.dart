@@ -84,7 +84,7 @@ class MortarInfoFeedTile extends StatelessWidget {
                         children: [
                           Expanded(
                             child: Text(
-                              'Mortar',
+                              'MORTAR',
                               style: TextStyle(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 14,

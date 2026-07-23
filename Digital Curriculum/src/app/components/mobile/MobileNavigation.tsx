@@ -25,7 +25,7 @@ export function MobileNavigation() {
     <>
       <div className="fixed top-0 left-0 right-0 bg-card border-b border-border z-10">
         <div className="flex items-center justify-between px-4 h-14">
-          <h1 className="text-lg font-bold text-foreground">Mortar</h1>
+          <h1 className="text-lg font-bold text-foreground">MORTAR</h1>
           <div className="flex items-center gap-3">
             {user && (
               <Button

@@ -184,7 +184,7 @@ class _ExpansionNetworkAppState extends State<ExpansionNetworkApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'Mortar Alumni Network',
+      title: 'MORTAR Alumni Network',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
       routerConfig: widget.router,

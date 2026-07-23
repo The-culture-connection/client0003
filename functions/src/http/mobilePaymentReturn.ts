@@ -36,7 +36,7 @@ export const mobilePaymentReturn = onRequest(
 <body>
   <h1>Payment Successful &#10003;</h1>
   <p>Returning you to the app&hellip;</p>
-  <a class="btn" id="open" href="${deepLink}">Open Mortar App</a>
+  <a class="btn" id="open" href="${deepLink}">Open MORTAR App</a>
   <script>
     setTimeout(function() { window.location.href = "${deepLink}"; }, 600);
   </script>

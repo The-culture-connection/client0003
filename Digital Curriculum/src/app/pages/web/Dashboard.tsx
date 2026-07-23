@@ -617,7 +617,7 @@ export function WebDashboard() {
             >
               <div className="flex items-center gap-2 mb-3">
                 <ShoppingBag className="w-5 h-5 text-accent" />
-                <h2 className="text-lg font-bold text-foreground">Shop Mortar</h2>
+                <h2 className="text-lg font-bold text-foreground">Shop MORTAR</h2>
               </div>
               <p className="text-sm text-muted-foreground mb-3">
                 Discover resources, courses, and services to grow your business

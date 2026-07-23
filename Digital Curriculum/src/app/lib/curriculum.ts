@@ -75,6 +75,10 @@ export interface Slide {
 export interface Lesson {
   id?: string;
   title: string;
+  /** Short descriptor shown under the title (e.g. "Branding & Marketing"). */
+  subtitle?: string | null;
+  /** Skill awarded when this lesson is fully completed (e.g. "Personal Finance (Tier I)"). */
+  skill?: string | null;
   order: number;
   theme?: Theme;
   is_published?: boolean;

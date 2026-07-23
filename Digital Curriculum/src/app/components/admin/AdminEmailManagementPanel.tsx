@@ -20,9 +20,9 @@ export function AdminEmailManagementPanel() {
   const { user } = useAuth();
   const [headline, setHeadline] = useState("");
   const [messageBody, setMessageBody] = useState("");
-  const [senderName, setSenderName] = useState("Mortar Team");
+  const [senderName, setSenderName] = useState("MORTAR Team");
   const [ctaUrl, setCtaUrl] = useState("");
-  const [ctaLabel, setCtaLabel] = useState("Open Mortar");
+  const [ctaLabel, setCtaLabel] = useState("Open MORTAR");
   const [emailsRaw, setEmailsRaw] = useState("");
   const [role, setRole] = useState<string>("");
   const [sending, setSending] = useState(false);
@@ -52,7 +52,7 @@ export function AdminEmailManagementPanel() {
       const out = await sendCustomAnnouncementEmail({
         headline: headline.trim(),
         messageBody: messageBody.trim(),
-        senderName: senderName.trim() || "Mortar Team",
+        senderName: senderName.trim() || "MORTAR Team",
         ctaUrl: ctaUrl.trim() || undefined,
         ctaLabel: ctaLabel.trim() || undefined,
         emails: parsedEmails.length ? parsedEmails : undefined,
@@ -107,7 +107,7 @@ export function AdminEmailManagementPanel() {
             id="email-headline"
             value={headline}
             onChange={(e) => setHeadline(e.target.value)}
-            placeholder="e.g. Important update for Mortar students"
+            placeholder="e.g. Important update for MORTAR students"
             className="bg-background"
           />
         </div>

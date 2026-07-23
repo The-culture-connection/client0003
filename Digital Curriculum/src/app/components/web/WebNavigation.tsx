@@ -40,7 +40,7 @@ const allNavItems: NavItem[] = [
   { path: "/curriculum", label: "Curriculum", icon: BookOpen, tour: "curriculum" }, // Available to all
   { path: "/data-room", label: "Data Room", icon: FolderOpen, tour: "data-room" }, // Available to all
   { path: "/community", label: "Community Hub", icon: Users, tour: "community" }, // Available to all
-  { path: "/shop", label: "Shop Mortar", icon: ShoppingBag, tour: "shop" }, // Available to all
+  { path: "/shop", label: "Shop MORTAR", icon: ShoppingBag, tour: "shop" }, // Available to all
   {
     path: "/admin/auth",
     label: "Admin",
@@ -183,7 +183,7 @@ export function WebNavigation() {
         <div className="flex items-center justify-between h-16 gap-4">
           <div className="flex items-center gap-6 min-w-0 flex-1">
             <Link to={logoTo} className="text-xl font-bold text-foreground shrink-0">
-              Mortar
+              MORTAR
             </Link>
             {adminMinimalHeader && <span data-tour="admin-view-toggle">{staffViewToggle}</span>}
             {showStudentNavLinks && (

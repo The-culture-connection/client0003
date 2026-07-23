@@ -512,7 +512,7 @@ export const onEventNeedsApprovalAdminPush = onDocumentCreated(
 function formatShopLinesPushBody(
   lines: Array<{name?: string; item_id?: string; quantity?: number; size?: string; category?: string}>
 ): string {
-  if (!lines.length) return "A customer paid for a Mortar shop order. Open Admin → Shop to fulfill.";
+  if (!lines.length) return "A customer paid for a MORTAR shop order. Open Admin → Shop to fulfill.";
   const first = lines[0]!;
   const name = (typeof first.name === "string" && first.name.trim()) ?
     first.name.trim() :
@@ -594,7 +594,7 @@ export const onDigitalStudentDmCreatedAdminPush = onDocumentCreated(
       type: "admin_digital_dm",
       uids: adminUids,
       title: "New Digital Curriculum DM",
-      body: "A student sent a new message to Mortar.",
+      body: "A student sent a new message to MORTAR.",
       deepLink: "/messages",
       data: {
         dm_id: dmId,
@@ -625,7 +625,7 @@ export const onDigitalStudentDmReplyAdminPush = onDocumentCreated(
       type: "admin_digital_dm",
       uids: adminUids,
       title: "New Digital Curriculum DM",
-      body: "A student replied in the Mortar DM thread.",
+      body: "A student replied in the MORTAR DM thread.",
       deepLink: "/messages",
       data: {
         dm_id: dmId,

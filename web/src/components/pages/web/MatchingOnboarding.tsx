@@ -1527,7 +1527,7 @@ export function MatchingOnboardingPage() {
             </div>
             <h1 className="text-3xl text-foreground mb-2">You&apos;re all set!</h1>
             <p className="text-muted-foreground mb-8">
-              Welcome to the Mortar community. Your profile has been saved successfully.
+              Welcome to the MORTAR community. Your profile has been saved successfully.
             </p>
             <p className="text-sm text-muted-foreground mb-4">
               Redirecting to dashboard in a few seconds...

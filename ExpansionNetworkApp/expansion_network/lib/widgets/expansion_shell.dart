@@ -42,7 +42,7 @@ class _ExpansionShellState extends State<ExpansionShell> {
       tourTitle: 'Home',
       tourBody:
           'Your dashboard — run Smart Matching to meet members, catch up on '
-          'Mortar HQ announcements, and see recent activity from your communities.',
+          'MORTAR HQ announcements, and see recent activity from your communities.',
     ),
     _NavSpec(
       label: 'Events',

@@ -214,7 +214,7 @@ export function AdminCommandCenter() {
     },
     {
       icon: Megaphone,
-      title: "Mortar Info",
+      title: "MORTAR Info",
       description: "Announcements and mortar info posts",
       href: adminPanelPath("mortar-info"),
       gradient: "from-sky-500/20 to-sky-500/5",
@@ -291,7 +291,7 @@ export function AdminCommandCenter() {
       description:
         counts.shopOrdersNeedingFulfillmentPreview[0] != null
           ? formatShopOrderActionPreview(counts.shopOrdersNeedingFulfillmentPreview[0])
-          : "Paid Mortar shop orders waiting to be packed and shipped.",
+          : "Paid MORTAR shop orders waiting to be packed and shipped.",
       href: adminPanelPath("shop"),
       count: counts.shopOrdersNeedingFulfillment,
       icon: ShoppingBag,

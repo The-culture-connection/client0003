@@ -128,7 +128,7 @@ export function WebOnboardingPage() {
     return (
       <div className="p-8 max-w-2xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl text-foreground mb-2">Welcome to Mortar!</h1>
+          <h1 className="text-3xl text-foreground mb-2">Welcome to MORTAR!</h1>
           <p className="text-muted-foreground">
             Let&apos;s set up your business profile to connect you with the right people
           </p>
@@ -308,7 +308,7 @@ export function WebOnboardingPage() {
       </h1>
       <p className="text-muted-foreground mb-8">
         {saveSuccess
-          ? "Welcome to the Mortar community. Your business profile has been saved."
+          ? "Welcome to the MORTAR community. Your business profile has been saved."
           : "You&apos;ve completed the onboarding steps. You can update your profile later from the dashboard."}
       </p>
       {error && !saveSuccess && (

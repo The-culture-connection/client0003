@@ -41,7 +41,7 @@ export function PasswordGate({ children }: PasswordGateProps) {
             <div className="w-16 h-16 bg-[#871002] rounded-full flex items-center justify-center mb-4">
               <Lock className="w-8 h-8 text-[#fafcfc]" />
             </div>
-            <h1 className="text-2xl font-bold text-[#1d1d1d] mb-2">Mortar</h1>
+            <h1 className="text-2xl font-bold text-[#1d1d1d] mb-2">MORTAR</h1>
             <p className="text-sm text-[#1d1d1d]/60 text-center">
               Enter password to access the platform
             </p>

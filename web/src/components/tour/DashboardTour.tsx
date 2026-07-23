@@ -27,7 +27,7 @@ const steps: Step[] = [
     target: "body",
     placement: "center",
     disableBeacon: true,
-    title: "Welcome to the Mortar admin dashboard",
+    title: "Welcome to the MORTAR admin dashboard",
     content:
       "Here's a quick tour of where everything lives. It takes about 30 seconds — you can skip anytime, and re-open it later from the Tour button up top.",
   },

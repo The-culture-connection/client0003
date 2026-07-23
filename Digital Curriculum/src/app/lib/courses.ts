@@ -32,6 +32,10 @@ export function lessonSurveyProgressKey(lessonId: string, surveyId: string): str
 export interface Lesson {
   id?: string;
   title: string;
+  /** Short descriptor shown under the title in course lists. */
+  subtitle?: string;
+  /** Skill awarded on completing this lesson (display only here). */
+  skill?: string;
   order: number;
   slideUrl?: string; // URL to uploaded PowerPoint file
   slideFileName?: string;

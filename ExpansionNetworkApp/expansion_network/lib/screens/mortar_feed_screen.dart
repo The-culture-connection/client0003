@@ -31,7 +31,7 @@ class _MortarFeedScreenState extends State<MortarFeedScreen> {
     final repo = MortarInfoRepository();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Mortar feed')),
+      appBar: AppBar(title: const Text('MORTAR feed')),
       body: StreamBuilder<List<MortarInfoPost>>(
         stream: repo.watchPublishedPosts(limit: 100),
         builder: (context, snap) {
@@ -62,7 +62,7 @@ class _MortarFeedScreenState extends State<MortarFeedScreen> {
               child: Padding(
                 padding: EdgeInsets.all(24),
                 child: Text(
-                  'No Mortar updates yet.',
+                  'No MORTAR updates yet.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: AppColors.mutedForeground),
                 ),

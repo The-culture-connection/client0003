@@ -155,7 +155,7 @@ export function WeeklyActivityWidget({
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>Your week in Mortar</DialogTitle>
+            <DialogTitle>Your week in MORTAR</DialogTitle>
             <p className="text-sm text-muted-foreground">{weekLabel}</p>
           </DialogHeader>
 
@@ -168,7 +168,7 @@ export function WeeklyActivityWidget({
             ) : items.length === 0 ? (
               <p className="text-sm text-muted-foreground py-8 text-center">
                 No tracked activity this week yet. Lessons, events, discussions, and certificates
-                will show up here as you use Mortar.
+                will show up here as you use MORTAR.
               </p>
             ) : (
               <div className="space-y-6">

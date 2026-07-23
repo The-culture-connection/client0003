@@ -622,19 +622,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 These Terms of Use ("Site Terms") state the terms and conditions under which you may use our website and mobile application (the "Sites"). By accessing, browsing, and/or using the Sites you acknowledge that you have read, understood, and agree to be legally bound by the Site Terms and our Privacy Policy.
 
 INTELLECTUAL PROPERTY
-All information and content available on the Sites is the property of Mortar, its affiliates, partners or licensors, and is protected by United States and international laws, including laws governing copyrights and trademarks.
+All information and content available on the Sites is the property of MORTAR, its affiliates, partners or licensors, and is protected by United States and international laws, including laws governing copyrights and trademarks.
 
 LIMITED LICENSE
-We grant you a limited, non-exclusive, non-sublicensable and revocable license to access and use the Sites for your own personal, non-commercial use. You may not reproduce, modify, distribute, or display the Sites or any Site Content except as permitted herein. You expressly agree to indemnify, defend and hold harmless Mortar against any liability arising out of your use of the Sites or breach of the Site Terms.
+We grant you a limited, non-exclusive, non-sublicensable and revocable license to access and use the Sites for your own personal, non-commercial use. You may not reproduce, modify, distribute, or display the Sites or any Site Content except as permitted herein. You expressly agree to indemnify, defend and hold harmless MORTAR against any liability arising out of your use of the Sites or breach of the Site Terms.
 
 CODE OF CONDUCT
 By accessing or using the Sites you agree not to: use the Sites in breach of these Terms; harass, threaten, stalk or cause distress to any person; impersonate another person or entity; introduce viruses or harmful code; gain unauthorized access to any computer system; or engage in conduct constituting a criminal or civil offense.
 
 USER CONTENT
-You are entirely responsible for any content you submit to the Sites. You agree not to post content that is unlawful, defamatory, obscene, harassing, fraudulent, infringes intellectual property rights, contains private information of third parties, or contains viruses or other harmful files. Mortar reserves the right to remove any content that violates these Terms.
+You are entirely responsible for any content you submit to the Sites. You agree not to post content that is unlawful, defamatory, obscene, harassing, fraudulent, infringes intellectual property rights, contains private information of third parties, or contains viruses or other harmful files. MORTAR reserves the right to remove any content that violates these Terms.
 
 RIGHTS TO USER CONTENT
-By posting User Content, you grant Mortar a nonexclusive, royalty-free, perpetual, irrevocable and fully sublicensable right to use, reproduce, modify, adapt, translate, distribute, publish, and create derivative works from such content throughout the world in any media.
+By posting User Content, you grant MORTAR a nonexclusive, royalty-free, perpetual, irrevocable and fully sublicensable right to use, reproduce, modify, adapt, translate, distribute, publish, and create derivative works from such content throughout the world in any media.
 
 DISCLAIMER & LIMITATION OF LIABILITY
 The Sites and all materials are provided "as is" without warranties of any kind. IN NO EVENT SHALL MORTAR BE LIABLE FOR ANY DIRECT, INDIRECT, SPECIAL, PUNITIVE, INCIDENTAL, OR CONSEQUENTIAL DAMAGES ARISING OUT OF OR IN CONNECTION WITH YOUR USE OF THE SITES.
@@ -643,7 +643,7 @@ DISPUTES
 These Site Terms are governed by the laws of the United States and the State of Ohio. All disputes shall be resolved in a court of competent jurisdiction located in Hamilton County, Ohio.
 
 CONTACT US
-Mortar, 340 Reading Road, Cincinnati, Ohio 45202
+MORTAR, 340 Reading Road, Cincinnati, Ohio 45202
 www.wearemortar.com''';
 
   Widget _buildStepTerms(BuildContext context) {
@@ -653,7 +653,7 @@ www.wearemortar.com''';
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Welcome to Mortar',
+            'Welcome to MORTAR',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),
@@ -700,7 +700,7 @@ www.wearemortar.com''';
                         children: const [
                           TextSpan(text: 'I have read and agree to the '),
                           TextSpan(
-                            text: 'Mortar Terms of Use',
+                            text: 'MORTAR Terms of Use',
                             style: TextStyle(fontWeight: FontWeight.bold),
                           ),
                           TextSpan(
@@ -732,7 +732,7 @@ www.wearemortar.com''';
                   child: Padding(
                     padding: const EdgeInsets.only(top: 12),
                     child: Text(
-                      'I agree to receive emails from Mortar about course updates, events, and community news. (Optional -- you can change this in your settings)',
+                      'I agree to receive emails from MORTAR about course updates, events, and community news. (Optional -- you can change this in your settings)',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey[700]),
                     ),
                   ),

@@ -37,7 +37,7 @@ class _MortarInfoDetailScreenState extends State<MortarInfoDetailScreen> {
     final repo = MortarInfoRepository();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Mortar')),
+      appBar: AppBar(title: const Text('MORTAR')),
       body: FutureBuilder<MortarInfoPost?>(
         future: repo.getPost(widget.postId),
         builder: (context, snap) {

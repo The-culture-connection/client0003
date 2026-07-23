@@ -75,7 +75,7 @@ class _LandingScreenState extends State<LandingScreen> {
             children: [
               const Spacer(),
               Text(
-                'Mortar Alumni Network',
+                'MORTAR Alumni Network',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.w600,

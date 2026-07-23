@@ -34,7 +34,7 @@ export function WebNavigation() {
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-8">
             <Link to="/" className="text-xl font-bold text-foreground">
-              Mortar
+              MORTAR
             </Link>
             <div className="flex items-center gap-1">
               {navItems.map((item) => {

@@ -29,9 +29,11 @@ import {
   markCourseCompleted,
   calculateCourseProgress,
   updateModulesCompletionMap,
-  areAllLessonSurveysSubmitted,
 } from "../../lib/courseProgress";
-import { createSkillCertificatesForCompletedCourse, uploadSurveyResponsePdf } from "../../lib/dataroom";
+import { setAdminReviewSession } from "../../lib/adminReviewMode";
+import { formatQuizQuestionPrompt } from "../../lib/quizText";
+import { AdminReviewNotesPanel } from "../../components/curriculum/AdminReviewNotesPanel";
+import { awardSkillAndCertificate, createSkillCertificatesForCompletedCourse, uploadSurveyResponsePdf } from "../../lib/dataroom";
 import { DEFAULT_DATAROOM_FOLDER_ID } from "../../lib/dataroomFolders";
 import { useAuth } from "../../components/auth/AuthProvider";
 import { functions } from "../../lib/firebase";
@@ -92,6 +94,10 @@ export function LessonPlayer() {
   const [isAnalyzingSurvey, setIsAnalyzingSurvey] = useState(false);
   const [isSubmittingSurvey, setIsSubmittingSurvey] = useState(false);
   const [showSurveyView, setShowSurveyView] = useState(false);
+  /** Admin review mode: content is viewable forever; nothing is recorded. */
+  const [isAdminReviewer, setIsAdminReviewer] = useState(false);
+  /** Review mode only: surveys "submitted" locally this session (no writes). */
+  const [reviewedSurveyIds, setReviewedSurveyIds] = useState<Set<string>>(new Set());
   const loggedQuizExhausted = useRef(false);
   const lastSurveyEngagementSig = useRef<string>("");
 
@@ -119,13 +125,13 @@ export function LessonPlayer() {
     surveys.find((s) => s.id === activeSurveyId) ?? null;
 
   const isSurveySubmitted = (surveyId: string) =>
-    lessonId
+    reviewedSurveyIds.has(surveyId) ||
+    (lessonId
       ? isLessonSurveyCheckpointSubmitted(progress, lessonId, surveyId)
-      : false;
+      : false);
 
   const allSurveysSubmitted =
-    surveys.length === 0 ||
-    (lessonId ? areAllLessonSurveysSubmitted(progress, lessonId, surveys.map((s) => s.id)) : false);
+    surveys.length === 0 || surveys.every((s) => isSurveySubmitted(s.id));
 
   useEffect(() => {
     if (!showSurveyView || activeSurveySubmitted || !activeSurvey?.questions?.length) return;
@@ -201,16 +207,19 @@ export function LessonPlayer() {
         setChapterId(chapterIdParam);
 
         const courseIdParam = params.get("courseId");
+        // Admins/superAdmins get every module for free AND review in admin
+        // review mode (nothing recorded). Fail open to non-admin (paywalled,
+        // tracked) if the roles lookup errors.
+        const currentUser = user ? await getCurrentUserWithRoles().catch(() => null) : null;
+        const isAdmin = isStaffAdminRole(currentUser?.roles);
+        setIsAdminReviewer(isAdmin);
+        setAdminReviewSession(isAdmin);
+        setReviewedSurveyIds(new Set());
         if (courseIdParam && user?.uid) {
-          const [courseData, paidMods, currentUser] = await Promise.all([
+          const [courseData, paidMods] = await Promise.all([
             getCourse(courseIdParam),
             getPaidModuleIds(user.uid),
-            // Admins/superAdmins get every module for free — same role check the
-            // admin dashboard uses to gate the admin experience. Fail open to
-            // non-admin (paywalled) if the roles lookup errors.
-            getCurrentUserWithRoles().catch(() => null),
           ]);
-          const isAdmin = isStaffAdminRole(currentUser?.roles);
           if (!isAdmin && courseData) {
             const modIndex = courseData.curriculumMapping?.modules?.findIndex(
               (m) => m.moduleId === moduleIdParam
@@ -368,6 +377,19 @@ export function LessonPlayer() {
       } catch (err) {
         console.error("Failed to award module completion badges:", err);
       }
+      // Shareable module completion certificate (template PDF → dataroom).
+      if (user && courseId) {
+        for (const mid of newlyCompletedModuleIds) {
+          const mi = mappingModules.findIndex((m) => m.moduleId === mid);
+          const moduleTitle = mi >= 0 ? course.modules?.[mi]?.title : undefined;
+          if (!moduleTitle) continue;
+          try {
+            await awardSkillAndCertificate(user.uid, courseId, course.title ?? "Course", moduleTitle);
+          } catch (err) {
+            console.error("Failed to create module certificate:", err);
+          }
+        }
+      }
     }
   };
 
@@ -376,6 +398,13 @@ export function LessonPlayer() {
       lesson_id: lessonId ?? null,
       course_id: courseId ?? null,
     });
+
+    // Admin review mode: exit without recording progress, completion,
+    // certificates, or abandonment feedback.
+    if (isAdminReviewer) {
+      navigate(courseId ? `/courses/${courseId}` : "/curriculum");
+      return;
+    }
 
     // Trigger abandonment feedback if user exits before 70% completion
     const completionRatio = itemCount > 0 ? currentSlideIndex / itemCount : 0;
@@ -419,6 +448,17 @@ export function LessonPlayer() {
         getCourse(courseId),
       ]);
       if (progressAfter && course) {
+        // Lesson-level skill (e.g. "Personal Finance (Tier I)") — awarded when
+        // THIS lesson is fully complete: slides viewed, quiz passed, checkpoints in.
+        if (lesson?.skill && lessonId && progressAfter.lessonsCompleted?.[lessonId] === true) {
+          try {
+            await awardSkillAndCertificate(user.uid, courseId, course.title ?? "Course", lesson.skill, {
+              addToProfile: true,
+            });
+          } catch (err) {
+            console.error("Failed to award lesson skill certificate:", err);
+          }
+        }
         await syncModuleCompletionAndAwardBadges(progressAfter, course);
         const totalSlidesPerLesson = await getCourseSlideCounts(course);
         const lessonIds = Object.keys(totalSlidesPerLesson);
@@ -441,6 +481,12 @@ export function LessonPlayer() {
             course_id: courseId,
           });
           const { certificatesCreated } = await createSkillCertificatesForCompletedCourse(user.uid, course);
+          // Official course completion certificate + graduate honorific.
+          try {
+            await awardSkillAndCertificate(user.uid, courseId, course.title ?? "MORTAR Masters: Online", "Digital MORTAR MASTER");
+          } catch (err) {
+            console.error("Failed to create course completion certificate:", err);
+          }
           if (certificatesCreated) {
             trackEvent(WEB_ANALYTICS_EVENTS.LESSON_CERTIFICATE_CREATED, {
               course_id: courseId,
@@ -580,6 +626,33 @@ export function LessonPlayer() {
     const sorted = [...activeSurvey.questions].sort((a, b) => a.order - b.order);
     const submittedSurveyId = activeSurveyId;
     const afterIdx = activeSurvey.afterSlideIndex;
+
+    // Admin review mode: walk the full student flow locally, but write nothing —
+    // no survey submission, PDF, awards, or completion checks.
+    if (isAdminReviewer) {
+      const nextReviewed = new Set(reviewedSurveyIds).add(submittedSurveyId);
+      setReviewedSurveyIds(nextReviewed);
+      setActiveSurveySubmitted(true);
+      setSurveyInteractiveStep("answer");
+      setShowSurveyView(false);
+      setActiveSurveyId(null);
+      const moreAtSameSlide = surveys.filter(
+        (s) =>
+          !nextReviewed.has(s.id) &&
+          s.afterSlideIndex === afterIdx &&
+          (lessonId ? !isLessonSurveyCheckpointSubmitted(progress, lessonId, s.id) : true)
+      );
+      if (moreAtSameSlide.length > 0) {
+        openSurveyCheckpoint(moreAtSameSlide[0]);
+      } else if (afterIdx === -1 && hasQuiz && !userPassed) {
+        setShowQuizView(true);
+      } else if (afterIdx >= 0 && afterIdx < itemCount - 1) {
+        setCurrentSlideIndex(afterIdx + 1);
+        window.scrollTo(0, 0);
+      }
+      return;
+    }
+
     setIsSubmittingSurvey(true);
     try {
       await recordLessonSurveyCheckpointSubmission(
@@ -649,6 +722,17 @@ export function LessonPlayer() {
       const progressAfter = refreshed;
       const course = await getCourse(courseId);
       if (progressAfter && course) {
+        // Lesson-level skill (e.g. "Personal Finance (Tier I)") — awarded when
+        // THIS lesson is fully complete: slides viewed, quiz passed, checkpoints in.
+        if (lesson?.skill && lessonId && progressAfter.lessonsCompleted?.[lessonId] === true) {
+          try {
+            await awardSkillAndCertificate(user.uid, courseId, course.title ?? "Course", lesson.skill, {
+              addToProfile: true,
+            });
+          } catch (err) {
+            console.error("Failed to award lesson skill certificate:", err);
+          }
+        }
         await syncModuleCompletionAndAwardBadges(progressAfter, course);
         const totalSlidesPerLesson = await getCourseSlideCounts(course);
         const lessonIds = Object.keys(totalSlidesPerLesson);
@@ -674,6 +758,12 @@ export function LessonPlayer() {
             user.uid,
             course
           );
+          // Official course completion certificate + graduate honorific.
+          try {
+            await awardSkillAndCertificate(user.uid, courseId, course.title ?? "MORTAR Masters: Online", "Digital MORTAR MASTER");
+          } catch (err) {
+            console.error("Failed to create course completion certificate:", err);
+          }
           if (certificatesCreated) {
             trackEvent(WEB_ANALYTICS_EVENTS.LESSON_CERTIFICATE_CREATED, {
               course_id: courseId,
@@ -874,7 +964,12 @@ export function LessonPlayer() {
       <div className="sticky top-0 z-50 bg-black/80 backdrop-blur-sm border-b border-gray-800">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <h1 className="text-lg font-semibold">{lesson.title}</h1>
+            <div>
+              <h1 className="text-lg font-semibold">{lesson.title}</h1>
+              {lesson.subtitle && (
+                <p className="text-xs text-gray-400">{lesson.subtitle}</p>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <span className="text-sm text-gray-400">
@@ -904,6 +999,13 @@ export function LessonPlayer() {
             style={{ width: `${progressPct}%` }}
           />
         </div>
+
+        {/* Admin review mode banner */}
+        {isAdminReviewer && (
+          <div className="bg-amber-500/15 border-t border-amber-500/30 text-amber-300 text-xs text-center py-1.5 px-4">
+            Admin review mode — viewing does not record progress, quiz results, surveys, or certificates.
+          </div>
+        )}
       </div>
 
       {/* Lesson screen content */}
@@ -1033,11 +1135,10 @@ export function LessonPlayer() {
                     .sort((a, b) => a.order - b.order)
                     .map((q, i) => (
                       <div key={i} className="rounded-lg border border-gray-700 p-4 bg-gray-900/50">
-                        <p className="font-medium mb-3">{q.question}</p>
+                        <p className="font-medium mb-1">{formatQuizQuestionPrompt(q.question)}</p>
+                        <p className="text-xs text-gray-500 mb-3">Select one answer.</p>
                         <div className="space-y-2">
-                          {(["A", "B", "C", "D"] as const)
-                            .filter((opt) => String(q[`option${opt}` as keyof typeof q] ?? "").trim() !== "")
-                            .map((opt) => (
+                          {(["A", "B", "C", "D"] as const).map((opt) => (
                             <label
                               key={opt}
                               className="flex items-center gap-3 cursor-pointer rounded p-2 hover:bg-gray-800"
@@ -1189,6 +1290,22 @@ export function LessonPlayer() {
           <ChevronRight className="w-5 h-5 ml-2" />
         </Button>
       </div>
+      )}
+
+      {/* Admin-only: slide-anchored review notes */}
+      {isAdminReviewer && courseId && lessonId && (
+        <AdminReviewNotesPanel
+          courseId={courseId}
+          lessonId={lessonId}
+          lessonTitle={lesson.title}
+          currentSlideIndex={currentSlideIndex}
+          onGoToSlide={(idx) => {
+            setShowQuizView(false);
+            setShowSurveyView(false);
+            setCurrentSlideIndex(Math.max(0, Math.min(idx, itemCount - 1)));
+            window.scrollTo(0, 0);
+          }}
+        />
       )}
     </div>
   );

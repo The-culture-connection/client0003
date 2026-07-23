@@ -275,6 +275,52 @@ export async function createSkillCertificate(
  * Create skill certificates for all skills assigned to modules in the course.
  * Returns whether any certificates were created (so the UI can show an alert).
  */
+/**
+ * Award a single certificate line — a lesson skill ("Personal Finance (Tier I)"),
+ * a module title (module completion certificate), or the course honorific
+ * ("Digital MORTAR MASTER"). Generates the template PDF into the user's
+ * dataroom; idempotent per (userId, courseId, skill) via createSkillCertificate.
+ * Set addToProfile for real skills so they land in users.confident_skills
+ * (alumni-app matching).
+ */
+export async function awardSkillAndCertificate(
+  userId: string,
+  courseId: string,
+  courseTitle: string,
+  skill: string,
+  opts: { addToProfile?: boolean } = {}
+): Promise<boolean> {
+  let recipientName = "Learner";
+  try {
+    const userSnap = await getDoc(doc(db, "users", userId));
+    if (userSnap.exists()) {
+      const u = userSnap.data() as Record<string, unknown>;
+      const first = typeof u.first_name === "string" ? u.first_name.trim() : "";
+      const last = typeof u.last_name === "string" ? u.last_name.trim() : "";
+      recipientName =
+        [first, last].filter(Boolean).join(" ").trim() ||
+        (typeof u.display_name === "string" && u.display_name.trim()) ||
+        (typeof u.name === "string" && u.name.trim()) ||
+        recipientName;
+    }
+  } catch {
+    // Keep fallback when profile cannot be read.
+  }
+  const id = await createSkillCertificate(userId, courseId, courseTitle, skill, undefined, recipientName);
+  if (opts.addToProfile) {
+    try {
+      await updateDoc(doc(db, "users", userId), { confident_skills: arrayUnion(skill) });
+    } catch {
+      try {
+        await setDoc(doc(db, "users", userId), { confident_skills: arrayUnion(skill) }, { merge: true });
+      } catch {
+        // Non-fatal: certificate exists; profile enrichment can be retried.
+      }
+    }
+  }
+  return id != null;
+}
+
 export async function createSkillCertificatesForCompletedCourse(
   userId: string,
   course: {

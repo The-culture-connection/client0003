@@ -13,7 +13,7 @@ export function MobileFeedPage() {
       avatar: "SJ",
       time: "2h ago",
       content:
-        "Just landed my dream job at a tech startup! Mortar's program gave me the skills and confidence I needed. Forever grateful! 🚀",
+        "Just landed my dream job at a tech startup! MORTAR's program gave me the skills and confidence I needed. Forever grateful! 🚀",
       likes: 24,
       comments: 8,
     },

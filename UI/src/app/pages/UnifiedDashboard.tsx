@@ -168,7 +168,7 @@ export function UnifiedDashboard() {
     },
     {
       icon: Megaphone,
-      title: "Mortar Info",
+      title: "MORTAR Info",
       description: "Platform announcements and updates",
       path: "/admin/mortar-info",
       color: "from-pink-500/20 to-pink-500/5",

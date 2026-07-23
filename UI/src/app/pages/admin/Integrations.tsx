@@ -171,7 +171,7 @@ export function Integrations() {
                 </div>
                 <div className="flex items-center gap-2">
                   <input type="checkbox" defaultChecked className="rounded" />
-                  <span className="text-sm text-foreground">Include Mortar branding</span>
+                  <span className="text-sm text-foreground">Include MORTAR branding</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <input type="checkbox" className="rounded" />

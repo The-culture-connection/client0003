@@ -2,6 +2,7 @@ import { doc, getDoc, setDoc, updateDoc, serverTimestamp, deleteField } from "fi
 import { db } from "./firebase";
 import { Timestamp } from "firebase/firestore";
 import { invalidateCache } from "./cache";
+import { isAdminReviewSession } from "./adminReviewMode";
 import {
   isLessonSurveyCheckpointSubmitted,
   lessonSurveyProgressKey,
@@ -78,6 +79,8 @@ export async function reconcileCourseContentVersion(
   course: Course | null,
   progress: CourseProgress | null
 ): Promise<CourseProgress | null> {
+  // Admin review mode: never rewrite progress docs while an admin is reviewing.
+  if (isAdminReviewSession()) return progress;
   if (!course?.id || !course.contentVersion || !progress) return progress;
   const synced = progress.syncedContentVersion ?? 0;
   if (synced >= course.contentVersion) return progress;
@@ -161,6 +164,9 @@ export async function initializeCourseProgress(
       updatedAt: serverTimestamp() as Timestamp,
     };
 
+    // Admin review mode: hand back an in-memory doc without persisting it.
+    if (isAdminReviewSession()) return progressData;
+
     await setDoc(progressRef, progressData);
     invalidateCache(`progress:${userId}`);
     return progressData;
@@ -180,6 +186,7 @@ export async function updateLessonCompletion(
   lessonId: string,
   completed: boolean
 ): Promise<void> {
+  if (isAdminReviewSession()) return;
   try {
     const progressRef = doc(db, "courseProgress", `${userId}_${courseId}`);
     const progressSnap = await getDoc(progressRef);
@@ -217,6 +224,7 @@ export async function updateLessonSlideProgress(
   slideIndex: number,
   totalSlides: number
 ): Promise<void> {
+  if (isAdminReviewSession()) return;
   try {
     const progressRef = doc(db, "courseProgress", `${userId}_${courseId}`);
     const progressSnap = await getDoc(progressRef);
@@ -263,6 +271,7 @@ export async function updatePageProgress(
   pageNumber: number,
   totalPages: number
 ): Promise<void> {
+  if (isAdminReviewSession()) return;
   try {
     const progressRef = doc(db, "courseProgress", `${userId}_${courseId}`);
     const progressSnap = await getDoc(progressRef);
@@ -305,6 +314,7 @@ export async function setLessonCompleted(
   courseId: string,
   lessonId: string
 ): Promise<void> {
+  if (isAdminReviewSession()) return;
   try {
     const progressRef = doc(db, "courseProgress", `${userId}_${courseId}`);
     const progressSnap = await getDoc(progressRef);
@@ -341,6 +351,7 @@ export async function recordLessonQuizAttempt(
   lessonId: string,
   passed: boolean
 ): Promise<void> {
+  if (isAdminReviewSession()) return;
   try {
     const progressRef = doc(db, "courseProgress", `${userId}_${courseId}`);
     const progressSnap = await getDoc(progressRef);
@@ -393,6 +404,7 @@ export async function saveLessonSurveyAnswersDraft(
   answers: string[],
   surveyId: string = LEGACY_LESSON_SURVEY_ID
 ): Promise<void> {
+  if (isAdminReviewSession()) return;
   try {
     const progressRef = doc(db, "courseProgress", `${userId}_${courseId}`);
     const progressSnap = await getDoc(progressRef);
@@ -464,6 +476,7 @@ export async function recordLessonSurveyCheckpointSubmission(
     quizPassed?: boolean;
   }
 ): Promise<void> {
+  if (isAdminReviewSession()) return;
   try {
     const progressRef = doc(db, "courseProgress", `${userId}_${courseId}`);
     const progressSnap = await getDoc(progressRef);
@@ -539,6 +552,7 @@ export async function markCourseCompleted(
   userId: string,
   courseId: string
 ): Promise<void> {
+  if (isAdminReviewSession()) return;
   try {
     const progressRef = doc(db, "courseProgress", `${userId}_${courseId}`);
     await updateDoc(progressRef, {
@@ -562,6 +576,7 @@ export async function updateModulesCompletionMap(
   courseId: string,
   modulesCompleted: Record<string, boolean>
 ): Promise<void> {
+  if (isAdminReviewSession()) return;
   try {
     const progressRef = doc(db, "courseProgress", `${userId}_${courseId}`);
     await updateDoc(progressRef, {

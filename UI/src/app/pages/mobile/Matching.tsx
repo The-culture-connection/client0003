@@ -16,7 +16,7 @@ export function MobileMatching() {
       cohort: "Class of 2023",
       location: "San Francisco, CA",
       interests: ["Product Design", "SaaS", "Leadership"],
-      bio: "Passionate about building products that make a difference. Always happy to mentor fellow Mortar alumni!",
+      bio: "Passionate about building products that make a difference. Always happy to mentor fellow MORTAR alumni!",
       matchScore: 95,
     },
     {

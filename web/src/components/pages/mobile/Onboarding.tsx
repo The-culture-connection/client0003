@@ -100,7 +100,7 @@ export function MobileOnboardingPage() {
       <div className="p-4 pb-24 min-h-screen flex flex-col">
         <div className="flex-1">
           <div className="mb-8 pt-8">
-            <h1 className="text-2xl text-foreground mb-2">Welcome to Mortar!</h1>
+            <h1 className="text-2xl text-foreground mb-2">Welcome to MORTAR!</h1>
             <p className="text-sm text-muted-foreground">
               Let&apos;s set up your business profile to connect you with the right people
             </p>
@@ -347,7 +347,7 @@ export function MobileOnboardingPage() {
       </div>
       <h1 className="text-2xl text-foreground mb-2">You&apos;re all set!</h1>
       <p className="text-muted-foreground mb-8">
-        Welcome to the Mortar community. Let&apos;s get started!
+        Welcome to the MORTAR community. Let&apos;s get started!
       </p>
       <Button
         onClick={() => router.push("/mobile/feed")}

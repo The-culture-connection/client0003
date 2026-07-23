@@ -191,9 +191,9 @@ export function adminCustomAnnouncementParams(input: {
     first_name: input.first_name ?? firstNameFrom(input.userName, input.userEmail),
     headline: input.headline.trim(),
     message_body: plainMessageBody(input.message_body),
-    sender_name: input.sender_name.trim() || "Mortar Team",
+    sender_name: input.sender_name.trim() || "MORTAR Team",
     cta_url: input.cta_url?.trim() || platformUrl,
-    cta_label: input.cta_label?.trim() || "Open Mortar",
+    cta_label: input.cta_label?.trim() || "Open MORTAR",
     ...shared,
   };
 }

@@ -1140,7 +1140,7 @@ export function AdminPage() {
           </TabsTrigger>
           <TabsTrigger value="mortar-info">
             <Megaphone className="w-4 h-4 mr-2" />
-            Mortar Info
+            MORTAR Info
           </TabsTrigger>
           <TabsTrigger value="messages">
             <MessageSquare className="w-4 h-4 mr-2" />
@@ -2308,7 +2308,7 @@ export function AdminPage() {
         <TabsContent value="mobile-analytics" className="space-y-6">
           <p className="text-sm text-muted-foreground max-w-4xl">
             Phase 4 summaries from <code className="text-xs bg-muted px-1">expansion_analytics_events</code> (Cloud
-            Function rollups). Same callables as Mortar web Admin — deploy{" "}
+            Function rollups). Same callables as MORTAR web Admin — deploy{" "}
             <code className="text-xs bg-muted px-1">getAdminMobileAnalyticsDashboard</code> and{" "}
             <code className="text-xs bg-muted px-1">queryAdminExpansionAnalyticsEvents</code> to this Firebase project.
           </p>
@@ -2339,7 +2339,7 @@ export function AdminPage() {
                 <Label htmlFor="shop-item-name" className="text-foreground">Item Name *</Label>
                 <Input
                   id="shop-item-name"
-                  placeholder="e.g. Mortar Logo Tee"
+                  placeholder="e.g. MORTAR Logo Tee"
                   value={shopItemName}
                   onChange={(e) => setShopItemName(e.target.value)}
                   className="bg-background"

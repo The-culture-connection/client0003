@@ -15,7 +15,7 @@ export default function Feed() {
       role: "Alumni • Class of 2024",
       avatar: "SJ",
       time: "2h ago",
-      content: "Just landed my dream job at a tech startup! Mortar's program gave me the skills and confidence I needed. Forever grateful! 🚀",
+      content: "Just landed my dream job at a tech startup! MORTAR's program gave me the skills and confidence I needed. Forever grateful! 🚀",
       likes: 24,
       comments: 8,
     },

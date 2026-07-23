@@ -91,7 +91,7 @@ export function WebShop() {
     <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-foreground mb-2">Shop Mortar</h1>
+        <h1 className="text-3xl font-bold text-foreground mb-2">Shop MORTAR</h1>
         <p className="text-muted-foreground">
           Tees, hoodies, crewnecks, household items, and accessories
         </p>

@@ -38,6 +38,7 @@ import {
   unpaidPaidModuleTotalCents,
 } from "../../lib/moduleAccess";
 import { checkoutModule } from "../../lib/stripeCheckout";
+import { setAdminReviewSession } from "../../lib/adminReviewMode";
 import { Lock } from "lucide-react";
 
 export function CourseDetail() {
@@ -87,7 +88,11 @@ export function CourseDetail() {
         setCourseProgress(reconciledProgress);
         setPaidModuleIds(paidMods);
         const roles = userWithRoles?.roles ?? [];
-        setIsAdmin(roles.includes("Admin") || roles.includes("superAdmin"));
+        const admin = roles.includes("Admin") || roles.includes("superAdmin");
+        setIsAdmin(admin);
+        // Admin review mode: admins browse course content without recording
+        // progress/completion anywhere (see lib/adminReviewMode.ts).
+        setAdminReviewSession(admin);
         if (courseData?.curriculumMapping) {
           const counts = await getCourseSlideCounts(courseData);
           setCourseSlideCounts(counts);
@@ -183,9 +188,11 @@ export function CourseDetail() {
         lessonSurveyCounts ?? undefined
       )
     : 0;
+  // Admin review mode: admins never see done/completed states on course content.
+  const reviewMode = isAdmin;
   // Don't show "Completed" or 100% until we have slide counts (avoids flash from fallback or stale progress.completed)
   const hasProgressData = courseSlideCounts != null;
-  const isCourseCompleted = hasProgressData && (courseProgress?.completed || courseProgressValue === 100);
+  const isCourseCompleted = hasProgressData && !reviewMode && (courseProgress?.completed || courseProgressValue === 100);
   const displayProgressValue = hasProgressData ? courseProgressValue : Math.min(courseProgressValue, 99);
 
   // Countdown in days: only when user has started the course (startedAt set)
@@ -227,6 +234,11 @@ export function CourseDetail() {
                   <Edit className="w-4 h-4 mr-2" />
                   Edit course
                 </Button>
+              )}
+              {reviewMode && (
+                <Badge variant="outline" className="border-amber-500 text-amber-500">
+                  Review mode
+                </Badge>
               )}
               {isCourseCompleted && (
                 <Badge className="bg-green-500/10 text-green-500 border-green-500/20">
@@ -273,7 +285,7 @@ export function CourseDetail() {
                 </div>
               )}
             </div>
-            {courseProgress && (
+            {courseProgress && !reviewMode && (
               <div className="mt-4">
                 <span className="text-sm text-muted-foreground">Your Progress</span>
                 <div className="mt-2 space-y-1">
@@ -283,6 +295,11 @@ export function CourseDetail() {
                   </p>
                 </div>
               </div>
+            )}
+            {reviewMode && (
+              <p className="mt-4 text-xs text-muted-foreground">
+                Admin review mode — viewing course content doesn&apos;t record progress or completion.
+              </p>
             )}
           </div>
         </div>
@@ -338,7 +355,7 @@ export function CourseDetail() {
                           {module.price.toFixed(2)}
                         </Badge>
                       )}
-                      {(module.durationMonths ?? 0) > 0 && (
+                      {module.durationMonths && module.durationMonths > 0 && (
                         <Badge variant="secondary" className="text-xs">
                           <Clock className="w-3 h-3 mr-1" />
                           {startedAtDate
@@ -446,7 +463,7 @@ export function CourseDetail() {
                         <>
                           <h4 className="text-sm font-semibold text-foreground mb-3">
                             Lessons ({module.lessons.length})
-                            {courseProgress && completedInModule > 0 && (
+                            {courseProgress && completedInModule > 0 && !reviewMode && (
                               <span className="text-muted-foreground font-normal ml-2">
                                 — {completedInModule} of {module.lessons.length} completed
                               </span>
@@ -481,7 +498,7 @@ export function CourseDetail() {
                                 surveyOkForLesson) ||
                               false;
                             const hasCurriculumContent = Boolean(course.curriculumMapping && curriculumLessonId);
-                            const showAsCompleted = hasProgressData && isCompleted;
+                            const showAsCompleted = hasProgressData && isCompleted && !reviewMode;
                             const totalSlidesForLesson = hasProgressData ? (courseSlideCounts?.[lessonIdForProgress] ?? courseProgress?.totalPages?.[lessonIdForProgress] ?? 0) : 0;
                             const viewedSlides = courseProgress?.pagesViewed?.[lessonIdForProgress] ?? 0;
                             const contentComplete = hasProgressData && totalSlidesForLesson > 0 && viewedSlides >= totalSlidesForLesson;
@@ -499,14 +516,19 @@ export function CourseDetail() {
                                   <p className="text-sm font-medium text-foreground">
                                     {lesson.title}
                                   </p>
-                                  {courseProgress?.pagesViewed?.[lessonIdForProgress] != null &&
+                                  {lesson.subtitle && (
+                                    <p className="text-xs text-muted-foreground">{lesson.subtitle}</p>
+                                  )}
+                                  {!reviewMode &&
+                                    courseProgress?.pagesViewed?.[lessonIdForProgress] != null &&
                                     (courseProgress?.totalPages?.[lessonIdForProgress] ?? 0) > 0 && (
                                       <p className="text-xs text-muted-foreground mt-1">
                                         Progress: {courseProgress.pagesViewed[lessonIdForProgress]} of{" "}
                                         {courseProgress.totalPages?.[lessonIdForProgress]} slides
                                       </p>
                                     )}
-                                  {/* Per-lesson completion: Content, Quiz, Document generation */}
+                                  {/* Per-lesson completion: Content, Quiz, Document generation (hidden in admin review mode) */}
+                                  {!reviewMode && (
                                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-muted-foreground">
                                     <span className="flex items-center gap-1.5">
                                       {contentComplete ? (
@@ -528,7 +550,7 @@ export function CourseDetail() {
                                     )}
                                     {hasSurveyForLesson && (
                                       <span className="flex items-center gap-1.5">
-                                        {isLessonSurveysCompleteByCount(courseProgress, lessonIdForProgress, surveyCountForLesson) ? (
+                                        {courseProgress?.surveySubmitted?.[lessonIdForProgress] ? (
                                           <CheckCircle2 className="w-3.5 h-3.5 text-green-600 shrink-0" />
                                         ) : (
                                           <span className="w-3.5 h-3.5 rounded-full border border-muted-foreground/50 shrink-0" />
@@ -537,6 +559,7 @@ export function CourseDetail() {
                                       </span>
                                     )}
                                   </div>
+                                  )}
                                   {lesson.slideFileName && (
                                     <p className="text-xs text-muted-foreground mt-1">
                                       {lesson.slideFileName}
@@ -607,9 +630,11 @@ export function CourseDetail() {
                                     }}
                                   >
                                     <Play className="w-3 h-3 mr-1" />
-                                    {courseProgress?.pagesViewed?.[curriculumLessonId!]
-                                      ? `Continue (${courseProgress.pagesViewed[curriculumLessonId!]}/${courseProgress.totalPages?.[curriculumLessonId!] ?? "?"} slides)`
-                                      : "Start Lesson"}
+                                    {reviewMode
+                                      ? "View Lesson"
+                                      : courseProgress?.pagesViewed?.[curriculumLessonId!]
+                                        ? `Continue (${courseProgress.pagesViewed[curriculumLessonId!]}/${courseProgress.totalPages?.[curriculumLessonId!] ?? "?"} slides)`
+                                        : "Start Lesson"}
                                   </Button>
                                 ) : (
                                   <Badge variant="secondary" className="text-xs">

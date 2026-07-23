@@ -208,7 +208,7 @@ export function MortarInfoAdminPanel() {
   return (
     <div className="space-y-8 max-w-[720px] mx-auto pb-10">
       <p className="text-sm text-muted-foreground text-center px-2">
-        Posts appear on the Expansion app home feed as <strong>Mortar</strong> updates — same layout as here.
+        Posts appear on the Expansion app home feed as <strong>MORTAR</strong> updates — same layout as here.
         Target <code className="text-xs bg-muted px-1">events_mobile</code> with{" "}
         <code className="text-xs bg-muted px-1">distribution: mobile | both</code> for events.
       </p>
@@ -231,7 +231,7 @@ export function MortarInfoAdminPanel() {
             </div>
             <div className="flex-1 min-w-0 space-y-3">
               <div>
-                <p className="text-sm font-semibold text-foreground">Mortar</p>
+                <p className="text-sm font-semibold text-foreground">MORTAR</p>
                 <p className="text-xs text-muted-foreground">Post to alumni home · {published ? "Visible when published" : "Draft"}</p>
               </div>
               <Input
@@ -382,7 +382,7 @@ export function MortarInfoAdminPanel() {
                     <div className="flex-1 min-w-0 space-y-2">
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div>
-                          <p className="text-sm font-semibold text-foreground">Mortar</p>
+                          <p className="text-sm font-semibold text-foreground">MORTAR</p>
                           <p className="text-xs text-muted-foreground">
                             Alumni Network · Official update · {relativeTime(p.created_at)}
                           </p>

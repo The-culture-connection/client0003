@@ -300,7 +300,7 @@ class _AuthClaimScreenState extends State<AuthClaimScreen> {
       _ClaimStep.passwordNewAccount =>
         'Choose a password for your new account (at least 6 characters).',
       _ClaimStep.passwordExistingAccount =>
-        'This email already has a Mortar account. Enter your password once to link your invite and open the app.',
+        'This email already has a MORTAR account. Enter your password once to link your invite and open the app.',
     };
 
     return Scaffold(

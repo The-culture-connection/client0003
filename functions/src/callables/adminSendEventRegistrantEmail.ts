@@ -109,7 +109,7 @@ export const adminSendEventRegistrantEmail = onCall(
       );
     }
 
-    const title = typeof event.title === "string" ? event.title : "Mortar Event";
+    const title = typeof event.title === "string" ? event.title : "MORTAR Event";
     const eventDate = formatEventDate(
       event.date as Timestamp | undefined,
       typeof event.time === "string" ? event.time : undefined

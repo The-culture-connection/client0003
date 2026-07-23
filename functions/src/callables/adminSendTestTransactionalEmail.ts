@@ -107,7 +107,7 @@ function buildSampleParams(
       userEmail,
       userName,
       meeting_time: "3/16/2026 at 2:30 PM",
-      notes: "Test graduation meeting — Mortar admin email testing panel.",
+      notes: "Test graduation meeting — MORTAR admin email testing panel.",
     });
   case "graduation_admitted_to_alumni":
     return graduationAdmittedToAlumniParams({
@@ -124,9 +124,9 @@ function buildSampleParams(
     return eventRegistrantParams({
       userEmail,
       userName,
-      event_title: "Mortar Networking Mixer (Test)",
+      event_title: "MORTAR Networking Mixer (Test)",
       event_date: "Wed, March 16, 2026 · 6:00 PM",
-      event_location: "Mortar HQ — Cincinnati, OH",
+      event_location: "MORTAR HQ — Cincinnati, OH",
       message_body: "This is a test event announcement from the admin email testing panel.",
       event_id: "test-event-id",
     });
@@ -134,9 +134,9 @@ function buildSampleParams(
     return adminCustomAnnouncementParams({
       userEmail,
       userName,
-      headline: "Test announcement from Mortar admin",
+      headline: "Test announcement from MORTAR admin",
       message_body: "This is a sample custom announcement sent from the admin email testing panel.",
-      sender_name: "Mortar Team",
+      sender_name: "MORTAR Team",
     });
   case "app_access_code_invite":
     return appAccessCodeInviteParams({
@@ -150,7 +150,7 @@ function buildSampleParams(
       userEmail,
       userName,
       order_id: "test-order-shop",
-      order_lines_plain: "1 × Mortar Logo Tee · Size M · Tees\n1 × Standard shipping",
+      order_lines_plain: "1 × MORTAR Logo Tee · Size M · Tees\n1 × Standard shipping",
       amount_subtotal: 3500,
       amount_tax: 287,
       amount_shipping: 800,
@@ -169,9 +169,9 @@ function buildSampleParams(
       userEmail,
       userName,
       order_id: "test-order-event",
-      event_title: "Mortar Networking Mixer",
+      event_title: "MORTAR Networking Mixer",
       event_date: "Wed, March 16, 2026 · 6:00 PM",
-      event_location: "Mortar HQ — Cincinnati, OH",
+      event_location: "MORTAR HQ — Cincinnati, OH",
       event_id: "test-event-id",
       amount_total: 2500,
     });
@@ -180,7 +180,7 @@ function buildSampleParams(
       userEmail,
       userName,
       order_id: "test-order-module",
-      course_title: "Mortar Masters Online",
+      course_title: "MORTAR Masters Online",
       module_title: "First Verse",
       curriculum_url: "https://mortar-stage-stage.up.railway.app/curriculum/mortar_masters_online",
       amount_total: 9900,
@@ -192,14 +192,14 @@ function buildSampleParams(
       order_id: "test-order-shop",
       fulfillment_status: "Shipped",
       tracking_line: "Tracking number: 1Z999AA10123456784",
-      order_lines_plain: "1 × Mortar Logo Tee · Size M",
+      order_lines_plain: "1 × MORTAR Logo Tee · Size M",
     });
   case "admin_role_granted":
     return adminRoleGrantedParams({
       userEmail,
       userName,
       role: "Admin",
-      granted_by_name: "Mortar Admin Team",
+      granted_by_name: "MORTAR Admin Team",
     });
   default:
     return {};

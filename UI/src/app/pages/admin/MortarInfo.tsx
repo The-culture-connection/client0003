@@ -19,7 +19,7 @@ export function MortarInfo() {
       </Button>
 
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-foreground mb-2">Mortar Info</h1>
+        <h1 className="text-3xl font-bold text-foreground mb-2">MORTAR Info</h1>
         <p className="text-muted-foreground">
           Manage platform announcements and important updates
         </p>
@@ -27,7 +27,7 @@ export function MortarInfo() {
 
       <Card className="p-12 text-center">
         <Megaphone className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-        <h2 className="text-xl font-bold text-foreground mb-2">Mortar Info Panel</h2>
+        <h2 className="text-xl font-bold text-foreground mb-2">MORTAR Info Panel</h2>
         <p className="text-sm text-muted-foreground max-w-md mx-auto">
           This feature is available in your Digital Curriculum repo. Import the MortarInfoAdminPanel component from your existing codebase.
         </p>

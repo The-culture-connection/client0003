@@ -254,10 +254,10 @@ export function PaymentManager() {
 
             <div className="space-y-3">
               {[
-                { item: "Mortar Branded Notebook", price: 19.99, stock: 145 },
+                { item: "MORTAR Branded Notebook", price: 19.99, stock: 145 },
                 { item: "Entrepreneur Starter Kit", price: 49.99, stock: 67 },
                 { item: "Business Plan Template Bundle", price: 29.99, stock: 89 },
-                { item: "Mortar T-Shirt", price: 24.99, stock: 234 },
+                { item: "MORTAR T-Shirt", price: 24.99, stock: 234 },
               ].map((item, idx) => (
                 <div
                   key={idx}

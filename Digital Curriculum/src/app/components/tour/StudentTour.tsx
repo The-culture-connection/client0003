@@ -25,7 +25,7 @@ const steps: Step[] = [
     target: "body",
     placement: "center",
     disableBeacon: true,
-    title: "Welcome to Mortar 👋",
+    title: "Welcome to MORTAR 👋",
     content:
       "Here's a 30-second tour of where everything is. You can skip anytime, and re-open this from the ? button up top whenever you like.",
   },
@@ -55,9 +55,9 @@ const steps: Step[] = [
   },
   {
     target: '[data-tour="nav-shop"]',
-    title: "Shop Mortar",
+    title: "Shop MORTAR",
     content:
-      "Browse Mortar merchandise. Add items to your cart and check out securely.",
+      "Browse MORTAR merchandise. Add items to your cart and check out securely.",
   },
   {
     target: '[data-tour="nav-notifications"]',
