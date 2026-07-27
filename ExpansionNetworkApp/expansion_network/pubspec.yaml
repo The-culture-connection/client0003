@@ -54,6 +54,7 @@ dependencies:
   shared_preferences: ^2.5.5
   qr_flutter: ^4.1.0
   mobile_scanner: ^7.4.0
+  vibration: ^3.2.0
 
 dev_dependencies:
   flutter_test:
@@ -98,7 +99,7 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/Welcome.gif
+    - assets/welcome_mortarverse.gif
     - assets/conference/shop_storefront.png
 
   # An image asset can refer to one or more resolution-specific "variants", see

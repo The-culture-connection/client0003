@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 import '../analytics/expansion_analytics.dart';
+import '../auth/auth_controller.dart';
 import '../theme/app_theme.dart';
 
 /// Open account creation — no invite code required. Anyone can create a
@@ -46,6 +48,8 @@ class _AuthSignUpScreenState extends State<AuthSignUpScreen> {
 
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
+    // Held across the awaits below — see AuthSignInScreen._submit for why.
+    final auth = context.read<AuthController>();
     await ExpansionAnalytics.log('auth_sign_up_submitted', sourceScreen: 'auth_sign_up');
     setState(() {
       _busy = true;
@@ -56,6 +60,7 @@ class _AuthSignUpScreenState extends State<AuthSignUpScreen> {
         email: _email.text.trim(),
         password: _password.text,
       );
+      auth.markWelcomeIntroPending();
       if (mounted) {
         await ExpansionAnalytics.log('auth_sign_up_succeeded', sourceScreen: 'auth_sign_up');
         if (!mounted) return;

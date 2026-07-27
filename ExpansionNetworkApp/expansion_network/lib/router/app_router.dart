@@ -68,6 +68,17 @@ GoRouter createAppRouter(AuthController auth) {
     redirect: (context, state) {
       final loc = state.matchedLocation;
 
+      /// Where a signed-in, onboarded user belongs: through the Mortarverse
+      /// welcome animation once after an actual sign-in, otherwise straight to
+      /// the chooser.
+      ///
+      /// Both exits from auth must agree. A sign-in resolves while the user is
+      /// still on `/auth/*`, so `refreshListenable` can redirect from there
+      /// before the screen's own `go('/session')` runs — if only the `/session`
+      /// branch checked the flag, the intro would be skipped in that race.
+      String postAuthDestination() =>
+          auth.welcomeIntroPending ? '/welcome-intro' : '/mortarverse';
+
       if (auth.loading) {
         if (loc == '/session' || loc.startsWith('/auth') || loc == '/welcome-intro') return null;
         return '/session';
@@ -80,10 +91,11 @@ GoRouter createAppRouter(AuthController auth) {
         // signed-in account, regardless of Expansion access — see
         // AuthController._applySessionForUser's NO_EXPANSION_ACCESS branch.
         if (auth.needsExpansionOnboarding == true) return '/onboarding';
-        // Every fresh session passes through the "Welcome to the Mortarverse"
-        // animation before the chooser (WelcomeMortarverseIntroScreen forwards
-        // to /mortarverse on its own once it finishes).
-        return '/welcome-intro';
+        // A restored session lands here on every cold start, so the intro is
+        // gated on the flag rather than played unconditionally. (New profiles
+        // reach it from the last onboarding step instead.) The intro screen
+        // clears the flag itself, so this may run twice without losing it.
+        return postAuthDestination();
       }
 
       final loggedIn = auth.user != null;
@@ -106,7 +118,7 @@ GoRouter createAppRouter(AuthController auth) {
         return '/onboarding';
       }
       if (loggedIn && doneOnboarding && publicAuth) {
-        return '/mortarverse';
+        return postAuthDestination();
       }
       return null;
     },

@@ -6,31 +6,49 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:vibration/vibration.dart';
 
 import '../analytics/expansion_analytics.dart';
 import '../auth/auth_controller.dart';
 
-/// Post–profile-completion welcome: **`assets/Welcome.gif`**, then **Home**.
-const String kWelcomeGifAsset = 'assets/Welcome.gif';
+/// Post–sign-in / post–profile-completion welcome, then the Mortarverse chooser.
+const String kWelcomeGifAsset = 'assets/welcome_mortarverse.gif';
 
 /// If the GIF is a single frame, or a frame has **no** delay in the file, hold this long
-/// before Home (replaces a fixed wall-clock “whole animation” timer).
+/// before moving on (replaces a fixed wall-clock “whole animation” timer).
 const Duration kWelcomeSingleFrameOrZeroDelayHold = Duration(milliseconds: 5300);
 
 /// Minimum time each frame stays on screen when the encoder stored `0` delay.
 const Duration kWelcomeGifMinFrameDuration = Duration(milliseconds: 16);
 
-/// Seconds from **GIF start** (same moment as codec playback: first frame is on screen —
-/// we schedule after that frame paints). Match these to beats in `Welcome.gif` (e.g. stopwatch
-/// from when motion begins, or your editor’s timeline). Use decimals for fine tuning (e.g. 2.35).
-const List<double> kWelcomeIntroHapticTimesSec = [0.7, 2.4, 4.0];
+/// One sustained buzz starting with the first frame.
+///
+/// Deliberately a *single* platform call rather than a train of
+/// [HapticFeedback] impacts: each call hops the platform channel and competes
+/// with frame decoding, which is what made the old intro stutter.
+const bool kWelcomeIntroVibrationEnabled = true;
+const Duration kWelcomeIntroVibrationDuration = Duration(milliseconds: 2100);
 
-/// Flutter exposes only short impacts, not a true sustained motor buzz. We approximate
-/// “BUUUZZ” with a train of [heavyImpact] calls — raise [kWelcomeIntroBuzzPulseCount] or
-/// tighten [kWelcomeIntroBuzzPulseGapMs] for a longer / denser rumble.
-const int kWelcomeIntroBuzzPulseCount = 10;
-const int kWelcomeIntroBuzzPulseGapMs = 26;
+/// Never decode above the GIF's own 1080px width — upscaling costs memory and
+/// buys nothing.
+const int kWelcomeGifNativeWidth = 1080;
 
+/// Plays [kWelcomeGifAsset] once, then routes to `/mortarverse`.
+///
+/// Playback notes — the GIF is 1080x1920 @ 30fps, and each decoded frame is
+/// ~7.9 MB of RGBA, so how frames are pumped matters:
+///
+/// * **Decode-ahead.** The next frame decodes while the current one is on
+///   screen, instead of serially decode → show → sleep. Only two frames are
+///   ever in flight, so memory stays flat.
+/// * **Absolute timeline.** Each frame is due at a fixed offset from the start,
+///   measured with a [Stopwatch]. The previous implementation slept for the
+///   *full* frame delay after decoding, so decode time was added on top of every
+///   frame and the animation ran roughly half speed.
+/// * **No `setState` per frame.** Frames go through a [ValueNotifier] so only
+///   the [RawImage] repaints rather than rebuilding the whole subtree.
+/// * **Decode at screen size.** On a device narrower than 1080px the codec
+///   downscales during decode, cutting both work and memory.
 class WelcomeMortarverseIntroScreen extends StatefulWidget {
   const WelcomeMortarverseIntroScreen({super.key});
 
@@ -39,24 +57,34 @@ class WelcomeMortarverseIntroScreen extends StatefulWidget {
 }
 
 class _WelcomeMortarverseIntroScreenState extends State<WelcomeMortarverseIntroScreen> {
+  final ValueNotifier<ui.Image?> _frame = ValueNotifier<ui.Image?>(null);
+
   bool _loading = true;
   String? _errorMessage;
   ui.Codec? _codec;
-  ui.Image? _frameImage;
-
-  final List<Timer> _hapticTimers = [];
   bool _disposed = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _disposed) return;
+      // Arriving here is what "uses up" the pending welcome, so a later cold
+      // start lands straight on the chooser.
+      context.read<AuthController>().consumeWelcomeIntroPending();
       unawaited(
         ExpansionAnalytics.log('welcome_intro_screen_started', sourceScreen: 'welcome_intro'),
       );
+      unawaited(_bootstrap());
     });
-    imageCache.evict(AssetImage(kWelcomeGifAsset));
-    _bootstrap();
+  }
+
+  /// Physical pixels available across the screen, capped at the GIF's own width.
+  int _decodeWidth() {
+    final view = View.of(context);
+    final px = view.physicalSize.width.round();
+    if (px <= 0) return kWelcomeGifNativeWidth;
+    return px < kWelcomeGifNativeWidth ? px : kWelcomeGifNativeWidth;
   }
 
   Future<void> _bootstrap() async {
@@ -70,16 +98,20 @@ class _WelcomeMortarverseIntroScreenState extends State<WelcomeMortarverseIntroS
       return;
     }
 
-    ui.Codec codec;
+    final ui.Codec codec;
     try {
-      codec = await ui.instantiateImageCodec(load.bytes!);
+      final buffer = await ui.ImmutableBuffer.fromUint8List(load.bytes!);
+      final descriptor = await ui.ImageDescriptor.encoded(buffer);
+      codec = await descriptor.instantiateCodec(targetWidth: _decodeWidth());
+      descriptor.dispose();
+      buffer.dispose();
     } catch (e, st) {
       debugPrint('Welcome GIF codec failed: $e\n$st');
       unawaited(
         ExpansionAnalytics.log(
           'welcome_intro_decode_failed',
           sourceScreen: 'welcome_intro',
-          extra: ExpansionAnalytics.errorExtras(e, code: 'instantiateImageCodec'),
+          extra: ExpansionAnalytics.errorExtras(e, code: 'instantiateCodec'),
         ),
       );
       if (!mounted || _disposed) return;
@@ -102,26 +134,26 @@ class _WelcomeMortarverseIntroScreenState extends State<WelcomeMortarverseIntroS
     await _playOneLoop(codec);
   }
 
-  /// Advances frames using each [FrameInfo.duration] from the file — same timeline as the
-  /// GIF spec, so Home follows **one full loop** and haptics match what you see.
+  /// Advances frames on the GIF's own timeline, decoding one frame ahead.
   Future<void> _playOneLoop(ui.Codec codec) async {
     final n = codec.frameCount;
     if (n <= 0) {
-      _cancelHapticTimers();
-      if (mounted && !_disposed) {
-        _goNextIfMounted();
-      }
+      _goNextIfMounted();
       return;
     }
 
-    var frameIndex = 0;
-    var hapticsScheduled = false;
+    final clock = Stopwatch()..start();
+    var dueMicros = 0;
+    var buzzed = false;
+
+    // Kick off the first decode before the loop so the pipeline is primed.
+    Future<ui.FrameInfo>? pending = codec.getNextFrame();
 
     try {
-      while (mounted && !_disposed && frameIndex < n) {
-        late final ui.FrameInfo frame;
+      for (var i = 0; i < n; i++) {
+        final ui.FrameInfo frame;
         try {
-          frame = await codec.getNextFrame();
+          frame = await pending!;
         } catch (e, st) {
           if (_disposed || !mounted) return;
           debugPrint('Welcome GIF getNextFrame failed: $e\n$st');
@@ -134,74 +166,64 @@ class _WelcomeMortarverseIntroScreenState extends State<WelcomeMortarverseIntroS
           );
           break;
         }
-        if (!mounted || _disposed) return;
+        if (!mounted || _disposed) {
+          frame.image.dispose();
+          return;
+        }
 
-        final img = frame.image;
-        setState(() {
-          _frameImage?.dispose();
-          _frameImage = img;
-        });
+        // Start the next decode immediately — it overlaps this frame's display.
+        pending = i + 1 < n ? codec.getNextFrame() : null;
 
-        if (!hapticsScheduled) {
-          hapticsScheduled = true;
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (!mounted || _disposed) return;
-            _scheduleWallClockHaptics();
-          });
+        final previous = _frame.value;
+        _frame.value = frame.image;
+        previous?.dispose();
+
+        if (!buzzed) {
+          buzzed = true;
+          _startBuzz();
         }
 
         var step = frame.duration;
         if (step == Duration.zero) {
           step = n == 1 ? kWelcomeSingleFrameOrZeroDelayHold : kWelcomeGifMinFrameDuration;
         }
+        dueMicros += step.inMicroseconds;
 
-        await Future<void>.delayed(step);
-        frameIndex++;
+        // Absolute schedule: if a decode ran long we simply show the next frame
+        // sooner rather than compounding the delay.
+        final waitMicros = dueMicros - clock.elapsedMicroseconds;
+        if (waitMicros > 0) {
+          await Future<void>.delayed(Duration(microseconds: waitMicros));
+        }
       }
     } catch (e, st) {
-      if (!_disposed) {
-        debugPrint('Welcome GIF playback failed: $e\n$st');
-      }
+      if (!_disposed) debugPrint('Welcome GIF playback failed: $e\n$st');
     } finally {
-      _cancelHapticTimers();
-      if (mounted && !_disposed) {
-        _goNextIfMounted();
+      // Drop a decode that outlived the screen.
+      unawaited(pending?.then((f) => f.image.dispose()).catchError((_) {}));
+      _goNextIfMounted();
+    }
+  }
+
+  /// Fires once, alongside the first frame. Best-effort: a device without a
+  /// vibrator (or one that rejects the duration) must not break the intro.
+  void _startBuzz() {
+    if (!kWelcomeIntroVibrationEnabled) return;
+    unawaited(() async {
+      try {
+        if (!await Vibration.hasVibrator()) return;
+        await Vibration.vibrate(
+          duration: kWelcomeIntroVibrationDuration.inMilliseconds,
+        );
+      } catch (e) {
+        debugPrint('Welcome intro vibration skipped: $e');
       }
-    }
+    }());
   }
 
-  void _scheduleWallClockHaptics() {
-    _cancelHapticTimers();
-    for (final sec in kWelcomeIntroHapticTimesSec) {
-      final delay = Duration(
-        microseconds: (sec * Duration.microsecondsPerSecond).round(),
-      );
-      _hapticTimers.add(
-        Timer(delay, () {
-          if (!mounted || _disposed) return;
-          _emitBuzzRumble();
-        }),
-      );
-    }
-  }
-
-  /// Dense [HapticFeedback.heavyImpact] pulses read as a short “rumble” on most iPhones.
-  void _emitBuzzRumble() {
-    for (var i = 0; i < kWelcomeIntroBuzzPulseCount; i++) {
-      _hapticTimers.add(
-        Timer(Duration(milliseconds: kWelcomeIntroBuzzPulseGapMs * i), () {
-          if (!mounted || _disposed) return;
-          HapticFeedback.heavyImpact();
-        }),
-      );
-    }
-  }
-
-  void _cancelHapticTimers() {
-    for (final t in _hapticTimers) {
-      t.cancel();
-    }
-    _hapticTimers.clear();
+  void _stopBuzz() {
+    if (!kWelcomeIntroVibrationEnabled) return;
+    unawaited(Vibration.cancel().catchError((_) {}));
   }
 
   Future<_WelcomeGifLoad> _loadWelcomeGifBytes() async {
@@ -222,7 +244,8 @@ class _WelcomeMortarverseIntroScreenState extends State<WelcomeMortarverseIntroS
       debugPrint('Welcome GIF load failed: $e\n$st');
       return _WelcomeGifLoad.error(
         'Could not load $kWelcomeGifAsset.\n\n'
-        'Add Welcome.gif under expansion_network/assets/, list it in pubspec.yaml flutter.assets, then flutter pub get and rebuild.',
+        'Add welcome_mortarverse.gif under expansion_network/assets/, list it in '
+        'pubspec.yaml flutter.assets, then flutter pub get and rebuild.',
       );
     }
   }
@@ -241,18 +264,18 @@ class _WelcomeMortarverseIntroScreenState extends State<WelcomeMortarverseIntroS
     unawaited(
       ExpansionAnalytics.log('welcome_intro_navigated_home', sourceScreen: 'welcome_intro'),
     );
-    // Phase 1: send new users through the chooser instead of straight to Expansion.
     context.go('/mortarverse');
   }
 
   @override
   void dispose() {
     _disposed = true;
-    _cancelHapticTimers();
+    _stopBuzz();
     _codec?.dispose();
     _codec = null;
-    _frameImage?.dispose();
-    _frameImage = null;
+    _frame.value?.dispose();
+    _frame.value = null;
+    _frame.dispose();
     super.dispose();
   }
 
@@ -260,11 +283,7 @@ class _WelcomeMortarverseIntroScreenState extends State<WelcomeMortarverseIntroS
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Center(
-          child: _buildBody(),
-        ),
-      ),
+      body: SafeArea(child: Center(child: _buildBody())),
     );
   }
 
@@ -286,14 +305,16 @@ class _WelcomeMortarverseIntroScreenState extends State<WelcomeMortarverseIntroS
         ),
       );
     }
-    final img = _frameImage;
-    if (img == null) {
-      return const SizedBox.shrink();
-    }
-    return RawImage(
-      image: img,
-      fit: BoxFit.contain,
-      filterQuality: FilterQuality.medium,
+    return ValueListenableBuilder<ui.Image?>(
+      valueListenable: _frame,
+      builder: (context, image, _) {
+        if (image == null) return const SizedBox.shrink();
+        return RawImage(
+          image: image,
+          fit: BoxFit.contain,
+          filterQuality: FilterQuality.medium,
+        );
+      },
     );
   }
 }

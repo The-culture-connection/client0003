@@ -80,10 +80,35 @@ class AuthController extends ChangeNotifier {
     return m;
   }
 
+  /// Set when the user has just *actively* signed in or claimed an invite, so
+  /// `/session` sends them through the Mortarverse welcome animation once.
+  ///
+  /// Deliberately not derived from [FirebaseAuth.authStateChanges]: that stream
+  /// also fires when a persisted session is restored on a cold start, which is
+  /// exactly the case the intro should skip. Only the auth screens set it.
+  /// (Finishing onboarding does not need it — the last step routes to
+  /// `/welcome-intro` directly.)
+  bool _welcomeIntroPending = false;
+
+  bool get welcomeIntroPending => _welcomeIntroPending;
+
+  void markWelcomeIntroPending() {
+    _welcomeIntroPending = true;
+  }
+
+  /// Reads and clears the flag. Called by the intro screen once it is on
+  /// screen, so a redirect that runs twice cannot swallow it early.
+  bool consumeWelcomeIntroPending() {
+    final v = _welcomeIntroPending;
+    _welcomeIntroPending = false;
+    return v;
+  }
+
   Future<void> _onAuthChanged(User? user) async {
     _user = user;
     if (user == null) {
       _iosSessionSettleUid = null;
+      _welcomeIntroPending = false;
       _needsExpansionOnboarding = null;
       _hasExpansionAccess = false;
       _expansionOnboardingRoles = null;

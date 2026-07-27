@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 import '../analytics/expansion_analytics.dart';
+import '../auth/auth_controller.dart';
 import '../theme/app_theme.dart';
 
 class AuthSignInScreen extends StatefulWidget {
@@ -40,6 +42,10 @@ class _AuthSignInScreenState extends State<AuthSignInScreen> {
 
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
+    // Held across the awaits below: signing in makes the router redirect off
+    // `/auth/*`, which unmounts this screen — reading it from `context`
+    // afterwards would be too late to flag the welcome intro.
+    final auth = context.read<AuthController>();
     await ExpansionAnalytics.log('auth_sign_in_submitted', sourceScreen: 'auth_sign_in');
     setState(() {
       _busy = true;
@@ -50,6 +56,7 @@ class _AuthSignInScreenState extends State<AuthSignInScreen> {
         email: _email.text.trim(),
         password: _password.text,
       );
+      auth.markWelcomeIntroPending();
       if (mounted) {
         await ExpansionAnalytics.log('auth_sign_in_succeeded', sourceScreen: 'auth_sign_in');
         if (!mounted) return;

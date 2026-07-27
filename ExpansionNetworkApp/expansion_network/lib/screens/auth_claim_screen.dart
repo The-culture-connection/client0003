@@ -4,8 +4,10 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 import '../analytics/expansion_analytics.dart';
+import '../auth/auth_controller.dart';
 import '../constants/alumni_network_constants.dart';
 import '../services/expansion_session_service.dart';
 import '../theme/app_theme.dart';
@@ -37,6 +39,11 @@ class _AuthClaimScreenState extends State<AuthClaimScreen> {
   final _formKey = GlobalKey<FormState>();
   final _session = ExpansionSessionService();
 
+  /// Captured up front: claiming signs the user in, which makes the router
+  /// redirect off `/auth/*` and unmount this screen — reading the controller
+  /// from `context` afterwards would be too late to flag the welcome intro.
+  late final AuthController _auth;
+
   _ClaimStep _step = _ClaimStep.emailAndCode;
   bool _busy = false;
   String? _error;
@@ -44,6 +51,7 @@ class _AuthClaimScreenState extends State<AuthClaimScreen> {
   @override
   void initState() {
     super.initState();
+    _auth = context.read<AuthController>();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(
         ExpansionAnalytics.log('auth_claim_screen_started', sourceScreen: 'auth_claim'),
@@ -190,6 +198,7 @@ class _AuthClaimScreenState extends State<AuthClaimScreen> {
         }
         await FirebaseAuth.instance.signInWithCustomToken(token);
       }
+      _auth.markWelcomeIntroPending();
       if (mounted) {
         await ExpansionAnalytics.log('invite_account_create_succeeded', sourceScreen: 'auth_claim');
         if (!mounted) return;
@@ -250,6 +259,7 @@ class _AuthClaimScreenState extends State<AuthClaimScreen> {
         });
         return;
       }
+      _auth.markWelcomeIntroPending();
       if (mounted) {
         await ExpansionAnalytics.log('invite_account_create_succeeded', sourceScreen: 'auth_claim');
         if (!mounted) return;
