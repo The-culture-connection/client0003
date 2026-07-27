@@ -926,6 +926,35 @@ service cloud.firestore {
       allow read, write: if hasStaffClaim();
     }
 
+    // --- Course review notes (admin-only, slide-anchored notes in the lesson player) ---
+    // Written by the AdminReviewNotesPanel in the Digital Curriculum web app.
+    match /course_review_notes/{noteId} {
+      allow read: if hasStaffClaim();
+      allow create: if hasStaffClaim()
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.courseId is string
+        && request.resource.data.courseId.size() > 0
+        && request.resource.data.lessonId is string
+        && request.resource.data.lessonId.size() > 0
+        && request.resource.data.courseLessonKey
+          == request.resource.data.courseId + '__' + request.resource.data.lessonId
+        && request.resource.data.slideIndex is int
+        && request.resource.data.slideIndex >= 0
+        && request.resource.data.note is string
+        && request.resource.data.note.size() > 0
+        && request.resource.data.note.size() <= 5000
+        && request.resource.data.authorName is string
+        && request.resource.data.resolved == false
+        && request.resource.data.keys().hasOnly([
+          'courseLessonKey', 'courseId', 'lessonId', 'slideIndex', 'note',
+          'authorUid', 'authorName', 'resolved', 'resolvedBy', 'resolvedAt', 'createdAt'
+        ]);
+      allow update: if hasStaffClaim()
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['resolved', 'resolvedBy', 'resolvedAt', 'note']);
+      allow delete: if hasStaffClaim();
+    }
+
     // --- Deny everything else ---
     match /{document=**} {
       allow read, write: if false;
