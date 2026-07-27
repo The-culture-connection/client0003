@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../conference/conference_analytics.dart';
 import '../services/member_card_link.dart';
 import '../theme/app_theme.dart';
 
@@ -105,13 +106,18 @@ class _MemberCardScanViewState extends State<MemberCardScanView>
     final raw = capture.barcodes.isEmpty ? null : capture.barcodes.first.rawValue;
     final uid = parseMemberCardPayload(raw);
     if (uid == null) {
+      logConferenceEvent(() => ConferenceAnalytics.cardScanned(result: 'invalid'));
       _toast('That’s not a MORTAR card.');
       return;
     }
     if (uid == FirebaseAuth.instance.currentUser?.uid) {
+      logConferenceEvent(() => ConferenceAnalytics.cardScanned(result: 'self'));
       _toast('That’s your own card 🙂');
       return;
     }
+    logConferenceEvent(
+      () => ConferenceAnalytics.cardScanned(result: 'ok', scannedUid: uid),
+    );
 
     _handling = true;
     await _controller.stop();

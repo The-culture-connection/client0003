@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../conference_analytics.dart';
 import '../../services/expansion_session_service.dart'
     show userMessageForFirebaseCallableError;
 import '../current_conference_holder.dart';
@@ -38,6 +39,9 @@ class _ConferenceSessionDetailScreenState extends State<ConferenceSessionDetailS
   @override
   void initState() {
     super.initState();
+    logConferenceEvent(
+      () => ConferenceAnalytics.sessionViewed(sessionId: widget.sessionId),
+    );
     final cid = _conferenceId;
     if (cid != null) {
       _savedSub = _service.watchSavedSessionIds(cid).listen((ids) {
@@ -57,7 +61,12 @@ class _ConferenceSessionDetailScreenState extends State<ConferenceSessionDetailS
     if (cid == null) return;
     setState(() => _rsvpBusy = true);
     try {
-      await _service.setRsvp(conferenceId: cid, sessionId: session.id, going: !session.isGoing(_uid));
+      final going = !session.isGoing(_uid);
+      await _service.setRsvp(conferenceId: cid, sessionId: session.id, going: going);
+      logConferenceEvent(() => ConferenceAnalytics.sessionRsvpChanged(
+            sessionId: session.id,
+            going: going,
+          ));
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -73,7 +82,12 @@ class _ConferenceSessionDetailScreenState extends State<ConferenceSessionDetailS
     final cid = _conferenceId;
     if (cid == null) return;
     try {
-      await _service.setSaved(conferenceId: cid, session: session, saved: !_savedIds.contains(session.id));
+      final saved = !_savedIds.contains(session.id);
+      await _service.setSaved(conferenceId: cid, session: session, saved: saved);
+      logConferenceEvent(() => ConferenceAnalytics.sessionSaved(
+            sessionId: session.id,
+            saved: saved,
+          ));
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

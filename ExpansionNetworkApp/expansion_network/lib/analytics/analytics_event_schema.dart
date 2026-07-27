@@ -8,6 +8,7 @@ const Set<String> kAnalyticsReservedTopLevelKeys = {
   'session_id',
   'screen',
   'route',
+  'conference_id',
   'client_emitted_at',
   'ingested_at',
   'properties',
@@ -33,6 +34,10 @@ class AnalyticsEventSchema {
   static const int _maxDepth = 5;
 
   /// Builds the canonical document and throws [AnalyticsEventSchemaException] if invalid.
+  /// [conferenceId] is a **top-level** dimension, not a property, so the admin
+  /// dashboard can filter every event for one conference with a plain `where`
+  /// clause (and a composite index) rather than a nested-field query. Null for
+  /// events emitted outside the Conference app.
   static Map<String, dynamic> buildAndValidate({
     required String eventName,
     required String? userId,
@@ -40,6 +45,7 @@ class AnalyticsEventSchema {
     required String screen,
     required String route,
     required Map<String, Object?> params,
+    String? conferenceId,
   }) {
     if (eventName.isEmpty || eventName.length > _maxEventNameLength) {
       throw AnalyticsEventSchemaException('event_name length invalid');
@@ -80,6 +86,7 @@ class AnalyticsEventSchema {
       'session_id': sessionId,
       'screen': screen,
       'route': route,
+      'conference_id': conferenceId,
       'client_emitted_at': Timestamp.now(),
       'ingested_at': FieldValue.serverTimestamp(),
       'properties': properties,

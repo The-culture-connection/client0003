@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 import '../../services/expansion_session_service.dart'
     show userMessageForFirebaseCallableError;
 import '../../services/stripe_checkout_service.dart';
+import '../conference_analytics.dart';
 import '../current_conference_holder.dart';
 import '../models/conference.dart';
 import '../services/conference_calendar.dart';
@@ -68,6 +69,7 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
     )..repeat(reverse: true);
     final rng = Random(11);
     _stars = List.generate(70, (_) => Offset(rng.nextDouble(), rng.nextDouble()));
+    logConferenceEvent(ConferenceAnalytics.gateViewed);
     _bootstrap();
   }
 
@@ -275,12 +277,17 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
         if (!alreadyIn) {
           final code = data['code'] as String?;
           final msg = data['message'] as String?;
+          logConferenceEvent(() => ConferenceAnalytics.codeRedeemed(
+                success: false,
+                failureReason: code ?? 'unknown',
+              ));
           setState(() => _error = msg ?? _mapError(code));
           return;
         }
       }
       if (!mounted) return;
       CurrentConferenceHolder.instance.conferenceId = conferenceId;
+      logConferenceEvent(() => ConferenceAnalytics.codeRedeemed(success: true));
       // Offer to add the conference to their calendar (with 1-week/2-day
       // reminders) on first entry, before dropping into the lobby.
       final conf = await _repo.fetchConference(conferenceId);

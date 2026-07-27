@@ -27,6 +27,10 @@ const schema = z.object({
   ingested_after_ms: z.number().int().optional(),
   /** Inclusive upper bound on `ingested_at` (epoch ms). */
   ingested_before_ms: z.number().int().optional(),
+  /** Scope to one conference (top-level `conference_id` on every event). */
+  conference_id: z.string().min(1).optional(),
+  /** Scope to one attendee — backs the admin "View activity" drawer. */
+  user_id: z.string().min(1).optional(),
 });
 
 function normalizeRoles(input: unknown): string[] {
@@ -62,6 +66,7 @@ function toRow(id: string, data: DocumentData) {
     id,
     event_name: data.event_name ?? null,
     user_id: data.user_id ?? null,
+    conference_id: data.conference_id ?? null,
     session_id: data.session_id ?? null,
     screen: data.screen ?? null,
     route: data.route ?? null,
@@ -106,9 +111,21 @@ export const queryAdminExpansionAnalyticsEvents = onCall(
       );
     }
 
+    const conferenceId = parsed.data.conference_id;
+    const userId = parsed.data.user_id;
+
     let q = db
       .collection(ANALYTICS_COLLECTIONS.EXPANSION_ANALYTICS_EVENTS)
       .orderBy("ingested_at", "desc");
+
+    // Equality filters go before the range so Firestore can serve them from the
+    // composite indexes declared in firestore.indexes.json.
+    if (conferenceId) {
+      q = q.where("conference_id", "==", conferenceId);
+    }
+    if (userId) {
+      q = q.where("user_id", "==", userId);
+    }
 
     if (afterMs != null) {
       q = q.where("ingested_at", ">=", Timestamp.fromMillis(afterMs));

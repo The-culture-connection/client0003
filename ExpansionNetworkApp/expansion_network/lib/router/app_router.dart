@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 
 import '../auth/auth_controller.dart';
 import '../commons/widgets/commons_shell.dart';
+import '../conference/screens/conference_community_compose_screen.dart';
+import '../conference/screens/conference_community_post_screen.dart';
+import '../conference/screens/conference_community_screen.dart';
 import '../conference/screens/conference_gate_screen.dart';
 import '../conference/screens/conference_lobby_screen.dart';
 import '../conference/screens/conference_map_screen.dart';
@@ -12,7 +15,6 @@ import '../conference/screens/conference_session_chat_screen.dart';
 import '../conference/screens/conference_session_detail_screen.dart';
 import '../conference/screens/conference_sponsor_detail_screen.dart';
 import '../conference/screens/conference_sponsors_screen.dart';
-import '../conference/widgets/conference_coming_soon_screen.dart';
 import '../conference/screens/conference_networking_screen.dart';
 import '../conference/widgets/conference_shell.dart';
 import '../mortarverse/screens/mortarverse_chooser_screen.dart';
@@ -164,10 +166,20 @@ GoRouter createAppRouter(AuthController auth) {
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,
         path: '/conference/community',
-        builder: (context, state) => const ConferenceComingSoonScreen(
-          title: 'Community Hub',
-          icon: Icons.forum_rounded,
-          description: 'Discussions and topic rooms arrive in a later update.',
+        builder: (context, state) => const ConferenceCommunityScreen(),
+      ),
+      // Declared before `/conference/community/:postId` so "compose" is not
+      // swallowed as a post id.
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/conference/community/compose',
+        builder: (context, state) => const ConferenceCommunityComposeScreen(),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/conference/community/:postId',
+        builder: (context, state) => ConferenceCommunityPostScreen(
+          postId: state.pathParameters['postId']!,
         ),
       ),
       GoRoute(

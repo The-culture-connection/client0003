@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
+import '../conference/current_conference_holder.dart';
 import 'analytics_event_schema.dart';
 
 /// Firestore collection for client analytics (BigQuery export-friendly).
@@ -89,6 +90,10 @@ class AnalyticsService {
       screen: screenOverride ?? _navigationScreen,
       route: routeOverride ?? _navigationRoute,
       params: params,
+      // Stamped centrally rather than passed by each call site: this way every
+      // event emitted inside the Conference app carries the dimension — the
+      // existing screen-dwell events included — and no call site can forget it.
+      conferenceId: CurrentConferenceHolder.instance.conferenceId,
     );
 
     try {

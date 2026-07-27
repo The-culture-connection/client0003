@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../conference/conference_analytics.dart';
 import '../conference/theme/conference_colors.dart';
 import '../profile/profile_utils.dart';
 import '../services/member_card_link.dart';
@@ -48,6 +49,12 @@ class _MemberCardScreenState extends State<MemberCardScreen>
   )..addListener(_onTabChanged);
 
   late int _index = _tabs.index;
+
+  @override
+  void initState() {
+    super.initState();
+    logConferenceEvent(ConferenceAnalytics.cardShown);
+  }
 
   Color get _accent =>
       widget.conferenceStyled ? ConferenceColors.gold : AppColors.primary;
@@ -210,6 +217,7 @@ class _FlipCardState extends State<_FlipCard> with SingleTickerProviderStateMixi
 
   Future<void> _share() async {
     final name = profileDisplayName(widget.data);
+    logConferenceEvent(ConferenceAnalytics.cardShared);
     await SharePlus.instance.share(
       ShareParams(
         text: '$name on MORTAR — scan this in the app to start a chat:\n'

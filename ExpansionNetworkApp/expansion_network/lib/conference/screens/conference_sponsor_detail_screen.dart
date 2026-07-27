@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../conference_analytics.dart';
 import '../../utils/safe_launch_url.dart';
 import '../current_conference_holder.dart';
 import '../models/conference_sponsor.dart';
@@ -25,6 +26,9 @@ class _ConferenceSponsorDetailScreenState extends State<ConferenceSponsorDetailS
   @override
   void initState() {
     super.initState();
+    logConferenceEvent(
+      () => ConferenceAnalytics.sponsorViewed(sponsorId: widget.sponsorId),
+    );
     final cid = CurrentConferenceHolder.instance.conferenceId;
     _future = cid == null ? Future.value(null) : _repo.fetchSponsor(cid, widget.sponsorId);
   }

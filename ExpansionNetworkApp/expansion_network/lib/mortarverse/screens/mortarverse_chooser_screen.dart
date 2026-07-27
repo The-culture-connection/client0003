@@ -33,6 +33,12 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
   @override
   void initState() {
     super.initState();
+    // Standing at the chooser means no conference is open. Every exit from the
+    // Conference app routes through here, so this is the one place that can
+    // reliably clear the holder — without it the id stays set for the life of
+    // the process and analytics would stamp conference_id onto Expansion events
+    // logged after the user left.
+    CurrentConferenceHolder.instance.conferenceId = null;
     _activeConferenceFuture = _conferenceRepository.fetchActiveConference();
     final rng = Random(7);
     _starPositions = List.generate(60, (_) => Offset(rng.nextDouble(), rng.nextDouble()));

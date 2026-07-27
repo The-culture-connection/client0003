@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../conference_analytics.dart';
 import '../../utils/safe_launch_url.dart';
 import '../current_conference_holder.dart';
 import '../models/conference_sponsor.dart';
@@ -27,6 +28,12 @@ const _amber = Color(0xFFF59E0B);
 class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
   final ConferenceRepository _repository = ConferenceRepository();
   String _filter = 'All'; // 'All' or a package level
+
+  @override
+  void initState() {
+    super.initState();
+    logConferenceEvent(ConferenceAnalytics.sponsorsViewed);
+  }
 
   void _back() {
     if (context.canPop()) {

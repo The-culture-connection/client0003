@@ -62,6 +62,7 @@ export { getAdminUserAnalyticsSummary } from "./callables/getAdminUserAnalyticsS
 export { batchGetUserAnalyticsSummaries } from "./callables/batchGetUserAnalyticsSummaries";
 export { adminRunDerivedMetricsForUtcRange } from "./callables/adminRunDerivedMetricsForUtcRange";
 export { queryAdminExpansionAnalyticsEvents } from "./callables/queryAdminExpansionAnalyticsEvents";
+export { getAdminConferenceUserActivity } from "./callables/getAdminConferenceUserActivity";
 export { onAnalyticsRawEventCreated } from "./analytics/triggers/onAnalyticsRawEventCreated";
 export { onExpansionAnalyticsEventCreated } from "./analytics/triggers/onExpansionAnalyticsEventCreated";
 export { onAnalyticsWebEventCreated } from "./analytics/triggers/onAnalyticsWebEventCreated";

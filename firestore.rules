@@ -316,6 +316,68 @@ service cloud.firestore {
         }
       }
 
+      // Community Hub — an open forum for the conference. Any signed-in
+      // attendee may post and reply; authors may delete their own content.
+      //
+      // `reply_count` is denormalised onto the post so the feed does not need a
+      // listener per row, which means anyone posting a reply must be able to
+      // bump that one field on someone else's post — hence the narrow update
+      // allowance below (author-only for everything else).
+      match /community_posts/{postId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn()
+          && callerNotContentSuspended()
+          && request.resource.data.author_id == request.auth.uid
+          && request.resource.data.body is string
+          && request.resource.data.body.size() > 0
+          && request.resource.data.body.size() <= 5000
+          && request.resource.data.reply_count == 0
+          && (!('tag' in request.resource.data)
+            || (request.resource.data.tag is string
+              && request.resource.data.tag.size() > 0
+              && request.resource.data.tag.size() <= 24))
+          && request.resource.data.keys().hasOnly([
+              'author_id', 'author_name', 'author_subtitle', 'body', 'tag',
+              'reply_count', 'created_at']);
+        allow delete: if isSignedIn() && resource.data.author_id == request.auth.uid;
+        allow update: if isSignedIn()
+          && (
+            // The author editing nothing but their own message body.
+            (resource.data.author_id == request.auth.uid
+              && request.resource.data.diff(resource.data).affectedKeys()
+                  .hasOnly(['body', 'updated_at']))
+            // Or anyone moving the reply counter by exactly one, in step with
+            // adding or removing a reply.
+            || (callerNotContentSuspended()
+              && request.resource.data.diff(resource.data).affectedKeys()
+                  .hasOnly(['reply_count'])
+              && request.resource.data.reply_count >= 0
+              && (request.resource.data.reply_count == resource.data.reply_count + 1
+                || request.resource.data.reply_count == resource.data.reply_count - 1))
+          );
+
+        match /replies/{replyId} {
+          allow read: if isSignedIn();
+          allow create: if isSignedIn()
+            && callerNotContentSuspended()
+            && request.resource.data.author_id == request.auth.uid
+            && request.resource.data.body is string
+            && request.resource.data.body.size() > 0
+            && request.resource.data.body.size() <= 5000
+            && request.resource.data.keys().hasOnly(
+                ['author_id', 'author_name', 'author_subtitle', 'body', 'created_at']);
+          allow update: if false;
+          // The reply's own author, or the author of the post it sits under
+          // (so deleting a message can clear the thread beneath it).
+          allow delete: if isSignedIn()
+            && (
+              resource.data.author_id == request.auth.uid
+              || get(/databases/$(database)/documents/conferences/$(conferenceId)/community_posts/$(postId))
+                  .data.author_id == request.auth.uid
+            );
+        }
+      }
+
       // Sponsor booths (admin-managed; read by any signed-in attendee).
       match /sponsors/{sponsorId} {
         allow read: if isSignedIn();

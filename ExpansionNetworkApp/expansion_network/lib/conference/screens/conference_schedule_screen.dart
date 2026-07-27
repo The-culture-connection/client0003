@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../conference_analytics.dart';
 import '../../services/expansion_session_service.dart'
     show userMessageForFirebaseCallableError;
 import '../current_conference_holder.dart';
@@ -42,6 +43,7 @@ class _ConferenceScheduleScreenState extends State<ConferenceScheduleScreen> {
   @override
   void initState() {
     super.initState();
+    logConferenceEvent(ConferenceAnalytics.scheduleViewed);
     final cid = CurrentConferenceHolder.instance.conferenceId;
     if (cid != null) {
       _savedSub = _service.watchSavedSessionIds(cid).listen((ids) {

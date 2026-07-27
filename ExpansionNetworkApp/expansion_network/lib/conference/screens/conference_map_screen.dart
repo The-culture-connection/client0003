@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../conference_analytics.dart';
 import '../current_conference_holder.dart';
 import '../models/conference_floor.dart';
 import '../models/conference_session.dart';
@@ -44,6 +45,7 @@ class _ConferenceMapScreenState extends State<ConferenceMapScreen> with SingleTi
   @override
   void initState() {
     super.initState();
+    logConferenceEvent(() => ConferenceAnalytics.mapViewed());
     _highlightRoomId = widget.highlightRoomId;
     _selectedFloorId = widget.initialFloorId;
     _pulse = AnimationController(vsync: this, duration: const Duration(milliseconds: 1100))..repeat(reverse: true);

@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 
 import '../../services/expansion_session_service.dart'
     show userMessageForFirebaseCallableError;
+import '../conference_analytics.dart';
 import '../current_conference_holder.dart';
 import '../services/conference_ticket_service.dart';
 import '../theme/conference_colors.dart';
@@ -88,6 +89,7 @@ class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    logConferenceEvent(ConferenceAnalytics.entered);
     _tickerTimer = Timer.periodic(const Duration(seconds: 4), (_) {
       if (!mounted) return;
       setState(() => _tickerIndex = (_tickerIndex + 1) % _liveActivities.length);
@@ -131,8 +133,12 @@ class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen>
     setState(() => _checkingIn = true);
     try {
       final res = await _tickets.checkIn(conferenceId: conferenceId);
-      if (!mounted) return;
       final already = res['alreadyToday'] == true;
+      logConferenceEvent(() => ConferenceAnalytics.checkedIn(
+            alreadyToday: already,
+            todayCount: (res['todayCount'] as num?)?.toInt(),
+          ));
+      if (!mounted) return;
       setState(() {
         _checkedInToday = true;
         _todayCount = (res['todayCount'] as num?)?.toInt() ?? _todayCount;
@@ -380,7 +386,7 @@ class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen>
         backgroundColor: ConferenceColors.gold,
         tooltip: 'My card & scan',
         onPressed: () => context.push('/card?ctx=conference'),
-        child: const Icon(Icons.add, color: Colors.black),
+        child: const Icon(Icons.qr_code_2_rounded, size: 30, color: Colors.black),
       ),
     );
   }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../conference_analytics.dart';
 import '../../services/expansion_session_service.dart'
     show userMessageForFirebaseCallableError;
 import '../../widgets/user_profile_modal.dart';
@@ -66,6 +67,10 @@ class _ConferenceSessionChatScreenState extends State<ConferenceSessionChatScree
     setState(() => _sending = true);
     try {
       await _service.sendSessionMessage(conferenceId: cid, sessionId: widget.sessionId, text: text);
+      logConferenceEvent(() => ConferenceAnalytics.sessionChatMessageSent(
+            sessionId: widget.sessionId,
+            bodyLength: text.length,
+          ));
       _input.clear();
     } catch (e) {
       if (mounted) {

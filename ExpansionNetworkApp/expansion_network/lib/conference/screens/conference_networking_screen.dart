@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../conference_analytics.dart';
 import '../../services/expansion_session_service.dart' show userMessageForFirebaseCallableError;
 import '../current_conference_holder.dart';
 import '../models/conference_networking_profile.dart';
@@ -54,6 +55,7 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
   @override
   void initState() {
     super.initState();
+    logConferenceEvent(ConferenceAnalytics.networkingViewed);
     _anim = AnimationController(vsync: this, duration: const Duration(milliseconds: 260))
       ..addListener(() {
         if (_mode == _Anim.none) return;
@@ -172,6 +174,15 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
         reason: cand.reason,
         icebreaker: like ? _icebreakerFor(cand) : null,
       );
+      logConferenceEvent(() => ConferenceAnalytics.networkingSwiped(
+            targetUid: cand.profile.uid,
+            liked: like,
+          ));
+      if (res['matched'] == true) {
+        logConferenceEvent(() => ConferenceAnalytics.networkingMatched(
+              targetUid: cand.profile.uid,
+            ));
+      }
       if (!mounted) return;
       if (res['matched'] == true) setState(() => _matchWith = cand);
     } catch (e) {
@@ -226,6 +237,7 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
     setState(() => _enabled = v); // optimistic
     try {
       await _service.setEnabled(conferenceId: cid, enabled: v);
+      logConferenceEvent(() => ConferenceAnalytics.networkingToggled(enabled: v));
     } catch (e) {
       if (!mounted) return;
       setState(() => _enabled = !v); // revert
