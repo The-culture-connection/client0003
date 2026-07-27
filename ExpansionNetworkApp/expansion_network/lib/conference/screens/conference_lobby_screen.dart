@@ -8,17 +8,17 @@ import 'package:intl/intl.dart';
 import '../../services/expansion_session_service.dart'
     show userMessageForFirebaseCallableError;
 import '../current_conference_holder.dart';
-import '../services/conference_calendar.dart';
 import '../services/conference_ticket_service.dart';
 import '../theme/conference_colors.dart';
 import '../widgets/conference_scope.dart';
+import '../widgets/conference_shell.dart';
 
 /// Conference home tab — matches
 /// `Conference App Figma Mockup/src/app/pages/ConferenceLobby.tsx`: a live
 /// hero banner with a rotating activity ticker, an Explore/Missions/Map
 /// segmented tab set (Figma's "Badges" tab is "Missions" here — see
 /// `docs/conference-app-plan.md` on why they're progress-tracked, not
-/// earned/not-earned), and a floating quick-actions button.
+/// earned/not-earned), and a floating button that opens the member card.
 class ConferenceLobbyScreen extends StatefulWidget {
   const ConferenceLobbyScreen({super.key});
 
@@ -31,7 +31,6 @@ enum _LobbyTab { explore, missions, map }
 class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen>
     with WidgetsBindingObserver {
   _LobbyTab _tab = _LobbyTab.explore;
-  bool _quickActionsOpen = false;
   Timer? _tickerTimer;
   int _tickerIndex = 0;
 
@@ -85,14 +84,6 @@ class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen>
     _Mission(title: 'Visit 2 sponsor booths', total: 2, icon: Icons.emoji_events_rounded),
   ];
 
-  static const _quickActions = [
-    _QuickAction(label: 'Add to Calendar', icon: Icons.event_available_rounded),
-    _QuickAction(label: 'Scan QR', icon: Icons.qr_code_scanner_rounded),
-    _QuickAction(label: 'Start Chat', icon: Icons.chat_bubble_rounded),
-    _QuickAction(label: 'Check In', icon: Icons.location_on_rounded),
-    _QuickAction(label: 'Capture', icon: Icons.camera_alt_rounded),
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -115,12 +106,6 @@ class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Refresh the check-in status when returning to the app (e.g. a new day).
     if (state == AppLifecycleState.resumed) _loadCheckInStatus();
-  }
-
-  void _showComingSoon(BuildContext context, String label) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$label is coming in a later update.')),
-    );
   }
 
   /// Non-writing status read so the button reflects today's state on load.
@@ -200,7 +185,7 @@ class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen>
           ),
         ],
       ),
-      floatingActionButton: _buildQuickActionsFab(context),
+      floatingActionButton: _buildMemberCardFab(context),
     );
   }
 
@@ -380,42 +365,23 @@ class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen>
     }
   }
 
-  Widget _buildQuickActionsFab(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        if (_quickActionsOpen)
-          for (final action in _quickActions)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _QuickActionButton(
-                action: action,
-                onTap: () {
-                  setState(() => _quickActionsOpen = false);
-                  if (action.label == 'Add to Calendar') {
-                    final conference = ConferenceScope.of(context).conference;
-                    if (conference != null) {
-                      showAddToCalendarSheet(context, conference);
-                    }
-                  } else if (action.label == 'Check In') {
-                    _handleCheckIn();
-                  } else {
-                    _showComingSoon(context, action.label);
-                  }
-                },
-              ),
-            ),
-        FloatingActionButton(
-          backgroundColor: ConferenceColors.gold,
-          onPressed: () => setState(() => _quickActionsOpen = !_quickActionsOpen),
-          child: AnimatedRotation(
-            turns: _quickActionsOpen ? 0.125 : 0,
-            duration: const Duration(milliseconds: 200),
-            child: const Icon(Icons.add, color: Colors.black),
-          ),
-        ),
-      ],
+  /// Bottom-right FAB — the conference entry point to the member card, which
+  /// opens on "My Code" with a "Scan" tab beside it.
+  ///
+  /// Check In and Add to Calendar, previously reachable from this button's
+  /// quick-action menu, remain available from the lobby's own Check In button
+  /// and the conference gate screen respectively.
+  Widget _buildMemberCardFab(BuildContext context) {
+    return Padding(
+      // ConferenceShell's nav pill floats over this screen's body, so the FAB
+      // has to clear it or it sits underneath and cannot be tapped.
+      padding: EdgeInsets.only(bottom: ConferenceShell.navBarClearance(context)),
+      child: FloatingActionButton(
+        backgroundColor: ConferenceColors.gold,
+        tooltip: 'My card & scan',
+        onPressed: () => context.push('/card?ctx=conference'),
+        child: const Icon(Icons.add, color: Colors.black),
+      ),
     );
   }
 }
@@ -783,38 +749,3 @@ class _MapTabContent extends StatelessWidget {
   }
 }
 
-class _QuickAction {
-  const _QuickAction({required this.label, required this.icon});
-  final String label;
-  final IconData icon;
-}
-
-class _QuickActionButton extends StatelessWidget {
-  const _QuickActionButton({required this.action, required this.onTap});
-
-  final _QuickAction action;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white.withValues(alpha: 0.1),
-      borderRadius: BorderRadius.circular(999),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(999),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(action.icon, size: 18, color: ConferenceColors.gold),
-              const SizedBox(width: 10),
-              Text(action.label, style: const TextStyle(color: Colors.white, fontSize: 13)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}

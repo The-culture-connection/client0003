@@ -25,6 +25,18 @@ class ConferenceShell extends StatefulWidget {
     _NavSpec(label: 'Events', icon: Icons.event_note_outlined, selectedIcon: Icons.event_note_rounded),
   ];
 
+  /// Bottom margin (12) + the pill's own height: 6 padding, a 20 icon, a 2 gap
+  /// and a ~11 label, 6 padding.
+  static const double _pillExtent = 12 + 6 + 20 + 2 + 11 + 6;
+
+  /// Vertical space the floating nav pill occupies above the bottom edge.
+  ///
+  /// Branch screens set [Scaffold.extendBody], so their own content is drawn
+  /// *behind* the pill — anything anchored to the bottom (a FAB, a sticky CTA)
+  /// must be offset by this much to stay tappable.
+  static double navBarClearance(BuildContext context) =>
+      _pillExtent + MediaQuery.paddingOf(context).bottom;
+
   @override
   State<ConferenceShell> createState() => _ConferenceShellState();
 }

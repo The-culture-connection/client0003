@@ -26,6 +26,8 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>MORTAR uses your camera to scan a colleague’s card and start a chat.</string>
 	<key>NSCalendarsFullAccessUsageDescription</key>
 	<string>MORTAR opens your calendar so you can save events you register for.</string>
 	<key>NSCalendarsUsageDescription</key>

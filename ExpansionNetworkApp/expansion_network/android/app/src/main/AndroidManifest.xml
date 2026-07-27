@@ -1,5 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Scanning a member's card QR (mobile_scanner / CameraX). -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <!-- The scanner is a convenience, not a requirement: keep the app installable
+         on camera-less devices, where MobileScannerErrorCode.unsupported is shown. -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <application

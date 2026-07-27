@@ -46,6 +46,7 @@ import '../screens/welcome_mortarverse_intro_screen.dart';
 import '../screens/mortar_feed_screen.dart';
 import '../screens/mortar_info_detail_screen.dart';
 import '../screens/matching_screen.dart';
+import '../screens/member_card_screen.dart';
 import '../screens/messages_screen.dart';
 import '../screens/onboarding_screen.dart';
 import '../screens/achievements_screen.dart';
@@ -339,6 +340,17 @@ GoRouter createAppRouter(AuthController auth) {
             initialAttachmentId: attachId,
           );
         },
+      ),
+      // Member card ("business card") — shared by the conference lobby FAB and
+      // the Profile tab, so it lives outside both shells.
+      // `?tab=scan` opens on the scanner; `?ctx=conference` uses the gold accent.
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/card',
+        builder: (context, state) => MemberCardScreen(
+          initialTab: state.uri.queryParameters['tab'] == 'scan' ? 1 : 0,
+          conferenceStyled: state.uri.queryParameters['ctx'] == 'conference',
+        ),
       ),
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,

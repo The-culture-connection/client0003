@@ -137,6 +137,11 @@ class _ProfileBody extends StatelessWidget {
                   ),
                   const Spacer(),
                   IconButton(
+                    onPressed: () => context.push('/card'),
+                    icon: const Icon(Icons.badge_outlined, color: AppColors.mutedForeground),
+                    tooltip: 'My Card',
+                  ),
+                  IconButton(
                     onPressed: () {
                       unawaited(
                         ExpansionAnalytics.log('profile_exit_to_mortarverse_clicked', sourceScreen: 'profile'),
