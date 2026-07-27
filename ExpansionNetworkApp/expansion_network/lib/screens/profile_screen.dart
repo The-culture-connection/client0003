@@ -144,7 +144,7 @@ class _ProfileBody extends StatelessWidget {
                       context.go('/mortarverse');
                     },
                     icon: const Icon(Icons.logout_rounded, color: AppColors.mutedForeground),
-                    tooltip: 'Back to the Mortarverse',
+                    tooltip: 'Back to the MORTARVERSE',
                   ),
                   TextButton(
                     onPressed: () async {

@@ -64,7 +64,7 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          tooltip: 'Back to the Mortarverse',
+          tooltip: 'Back to the MORTARVERSE',
           onPressed: () => context.go('/mortarverse'),
         ),
         title: const Text('Achievements'),

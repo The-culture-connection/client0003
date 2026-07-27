@@ -27,9 +27,9 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCalendarsFullAccessUsageDescription</key>
-	<string>Mortar opens your calendar so you can save events you register for.</string>
+	<string>MORTAR opens your calendar so you can save events you register for.</string>
 	<key>NSCalendarsUsageDescription</key>
-	<string>Mortar opens your calendar so you can save events you register for.</string>
+	<string>MORTAR opens your calendar so you can save events you register for.</string>
 	<key>NSContactsUsageDescription</key>
 	<string>Apple’s calendar editor may use contacts for location suggestions when you save an event.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

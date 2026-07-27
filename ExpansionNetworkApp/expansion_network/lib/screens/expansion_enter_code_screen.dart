@@ -108,7 +108,7 @@ class _ExpansionEnterCodeScreenState extends State<ExpansionEnterCodeScreen> {
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          tooltip: 'Back to the Mortarverse',
+          tooltip: 'Back to the MORTARVERSE',
           onPressed: () {
             if (context.canPop()) {
               context.pop();

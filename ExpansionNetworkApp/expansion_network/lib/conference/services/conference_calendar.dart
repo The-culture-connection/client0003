@@ -35,7 +35,7 @@ String buildConferenceIcs(Conference c) {
   final end = c.endDate ?? start.add(const Duration(hours: 2));
   final uid = 'conference-${c.id}@mortar';
   final description = c.description.trim().isEmpty
-      ? 'Your Mortar conference. Your Conference Center code unlocks entry during the event.'
+      ? 'Your MORTAR conference. Your Conference Center code unlocks entry during the event.'
       : c.description.trim();
 
   final b = StringBuffer()
@@ -96,7 +96,7 @@ Future<bool> _tryNativeCalendarAdd(Conference c) async {
     final start = c.startDate ?? DateTime.now().add(const Duration(days: 7));
     final end = c.endDate ?? start.add(const Duration(hours: 2));
     final description = c.description.trim().isEmpty
-        ? 'Your Mortar conference.'
+        ? 'Your MORTAR conference.'
         : c.description.trim();
     return await Add2Calendar.addEvent2Cal(Event(
       title: c.name,

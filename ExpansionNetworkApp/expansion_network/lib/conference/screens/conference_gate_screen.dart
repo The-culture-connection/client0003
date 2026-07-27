@@ -422,7 +422,7 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
         padding: const EdgeInsets.fromLTRB(8, 8, 16, 4),
         child: IconButton(
           icon: const Icon(Icons.arrow_back, color: ConferenceColors.gold),
-          tooltip: 'Back to the Mortarverse',
+          tooltip: 'Back to the MORTARVERSE',
           onPressed: _exit,
         ),
       ),

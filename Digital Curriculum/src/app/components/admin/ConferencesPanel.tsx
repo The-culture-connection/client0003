@@ -415,7 +415,7 @@ export function ConferencesPanel() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label className="text-foreground">Name *</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} className="bg-background" placeholder="e.g. Mortar Summit 2026" />
+            <Input value={name} onChange={(e) => setName(e.target.value)} className="bg-background" placeholder="e.g. MORTAR Summit 2026" />
           </div>
           <div className="space-y-2">
             <Label className="text-foreground">Status</Label>

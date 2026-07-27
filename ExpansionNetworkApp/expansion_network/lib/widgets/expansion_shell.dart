@@ -142,7 +142,7 @@ class _ExpansionShellState extends State<ExpansionShell> {
                     context.go('/mortarverse');
                   },
                   icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 20),
-                  tooltip: 'Back to the Mortarverse',
+                  tooltip: 'Back to the MORTARVERSE',
                 ),
               ),
             ),

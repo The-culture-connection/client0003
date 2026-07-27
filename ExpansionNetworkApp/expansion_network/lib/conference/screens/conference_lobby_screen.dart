@@ -428,7 +428,7 @@ class _HeroBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = conference?.name as String? ?? 'Mortarverse Conference';
+    final name = conference?.name as String? ?? 'MORTARVERSE Conference';
     final startDate = conference?.startDate as DateTime?;
     final dateLabel = startDate != null ? DateFormat('MMM d').format(startDate) : 'TBD';
     final attendeeCount = (conference?.attendeeCount as int?) ?? 0;
