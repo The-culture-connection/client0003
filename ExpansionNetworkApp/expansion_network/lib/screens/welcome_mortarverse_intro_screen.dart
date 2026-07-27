@@ -241,7 +241,8 @@ class _WelcomeMortarverseIntroScreenState extends State<WelcomeMortarverseIntroS
     unawaited(
       ExpansionAnalytics.log('welcome_intro_navigated_home', sourceScreen: 'welcome_intro'),
     );
-    context.go('/home');
+    // Phase 1: send new users through the chooser instead of straight to Expansion.
+    context.go('/mortarverse');
   }
 
   @override

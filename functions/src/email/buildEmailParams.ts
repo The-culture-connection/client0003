@@ -347,6 +347,31 @@ export function paymentEventConfirmedParams(input: {
   };
 }
 
+export function conferenceTicketConfirmedParams(input: {
+  userEmail: string;
+  userName?: string;
+  conference_name: string;
+  ticket_code: string;
+  conference_date: string;
+  conference_location: string;
+  code_active_label: string;
+  order_id: string;
+  amount_total?: number;
+  currency?: string;
+}): JsonObject {
+  return {
+    first_name: firstNameFrom(input.userName, input.userEmail),
+    conference_name: input.conference_name,
+    ticket_code: input.ticket_code,
+    conference_date: input.conference_date,
+    conference_location: input.conference_location,
+    code_active_label: input.code_active_label,
+    order_id: input.order_id,
+    amount_total: formatMoneyCents(input.amount_total, input.currency),
+    ...sharedFooterParams(),
+  };
+}
+
 export function paymentModuleConfirmedParams(input: {
   userEmail: string;
   userName?: string;

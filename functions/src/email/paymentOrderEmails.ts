@@ -16,6 +16,7 @@ import {
   paymentShopConfirmedParams,
   shopFulfillmentUpdateParams,
 } from "./buildEmailParams";
+import {sendConferenceTicketConfirmationEmail} from "./conferenceTicketEmail";
 import {sendTransactionalEmail} from "./sendTransactionalEmail";
 import type {BrevoTemplateKey} from "./brevoTemplates";
 
@@ -214,6 +215,29 @@ export async function sendPurchaseConfirmationEmail(params: {
           amount_total: snapshot.total_cents,
           currency,
         }),
+      });
+      break;
+    }
+    case "conference": {
+      const conferenceId = metadata.conference_id;
+      if (!conferenceId) break;
+      // The unique code was generated during fulfillment and stashed on the order.
+      const orderMeta = (orderSnap.data()?.metadata as Record<string, string> | undefined) ?? {};
+      const code = orderMeta.conference_ticket_code;
+      if (!code) {
+        logger.warn("Conference confirmation email skipped: no code on order", {orderId});
+        break;
+      }
+      await sendConferenceTicketConfirmationEmail({
+        db,
+        to: email,
+        recipientUid: uid,
+        userName,
+        conferenceId,
+        ticketCode: code,
+        orderId,
+        amountCents: snapshot.total_cents,
+        currency,
       });
       break;
     }

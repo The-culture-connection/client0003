@@ -14,6 +14,7 @@ import {
 import {logPaymentAnalytics, PAYMENT_ANALYTICS} from "./logPaymentAnalytics";
 import type {CheckoutSnapshot} from "./extractCheckoutSnapshot";
 import {sendPurchaseConfirmationEmail} from "../email/paymentOrderEmails";
+import {internalGenerateConferenceTicketForPurchase} from "../conferenceTickets";
 
 const APPAREL_CATEGORIES = new Set(["Tees", "Hoodies", "Crewnecks"]);
 
@@ -93,6 +94,46 @@ async function registerUserForEvent(
   if (eSnap.exists) batch.update(refE, updateData);
   if (mSnap.exists) batch.update(refM, updateData);
   await batch.commit();
+}
+
+/** Buyer email to tie the conference code to — prefer the account that will redeem in-app. */
+async function resolveBuyerEmail(
+  db: Firestore,
+  uid: string,
+  fallback?: string | null
+): Promise<string> {
+  const snap = await db.collection("users").doc(uid).get();
+  const accountEmail = snap.data()?.email;
+  if (typeof accountEmail === "string" && accountEmail.includes("@")) return accountEmail;
+  if (typeof fallback === "string" && fallback.includes("@")) return fallback;
+  throw new Error("No email on the buyer account for conference ticket");
+}
+
+/**
+ * Paid conference ticket: generate the buyer's unique Conference Center code and
+ * stash it on the order so the confirmation email can deliver it. The buyer still
+ * redeems it in-app (same typed-code entry flow as admin-issued codes).
+ */
+async function fulfillConferenceTicket(
+  db: Firestore,
+  uid: string,
+  orderId: string,
+  conferenceId: string,
+  snapshot: CheckoutSnapshot
+): Promise<void> {
+  const email = await resolveBuyerEmail(db, uid, snapshot.customer_email);
+  const gen = await internalGenerateConferenceTicketForPurchase(conferenceId, email, uid);
+  await db.collection(PAYMENT_ORDERS_COLLECTION).doc(orderId).set(
+    {
+      metadata: {
+        conference_id: conferenceId,
+        conference_ticket_code: gen.plainCode,
+        conference_ticket_email: gen.normalizedEmail,
+      },
+      updated_at: FieldValue.serverTimestamp(),
+    },
+    {merge: true}
+  );
 }
 
 async function grantModuleAccess(
@@ -208,6 +249,12 @@ export async function fulfillStripePayment(params: {
     const linesJson = fromOrder ?? metadata.shop_lines_json;
     if (!linesJson) throw new Error("Missing shop_lines_json on payment order");
     await fulfillShopOrder(db, uid, orderId, linesJson, checkoutSnapshot);
+    break;
+  }
+  case "conference": {
+    const conferenceId = metadata.conference_id;
+    if (!conferenceId) throw new Error("Missing conference_id in payment metadata");
+    await fulfillConferenceTicket(db, uid, orderId, conferenceId, checkoutSnapshot);
     break;
   }
   default:

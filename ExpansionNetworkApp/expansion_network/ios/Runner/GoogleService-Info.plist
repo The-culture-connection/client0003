@@ -3,17 +3,17 @@
 <plist version="1.0">
 <dict>
 	<key>API_KEY</key>
-	<string>AIzaSyBUJreREmYaNjbv7zlLLkdTNk-tiFODwA8</string>
+	<string>AIzaSyB3oL4t6QTlQCBCF4vIEFslbt_WOZKrmJM</string>
 	<key>GCM_SENDER_ID</key>
-	<string>999601815280</string>
+	<string>260497170681</string>
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
 	<string>com.mortar.wearemortar</string>
 	<key>PROJECT_ID</key>
-	<string>mortar-stage</string>
+	<string>mortar-dev</string>
 	<key>STORAGE_BUCKET</key>
-	<string>mortar-stage.firebasestorage.app</string>
+	<string>mortar-dev.firebasestorage.app</string>
 	<key>IS_ADS_ENABLED</key>
 	<false/>
 	<key>IS_ANALYTICS_ENABLED</key>
@@ -25,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true/>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:999601815280:ios:2b17fdc1272dca230b8c35</string>
+	<string>1:260497170681:ios:e2762b5675c4ea1e990228</string>
 </dict>
 </plist>

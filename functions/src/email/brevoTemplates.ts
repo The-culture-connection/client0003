@@ -34,6 +34,8 @@ export const BREVO_TEMPLATE_IDS = {
   shop_order_fulfillment_update: tpl("BREVO_TPL_SHOP_FULFILLMENT_UPDATE", 15),
   /** Sent to a user when they are granted an admin role */
   admin_role_granted: tpl("BREVO_TPL_ADMIN_ROLE_GRANTED", 16),
+  /** Stripe paid conference ticket — delivers the Conference Center code + active window */
+  conference_ticket_confirmed: tpl("BREVO_TPL_CONFERENCE_TICKET", 17),
 } as const;
 
 export type BrevoTemplateKey = keyof typeof BREVO_TEMPLATE_IDS;

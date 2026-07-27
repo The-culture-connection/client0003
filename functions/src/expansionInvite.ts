@@ -338,26 +338,6 @@ export const initializeUserSession = onCall(defaultCallableOptions, async (reque
   const eligibleRef = db.collection(ELIGIBLE).doc(normalizedEmail);
   const eligibleSnap = await eligibleRef.get();
 
-  if (!eligibleSnap.exists) {
-    return {
-      state: "UNAUTHORIZED",
-      reason: "not_eligible",
-      message: "Your account is not authorized for this network.",
-    };
-  }
-
-  const el = eligibleSnap.data()!;
-  const networkAccess = el.networkAccess === true;
-  if (!networkAccess) {
-    return {
-      state: "UNAUTHORIZED",
-      reason: "no_network_access",
-      message:
-        "Your account is recognized, but you do not currently have alumni network access.",
-    };
-  }
-
-  const role = el.role as string;
   const userRef = db.collection(USERS).doc(uid);
   const userSnap = await userRef.get();
   const prev = userSnap.data() || {};
@@ -369,6 +349,32 @@ export const initializeUserSession = onCall(defaultCallableOptions, async (reque
       message: "This account is not allowed to use the network.",
     };
   }
+
+  // Not (yet) an Expansion-eligible account. This is NOT an auth failure — the
+  // Mortarverse chooser/Conference app are open to any signed-in account; only
+  // entering the Expansion Network specifically requires an invite code (via
+  // `finalizeInviteClaim`, from the "Enter invite code" screen). See
+  // AuthController._applySessionForUser: unlike UNAUTHORIZED, this state does
+  // NOT sign the user out.
+  if (!eligibleSnap.exists || eligibleSnap.data()!.networkAccess !== true) {
+    await userRef.set(
+      {
+        uid,
+        email: emailRaw,
+        normalizedEmail,
+        updatedAt: FieldValue.serverTimestamp(),
+        lastLoginAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
+    return {
+      state: "NO_EXPANSION_ACCESS",
+      reason: eligibleSnap.exists ? "no_network_access" : "not_eligible",
+    };
+  }
+
+  const el = eligibleSnap.data()!;
+  const role = el.role as string;
 
   const patch: Record<string, unknown> = {
     uid,

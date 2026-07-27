@@ -115,6 +115,15 @@ service firebase.storage {
         && request.resource.contentType.matches('image/.*');
     }
 
+    // Conference images — hero/map, speaker photos, sponsor logos (admin-managed
+    // from the Conferences admin panel). Read by signed-in attendees in-app.
+    match /conferences/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if hasStaffClaim()
+        && request.resource.size < 11 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }

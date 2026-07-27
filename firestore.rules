@@ -129,6 +129,11 @@ service cloud.firestore {
       allow read, write: if isOwner(userId);
     }
 
+    // Bookmarked conference sessions (doc id = sessionId).
+    match /users/{userId}/saved_sessions/{sessionId} {
+      allow read, write: if isOwner(userId);
+    }
+
     // Expansion Network — Cloud Function `runExpansionUserMatching` writes; owner reads matches.
     match /users/{userId}/expansion_matches/{matchUserId} {
       allow read: if isSignedIn() && isOwner(userId);
@@ -279,6 +284,97 @@ service cloud.firestore {
             .hasOnly(['registered_users', 'updated_at', 'available_spots']));
     }
 
+    // Conference App (Phase 1): read-only for any signed-in user so the Mortarverse
+    // chooser and Conference screens can render. Write access (create/update conferences,
+    // ticket-based access) is server-only via callables from Phase 2 onward.
+    match /conferences/{conferenceId} {
+      allow read: if isSignedIn();
+      allow write: if hasStaffClaim();
+
+      match /sessions/{sessionId} {
+        allow read: if isSignedIn();
+        allow create, delete: if hasStaffClaim();
+        // Attendees may RSVP: toggle only their own membership in registered_users
+        // (key allowlist mirrors the events RSVP rule).
+        allow update: if hasStaffClaim()
+          || (isSignedIn()
+            && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['registered_users', 'updated_at']));
+
+        // Per-session chat room — any signed-in attendee can read/post; messages
+        // are author-scoped and immutable.
+        match /messages/{msgId} {
+          allow read: if isSignedIn();
+          allow create: if isSignedIn()
+            && callerNotContentSuspended()
+            && request.resource.data.sender_id == request.auth.uid
+            && request.resource.data.text is string
+            && request.resource.data.text.size() > 0
+            && request.resource.data.text.size() <= 10000
+            && request.resource.data.keys().hasOnly(['sender_id', 'author_name', 'text', 'created_at']);
+          allow update, delete: if false;
+        }
+      }
+
+      // Sponsor booths (admin-managed; read by any signed-in attendee).
+      match /sponsors/{sponsorId} {
+        allow read: if isSignedIn();
+        allow write: if hasStaffClaim();
+      }
+
+      // Venue floor plans + embedded room pins (admin-managed; read by attendees).
+      match /floors/{floorId} {
+        allow read: if isSignedIn();
+        allow write: if hasStaffClaim();
+      }
+
+      // Ticket-auth (Phase A): buyer roster and codes are server-only (written by
+      // callables via the Admin SDK, which bypasses rules). Never client-readable —
+      // codes are plaintext. Staff read allowed for the admin codes view.
+      match /ticketBuyers/{buyerEmail} {
+        allow read: if hasStaffClaim();
+        allow write: if false;
+      }
+      match /ticketCodes/{ticketCodeId} {
+        allow read: if hasStaffClaim();
+        allow write: if false;
+      }
+
+      // Attendee access record (server-written on redemption). A user may read
+      // their own record so the app can gate entry; staff may read all.
+      match /attendees/{uid} {
+        allow read: if isSignedIn() && (request.auth.uid == uid || hasStaffClaim());
+        allow write: if false;
+      }
+
+      // Daily check-in counters (server-written via the checkInToConference
+      // callable). Staff read for the admin dashboard; per-user check-in state
+      // lives on the attendees/{uid} doc above.
+      match /checkinDays/{dateKey} {
+        allow read: if hasStaffClaim();
+        allow write: if false;
+      }
+
+      // Networking zone: discoverable attendee snapshots (server-written via the
+      // networking callables). Any signed-in attendee can read the deck; a user's
+      // swipes are readable only by that user (this is the mutual-match secret).
+      match /networkingProfiles/{uid} {
+        allow read: if isSignedIn();
+        allow write: if false;
+        match /swipes/{targetUid} {
+          allow read: if isSignedIn() && request.auth.uid == uid;
+          allow write: if false;
+        }
+      }
+
+      // Mutual matches (server-written on a reciprocal like). Only the two
+      // participants may read their own match.
+      match /matches/{pairId} {
+        allow read: if isSignedIn() && request.auth.uid in resource.data.users;
+        allow write: if false;
+      }
+    }
+
     match /events_mobile/{eventId} {
       allow read: if eventReadableByMember();
       allow create: if isSignedIn()
@@ -401,12 +497,22 @@ service cloud.firestore {
     }
 
     match /dm_threads/{threadId} {
-      // Id-derived participant check (not resource.data) so reading a NOT-YET-CREATED thread
-      // returns "does not exist" instead of erroring: the app calls threadRef.get() before
-      // sending the first message, and a resource-based rule denies that get on a missing doc
-      // (resource is null), which blocked starting a new conversation. Works for list queries
-      // too — every doc matching `participant_ids array-contains uid` has uid in its thread id.
-      allow read: if dmCallerInThreadId(threadId);
+      // `get` and `list` need genuinely different rules, not one combined `allow read` —
+      // Firestore's list-query validator rejects a query unless the rule matches the query's
+      // own filter, and OR-ing that check with the id-pattern check (still needed for a `get()`
+      // on a not-yet-created thread, where `resource` is null) was not enough to satisfy it in
+      // practice, even though the id-pattern is true for every result by construction.
+      //
+      // `get`: threadRef.get() runs before the first message is sent, when the thread may not
+      // exist yet (resource == null) — the id-pattern check needs no resource.data access, so it
+      // works for both existing and not-yet-created threads.
+      allow get: if dmCallerInThreadId(threadId);
+      // `list`: watchMyThreadDocs()'s `where('participant_ids', arrayContains: uid)` query — must
+      // reference the exact field the query filters on for Firestore to statically prove it safe.
+      // Confirmed against the Firestore emulator (@firebase/rules-unit-testing): adding an
+      // `is list` type-guard here — even harmlessly `&&`-ed in — breaks that provability check
+      // and the query is rejected outright, so this intentionally has no type guard.
+      allow list: if request.auth.uid in resource.data.participant_ids;
       allow create: if isSignedIn()
         && callerNotContentSuspended()
         && request.resource.data.participant_ids is list

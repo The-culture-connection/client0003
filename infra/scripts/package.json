@@ -7,6 +7,7 @@
   },
   "scripts": {
     "seed:dev:expansion-mock": "node seed-expansion-stage-mock.js --project mortar-dev",
-    "seed:stage:expansion-mock": "node seed-expansion-stage-mock.js --project mortar-stage"
+    "seed:stage:expansion-mock": "node seed-expansion-stage-mock.js --project mortar-stage",
+    "seed:dev:conference-mock": "node seed-conference-dev-mock.js --project mortar-dev"
   }
 }

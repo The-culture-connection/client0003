@@ -5,6 +5,21 @@
 import "./firebaseGlobalOptions";
 
 export * from "./expansionInvite";
+export {
+  generateConferenceTicketCode,
+  bulkAddConferenceTicketBuyers,
+  revokeConferenceTicketCode,
+  redeemConferenceTicketCode,
+  registerFreeConferenceTicket,
+  checkInToConference,
+  validateConferenceTicketCode,
+} from "./conferenceTickets";
+export {
+  ensureNetworkingProfile,
+  setNetworkingEnabled,
+  recordConferenceSwipe,
+  undoConferenceSwipe,
+} from "./conferenceNetworking";
 
 export { onUserCreated } from "./triggers/onUserCreated";
 export { syncRolesToClaims } from "./triggers/syncRolesToClaims";

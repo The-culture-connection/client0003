@@ -1,45 +1,79 @@
 {
   "project_info": {
-    "project_number": "999601815280",
-    "project_id": "mortar-stage",
-    "storage_bucket": "mortar-stage.firebasestorage.app"
+    "project_number": "260497170681",
+    "project_id": "mortar-dev",
+    "storage_bucket": "mortar-dev.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:999601815280:android:b57b285f09487cd30b8c35",
+        "mobilesdk_app_id": "1:260497170681:android:1aef05688db81f66990228",
         "android_client_info": {
           "package_name": "com.expansionnetwork.expansion_network"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "260497170681-1um4lpc2paef7ql2l21g4eop1v2omvtc.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
-          "current_key": "AIzaSyCulFvj0z8sS9SGi6177sbce6xh7vceIyA"
+          "current_key": "AIzaSyC7SOdcffz1OKa_sdhG_f-irSlzSmRh4lA"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "260497170681-1um4lpc2paef7ql2l21g4eop1v2omvtc.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "260497170681-0s8m0ahhv9j03ao1dnl1hd9r57dkbvtc.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.mortar.wearemortar"
+              }
+            }
+          ]
         }
       }
     },
     {
       "client_info": {
-        "mobilesdk_app_id": "1:999601815280:android:e22d2c78a39f5d330b8c35",
+        "mobilesdk_app_id": "1:260497170681:android:c5a16b5d8f3dee11990228",
         "android_client_info": {
           "package_name": "com.mortar.wearemortar"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "260497170681-1um4lpc2paef7ql2l21g4eop1v2omvtc.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
-          "current_key": "AIzaSyCulFvj0z8sS9SGi6177sbce6xh7vceIyA"
+          "current_key": "AIzaSyC7SOdcffz1OKa_sdhG_f-irSlzSmRh4lA"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "260497170681-1um4lpc2paef7ql2l21g4eop1v2omvtc.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "260497170681-0s8m0ahhv9j03ao1dnl1hd9r57dkbvtc.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.mortar.wearemortar"
+              }
+            }
+          ]
         }
       }
     }
