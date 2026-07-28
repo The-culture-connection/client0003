@@ -16,12 +16,16 @@ import '../theme/conference_colors.dart';
 import '../widgets/conference_scope.dart';
 import '../widgets/conference_shell.dart';
 
-/// Conference home tab — matches
-/// `Conference App Figma Mockup/src/app/pages/ConferenceLobby.tsx`: a live
-/// hero banner with a rotating activity ticker, an Explore/Missions/Map
+/// Conference home tab — based on
+/// `Conference App Figma Mockup/src/app/pages/ConferenceLobby.tsx`: a hero
+/// showing the conference name, dates and live status, an Explore/Missions/Map
 /// segmented tab set (Figma's "Badges" tab is "Missions" here — see
 /// `docs/conference-app-plan.md` on why they're progress-tracked, not
 /// earned/not-earned), and a floating button that opens the member card.
+///
+/// The Figma mock's activity ticker and per-zone status badges ("Very Active",
+/// "Live Now") are intentionally not implemented: there is no data behind them,
+/// and the original placeholders invented attendee activity.
 class ConferenceLobbyScreen extends StatefulWidget {
   const ConferenceLobbyScreen({super.key});
 
@@ -34,21 +38,15 @@ enum _LobbyTab { explore, missions, map }
 class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen>
     with WidgetsBindingObserver {
   _LobbyTab _tab = _LobbyTab.explore;
-  Timer? _tickerTimer;
-  int _tickerIndex = 0;
+
+  /// Re-renders the hero so "starts in 4m" and the LIVE pill stay honest
+  /// without the user pulling to refresh.
+  Timer? _clockTimer;
 
   final ConferenceTicketService _tickets = ConferenceTicketService();
   bool _checkingIn = false;
   bool? _checkedInToday; // null = status not loaded yet
   int _todayCount = 0;
-
-  static const _liveActivities = [
-    '🎯 Sarah just connected with 3 founders',
-    '🔥 "AI in Healthcare" session trending',
-    '🎁 New giveaway from TechCorp',
-    '💬 12 people joined Community Hub',
-    '⚡ Keynote starting soon',
-  ];
 
   static const _zones = [
     _Zone(
@@ -56,28 +54,24 @@ class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen>
       subtitle: 'Connect with founders',
       icon: Icons.people_alt_rounded,
       route: '/conference/network',
-      status: 'Very Active',
     ),
     _Zone(
       title: 'Event Schedule',
       subtitle: 'Sessions & Workshops',
       icon: Icons.calendar_month_rounded,
       route: '/conference/schedule',
-      status: 'Live Now',
     ),
     _Zone(
       title: 'Community Hub',
       subtitle: 'Discussions & Topics',
       icon: Icons.forum_rounded,
       route: '/conference/community',
-      status: 'Hot',
     ),
     _Zone(
       title: 'Sponsor Hall',
       subtitle: 'Booths & Giveaways',
       icon: Icons.storefront_rounded,
       route: '/conference/sponsors',
-      status: 'Active',
     ),
   ];
 
@@ -86,9 +80,8 @@ class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     logConferenceEvent(ConferenceAnalytics.entered);
-    _tickerTimer = Timer.periodic(const Duration(seconds: 4), (_) {
-      if (!mounted) return;
-      setState(() => _tickerIndex = (_tickerIndex + 1) % _liveActivities.length);
+    _clockTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) setState(() {});
     });
     _loadCheckInStatus();
   }
@@ -96,7 +89,7 @@ class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _tickerTimer?.cancel();
+    _clockTimer?.cancel();
     super.dispose();
   }
 
@@ -177,7 +170,7 @@ class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen>
             bottom: false,
             child: CustomScrollView(
               slivers: [
-                SliverToBoxAdapter(child: _HeroBanner(conference: conference, tickerText: _liveActivities[_tickerIndex])),
+                SliverToBoxAdapter(child: _HeroBanner(conference: conference)),
                 SliverToBoxAdapter(child: _buildCheckInCard(context)),
                 SliverToBoxAdapter(child: _buildTabBar()),
                 SliverToBoxAdapter(child: _buildTabContent(context, conference?.mapImageUrl)),
@@ -388,29 +381,60 @@ class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen>
   }
 }
 
+
+/// Live conference header: real status, real numbers, and one clear next action.
+///
+/// Everything shown is derived from the conference doc and its sessions. The
+/// previous version hard-coded "Tech Summit", a permanent LIVE pill, "Next
+/// Session: Soon", "Activity: High", and a rotating ticker of invented activity
+/// Live conference header: the conference's name, date, and how live it is.
+///
+/// Deliberately minimal for now. Everything shown is real — the previous
+/// version hard-coded a "Tech Summit" subtitle, a permanent LIVE pill, and a
+/// rotating ticker of invented activity ("Sarah just connected with 3
+/// founders") presented to attendees as if it had happened.
 class _HeroBanner extends StatelessWidget {
-  const _HeroBanner({required this.conference, required this.tickerText});
+  const _HeroBanner({required this.conference});
 
   final dynamic conference;
-  final String tickerText;
 
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
     final name = conference?.name as String? ?? 'MORTARVERSE Conference';
-    final startDate = conference?.startDate as DateTime?;
-    final dateLabel = startDate != null ? DateFormat('MMM d').format(startDate) : 'TBD';
-    final attendeeCount = (conference?.attendeeCount as int?) ?? 0;
+    final start = conference?.startDate as DateTime?;
+    final end = conference?.endDate as DateTime?;
+    final dateLabel = start != null ? _dateRange(start, end) : null;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TextButton.icon(
-            onPressed: () => context.go('/mortarverse'),
-            style: TextButton.styleFrom(foregroundColor: Colors.grey.shade400, padding: EdgeInsets.zero),
-            icon: const Icon(Icons.arrow_back, size: 16),
-            label: const Text('Exit Lobby', style: TextStyle(fontSize: 13)),
+          Row(
+            children: [
+              TextButton.icon(
+                onPressed: () => context.go('/mortarverse'),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.grey.shade400,
+                  padding: EdgeInsets.zero,
+                ),
+                icon: const Icon(Icons.arrow_back, size: 16),
+                label: const Text('Mortarverse', style: TextStyle(fontSize: 13)),
+              ),
+              const Spacer(),
+              TextButton.icon(
+                // Leaves the conference entirely and lands on the conference
+                // list, rather than the Mortarverse chooser.
+                onPressed: () => context.go('/conference/gate?switch=1'),
+                style: TextButton.styleFrom(
+                  foregroundColor: ConferenceColors.gold,
+                  padding: EdgeInsets.zero,
+                ),
+                icon: const Icon(Icons.logout_rounded, size: 15),
+                label: const Text('Leave conference', style: TextStyle(fontSize: 13)),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
           Container(
@@ -421,77 +445,49 @@ class _HeroBanner extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [ConferenceColors.goldAlpha(0.1), Colors.black.withValues(alpha: 0.5)],
+                colors: [
+                  ConferenceColors.goldAlpha(0.1),
+                  Colors.black.withValues(alpha: 0.5),
+                ],
               ),
             ),
-            child: Column(
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
                         children: [
-                          Row(
-                            children: [
-                              const Icon(Icons.auto_awesome, size: 18, color: ConferenceColors.gold),
-                              const SizedBox(width: 6),
-                              Flexible(
-                                child: Text(
-                                  name.toUpperCase(),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 18,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
+                          const Icon(Icons.auto_awesome,
+                              size: 18, color: ConferenceColors.gold),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              name.toUpperCase(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 18,
+                                letterSpacing: 0.5,
                               ),
-                            ],
+                            ),
                           ),
-                          const SizedBox(height: 4),
-                          Text('Tech Summit • $dateLabel', style: TextStyle(color: Colors.grey.shade400, fontSize: 12)),
                         ],
                       ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(color: ConferenceColors.gold, borderRadius: BorderRadius.circular(999)),
-                      child: const Text('LIVE', style: TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.w700)),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(child: _StatChip(icon: Icons.people_alt_rounded, label: 'Attendees', value: '$attendeeCount')),
-                    const SizedBox(width: 8),
-                    Expanded(child: _StatChip(icon: Icons.schedule_rounded, label: 'Next Session', value: 'Soon')),
-                    const SizedBox(width: 8),
-                    Expanded(child: _StatChip(icon: Icons.local_fire_department_rounded, label: 'Activity', value: 'High')),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: ConferenceColors.goldAlpha(0.1),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: ConferenceColors.goldAlpha(0.2)),
-                  ),
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
-                    child: Text(
-                      tickerText,
-                      key: ValueKey<String>(tickerText),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: ConferenceColors.gold, fontSize: 13),
-                    ),
+                      if (dateLabel != null) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          dateLabel,
+                          style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
+                const SizedBox(width: 10),
+                _StatusPill(status: _statusFor(now, start, end)),
               ],
             ),
           ),
@@ -499,38 +495,69 @@ class _HeroBanner extends StatelessWidget {
       ),
     );
   }
+
+  /// "Jul 8" for a single day, "Jul 8 – 10" when it spans several.
+  static String _dateRange(DateTime start, DateTime? end) {
+    final startLabel = DateFormat('MMM d, y').format(start);
+    if (end == null) return startLabel;
+    final sameDay = start.year == end.year &&
+        start.month == end.month &&
+        start.day == end.day;
+    if (sameDay) return startLabel;
+    final sameMonth = start.year == end.year && start.month == end.month;
+    final endLabel =
+        sameMonth ? DateFormat('d, y').format(end) : DateFormat('MMM d, y').format(end);
+    return '${DateFormat('MMM d').format(start)} – $endLabel';
+  }
+
+  static _ConfStatus _statusFor(DateTime now, DateTime? start, DateTime? end) {
+    if (start == null) return _ConfStatus.scheduled;
+    final finish = end ?? start.add(const Duration(days: 1));
+    if (now.isAfter(finish)) return _ConfStatus.ended;
+    if (!now.isBefore(start)) return _ConfStatus.live;
+    if (start.difference(now).inDays < 1) return _ConfStatus.today;
+    return _ConfStatus.scheduled;
+  }
 }
 
-class _StatChip extends StatelessWidget {
-  const _StatChip({required this.icon, required this.label, required this.value});
+enum _ConfStatus { live, today, scheduled, ended }
 
-  final IconData icon;
-  final String label;
-  final String value;
+class _StatusPill extends StatelessWidget {
+  const _StatusPill({required this.status});
+
+  final _ConfStatus status;
 
   @override
   Widget build(BuildContext context) {
+    final (label, bg, fg) = switch (status) {
+      _ConfStatus.live => ('LIVE', ConferenceColors.gold, Colors.black),
+      _ConfStatus.today => ('TODAY', ConferenceColors.gold, Colors.black),
+      _ConfStatus.scheduled => (
+          'UPCOMING',
+          ConferenceColors.goldAlpha(0.18),
+          ConferenceColors.gold
+        ),
+      _ConfStatus.ended => ('ENDED', Colors.white24, Colors.white70),
+    };
+
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            children: [
-              Icon(icon, size: 12, color: ConferenceColors.gold),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(label, style: TextStyle(fontSize: 10, color: Colors.grey.shade400), overflow: TextOverflow.ellipsis),
-              ),
-            ],
+          if (status == _ConfStatus.live) ...[
+            Container(
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(color: fg, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 5),
+          ],
+          Text(
+            label,
+            style: TextStyle(color: fg, fontSize: 10, fontWeight: FontWeight.w700),
           ),
-          const SizedBox(height: 2),
-          Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
         ],
       ),
     );
@@ -543,14 +570,12 @@ class _Zone {
     required this.subtitle,
     required this.icon,
     required this.route,
-    required this.status,
   });
 
   final String title;
   final String subtitle;
   final IconData icon;
   final String route;
-  final String status;
 }
 
 class _ZoneCard extends StatelessWidget {
@@ -599,18 +624,8 @@ class _ZoneCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: ConferenceColors.goldAlpha(0.12),
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(color: ConferenceColors.goldAlpha(0.3)),
-                    ),
-                    child: Text(
-                      zone.status.toUpperCase(),
-                      style: const TextStyle(color: ConferenceColors.gold, fontSize: 9, fontWeight: FontWeight.w600),
-                    ),
-                  ),
+                  const Icon(Icons.chevron_right_rounded,
+                      color: ConferenceColors.gold, size: 22),
                 ],
               ),
             ],

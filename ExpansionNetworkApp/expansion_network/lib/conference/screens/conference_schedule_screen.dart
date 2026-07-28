@@ -70,6 +70,10 @@ class _ConferenceScheduleScreenState extends State<ConferenceScheduleScreen> {
     final saved = _savedIds.contains(session.id);
     try {
       await _service.setSaved(conferenceId: cid, session: session, saved: !saved);
+      logConferenceEvent(() => ConferenceAnalytics.sessionSaved(
+            sessionId: session.id,
+            saved: !saved,
+          ));
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -86,6 +90,12 @@ class _ConferenceScheduleScreenState extends State<ConferenceScheduleScreen> {
     setState(() => _rsvpBusy.add(session.id));
     try {
       await _service.setRsvp(conferenceId: cid, sessionId: session.id, going: !going);
+      // Mission metric `sessions_attended` counts this event with going=true,
+      // so the schedule list must emit it exactly like the detail screen does.
+      logConferenceEvent(() => ConferenceAnalytics.sessionRsvpChanged(
+            sessionId: session.id,
+            going: !going,
+          ));
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

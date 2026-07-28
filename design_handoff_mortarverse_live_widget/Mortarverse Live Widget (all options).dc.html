@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics><meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#f0eee9;font-family:Roboto,system-ui,sans-serif}
+a{color:#2a78d6}a:hover{color:#1a5aa8}
+.dv-turn{padding:40px 44px 32px;border-bottom:1px solid rgba(0,0,0,.08);scroll-margin-top:16px}
+.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 20px}
+.dv-tid{font:600 10px ui-monospace,Menlo,monospace;padding:3px 7px;background:#1a1a1a;color:#fff;border-radius:4px;text-decoration:none}
+.dv-tname{font:600 13px/1.2 Roboto,system-ui,sans-serif;color:#1a1a1a}
+.dv-opts{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+.dv-opt{flex:none;display:flex;flex-direction:column;gap:9px;scroll-margin-top:16px}
+.dv-oid{font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#1a1a1a;border-radius:5px;text-decoration:none}
+.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 11px/1.3 Roboto,system-ui,sans-serif;color:rgba(0,0,0,.55);max-width:390px}
+.dv-card{max-width:100%;background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden}
+.dv-opt:target .dv-oid{background:#2a78d6;color:#fff}
+.dv-next{margin:22px 0 0;font:12px/1.5 Roboto,system-ui,sans-serif;color:rgba(0,0,0,.5)}
+</style></helmet>
+
+<section class="dv-turn" id="t1">
+<div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">Mortarverse — current screen + three action-first redesigns</span></div>
+
+<div style="max-width:1180px;margin:0 0 26px;font:13px/1.65 Roboto,system-ui,sans-serif;color:rgba(0,0,0,.68)">
+<p style="margin:0 0 10px"><strong>What I read.</strong> <code>mortarverse_chooser_screen.dart</code> (staging) — black radial-gradient starfield, 60 seeded stars, centered <em>THE MORTARVERSE</em> + “Explore the digital neighborhood”, then three 260px-wide storefront cards stacked with 28px gaps, each tinting <code>assets/conference/shop_storefront.png</code> to its shop colour with an <code>OPEN NOW</code> / <code>LOCKED</code> pill. Colours from <code>app_theme.dart</code> (<code>#C1121F</code>), <code>conference_colors.dart</code> (<code>#E6DBB4</code>), <code>commons_colors.dart</code> (<code>#A8A8A8</code>).</p>
+<p style="margin:0"><strong>The problem.</strong> On a 390×844 device the third tile falls below the fold, all three tiles look equally “open” whether or not anything is happening, and the screen answers “where can I go?” but never “what needs me?”. Every redesign below keeps the storefront metaphor and the exact per-shop palette, shrinks the tiles so all three fit above the fold, and puts a live action layer on top. Prompts stay direct and functional; the quiet-day slot is a suggested action (finish profile / browse members). QR scanning is a persistent FAB in all three.</p>
+</div>
+
+<div class="dv-opts">
+
+<div class="dv-opt" id="1a">
+<div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a>Current screen, recreated from staging — baseline. Third tile is cut off at the fold.</div>
+<div class="dv-card" style="width:390px;border-radius:38px">
+<div style="width:390px;height:844px;position:relative;overflow:hidden;background:#000">
+  <div style="position:absolute;inset:0;background:radial-gradient(120% 100% at 50% 0%,#262626 0%,#000 100%)"></div>
+  <div style="position:absolute;inset:0;background-image:radial-gradient(circle,rgba(117,117,117,.5) .8px,transparent 1.2px);background-size:53px 67px"></div>
+  <div style="position:absolute;inset:0;background-image:radial-gradient(circle,rgba(117,117,117,.5) .8px,transparent 1.2px);background-size:71px 43px;background-position:19px 11px"></div>
+  <div style="position:relative;height:100%;display:flex;flex-direction:column;padding-top:44px">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:0 22px;margin-top:-30px;height:22px;font:500 13px Roboto,sans-serif;color:#fff"><span>9:41</span><span style="font-family:'Material Symbols Rounded';font-size:15px;letter-spacing:3px">network_wifi battery_full</span></div>
+    <div style="height:24px"></div>
+    <div style="display:flex;justify-content:center;align-items:center;gap:8px">
+      <span style="font-family:'Material Symbols Rounded';font-size:20px;color:#BDBDBD;line-height:1">auto_awesome</span>
+      <span style="font:700 24px/1.33 Roboto,sans-serif;letter-spacing:1.5px;color:#fff">THE MORTARVERSE</span>
+      <span style="font-family:'Material Symbols Rounded';font-size:20px;color:#BDBDBD;line-height:1">auto_awesome</span>
+    </div>
+    <div style="height:4px"></div>
+    <div style="text-align:center;font:400 13px Roboto,sans-serif;color:#757575">Explore the digital neighborhood</div>
+    <div style="flex:1;display:flex;justify-content:center;overflow:hidden;padding:16px 24px 0">
+      <div style="display:flex;flex-direction:column;gap:28px;align-items:center">
+
+        <div style="width:260px;padding:4px;border-radius:24px;box-shadow:0 0 40px 4px rgba(193,18,31,.4)">
+          <div style="border-radius:20px;background:#0D0D0D;border:2px solid #C1121F;overflow:hidden">
+            <div style="padding:28px 0;display:flex;justify-content:center;background:linear-gradient(180deg,rgba(193,18,31,.14),transparent)">
+              <div style="width:160px;height:90px;background:#C1121F;-webkit-mask:url('ExpansionNetworkApp/expansion_network/assets/conference/shop_storefront.png') center/contain no-repeat;mask:url('ExpansionNetworkApp/expansion_network/assets/conference/shop_storefront.png') center/contain no-repeat"></div>
+            </div>
+            <div style="background:#0D0D0D;padding:14px 16px 16px;display:flex;flex-direction:column;align-items:center;gap:8px">
+              <span style="background:#C1121F;color:#000;font:700 10px Roboto,sans-serif;letter-spacing:1px;padding:3px 10px;border-radius:999px">OPEN NOW</span>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+                <div style="font:700 18px Roboto,sans-serif;letter-spacing:1px;color:#fff;text-align:center">NETWORKING HALL</div>
+                <div style="font:400 12px Roboto,sans-serif;color:#BDBDBD;text-align:center">Connect • Grow • Collaborate</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="width:260px;padding:4px;border-radius:24px;box-shadow:0 0 40px 4px rgba(230,219,180,.4)">
+          <div style="border-radius:20px;background:#0D0D0D;border:2px solid #E6DBB4;overflow:hidden">
+            <div style="padding:28px 0;display:flex;justify-content:center;background:linear-gradient(180deg,rgba(230,219,180,.14),transparent)">
+              <div style="width:160px;height:90px;background:#E6DBB4;-webkit-mask:url('ExpansionNetworkApp/expansion_network/assets/conference/shop_storefront.png') center/contain no-repeat;mask:url('ExpansionNetworkApp/expansion_network/assets/conference/shop_storefront.png') center/contain no-repeat"></div>
+            </div>
+            <div style="background:#0D0D0D;padding:14px 16px 16px;display:flex;flex-direction:column;align-items:center;gap:8px">
+              <span style="background:#E6DBB4;color:#000;font:700 10px Roboto,sans-serif;letter-spacing:1px;padding:3px 10px;border-radius:999px">OPEN NOW</span>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+                <div style="font:700 18px Roboto,sans-serif;letter-spacing:1px;color:#fff;text-align:center">CONFERENCE CENTER</div>
+                <div style="font:400 12px Roboto,sans-serif;color:#BDBDBD;text-align:center">Founders Summit ’26</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="width:260px;padding:4px;border-radius:24px;box-shadow:0 0 40px 4px rgba(168,168,168,.4)">
+          <div style="border-radius:20px;background:#0D0D0D;border:2px solid #A8A8A8;overflow:hidden">
+            <div style="padding:28px 0;display:flex;justify-content:center;background:linear-gradient(180deg,rgba(168,168,168,.14),transparent)">
+              <div style="width:160px;height:90px;background:#A8A8A8;-webkit-mask:url('ExpansionNetworkApp/expansion_network/assets/conference/shop_storefront.png') center/contain no-repeat;mask:url('ExpansionNetworkApp/expansion_network/assets/conference/shop_storefront.png') center/contain no-repeat"></div>
+            </div>
+            <div style="background:#0D0D0D;padding:14px 16px 16px;display:flex;flex-direction:column;align-items:center;gap:8px">
+              <span style="background:#A8A8A8;color:#000;font:700 10px Roboto,sans-serif;letter-spacing:1px;padding:3px 10px;border-radius:999px">OPEN NOW</span>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+                <div style="font:700 18px Roboto,sans-serif;letter-spacing:1px;color:#fff;text-align:center">THE COMMONS</div>
+                <div style="font:400 12px Roboto,sans-serif;color:#BDBDBD;text-align:center">Profile • Messages • Notifications</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+
+<div class="dv-opt" id="1b">
+<div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a>Action stack. A ranked “Do this next” list on top, shops become a compact row of three with live badges.</div>
+<div class="dv-card" style="width:390px;border-radius:38px">
+<div style="width:390px;height:844px;position:relative;overflow:hidden;background:#000">
+  <div style="position:absolute;inset:0;background:radial-gradient(120% 100% at 50% 0%,#262626 0%,#000 100%)"></div>
+  <div style="position:absolute;inset:0;background-image:radial-gradient(circle,rgba(117,117,117,.5) .8px,transparent 1.2px);background-size:53px 67px"></div>
+  <div style="position:relative;height:100%;display:flex;flex-direction:column;padding-top:44px">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:0 22px;margin-top:-30px;height:22px;font:500 13px Roboto,sans-serif;color:#fff"><span>9:41</span><span style="font-family:'Material Symbols Rounded';font-size:15px;letter-spacing:3px">network_wifi battery_full</span></div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px 14px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-family:'Material Symbols Rounded';font-size:18px;color:#BDBDBD;line-height:1">auto_awesome</span>
+        <span style="font:700 15px Roboto,sans-serif;letter-spacing:1.4px;color:#fff">THE MORTARVERSE</span>
+      </div>
+      <div style="width:32px;height:32px;border-radius:999px;background:#2A2A2A;border:1px solid rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font:700 12px Roboto,sans-serif;color:#BDBDBD">DJ</div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:8px;padding:0 20px 10px">
+      <span style="width:6px;height:6px;border-radius:999px;background:#C1121F;box-shadow:0 0 8px 2px rgba(193,18,31,.7)"></span>
+      <span style="font:700 11px Roboto,sans-serif;letter-spacing:1.4px;color:#fff">DO THIS NEXT</span>
+      <span style="font:400 11px Roboto,sans-serif;color:#757575">3 items</span>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:10px;padding:0 20px">
+
+      <div style="display:flex;align-items:center;gap:12px;background:#111;border:1px solid rgba(193,18,31,.55);border-left:3px solid #C1121F;border-radius:14px;padding:13px 14px">
+        <div style="position:relative;flex:none">
+          <span style="font-family:'Material Symbols Rounded';font-size:24px;color:#C1121F;line-height:1">forum</span>
+          <span style="position:absolute;top:-5px;right:-7px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:#C1121F;color:#fff;font:700 10px/16px Roboto,sans-serif;text-align:center;box-sizing:border-box">3</span>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+          <div style="font:500 14px Roboto,sans-serif;color:#fff">3 unread messages</div>
+          <div style="font:400 12px Roboto,sans-serif;color:#999">Maya Booker, Curtis Hall +1</div>
+        </div>
+        <span style="background:#C1121F;color:#fff;font:700 11px Roboto,sans-serif;letter-spacing:.4px;padding:7px 13px;border-radius:999px">Reply</span>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:12px;background:#111;border:1px solid rgba(230,219,180,.5);border-left:3px solid #E6DBB4;border-radius:14px;padding:13px 14px">
+        <span style="font-family:'Material Symbols Rounded';font-size:24px;color:#E6DBB4;line-height:1;flex:none">stadium</span>
+        <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="background:#E6DBB4;color:#000;font:700 9px Roboto,sans-serif;letter-spacing:1px;padding:2px 6px;border-radius:999px">NEW</span>
+            <span style="font:500 14px Roboto,sans-serif;color:#fff">Founders Summit ’26 is live</span>
+          </div>
+          <div style="font:400 12px Roboto,sans-serif;color:#999">Opened 20 min ago • ticket required</div>
+        </div>
+        <span style="border:1px solid #E6DBB4;color:#E6DBB4;font:700 11px Roboto,sans-serif;padding:6px 12px;border-radius:999px">Enter</span>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:12px;background:#111;border:1px solid rgba(255,255,255,.1);border-left:3px solid #A8A8A8;border-radius:14px;padding:13px 14px">
+        <span style="font-family:'Material Symbols Rounded';font-size:24px;color:#A8A8A8;line-height:1;flex:none">account_circle</span>
+        <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+          <div style="font:500 14px Roboto,sans-serif;color:#fff">Finish your profile — 60%</div>
+          <div style="height:4px;border-radius:999px;background:#2A2A2A;overflow:hidden"><div style="width:60%;height:100%;background:#A8A8A8"></div></div>
+        </div>
+        <span style="font-family:'Material Symbols Rounded';font-size:20px;color:#757575;line-height:1">chevron_right</span>
+      </div>
+
+    </div>
+
+    <div style="display:flex;align-items:center;gap:8px;padding:22px 20px 12px">
+      <span style="font:700 11px Roboto,sans-serif;letter-spacing:1.4px;color:#fff">THE NEIGHBORHOOD</span>
+      <span style="flex:1;height:1px;background:rgba(255,255,255,.1)"></span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;padding:0 20px">
+
+      <div style="position:relative;border-radius:16px;background:#0D0D0D;border:1.5px solid #C1121F;box-shadow:0 0 22px rgba(193,18,31,.3);overflow:hidden">
+        <span style="position:absolute;top:8px;right:8px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#C1121F;color:#fff;font:700 10px/18px Roboto,sans-serif;text-align:center;box-sizing:border-box">3</span>
+        <div style="padding:16px 0 8px;display:flex;justify-content:center;background:linear-gradient(180deg,rgba(193,18,31,.14),transparent)">
+          <div style="width:66px;height:38px;background:#C1121F;-webkit-mask:url('ExpansionNetworkApp/expansion_network/assets/conference/shop_storefront.png') center/contain no-repeat;mask:url('ExpansionNetworkApp/expansion_network/assets/conference/shop_storefront.png') center/contain no-repeat"></div>
+        </div>
+        <div style="padding:0 8px 12px;display:flex;flex-direction:column;align-items:center;gap:3px">
+          <div style="font:700 11px Roboto,sans-serif;letter-spacing:.6px;color:#fff;text-align:center;line-height:1.25">NETWORKING<br>HALL</div>
+          <div style="font:400 10px Roboto,sans-serif;color:#999">42 online</div>
+        </div>
+      </div>
+
+      <div style="position:relative;border-radius:16px;background:#0D0D0D;border:1.5px solid #E6DBB4;box-shadow:0 0 22px rgba(230,219,180,.3);overflow:hidden">
+        <span style="position:absolute;top:8px;right:8px;padding:2px 6px;border-radius:999px;background:#E6DBB4;color:#000;font:700 9px Roboto,sans-serif;letter-spacing:.6px">LIVE</span>
+        <div style="padding:16px 0 8px;display:flex;justify-content:center;background:linear-gradient(180deg,rgba(230,219,180,.14),transparent)">
+          <div style="width:66px;height:38px;background:#E6DBB4;-webkit-mask:url('ExpansionNetworkApp/expansion_network/assets/conference/shop_storefront.png') center/contain no-repeat;mask:url('ExpansionNetworkApp/expansion_network/assets/conference/shop_storefront.png') center/contain no-repeat"></div>
+        </div>
+        <div style="padding:0 8px 12px;display:flex;flex-direction:column;align-items:center;gap:3px">
+          <div style="font:700 11px Roboto,sans-serif;letter-spacing:.6px;color:#fff;text-align:center;line-height:1.25">CONFERENCE<br>CENTER</div>
+          <div style="font:400 10px Roboto,sans-serif;color:#999">Founders ’26</div>
+        </div>
+      </div>
+
+      <div style="position:relative;border-radius:16px;background:#0D0D0D;border:1.5px solid rgba(168,168,168,.7);overflow:hidden">
+        <div style="padding:16px 0 8px;display:flex;justify-content:center;background:linear-gradient(180deg,rgba(168,168,168,.1),transparent)">
+          <div style="width:66px;height:38px;background:#A8A8A8;-webkit-mask:url('ExpansionNetworkApp/expansion_network/assets/conference/shop_storefront.png') center/contain no-repeat;mask:url('ExpansionNetworkApp/expansion_network/assets/conference/shop_storefront.png') center/contain no-repeat"></div>
+        </div>
+        <div style="padding:0 8px 12px;display:flex;flex-direction:column;align-items:center;gap:3px">
+          <div style="font:700 11px Roboto,sans-serif;letter-spacing:.6px;color:#fff;text-align:center;line-height:1.25">THE<br>COMMONS</div>
+          <div style="font:400 10px Roboto,sans-serif;color:#999">2 badges</div>
+        </div>
+      </div>
+
+    </div>
+
+    <div style="margin-top:22px;padding:0 20px">
+      <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:12px 14px">
+        <span style="font-family:'Material Symbols Rounded';font-size:20px;color:#757575;line-height:1">event</span>
+        <div style="flex:1"><div style="font:500 13px Roboto,sans-serif;color:#fff">MORTAR Mixer — Thu 6:00 PM</div><div style="font:400 11px Roboto,sans-serif;color:#757575">Detroit • 14 going</div></div>
+        <span style="border:1px solid rgba(255,255,255,.2);color:#fff;font:500 11px Roboto,sans-serif;padding:5px 11px;border-radius:999px">RSVP</span>
+      </div>
+    </div>
+
+    <div style="position:absolute;right:20px;bottom:34px;width:60px;height:60px;border-radius:20px;background:#C1121F;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;box-shadow:0 8px 24px rgba(193,18,31,.5)">
+      <span style="font-family:'Material Symbols Rounded';font-size:26px;color:#fff;line-height:1">qr_code_scanner</span>
+      <span style="font:700 8px Roboto,sans-serif;letter-spacing:.6px;color:rgba(255,255,255,.85)">SCAN</span>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+
+<div class="dv-opt" id="1c">
+<div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a>Focus card. One hero prompt at a time with pager dots; shops become a horizontal “street” you scroll along.</div>
+<div class="dv-card" style="width:390px;border-radius:38px">
+<div style="width:390px;height:844px;position:relative;overflow:hidden;background:#000">
+  <div style="position:absolute;inset:0;background:radial-gradient(120% 100% at 50% 0%,#262626 0%,#000 100%)"></div>
+  <div style="position:absolute;inset:0;background-image:radial-gradient(circle,rgba(117,117,117,.5) .8px,transparent 1.2px);background-size:53px 67px"></div>
+  <div style="position:relative;height:100%;display:flex;flex-direction:column;padding-top:44px">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:0 22px;margin-top:-30px;height:22px;font:500 13px Roboto,sans-serif;color:#fff"><span>9:41</span><span style="font-family:'Material Symbols Rounded';font-size:15px;letter-spacing:3px">network_wifi battery_full</span></div>
+
+    <div style="padding:20px 22px 0">
+      <div style="font:400 13px Roboto,sans-serif;color:#757575">Good morning, Denise</div>
+      <div style="font:700 22px/1.25 Roboto,sans-serif;letter-spacing:1.2px;color:#fff;margin-top:2px">THE MORTARVERSE</div>
+    </div>
+
+    <div style="padding:18px 22px 0">
+      <div style="position:relative;border-radius:22px;background:linear-gradient(160deg,rgba(193,18,31,.22),rgba(193,18,31,.04) 60%,transparent);border:1px solid rgba(193,18,31,.55);padding:20px;box-shadow:0 0 40px rgba(193,18,31,.22)">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="width:7px;height:7px;border-radius:999px;background:#C1121F;box-shadow:0 0 8px 2px rgba(193,18,31,.8)"></span>
+          <span style="font:700 10px Roboto,sans-serif;letter-spacing:1.6px;color:#C1121F">WAITING ON YOU</span>
+        </div>
+        <div style="font:900 30px/1.15 Roboto,sans-serif;color:#fff;margin-top:14px">3 unread<br>messages</div>
+        <div style="font:400 13px/1.5 Roboto,sans-serif;color:#BDBDBD;margin-top:8px">Maya Booker replied to your intro in the Networking Hall, 12 minutes ago.</div>
+        <div style="display:flex;align-items:center;gap:12px;margin-top:18px">
+          <div style="display:flex">
+            <div style="width:30px;height:30px;border-radius:999px;background:#3a2a2a;border:2px solid #0a0a0a;display:flex;align-items:center;justify-content:center;font:700 11px Roboto,sans-serif;color:#E6DBB4">MB</div>
+            <div style="width:30px;height:30px;border-radius:999px;background:#2a2a3a;border:2px solid #0a0a0a;margin-left:-10px;display:flex;align-items:center;justify-content:center;font:700 11px Roboto,sans-serif;color:#BDBDBD">CH</div>
+            <div style="width:30px;height:30px;border-radius:999px;background:#2A2A2A;border:2px solid #0a0a0a;margin-left:-10px;display:flex;align-items:center;justify-content:center;font:700 11px Roboto,sans-serif;color:#999">+1</div>
+          </div>
+          <div style="flex:1"></div>
+          <span style="background:#C1121F;color:#fff;font:700 13px Roboto,sans-serif;padding:11px 22px;border-radius:999px">Open messages</span>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:center;align-items:center;gap:7px;margin-top:14px">
+        <span style="width:20px;height:5px;border-radius:999px;background:#C1121F"></span>
+        <span style="width:5px;height:5px;border-radius:999px;background:#E6DBB4;opacity:.6"></span>
+        <span style="width:5px;height:5px;border-radius:999px;background:#A8A8A8;opacity:.45"></span>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-top:14px">
+        <div style="flex:1;display:flex;align-items:center;gap:7px;background:rgba(230,219,180,.08);border:1px solid rgba(230,219,180,.3);border-radius:12px;padding:9px 11px">
+          <span style="font-family:'Material Symbols Rounded';font-size:17px;color:#E6DBB4;line-height:1">stadium</span>
+          <span style="font:500 11px/1.25 Roboto,sans-serif;color:#E6DBB4">Founders ’26<br>just opened</span>
+        </div>
+        <div style="flex:1;display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:9px 11px">
+          <span style="font-family:'Material Symbols Rounded';font-size:17px;color:#A8A8A8;line-height:1">account_circle</span>
+          <span style="font:500 11px/1.25 Roboto,sans-serif;color:#BDBDBD">Profile 60%<br>complete</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:baseline;justify-content:space-between;padding:26px 22px 12px">
+      <span style="font:700 11px Roboto,sans-serif;letter-spacing:1.4px;color:#fff">WHERE TO GO</span>
+      <span style="font:400 11px Roboto,sans-serif;color:#757575">Swipe the street →</span>
+    </div>
+
+    <div style="display:flex;gap:12px;padding:0 0 0 22px;overflow:hidden;align-items:stretch">
+
+      <div style="flex:none;width:148px;border-radius:20px;background:#0D0D0D;border:2px solid #C1121F;box-shadow:0 0 34px rgba(193,18,31,.34);overflow:hidden">
+        <div style="padding:18px 0 10px;display:flex;justify-content:center;background:linear-gradient(180deg,rgba(193,18,31,.16),transparent)">
+          <div style="width:92px;height:52px;background:#C1121F;-webkit-mask:url('ExpansionNetworkApp/expansion_network/assets/conference/shop_storefront.png') center/contain no-repeat;mask:url('ExpansionNetworkApp/expansion_network/assets/conference/shop_storefront.png') center/contain no-repeat"></div>
+        </div>
+        <div style="padding:0 10px 14px;display:flex;flex-direction:column;align-items:center;gap:5px">
+          <span style="background:#C1121F;color:#fff;font:700 9px Roboto,sans-serif;letter-spacing:1px;padding:3px 8px;border-radius:999px">3 WAITING</span>
+          <div style="font:700 12px/1.25 Roboto,sans-serif;letter-spacing:.7px;color:#fff;text-align:center">NETWORKING<br>HALL</div>
+          <div style="font:400 10px Roboto,sans-serif;color:#999;text-align:center">42 online</div>
+        </div>
+      </div>
+
+      <div style="flex:none;width:148px;border-radius:20px;background:#0D0D0D;border:2px solid #E6DBB4;box-shadow:0 0 34px rgba(230,219,180,.3);overflow:hidden">
+        <div style="padding:18px 0 10px;display:flex;justify-content:center;background:linear-gradient(180deg,rgba(230,219,180,.16),transparent)">
+          <div style="width:92px;height:52px;background:#E6DBB4;-webkit-mask:url('ExpansionNetworkApp/expansion_network/assets/conference/shop_storefront.png') center/contain no-repeat;mask:url('ExpansionNetworkApp/expansion_network/assets/conference/shop_storefront.png') center/contain no-repeat"></div>
+        </div>
+        <div style="padding:0 10px 14px;display:flex;flex-direction:column;align-items:center;gap:5px">
+          <span style="background:#E6DBB4;color:#000;font:700 9px Roboto,sans-serif;letter-spacing:1px;padding:3px 8px;border-radius:999px">JUST OPENED</span>
+          <div style="font:700 12px/1.25 Roboto,sans-serif;letter-spacing:.7px;color:#fff;text-align:center">CONFERENCE<br>CENTER</div>
+          <div style="font:400 10px Roboto,sans-serif;color:#999;text-align:center">Founders ’26</div>
+        </div>
+      </div>
+
+      <div style="flex:none;width:148px;border-radius:20px;background:#0D0D0D;border:2px solid rgba(168,168,168,.8);overflow:hidden">
+        <div style="padding:18px 0 10px;display:flex;justify-content:center;background:linear-gradient(180deg,rgba(168,168,168,.12),transparent)">
+          <div style="width:92px;height:52px;background:#A8A8A8;-webkit-mask:url('ExpansionNetworkApp/expansion_network/assets/conference/shop_storefront.png') center/contain no-repeat;mask:url('ExpansionNetworkApp/expansion_network/assets/conference/shop_storefront.png') center/contain no-repeat"></div>
+        </div>
+        <div style="padding:0 10px 14px;display:flex;flex-direction:column;align-items:center;gap:5px">
+          <span style="border:1px solid rgba(168,168,168,.6);color:#A8A8A8;font:700 9px Roboto,sans-serif;letter-spacing:1px;padding:2px 8px;border-radius:999px">PROFILE 60%</span>
+          <div style="font:700 12px/1.25 Roboto,sans-serif;letter-spacing:.7px;color:#fff;text-align:center">THE<br>COMMONS</div>
+          <div style="font:400 10px Roboto,sans-serif;color:#999;text-align:center">2 new badges</div>
+        </div>
+      </div>
+
+    </div>
+
+    <div style="flex:1"></div>
+
+    <div style="padding:0 22px 26px;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:baseline;justify-content:space-between">
+        <span style="font:700 11px Roboto,sans-serif;letter-spacing:1.4px;color:#fff">MORTAR EVENTS</span>
+        <span style="font:400 11px Roboto,sans-serif;color:#757575">See all</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:11px 13px">
+        <div style="flex:none;width:38px;height:38px;border-radius:10px;background:#1A1A1A;display:flex;flex-direction:column;align-items:center;justify-content:center">
+          <span style="font:700 13px/1 Roboto,sans-serif;color:#fff">30</span>
+          <span style="font:500 8px/1.4 Roboto,sans-serif;letter-spacing:.8px;color:#757575">JUL</span>
+        </div>
+        <div style="flex:1"><div style="font:500 13px Roboto,sans-serif;color:#fff">MORTAR Mixer</div><div style="font:400 11px Roboto,sans-serif;color:#757575">Thu 6:00 PM • Detroit • 14 going</div></div>
+        <span style="border:1px solid rgba(255,255,255,.22);color:#fff;font:500 11px Roboto,sans-serif;padding:5px 11px;border-radius:999px">RSVP</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:11px 13px;width:262px">
+        <div style="flex:none;width:38px;height:38px;border-radius:10px;background:#1A1A1A;display:flex;flex-direction:column;align-items:center;justify-content:center">
+          <span style="font:700 13px/1 Roboto,sans-serif;color:#fff">04</span>
+          <span style="font:500 8px/1.4 Roboto,sans-serif;letter-spacing:.8px;color:#757575">AUG</span>
+        </div>
+        <div style="flex:1"><div style="font:500 13px Roboto,sans-serif;color:#fff">Capital Readiness</div><div style="font:400 11px Roboto,sans-serif;color:#757575">Mon 12:00 PM • Online</div></div>
+      </div>
+    </div>
+
+    <div style="position:absolute;right:22px;bottom:30px;width:56px;height:56px;border-radius:999px;background:#C1121F;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 26px rgba(193,18,31,.55)">
+      <span style="font-family:'Material Symbols Rounded';font-size:27px;color:#fff;line-height:1">qr_code_scanner</span>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+
+<div class="dv-opt" id="1d">
+<div class="dv-olabel"><a class="dv-oid" href="#1d">1d</a>Marquee + hero grid. A live ticker under the header, the busiest shop promoted to a full-width hero, the other two halved.</div>
+<div class="dv-card" style="width:390px;border-radius:38px">
+<div style="width:390px;height:844px;position:relative;overflow:hidden;background:#000">
+  <div style="position:absolute;inset:0;background:radial-gradient(120% 100% at 50% 0%,#262626 0%,#000 100%)"></div>
+  <div style="position:absolute;inset:0;background-image:radial-gradient(circle,rgba(117,117,117,.5) .8px,transparent 1.2px);background-size:53px 67px"></div>
+  <div style="position:relative;height:100%;display:flex;flex-direction:column;padding-top:44px">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:0 22px;margin-top:-30px;height:22px;font:500 13px Roboto,sans-serif;color:#fff"><span>9:41</span><span style="font-family:'Material Symbols Rounded';font-size:15px;letter-spacing:3px">network_wifi battery_full</span></div>
+
+    <div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:18px 20px 12px">
+      <span style="font-family:'Material Symbols Rounded';font-size:18px;color:#BDBDBD;line-height:1">auto_awesome</span>
+      <span style="font:700 17px Roboto,sans-serif;letter-spacing:1.5px;color:#fff">THE MORTARVERSE</span>
+      <span style="font-family:'Material Symbols Rounded';font-size:18px;color:#BDBDBD;line-height:1">auto_awesome</span>
+    </div>
+
+    <div style="margin:0 16px;display:flex;align-items:center;gap:10px;background:#0D0D0D;border:1px solid rgba(255,255,255,.1);border-radius:999px;padding:8px 8px 8px 14px;overflow:hidden">
+      <span style="flex:none;width:6px;height:6px;border-radius:999px;background:#C1121F;box-shadow:0 0 8px 2px rgba(193,18,31,.7)"></span>
+      <span style="flex:none;font:700 9px Roboto,sans-serif;letter-spacing:1.4px;color:#C1121F">LIVE</span>
+      <span style="flex:1;font:400 12px Roboto,sans-serif;color:#BDBDBD;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">3 unread messages &nbsp;•&nbsp; Founders Summit ’26 just opened &nbsp;•&nbsp; Profile 60%</span>
+      <span style="flex:none;width:26px;height:26px;border-radius:999px;background:#1A1A1A;display:flex;align-items:center;justify-content:center;font-family:'Material Symbols Rounded';font-size:16px;color:#999">chevron_right</span>
+    </div>
+
+    <div style="padding:16px 16px 0">
+      <div style="position:relative;border-radius:22px;background:#0D0D0D;border:2px solid #E6DBB4;box-shadow:0 0 44px rgba(230,219,180,.28);overflow:hidden">
+        <div style="display:flex;align-items:center;gap:16px;padding:18px 18px;background:linear-gradient(100deg,rgba(230,219,180,.18),transparent 70%)">
+          <div style="flex:none;width:104px;height:59px;background:#E6DBB4;-webkit-mask:url('ExpansionNetworkApp/expansion_network/assets/conference/shop_storefront.png') center/contain no-repeat;mask:url('ExpansionNetworkApp/expansion_network/assets/conference/shop_storefront.png') center/contain no-repeat"></div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:5px">
+            <span style="align-self:flex-start;background:#E6DBB4;color:#000;font:700 9px Roboto,sans-serif;letter-spacing:1px;padding:3px 8px;border-radius:999px">JUST OPENED</span>
+            <div style="font:700 16px Roboto,sans-serif;letter-spacing:.8px;color:#fff">CONFERENCE CENTER</div>
+            <div style="font:400 12px Roboto,sans-serif;color:#BDBDBD">Founders Summit ’26 • 4 sessions today</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-top:1px solid rgba(230,219,180,.2);background:rgba(230,219,180,.05)">
+          <span style="font:400 12px Roboto,sans-serif;color:#999">Keynote starts in 40 min</span>
+          <span style="background:#E6DBB4;color:#000;font:700 12px Roboto,sans-serif;padding:8px 16px;border-radius:999px">Get ticket</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px 16px 0">
+      <div style="position:relative;border-radius:18px;background:#0D0D0D;border:1.5px solid #C1121F;box-shadow:0 0 26px rgba(193,18,31,.28);overflow:hidden">
+        <span style="position:absolute;top:10px;right:10px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#C1121F;color:#fff;font:700 10px/18px Roboto,sans-serif;text-align:center;box-sizing:border-box">3</span>
+        <div style="padding:18px 0 10px;display:flex;justify-content:center;background:linear-gradient(180deg,rgba(193,18,31,.14),transparent)">
+          <div style="width:82px;height:46px;background:#C1121F;-webkit-mask:url('ExpansionNetworkApp/expansion_network/assets/conference/shop_storefront.png') center/contain no-repeat;mask:url('ExpansionNetworkApp/expansion_network/assets/conference/shop_storefront.png') center/contain no-repeat"></div>
+        </div>
+        <div style="padding:0 12px 14px;display:flex;flex-direction:column;align-items:center;gap:3px">
+          <div style="font:700 12px Roboto,sans-serif;letter-spacing:.7px;color:#fff;text-align:center">NETWORKING HALL</div>
+          <div style="font:400 11px Roboto,sans-serif;color:#C1121F">3 unread • 42 online</div>
+        </div>
+      </div>
+      <div style="border-radius:18px;background:#0D0D0D;border:1.5px solid rgba(168,168,168,.7);overflow:hidden">
+        <div style="padding:18px 0 10px;display:flex;justify-content:center;background:linear-gradient(180deg,rgba(168,168,168,.1),transparent)">
+          <div style="width:82px;height:46px;background:#A8A8A8;-webkit-mask:url('ExpansionNetworkApp/expansion_network/assets/conference/shop_storefront.png') center/contain no-repeat;mask:url('ExpansionNetworkApp/expansion_network/assets/conference/shop_storefront.png') center/contain no-repeat"></div>
+        </div>
+        <div style="padding:0 12px 14px;display:flex;flex-direction:column;align-items:center;gap:3px">
+          <div style="font:700 12px Roboto,sans-serif;letter-spacing:.7px;color:#fff;text-align:center">THE COMMONS</div>
+          <div style="font:400 11px Roboto,sans-serif;color:#999">Profile 60%</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="padding:18px 16px 0">
+      <div style="font:700 11px Roboto,sans-serif;letter-spacing:1.4px;color:#757575;margin-bottom:10px">SUGGESTED FOR YOU</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <span style="display:flex;align-items:center;gap:6px;border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:8px 12px;font:400 12px Roboto,sans-serif;color:#BDBDBD"><span style="font-family:'Material Symbols Rounded';font-size:15px;line-height:1">person_search</span>Browse members</span>
+        <span style="display:flex;align-items:center;gap:6px;border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:8px 12px;font:400 12px Roboto,sans-serif;color:#BDBDBD"><span style="font-family:'Material Symbols Rounded';font-size:15px;line-height:1">school</span>Explore curriculum</span>
+      </div>
+    </div>
+
+    <div style="padding:18px 16px 0;display:flex;flex-direction:column;gap:9px">
+      <div style="display:flex;align-items:baseline;justify-content:space-between">
+        <span style="font:700 11px Roboto,sans-serif;letter-spacing:1.4px;color:#757575">MORTAR EVENTS</span>
+        <span style="font:400 11px Roboto,sans-serif;color:#757575">See all</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:11px 13px">
+        <div style="flex:none;width:38px;height:38px;border-radius:10px;background:#1A1A1A;display:flex;flex-direction:column;align-items:center;justify-content:center">
+          <span style="font:700 13px/1 Roboto,sans-serif;color:#fff">30</span>
+          <span style="font:500 8px/1.4 Roboto,sans-serif;letter-spacing:.8px;color:#757575">JUL</span>
+        </div>
+        <div style="flex:1"><div style="font:500 13px Roboto,sans-serif;color:#fff">MORTAR Mixer</div><div style="font:400 11px Roboto,sans-serif;color:#757575">Thu 6:00 PM • Detroit • 14 going</div></div>
+        <span style="border:1px solid rgba(255,255,255,.22);color:#fff;font:500 11px Roboto,sans-serif;padding:5px 11px;border-radius:999px">RSVP</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:11px 13px;width:250px">
+        <div style="flex:none;width:38px;height:38px;border-radius:10px;background:#1A1A1A;display:flex;flex-direction:column;align-items:center;justify-content:center">
+          <span style="font:700 13px/1 Roboto,sans-serif;color:#fff">04</span>
+          <span style="font:500 8px/1.4 Roboto,sans-serif;letter-spacing:.8px;color:#757575">AUG</span>
+        </div>
+        <div style="flex:1"><div style="font:500 13px Roboto,sans-serif;color:#fff">Capital Readiness</div><div style="font:400 11px Roboto,sans-serif;color:#757575">Mon 12:00 PM • Online</div></div>
+      </div>
+    </div>
+
+    <div style="position:absolute;right:18px;bottom:26px;display:flex;align-items:center;gap:9px;background:#C1121F;border-radius:999px;padding:13px 18px;box-shadow:0 8px 26px rgba(193,18,31,.5)">
+      <span style="font-family:'Material Symbols Rounded';font-size:22px;color:#fff;line-height:1">qr_code_scanner</span>
+      <span style="font:700 13px Roboto,sans-serif;letter-spacing:.5px;color:#fff">Scan</span>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+
+</div>
+
+<p class="dv-next">Try next: “take the action stack from <a class="dv-oid" href="#1b">1b</a> but the shop street from <a class="dv-oid" href="#1c">1c</a>” · “show <a class="dv-oid" href="#1b">1b</a> on a quiet day with nothing unread” · “make <a class="dv-oid" href="#1d">1d</a>’s ticker actually scroll”</p>
+</section>
+
+</x-dc>
+</body>
+</html>

@@ -29,7 +29,13 @@ import '../theme/conference_colors.dart';
 /// atmosphere + starfield, glowing gold) to match [ConferenceLobbyScreen] and
 /// the Mortarverse chooser.
 class ConferenceGateScreen extends StatefulWidget {
-  const ConferenceGateScreen({super.key});
+  const ConferenceGateScreen({super.key, this.switchMode = false});
+
+  /// True when the user left a conference to choose another (`?switch=1`).
+  ///
+  /// Suppresses the "already has access → straight to the lobby" shortcut, so
+  /// the conference list is actually reachable for someone who is already in.
+  final bool switchMode;
 
   @override
   State<ConferenceGateScreen> createState() => _ConferenceGateScreenState();
@@ -69,6 +75,11 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
     )..repeat(reverse: true);
     final rng = Random(11);
     _stars = List.generate(70, (_) => Offset(rng.nextDouble(), rng.nextDouble()));
+    if (widget.switchMode) {
+      // The user has left the conference: drop the ambient id so analytics stop
+      // stamping conference_id onto everything they do from here.
+      CurrentConferenceHolder.instance.conferenceId = null;
+    }
     logConferenceEvent(ConferenceAnalytics.gateViewed);
     _bootstrap();
   }
@@ -189,9 +200,11 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
 
       final upcoming = await _repo.fetchUpcomingConferences();
 
-      // Already have access to the tapped conference? Skip the gate.
+      // Already have access to the tapped conference? Skip the gate — unless
+      // the user deliberately left a conference to pick a different one, in
+      // which case auto-forwarding would bounce them straight back in.
       final uid = FirebaseAuth.instance.currentUser?.uid;
-      if (conferenceId != null && uid != null) {
+      if (conferenceId != null && uid != null && !widget.switchMode) {
         final hasAccess = await _repo.hasAttendeeAccess(conferenceId, uid);
         if (hasAccess && mounted) {
           CurrentConferenceHolder.instance.conferenceId = conferenceId;

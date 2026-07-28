@@ -138,7 +138,11 @@ GoRouter createAppRouter(AuthController auth) {
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,
         path: '/conference/gate',
-        builder: (context, state) => const ConferenceGateScreen(),
+        // `?switch=1` — arrived by leaving a conference, so show the list
+        // instead of forwarding straight back into the one they just left.
+        builder: (context, state) => ConferenceGateScreen(
+          switchMode: state.uri.queryParameters['switch'] == '1',
+        ),
       ),
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,
