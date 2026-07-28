@@ -47,7 +47,6 @@ interface ConferenceRow {
   brandColor?: string;
   brandColorSecondary?: string;
   mapImageUrl?: string;
-  heroSponsor?: { name?: string; logoUrl?: string };
   attendeeCount?: number;
   checkInTotal?: number;
 }
@@ -108,8 +107,6 @@ export function ConferencesPanel() {
   const [brandColor, setBrandColor] = useState("");
   const [brandColorSecondary, setBrandColorSecondary] = useState("");
   const [mapImageUrl, setMapImageUrl] = useState("");
-  const [sponsorName, setSponsorName] = useState("");
-  const [sponsorLogoUrl, setSponsorLogoUrl] = useState("");
 
   // Codes management
   const [selectedConfId, setSelectedConfId] = useState<string | null>(null);
@@ -199,8 +196,6 @@ export function ConferencesPanel() {
     setBrandColorSecondary("");
     setHeroImageFile(null);
     setMapImageUrl("");
-    setSponsorName("");
-    setSponsorLogoUrl("");
   }, []);
 
   const loadIntoForm = useCallback((c: ConferenceRow) => {
@@ -219,8 +214,6 @@ export function ConferencesPanel() {
     setHeroImageUrl(c.heroImageUrl ?? "");
     setHeroImageFile(null);
     setMapImageUrl(c.mapImageUrl ?? "");
-    setSponsorName(c.heroSponsor?.name ?? "");
-    setSponsorLogoUrl(c.heroSponsor?.logoUrl ?? "");
     setLogoUrl(c.logoUrl ?? "");
     setBrandColor(c.brandColor ?? "");
     setBrandColorSecondary(c.brandColorSecondary ?? "");
@@ -311,10 +304,8 @@ export function ConferencesPanel() {
         brandColor: brandColor.trim() || null,
         brandColorSecondary: brandColorSecondary.trim() || null,
         mapImageUrl: mapImageUrl.trim() || null,
-        heroSponsor:
-          sponsorName.trim() || sponsorLogoUrl.trim()
-            ? { name: sponsorName.trim() || null, logoUrl: sponsorLogoUrl.trim() || null }
-            : null,
+        // `heroSponsor` is deliberately not written here — sponsors are managed
+        // in the Sponsors panel, and nothing in the app ever rendered this field.
         updatedAt: serverTimestamp(),
       };
 
@@ -622,14 +613,6 @@ export function ConferencesPanel() {
             </p>
           </div>
 
-          <div className="space-y-2">
-            <Label className="text-foreground">Sponsor name</Label>
-            <Input value={sponsorName} onChange={(e) => setSponsorName(e.target.value)} className="bg-background" />
-          </div>
-          <div className="space-y-2">
-            <Label className="text-foreground">Sponsor logo URL</Label>
-            <Input value={sponsorLogoUrl} onChange={(e) => setSponsorLogoUrl(e.target.value)} className="bg-background" placeholder="https://…" />
-          </div>
         </div>
 
         <Button type="button" onClick={() => void saveConference()} disabled={saving}>

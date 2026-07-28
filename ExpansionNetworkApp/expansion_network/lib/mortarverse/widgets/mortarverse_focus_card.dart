@@ -137,6 +137,9 @@ class _MortarverseFocusCardState extends State<MortarverseFocusCard> {
   int _index = 0;
   String? _lastReported;
 
+  /// Accumulated horizontal drag for the current gesture.
+  double _dragDx = 0;
+
   @override
   void initState() {
     super.initState();
@@ -180,11 +183,18 @@ class _MortarverseFocusCardState extends State<MortarverseFocusCard> {
       children: [
         GestureDetector(
           onTap: () => widget.onOpen(item),
-          // Horizontal drag advances the queue, matching the pager dots.
+          onHorizontalDragStart: (_) => _dragDx = 0,
+          onHorizontalDragUpdate: (d) => _dragDx += d.delta.dx,
+          // Accepts either a flick or a slow drag past a third of the card —
+          // velocity alone ignored anyone who dragged deliberately.
           onHorizontalDragEnd: (d) {
             final v = d.primaryVelocity ?? 0;
-            if (v < -100) _advance(1);
-            if (v > 100) _advance(-1);
+            final w = context.size?.width ?? 320;
+            final far = _dragDx.abs() > w / 3;
+            final flick = v.abs() > 250;
+            if (!far && !flick) return;
+            final forward = (flick ? v < 0 : _dragDx < 0);
+            _advance(forward ? 1 : -1);
           },
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 250),
@@ -206,11 +216,16 @@ class _MortarverseFocusCardState extends State<MortarverseFocusCard> {
           ),
         ),
         if (widget.queue.length > 1) ...[
-          const SizedBox(height: 14),
+          // 4 + the dots' own 10px touch padding ≈ the 14px gap in the spec.
+          const SizedBox(height: 4),
           _PagerDots(
             count: widget.queue.length,
             active: _index,
             colors: [for (final a in widget.queue) a.accent],
+            onSelect: (i) {
+              setState(() => _index = i);
+              _reportShown();
+            },
           ),
         ],
       ],
@@ -337,11 +352,13 @@ class _PagerDots extends StatelessWidget {
     required this.count,
     required this.active,
     required this.colors,
+    required this.onSelect,
   });
 
   final int count;
   final int active;
   final List<Color> colors;
+  final ValueChanged<int> onSelect;
 
   @override
   Widget build(BuildContext context) {
@@ -349,15 +366,21 @@ class _PagerDots extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         for (var i = 0; i < count; i++)
-          Padding(
-            padding: EdgeInsets.only(right: i == count - 1 ? 0 : 7),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: i == active ? 20 : 5,
-              height: 5,
-              decoration: BoxDecoration(
-                color: colors[i].withValues(alpha: i == active ? 1 : 0.5),
-                borderRadius: BorderRadius.circular(999),
+          GestureDetector(
+            onTap: () => onSelect(i),
+            // The dot itself is 5px tall; the padding gives it a real touch
+            // target without changing how it looks.
+            behavior: HitTestBehavior.opaque,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(i == 0 ? 0 : 3.5, 10, i == count - 1 ? 0 : 3.5, 10),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: i == active ? 20 : 5,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: colors[i].withValues(alpha: i == active ? 1 : 0.5),
+                  borderRadius: BorderRadius.circular(999),
+                ),
               ),
             ),
           ),

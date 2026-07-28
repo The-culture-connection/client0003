@@ -200,9 +200,9 @@ class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen>
   /// Prominent daily check-in CTA in the lobby (resets each conference-local day).
   Widget _buildCheckInCard(BuildContext context) {
     final checkedIn = _checkedInToday == true;
-    final countLabel = _todayCount > 0
-        ? '$_todayCount checked in today'
-        : 'Be the first to check in today';
+    // Null when nobody has checked in yet — an empty count is better left
+    // unsaid than dressed up as encouragement.
+    final countLabel = _todayCount > 0 ? '$_todayCount checked in today' : null;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
@@ -246,11 +246,13 @@ class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen>
                       letterSpacing: 0.8,
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    countLabel,
-                    style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
-                  ),
+                  if (countLabel != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      countLabel,
+                      style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+                    ),
+                  ],
                 ],
               ),
             ),
