@@ -7,6 +7,7 @@ import '../current_conference_holder.dart';
 import '../models/conference_sponsor.dart';
 import '../services/conference_repository.dart';
 import '../theme/conference_colors.dart';
+import '../widgets/booth_scan_fab.dart';
 import '../widgets/conference_background.dart';
 
 /// Sponsor Hall — ports `Conference App Figma Mockup/src/app/pages/ConferenceSponsors.tsx`,
@@ -109,6 +110,7 @@ class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
     final conferenceId = CurrentConferenceHolder.instance.conferenceId;
     return Scaffold(
       backgroundColor: ConferenceColors.background,
+      floatingActionButton: const BoothScanFab(extended: true),
       body: ConferenceGridBackground(
         child: SafeArea(
           child: conferenceId == null

@@ -9,6 +9,8 @@ import '../../services/expansion_session_service.dart'
     show userMessageForFirebaseCallableError;
 import '../conference_analytics.dart';
 import '../current_conference_holder.dart';
+import '../models/conference_mission.dart';
+import '../services/conference_mission_service.dart';
 import '../services/conference_ticket_service.dart';
 import '../theme/conference_colors.dart';
 import '../widgets/conference_scope.dart';
@@ -77,12 +79,6 @@ class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen>
       route: '/conference/sponsors',
       status: 'Active',
     ),
-  ];
-
-  static const _missions = [
-    _Mission(title: 'Attend 3 sessions', total: 3, icon: Icons.event_available_rounded),
-    _Mission(title: 'Connect with 5 people', total: 5, icon: Icons.handshake_rounded),
-    _Mission(title: 'Visit 2 sponsor booths', total: 2, icon: Icons.emoji_events_rounded),
   ];
 
   @override
@@ -359,7 +355,7 @@ class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen>
                 ],
               ),
               const SizedBox(height: 12),
-              for (final mission in _missions) _MissionTile(mission: mission),
+              const _MissionsList(),
             ],
           ),
         );
@@ -625,49 +621,173 @@ class _ZoneCard extends StatelessWidget {
   }
 }
 
-class _Mission {
-  const _Mission({required this.title, required this.total, required this.icon});
-  final String title;
-  final int total;
-  final IconData icon;
+/// Admin-authored missions for this conference, with live per-user progress.
+///
+/// Definitions come from `conference_missions`; progress from
+/// `mission_progress/{uid}`, written by the mission evaluator that shares the
+/// badge rules engine.
+class _MissionsList extends StatefulWidget {
+  const _MissionsList();
 
-  /// Always 0 in Phase 1 — real progress counters land as each phase's
-  /// source feature ships (see `docs/conference-app-plan.md`).
-  int get progress => 0;
+  @override
+  State<_MissionsList> createState() => _MissionsListState();
 }
 
-class _MissionTile extends StatelessWidget {
-  const _MissionTile({required this.mission});
-
-  final _Mission mission;
+class _MissionsListState extends State<_MissionsList> {
+  final ConferenceMissionService _service = ConferenceMissionService();
 
   @override
   Widget build(BuildContext context) {
-    final progress = mission.total == 0 ? 0.0 : mission.progress / mission.total;
+    final conferenceId = CurrentConferenceHolder.instance.conferenceId;
+    if (conferenceId == null) return const SizedBox.shrink();
+
+    return StreamBuilder<List<ConferenceMission>>(
+      stream: _service.watchMissions(conferenceId),
+      builder: (context, missionSnap) {
+        if (missionSnap.hasError) {
+          return _missionsNotice('Could not load missions.');
+        }
+        if (!missionSnap.hasData) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Center(
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  color: ConferenceColors.gold,
+                  strokeWidth: 2,
+                ),
+              ),
+            ),
+          );
+        }
+        final missions = missionSnap.data!;
+        if (missions.isEmpty) {
+          return _missionsNotice('No missions for this conference yet.');
+        }
+
+        return StreamBuilder<Map<String, MissionProgress>>(
+          stream: _service.watchMyProgress(),
+          builder: (context, progressSnap) {
+            final progress = progressSnap.data ?? const <String, MissionProgress>{};
+            return Column(
+              children: [
+                for (final m in missions)
+                  _MissionTile(
+                    mission: m,
+                    progress: progress[m.id] ?? MissionProgress.empty,
+                  ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _missionsNotice(String text) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Text(
+          text,
+          style: const TextStyle(color: ConferenceColors.mutedForeground, fontSize: 13),
+        ),
+      );
+}
+
+/// Maps an admin-chosen icon key to a glyph. Unknown keys fall back to a medal.
+IconData missionIconFor(String? key) {
+  switch (key) {
+  case 'session':
+    return Icons.event_available_rounded;
+  case 'connect':
+    return Icons.handshake_rounded;
+  case 'sponsor':
+    return Icons.storefront_rounded;
+  case 'community':
+    return Icons.forum_rounded;
+  case 'checkin':
+    return Icons.location_on_rounded;
+  case 'chat':
+    return Icons.chat_bubble_rounded;
+  default:
+    return Icons.emoji_events_rounded;
+  }
+}
+
+class _MissionTile extends StatelessWidget {
+  const _MissionTile({required this.mission, required this.progress});
+
+  final ConferenceMission mission;
+  final MissionProgress progress;
+
+  @override
+  Widget build(BuildContext context) {
+    final done = progress.completed;
+    // Clamp so an over-shot counter (e.g. 7 scans against a target of 5) still
+    // renders a full bar rather than overflowing.
+    final shown = done ? mission.target : progress.value.clamp(0, mission.target);
+    final fraction = mission.target == 0 ? 0.0 : shown / mission.target;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: done
+            ? ConferenceColors.goldAlpha(0.10)
+            : Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(
+          color: done
+              ? ConferenceColors.goldAlpha(0.45)
+              : Colors.white.withValues(alpha: 0.1),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(mission.icon, color: ConferenceColors.gold, size: 22),
+              Icon(
+                done ? Icons.verified_rounded : missionIconFor(mission.iconKey),
+                color: ConferenceColors.gold,
+                size: 22,
+              ),
               const SizedBox(width: 10),
-              Expanded(child: Text(mission.title, style: const TextStyle(color: Colors.white))),
-              Text('${mission.progress}/${mission.total}', style: TextStyle(color: Colors.grey.shade400, fontSize: 12)),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(mission.title, style: const TextStyle(color: Colors.white)),
+                    if (mission.description != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        mission.description!,
+                        style: const TextStyle(
+                          color: ConferenceColors.mutedForeground,
+                          fontSize: 11.5,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                done ? 'Complete' : '$shown/${mission.target}',
+                style: TextStyle(
+                  color: done ? ConferenceColors.gold : Colors.grey.shade400,
+                  fontSize: 12,
+                  fontWeight: done ? FontWeight.w700 : FontWeight.w400,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 8),
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
-              value: progress,
+              value: fraction,
               minHeight: 6,
               backgroundColor: Colors.white.withValues(alpha: 0.1),
               valueColor: const AlwaysStoppedAnimation(ConferenceColors.gold),

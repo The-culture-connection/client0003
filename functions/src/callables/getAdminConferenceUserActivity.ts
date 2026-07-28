@@ -65,6 +65,32 @@ type Row = {
   session_ids: Set<string>;
 };
 
+/**
+ * Turns Firestore's FAILED_PRECONDITION (code 9) into a readable error.
+ *
+ * These queries need composite indexes on `expansion_analytics_events`. Right
+ * after `firebase deploy --only firestore:indexes` the index exists but is still
+ * building, and the raw gRPC error would otherwise surface in the browser as a
+ * bare 500 with no explanation.
+ */
+function rethrowAsHttpsError(e: unknown): never {
+  const code = (e as { code?: unknown })?.code;
+  const details = (e as { details?: unknown })?.details;
+  if (code === 9) {
+    const msg = typeof details === "string" ? details : "A required Firestore index is missing.";
+    throw new HttpsError(
+      "failed-precondition",
+      msg.includes("currently building")
+        ? "The Firestore index for conference analytics is still building — retry in a few minutes."
+        : `Missing Firestore index for conference analytics. ${msg}`
+    );
+  }
+  throw new HttpsError(
+    "internal",
+    e instanceof Error ? e.message : "Failed to load conference activity."
+  );
+}
+
 function displayNameFrom(data: FirebaseFirestore.DocumentData | undefined): string | null {
   if (!data) return null;
   const first = typeof data.first_name === "string" ? data.first_name.trim() : "";
@@ -108,7 +134,12 @@ export const getAdminConferenceUserActivity = onCall(
         .limit(PAGE);
       if (cursor) q = q.startAfter(cursor);
 
-      const snap = await q.get();
+      let snap: FirebaseFirestore.QuerySnapshot;
+      try {
+        snap = await q.get();
+      } catch (e) {
+        rethrowAsHttpsError(e);
+      }
       if (snap.empty) break;
 
       for (const doc of snap.docs) {

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../auth/auth_controller.dart';
 import '../commons/widgets/commons_shell.dart';
+import '../conference/screens/conference_booth_scan_screen.dart';
 import '../conference/screens/conference_community_compose_screen.dart';
 import '../conference/screens/conference_community_post_screen.dart';
 import '../conference/screens/conference_community_screen.dart';
@@ -191,6 +192,13 @@ GoRouter createAppRouter(AuthController auth) {
         parentNavigatorKey: _rootNavigatorKey,
         path: '/conference/network',
         builder: (context, state) => const ConferenceNetworkingScreen(),
+      ),
+      // Declared before `/conference/sponsor/:sponsorId` so "scan" is not
+      // swallowed as a sponsor id.
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/conference/booth/scan',
+        builder: (context, state) => const ConferenceBoothScanScreen(),
       ),
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,

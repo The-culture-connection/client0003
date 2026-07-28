@@ -1073,6 +1073,20 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // --- Conference missions (admin-authored challenges) ---
+    // Definitions are readable by any signed-in attendee so the lobby can render
+    // them; only staff author them. Evaluation and awards are Functions-only.
+    match /conference_missions/{missionId} {
+      allow read: if isSignedIn();
+      allow write: if hasStaffClaim();
+    }
+
+    // Per-user mission progress, written by the mission evaluator (Admin SDK).
+    match /mission_progress/{userId} {
+      allow read: if isOwner(userId) || hasStaffClaim();
+      allow write: if false;
+    }
+
     // --- Survey / Implicit Feedback Layer ---
     match /survey_responses/{docId} {
       allow create: if isSignedIn() && request.resource.data.user_id == request.auth.uid;

@@ -53,6 +53,51 @@ function isFrictionEventName(name: string): boolean {
   );
 }
 
+/**
+ * Conference-scoped counters that back admin-authored missions.
+ *
+ * Keys are namespaced by conference (`conf_<id>_<metric>`) so a returning
+ * attendee starts each event from zero — `user_analytics_summary.counts` is
+ * otherwise a single all-time map per user. Kept in sync with
+ * `conferenceMetricKey()` in `../badges/conferenceMissionEvaluator`.
+ */
+function conferenceCounterDelta(
+  eventName: string,
+  conferenceId: string,
+  props: Record<string, unknown>
+): Record<string, number> | null {
+  const key = (metric: string) => `conf_${conferenceId}_${metric}`;
+
+  switch (eventName) {
+  case "conference_session_rsvp_changed":
+    // Only a positive RSVP counts; un-RSVPing does not decrement, so a mission
+    // once completed stays completed.
+    return props.going === true ? { [key("sessions_attended")]: 1 } : null;
+  case "conference_card_scanned":
+    return props.result === "ok" ? { [key("connections_made")]: 1 } : null;
+  case "conference_networking_matched":
+    return { [key("connections_made")]: 1 };
+  case "conference_sponsor_viewed":
+    // Counts views, not distinct booths — revisiting one booth counts twice.
+    return { [key("sponsors_visited")]: 1 };
+  case "conference_sponsor_scanned":
+    // A booth QR scan is evidence of a physical visit, so it is tracked
+    // separately from page views and can back a stricter mission.
+    return { [key("booths_scanned")]: 1 };
+  case "conference_community_post_created":
+    return { [key("community_contributions")]: 1, [key("community_posts")]: 1 };
+  case "conference_community_reply_created":
+    return { [key("community_contributions")]: 1, [key("community_replies")]: 1 };
+  case "conference_checked_in":
+    // `already_today` repeats are the same day's check-in re-reported.
+    return props.already_today === true ? null : { [key("check_ins")]: 1 };
+  case "conference_session_chat_message_sent":
+    return { [key("session_messages_sent")]: 1 };
+  default:
+    return null;
+  }
+}
+
 /** Per-event user counter keys under `user_analytics_summary.counts`. */
 function userCounterDelta(eventName: string): Record<string, number> | null {
   switch (eventName) {
@@ -196,7 +241,13 @@ export async function applyExpansionMobileRollupsForEvent(
   const userRef = uid ? db.collection(ANALYTICS_COLLECTIONS.USER_ANALYTICS_SUMMARY).doc(uid) : null;
   const dailyRef = db.collection(ANALYTICS_COLLECTIONS.DAILY_METRICS).doc(todayKey);
 
-  const uc = userCounterDelta(eventName);
+  // Conference events carry a top-level `conference_id`, stamped by the client
+  // whenever a conference is open. Their counters merge into the same
+  // `counts` map the badge/mission rule engine reads.
+  const conferenceId = typeof data.conference_id === "string" ? data.conference_id.trim() : "";
+  const cc = conferenceId ? conferenceCounterDelta(eventName, conferenceId, props) : null;
+  const baseUc = userCounterDelta(eventName);
+  const uc = cc || baseUc ? { ...(baseUc ?? {}), ...(cc ?? {}) } : null;
   const dc = dailyCounterDelta(eventName);
   const funnels = funnelIncrements(eventName);
 

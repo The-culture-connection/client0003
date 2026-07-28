@@ -26,6 +26,15 @@
       ]
     },
     {
+      "collectionGroup": "conference_missions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "conference_id", "order": "ASCENDING" },
+        { "fieldPath": "active", "order": "ASCENDING" },
+        { "fieldPath": "display_order", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "analytics_events",
       "queryScope": "COLLECTION",
       "fields": [

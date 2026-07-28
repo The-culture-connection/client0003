@@ -16,7 +16,46 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
 import { Label } from "../ui/label";
-import { Loader2, Check, Trash2, Upload } from "lucide-react";
+import { Loader2, Check, Trash2, Upload, QrCode } from "lucide-react";
+import { QRCodeCanvas } from "qrcode.react";
+
+/**
+ * Payload printed on booth signage. Must stay in step with
+ * `buildBoothPayload()` in
+ * ExpansionNetworkApp/expansion_network/lib/services/booth_qr_link.dart —
+ * the app rejects anything that does not match exactly.
+ */
+function boothPayload(sponsorId: string): string {
+  return `mortaralumni://booth/v1/${sponsorId}`;
+}
+
+/**
+ * On-screen booth QR for printing. Rendered on a white plate at high error
+ * correction so it still scans off a phone screen or a laminated sign.
+ */
+function BoothQrCard({ sponsorId, companyName }: { sponsorId: string; companyName: string }) {
+  const payload = boothPayload(sponsorId);
+  return (
+    <div className="flex flex-wrap items-start gap-4">
+      <div className="rounded-lg bg-white p-3">
+        <QRCodeCanvas value={payload} size={168} level="M" includeMargin={false} />
+      </div>
+      <div className="min-w-0 flex-1 space-y-2">
+        <p className="text-sm font-medium text-foreground">{companyName} — booth code</p>
+        <p className="text-xs text-muted-foreground">
+          Print this on the booth sign. Scanning it in the app credits a booth visit and opens
+          this sponsor&apos;s CTA link.
+        </p>
+        <code className="block break-all rounded bg-muted px-2 py-1 text-[11px] text-muted-foreground">
+          {payload}
+        </code>
+        <p className="text-xs text-muted-foreground">
+          Right-click the code to save it, or screenshot for signage.
+        </p>
+      </div>
+    </div>
+  );
+}
 
 interface SponsorRow {
   id: string;
@@ -43,6 +82,8 @@ interface FloorLite {
 
 export function ConferenceSponsorsPanel({ conferenceId }: { conferenceId: string }) {
   const [sponsors, setSponsors] = useState<SponsorRow[]>([]);
+  /** Sponsor whose booth QR is expanded, or null. */
+  const [qrSponsorId, setQrSponsorId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -300,24 +341,40 @@ export function ConferenceSponsorsPanel({ conferenceId }: { conferenceId: string
         ) : (
           <ul className="space-y-2">
             {sponsors.map((s) => (
-              <li key={s.id} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-background/80">
-                {s.logoUrl ? (
-                  <img src={s.logoUrl} alt="" className="w-9 h-9 rounded-lg object-cover shrink-0 bg-muted" />
+              <li key={s.id} className="rounded-lg border border-border bg-background/80">
+                <div className="flex items-center gap-3 p-3">
+                  {s.logoUrl ? (
+                    <img src={s.logoUrl} alt="" className="w-9 h-9 rounded-lg object-cover shrink-0 bg-muted" />
+                  ) : null}
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-foreground truncate">{s.companyName || s.id}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {s.packageLevel ? `${s.packageLevel} · ` : ""}
+                      {s.booth ? `${s.booth}` : ""}
+                      {s.giveawayPrize ? " · 🎁 giveaway" : ""}
+                    </p>
+                  </div>
+                  <div className="flex gap-1 shrink-0">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setQrSponsorId(qrSponsorId === s.id ? null : s.id)}
+                    >
+                      <QrCode className="w-3.5 h-3.5 mr-1" />
+                      {qrSponsorId === s.id ? "Hide QR" : "Booth QR"}
+                    </Button>
+                    <Button type="button" variant="outline" size="sm" onClick={() => loadIntoForm(s)}>Edit</Button>
+                    <Button type="button" variant="ghost" size="sm" className="text-destructive" onClick={() => void remove(s.id, s.companyName || s.id)}>
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                </div>
+                {qrSponsorId === s.id ? (
+                  <div className="border-t border-border p-4">
+                    <BoothQrCard sponsorId={s.id} companyName={s.companyName || s.id} />
+                  </div>
                 ) : null}
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium text-foreground truncate">{s.companyName || s.id}</p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {s.packageLevel ? `${s.packageLevel} · ` : ""}
-                    {s.booth ? `${s.booth}` : ""}
-                    {s.giveawayPrize ? " · 🎁 giveaway" : ""}
-                  </p>
-                </div>
-                <div className="flex gap-1 shrink-0">
-                  <Button type="button" variant="outline" size="sm" onClick={() => loadIntoForm(s)}>Edit</Button>
-                  <Button type="button" variant="ghost" size="sm" className="text-destructive" onClick={() => void remove(s.id, s.companyName || s.id)}>
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
               </li>
             ))}
           </ul>

@@ -7,6 +7,7 @@ import '../current_conference_holder.dart';
 import '../models/conference_sponsor.dart';
 import '../services/conference_repository.dart';
 import '../theme/conference_colors.dart';
+import '../widgets/booth_scan_fab.dart';
 
 /// Sponsor detail — full profile for one booth, with the sponsor's logo shown
 /// at 50% opacity as a background watermark.
@@ -70,6 +71,7 @@ class _ConferenceSponsorDetailScreenState extends State<ConferenceSponsorDetailS
           onPressed: () => context.canPop() ? context.pop() : context.go('/conference/sponsors'),
         ),
       ),
+      floatingActionButton: const BoothScanFab(),
       body: FutureBuilder<ConferenceSponsor?>(
         future: _future,
         builder: (context, snapshot) {

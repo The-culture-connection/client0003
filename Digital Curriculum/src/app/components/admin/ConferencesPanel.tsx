@@ -20,6 +20,7 @@ import { Textarea } from "../ui/textarea";
 import { Label } from "../ui/label";
 import { Loader2, Check, Trash2, SlidersHorizontal, Upload } from "lucide-react";
 import { ConferenceAnalyticsPanel } from "./ConferenceAnalyticsPanel";
+import { ConferenceMissionsPanel } from "./ConferenceMissionsPanel";
 import { ConferenceSessionsPanel } from "./ConferenceSessionsPanel";
 import { ConferenceSponsorsPanel } from "./ConferenceSponsorsPanel";
 import { ConferenceMapPanel } from "./ConferenceMapPanel";
@@ -690,6 +691,7 @@ export function ConferencesPanel() {
         </Card>
       ) : null}
 
+      {selectedConfId ? <ConferenceMissionsPanel conferenceId={selectedConfId} /> : null}
       {selectedConfId ? <ConferenceSessionsPanel conferenceId={selectedConfId} /> : null}
       {selectedConfId ? <ConferenceSponsorsPanel conferenceId={selectedConfId} /> : null}
       {selectedConfId ? <ConferenceMapPanel conferenceId={selectedConfId} /> : null}

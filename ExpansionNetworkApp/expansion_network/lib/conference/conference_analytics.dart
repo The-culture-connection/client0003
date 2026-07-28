@@ -98,6 +98,20 @@ abstract final class ConferenceAnalytics {
           screen: 'conference_sponsor_detail',
           extra: {if (name != null) 'name': name});
 
+  /// Booth QR scanned at the sponsor's stand.
+  ///
+  /// Distinct from [sponsorViewed]: a scan is evidence the attendee was
+  /// physically at the booth, which is what the `booths_scanned` mission metric
+  /// counts. Page views keep their own metric.
+  static Future<void> sponsorScanned({
+    required String sponsorId,
+    String? name,
+  }) =>
+      _log('conference_sponsor_scanned',
+          entityId: sponsorId,
+          screen: 'conference_booth_scan',
+          extra: {if (name != null) 'name': name});
+
   /// [linkKind] e.g. `website`, `email`, `booth`.
   static Future<void> sponsorLinkClicked({
     required String sponsorId,

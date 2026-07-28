@@ -8,6 +8,7 @@ import { getFirestore } from "firebase-admin/firestore";
 import * as logger from "firebase-functions/logger";
 import { ANALYTICS_COLLECTIONS } from "../mortarAnalyticsContract";
 import { evaluateAnalyticsBadgesForUser } from "../badges/analyticsBadgeEvaluator";
+import { evaluateConferenceMissionsForUser } from "../badges/conferenceMissionEvaluator";
 
 if (getApps().length === 0) {
   initializeApp();
@@ -24,10 +25,23 @@ export const onUserAnalyticsSummaryWritten = onDocumentWritten(
     const uid = event.params.userId as string;
     const data = after.data() as Record<string, unknown>;
 
-    try {
-      await evaluateAnalyticsBadgesForUser(db, uid, data);
-    } catch (err) {
-      logger.error("onUserAnalyticsSummaryWritten: badge evaluation failed", { err, uid });
+    // Settled independently so a failure in one evaluator cannot suppress the
+    // other — they award into the same place but are otherwise unrelated.
+    const [badges, missions] = await Promise.allSettled([
+      evaluateAnalyticsBadgesForUser(db, uid, data),
+      evaluateConferenceMissionsForUser(db, uid, data),
+    ]);
+    if (badges.status === "rejected") {
+      logger.error("onUserAnalyticsSummaryWritten: badge evaluation failed", {
+        err: badges.reason,
+        uid,
+      });
+    }
+    if (missions.status === "rejected") {
+      logger.error("onUserAnalyticsSummaryWritten: mission evaluation failed", {
+        err: missions.reason,
+        uid,
+      });
     }
   }
 );

@@ -143,7 +143,26 @@ export const queryAdminExpansionAnalyticsEvents = onCall(
       }
     }
 
-    const snap = await q.get();
+    let snap: FirebaseFirestore.QuerySnapshot;
+    try {
+      snap = await q.get();
+    } catch (e) {
+      // Filtering by conference_id / user_id needs composite indexes; right
+      // after deploying them the index exists but is still building, which would
+      // otherwise surface as an opaque 500.
+      const code = (e as { code?: unknown })?.code;
+      const details = (e as { details?: unknown })?.details;
+      if (code === 9) {
+        const msg = typeof details === "string" ? details : "";
+        throw new HttpsError(
+          "failed-precondition",
+          msg.includes("currently building")
+            ? "The Firestore index for this query is still building — retry in a few minutes."
+            : `Missing Firestore index for this query. ${msg}`
+        );
+      }
+      throw new HttpsError("internal", e instanceof Error ? e.message : "Query failed.");
+    }
     const events = snap.docs.map((d) => toRow(d.id, d.data()));
     const next_cursor = snap.docs.length > 0 ? snap.docs[snap.docs.length - 1].id : null;
 
