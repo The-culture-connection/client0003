@@ -12,13 +12,14 @@ import {
   setDoc,
   where,
 } from "firebase/firestore";
-import { db } from "../../lib/firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { db, storage } from "../../lib/firebase";
 import { Card } from "../ui/card";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
 import { Label } from "../ui/label";
-import { Loader2, Trash2, Plus, Check } from "lucide-react";
+import { Loader2, Trash2, Plus, Check, Upload } from "lucide-react";
 
 /**
  * Admin authoring for conference missions.
@@ -86,6 +87,30 @@ interface BankAsset {
   label?: string;
 }
 
+/** Matches the 6 MB ceiling in storage.rules for `badge_bank/`. */
+const MAX_BADGE_UPLOAD_BYTES = 6 * 1024 * 1024;
+
+/** Below this a badge looks soft on the profile wall at 2x/3x density. */
+const MIN_BADGE_PX = 128;
+
+/** Reads intrinsic dimensions so a non-square badge can be rejected up front. */
+function readImageSize(file: File): Promise<{ w: number; h: number }> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new window.Image();
+    img.onload = () => {
+      const size = { w: img.naturalWidth, h: img.naturalHeight };
+      URL.revokeObjectURL(url);
+      resolve(size);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("That file could not be read as an image."));
+    };
+    img.src = url;
+  });
+}
+
 /** Strips the `conf_<id>_` namespace so the select can show the bare metric. */
 function bareMetric(metricKey: string | undefined, conferenceId: string): string {
   if (!metricKey) return METRIC_OPTIONS[0].key;
@@ -105,15 +130,20 @@ const EMPTY_FORM = {
   awardMode: "one_time" as "one_time" | "repeatable",
   displayOrder: "0",
   active: true,
-  badgeName: "",
-  badgeDescription: "",
   badgeImageUrl: "",
   badgeTier: "",
 };
 
 export function ConferenceMissionsPanel({ conferenceId }: { conferenceId: string }) {
   const [missions, setMissions] = useState<MissionRow[]>([]);
-  const [badgeNames, setBadgeNames] = useState<Record<string, string>>({});
+  /**
+   * Existing badge docs by id. Editing a mission must repopulate the badge
+   * fields from these — the save writes the whole badge payload, so a blank
+   * form would silently wipe the image and tier.
+   */
+  const [badgeDefs, setBadgeDefs] = useState<
+    Record<string, { name: string; image_url: string; tier: string }>
+  >({});
   const [bank, setBank] = useState<BankAsset[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -121,6 +151,55 @@ export function ConferenceMissionsPanel({ conferenceId }: { conferenceId: string
   const [success, setSuccess] = useState<string | null>(null);
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [showForm, setShowForm] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  /**
+   * Validates and uploads a square badge image, then points the form at the
+   * hosted URL. Square is enforced here rather than left to CSS because the
+   * badge wall and notifications render it uncropped — a rectangular source
+   * would come out stretched.
+   */
+  const uploadBadgeImage = async (file: File) => {
+    setError(null);
+    setSuccess(null);
+
+    if (!file.type.startsWith("image/")) {
+      setError("Choose an image file (PNG recommended for transparency).");
+      return;
+    }
+    if (file.size > MAX_BADGE_UPLOAD_BYTES) {
+      setError(
+        `That image is ${(file.size / 1024 / 1024).toFixed(1)} MB — the limit is 6 MB.`
+      );
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const { w, h } = await readImageSize(file);
+      if (w !== h) {
+        setError(`Badge images must be square — that one is ${w}×${h}.`);
+        return;
+      }
+      if (w < MIN_BADGE_PX) {
+        setError(`That image is ${w}×${h}. Use at least ${MIN_BADGE_PX}×${MIN_BADGE_PX}.`);
+        return;
+      }
+
+      const safe = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+      const path = `badge_bank/mission_${Date.now()}_${safe}`;
+      await uploadBytes(ref(storage, path), file, {
+        contentType: file.type || "image/png",
+      });
+      const url = await getDownloadURL(ref(storage, path));
+      setForm((f) => ({ ...f, badgeImageUrl: url }));
+      setSuccess(`Uploaded ${w}×${h} badge image.`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setUploading(false);
+    }
+  };
 
   useEffect(() => {
     if (!conferenceId) return;
@@ -146,12 +225,16 @@ export function ConferenceMissionsPanel({ conferenceId }: { conferenceId: string
   // Badge names for the list, and the bank for the image picker.
   useEffect(() => {
     const unsubDefs = onSnapshot(collection(db, BADGE_DEFS), (snap) => {
-      const map: Record<string, string> = {};
+      const map: Record<string, { name: string; image_url: string; tier: string }> = {};
       snap.docs.forEach((d) => {
-        const n = (d.data() as { name?: string }).name;
-        if (typeof n === "string") map[d.id] = n;
+        const x = d.data() as { name?: string; image_url?: string; tier?: string };
+        map[d.id] = {
+          name: typeof x.name === "string" ? x.name : "",
+          image_url: typeof x.image_url === "string" ? x.image_url : "",
+          tier: typeof x.tier === "string" ? x.tier : "",
+        };
       });
-      setBadgeNames(map);
+      setBadgeDefs(map);
     });
     const unsubBank = onSnapshot(collection(db, BADGE_BANK), (snap) => {
       setBank(
@@ -176,6 +259,7 @@ export function ConferenceMissionsPanel({ conferenceId }: { conferenceId: string
   }, []);
 
   const startEdit = (m: MissionRow) => {
+    const existingBadge = m.badge_id ? badgeDefs[m.badge_id] : undefined;
     setForm({
       missionId: m.id,
       badgeId: m.badge_id ?? null,
@@ -188,10 +272,8 @@ export function ConferenceMissionsPanel({ conferenceId }: { conferenceId: string
       awardMode: m.award_mode === "repeatable" ? "repeatable" : "one_time",
       displayOrder: String(m.display_order ?? 0),
       active: m.active !== false,
-      badgeName: m.badge_id ? (badgeNames[m.badge_id] ?? "") : "",
-      badgeDescription: "",
-      badgeImageUrl: "",
-      badgeTier: "",
+      badgeImageUrl: existingBadge?.image_url ?? "",
+      badgeTier: existingBadge?.tier ?? "",
     });
     setShowForm(true);
     setError(null);
@@ -201,7 +283,6 @@ export function ConferenceMissionsPanel({ conferenceId }: { conferenceId: string
   const save = async () => {
     const title = form.title.trim();
     const threshold = Number(form.threshold);
-    const badgeName = form.badgeName.trim() || title;
 
     if (!title) {
       setError("Give the mission a title.");
@@ -220,8 +301,10 @@ export function ConferenceMissionsPanel({ conferenceId }: { conferenceId: string
       // and the evaluator skips missions with no badge_id.
       let badgeId = form.badgeId;
       const badgePayload = {
-        name: badgeName,
-        description: form.badgeDescription.trim() || form.description.trim() || "",
+        // The badge is the mission's reward, so it carries the same identity —
+        // no separate name/description to keep in sync or let drift apart.
+        name: title,
+        description: form.description.trim(),
         image_url: form.badgeImageUrl.trim() || "",
         tier: form.badgeTier.trim() || "",
         platform: "expansion_mobile",
@@ -440,36 +523,62 @@ export function ConferenceMissionsPanel({ conferenceId }: { conferenceId: string
 
           <div className="rounded-md border border-border p-3 space-y-3">
             <p className="text-sm font-medium text-foreground">Badge awarded on completion</p>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <Label>Badge name</Label>
-                <Input
-                  value={form.badgeName}
-                  onChange={(e) => setForm({ ...form, badgeName: e.target.value })}
-                  placeholder="Defaults to the mission title"
-                />
-              </div>
-              <div>
-                <Label>Tier (optional)</Label>
-                <Input
-                  value={form.badgeTier}
-                  onChange={(e) => setForm({ ...form, badgeTier: e.target.value })}
-                  placeholder="gold / silver / …"
-                />
-              </div>
-            </div>
-            <div>
-              <Label>Badge description</Label>
-              <Textarea
-                rows={2}
-                value={form.badgeDescription}
-                onChange={(e) => setForm({ ...form, badgeDescription: e.target.value })}
-                placeholder="Defaults to the mission description."
+            <p className="text-xs text-muted-foreground">
+              The badge uses the mission’s title and description — “{form.title.trim() || "…"}”.
+              Edit them above and the badge follows.
+            </p>
+            <div className="sm:max-w-xs">
+              <Label>Tier (optional)</Label>
+              <Input
+                value={form.badgeTier}
+                onChange={(e) => setForm({ ...form, badgeTier: e.target.value })}
+                placeholder="gold / silver / …"
               />
             </div>
+            <div>
+              <Label>Badge image</Label>
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-muted">
+                  {uploading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Upload className="h-4 w-4" />
+                  )}
+                  {uploading ? "Uploading…" : "Upload square PNG"}
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="hidden"
+                    disabled={uploading}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      // Reset so re-picking the same file fires onChange again.
+                      e.target.value = "";
+                      if (file) void uploadBadgeImage(file);
+                    }}
+                  />
+                </label>
+                {form.badgeImageUrl ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setForm({ ...form, badgeImageUrl: "" })}
+                    disabled={uploading}
+                  >
+                    Remove
+                  </Button>
+                ) : null}
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Must be square and at least {MIN_BADGE_PX}×{MIN_BADGE_PX}. PNG with a transparent
+                background looks best on the badge wall.
+              </p>
+            </div>
+
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <Label>Image URL</Label>
+                <Label>…or paste an image URL</Label>
                 <Input
                   value={form.badgeImageUrl}
                   onChange={(e) => setForm({ ...form, badgeImageUrl: e.target.value })}
@@ -477,7 +586,7 @@ export function ConferenceMissionsPanel({ conferenceId }: { conferenceId: string
                 />
               </div>
               <div>
-                <Label>…or pick from the badge bank</Label>
+                <Label>…or reuse one from the badge bank</Label>
                 <select
                   className="w-full rounded-md border border-border bg-background p-2 text-sm"
                   value=""
@@ -496,12 +605,16 @@ export function ConferenceMissionsPanel({ conferenceId }: { conferenceId: string
               </div>
             </div>
             {form.badgeImageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={form.badgeImageUrl}
-                alt="Badge preview"
-                className="h-16 w-16 rounded object-cover border border-border"
-              />
+              <div className="flex items-center gap-3">
+                {/* Square source, so `contain` shows it exactly as the app will. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={form.badgeImageUrl}
+                  alt="Badge preview"
+                  className="h-16 w-16 rounded border border-border object-contain"
+                />
+                <span className="text-xs text-muted-foreground">Badge preview</span>
+              </div>
             ) : null}
           </div>
 
@@ -549,7 +662,7 @@ export function ConferenceMissionsPanel({ conferenceId }: { conferenceId: string
                     {metricLabel(bareMetric(m.rule?.metric_key, conferenceId))}
                   </td>
                   <td className="p-2 text-muted-foreground">
-                    {m.badge_id ? (badgeNames[m.badge_id] ?? m.badge_id) : "— none —"}
+                    {m.badge_id ? (badgeDefs[m.badge_id]?.name || m.badge_id) : "— none —"}
                   </td>
                   <td className="p-2">
                     {m.active === false ? (
