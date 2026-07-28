@@ -9,6 +9,7 @@ import '../services/conference_repository.dart';
 import '../theme/conference_colors.dart';
 import '../widgets/booth_scan_fab.dart';
 import '../widgets/conference_background.dart';
+import '../widgets/conference_shell.dart';
 
 /// Sponsor Hall — ports `Conference App Figma Mockup/src/app/pages/ConferenceSponsors.tsx`,
 /// bound to the live `conferences/{id}/sponsors` collection. Package levels drive
@@ -110,7 +111,17 @@ class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
     final conferenceId = CurrentConferenceHolder.instance.conferenceId;
     return Scaffold(
       backgroundColor: ConferenceColors.background,
-      floatingActionButton: const BoothScanFab(extended: true),
+      // As a shell tab (`showBack: false`) ConferenceShell's nav pill floats
+      // over this screen's body, so the FAB has to clear it or it sits
+      // underneath and cannot be tapped. Standalone, it needs no offset.
+      floatingActionButton: widget.showBack
+          ? const BoothScanFab()
+          : Padding(
+              padding: EdgeInsets.only(
+                bottom: ConferenceShell.navBarClearance(context),
+              ),
+              child: const BoothScanFab(),
+            ),
       body: ConferenceGridBackground(
         child: SafeArea(
           child: conferenceId == null

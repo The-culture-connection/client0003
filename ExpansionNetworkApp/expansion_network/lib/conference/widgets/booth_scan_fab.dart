@@ -7,29 +7,17 @@ import '../theme/conference_colors.dart';
 /// detail page, because an attendee walks up to a stand and wants to scan
 /// immediately rather than find that sponsor in the app first.
 class BoothScanFab extends StatelessWidget {
-  const BoothScanFab({super.key, this.extended = false});
-
-  /// Labelled variant for the sponsor list, where there is room for it.
-  final bool extended;
+  const BoothScanFab({super.key});
 
   @override
   Widget build(BuildContext context) {
-    void open() => context.push('/conference/booth/scan');
-
-    if (extended) {
-      return FloatingActionButton.extended(
-        backgroundColor: ConferenceColors.gold,
-        foregroundColor: Colors.black,
-        onPressed: open,
-        icon: const Icon(Icons.qr_code_scanner_rounded),
-        label: const Text('Scan a booth'),
-      );
-    }
     return FloatingActionButton(
       backgroundColor: ConferenceColors.gold,
+      // Label lives in the tooltip only — the icon carries the meaning, and it
+      // matches the lobby's card/scan FAB.
       tooltip: 'Scan a booth',
-      onPressed: open,
-      child: const Icon(Icons.qr_code_scanner_rounded, color: Colors.black),
+      onPressed: () => context.push('/conference/booth/scan'),
+      child: const Icon(Icons.qr_code_scanner_rounded, size: 28, color: Colors.black),
     );
   }
 }
