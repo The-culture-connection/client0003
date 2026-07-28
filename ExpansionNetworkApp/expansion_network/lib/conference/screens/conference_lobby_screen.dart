@@ -12,7 +12,9 @@ import '../current_conference_holder.dart';
 import '../models/conference_mission.dart';
 import '../services/conference_mission_service.dart';
 import '../services/conference_ticket_service.dart';
+import '../theme/conference_brand.dart';
 import '../theme/conference_colors.dart';
+import '../widgets/conference_brand_mark.dart';
 import '../widgets/conference_scope.dart';
 import '../widgets/conference_shell.dart';
 
@@ -152,17 +154,28 @@ class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen>
   @override
   Widget build(BuildContext context) {
     final conference = ConferenceScope.of(context).conference;
+    final brand = ConferenceBrand.from(
+      brandColor: conference?.brandColor,
+      brandColorSecondary: conference?.brandColorSecondary,
+      logoUrl: conference?.logoUrl,
+      heroImageUrl: conference?.heroImageUrl,
+    );
 
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          const DecoratedBox(
+          // Ambient wash takes the event's palette when it has one; otherwise
+          // this is byte-for-byte the previous backdrop.
+          DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [ConferenceColors.atmosphere, Colors.black, Colors.black],
+                colors: brand.hasWash
+                    ? [brand.washTop, brand.washMid, Colors.black, Colors.black]
+                    : const [ConferenceColors.atmosphere, Colors.black, Colors.black],
+                stops: brand.hasWash ? const [0, 0.22, 0.6, 1] : null,
               ),
             ),
           ),
@@ -405,6 +418,10 @@ class _HeroBanner extends StatelessWidget {
     final start = conference?.startDate as DateTime?;
     final end = conference?.endDate as DateTime?;
     final dateLabel = start != null ? _dateRange(start, end) : null;
+    final heroRaw = (conference?.heroImageUrl as String?)?.trim();
+    final heroImage = (heroRaw != null && heroRaw.isNotEmpty) ? heroRaw : null;
+    final logoRaw = (conference?.logoUrl as String?)?.trim();
+    final logoUrl = (logoRaw != null && logoRaw.isNotEmpty) ? logoRaw : null;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
@@ -437,58 +454,99 @@ class _HeroBanner extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: ConferenceColors.goldAlpha(0.3)),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  ConferenceColors.goldAlpha(0.1),
-                  Colors.black.withValues(alpha: 0.5),
-                ],
+          ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: ConferenceColors.goldAlpha(0.3)),
+                gradient: heroImage == null
+                    ? LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          ConferenceColors.goldAlpha(0.1),
+                          Colors.black.withValues(alpha: 0.5),
+                        ],
+                      )
+                    : null,
               ),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.auto_awesome,
-                              size: 18, color: ConferenceColors.gold),
-                          const SizedBox(width: 6),
-                          Flexible(
-                            child: Text(
-                              name.toUpperCase(),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 18,
-                                letterSpacing: 0.5,
+              child: Stack(
+                children: [
+                  if (heroImage != null)
+                    Positioned.fill(
+                      child: Image.network(
+                        heroImage,
+                        fit: BoxFit.cover,
+                        // A broken URL must not blank the header — fall back to
+                        // the plain treatment.
+                        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                      ),
+                    ),
+                  if (heroImage != null)
+                    Positioned.fill(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.black.withValues(alpha: 0.15),
+                              Colors.black.withValues(alpha: 0.62),
+                              Colors.black.withValues(alpha: 0.88),
+                            ],
+                            stops: const [0, 0.55, 1],
+                          ),
+                        ),
+                      ),
+                    ),
+                  Padding(
+                    padding: EdgeInsets.all(heroImage == null ? 18 : 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Key art needs vertical room to read as an image.
+                        if (heroImage != null) const SizedBox(height: 54),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ConferenceBrandMark(logoUrl: logoUrl),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    name.toUpperCase(),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 18,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                  if (dateLabel != null) ...[
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      dateLabel,
+                                      style: TextStyle(
+                                        color: Colors.grey.shade400,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                      if (dateLabel != null) ...[
-                        const SizedBox(height: 6),
-                        Text(
-                          dateLabel,
-                          style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+                            const SizedBox(width: 10),
+                            _StatusPill(status: _statusFor(now, start, end)),
+                          ],
                         ),
                       ],
-                    ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 10),
-                _StatusPill(status: _statusFor(now, start, end)),
-              ],
+                ],
+              ),
             ),
           ),
         ],

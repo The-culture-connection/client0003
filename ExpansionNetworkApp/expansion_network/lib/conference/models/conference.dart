@@ -13,6 +13,9 @@ class Conference {
     this.timezone,
     this.location,
     this.heroImageUrl,
+    this.logoUrl,
+    this.brandColor,
+    this.brandColorSecondary,
     this.heroSponsorName,
     this.heroSponsorLogoUrl,
     this.mapImageUrl,
@@ -33,7 +36,19 @@ class Conference {
   final DateTime? expiresAt;
   final String? timezone;
   final String? location;
+  /// Landscape key art shown behind the lobby header, under a scrim.
   final String? heroImageUrl;
+
+  /// Square event mark; replaces the generic sparkle beside the name.
+  final String? logoUrl;
+
+  /// Hex (`#RRGGBB`) driving the ambient background wash. Controls stay
+  /// [ConferenceColors.gold] regardless, so this may be dark or saturated.
+  final String? brandColor;
+
+  /// Second stop in the wash gradient. Falls back to [brandColor] when unset.
+  final String? brandColorSecondary;
+
   final String? heroSponsorName;
   final String? heroSponsorLogoUrl;
   final String? mapImageUrl;
@@ -82,6 +97,9 @@ class Conference {
       timezone: data['timezone'] as String?,
       location: data['location'] as String?,
       heroImageUrl: data['heroImageUrl'] as String?,
+      logoUrl: data['logoUrl'] as String?,
+      brandColor: data['brandColor'] as String?,
+      brandColorSecondary: data['brandColorSecondary'] as String?,
       heroSponsorName: heroSponsor?['name'] as String?,
       heroSponsorLogoUrl: heroSponsor?['logoUrl'] as String?,
       mapImageUrl: data['mapImageUrl'] as String?,

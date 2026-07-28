@@ -43,6 +43,9 @@ interface ConferenceRow {
   activeFrom?: Timestamp;
   activeUntil?: Timestamp;
   heroImageUrl?: string;
+  logoUrl?: string;
+  brandColor?: string;
+  brandColorSecondary?: string;
   mapImageUrl?: string;
   heroSponsor?: { name?: string; logoUrl?: string };
   attendeeCount?: number;
@@ -100,6 +103,10 @@ export function ConferencesPanel() {
   const [activeUntil, setActiveUntil] = useState("");
   const [heroImageUrl, setHeroImageUrl] = useState("");
   const [heroImageFile, setHeroImageFile] = useState<File | null>(null);
+  const [logoUrl, setLogoUrl] = useState("");
+  const [logoError, setLogoError] = useState<string | null>(null);
+  const [brandColor, setBrandColor] = useState("");
+  const [brandColorSecondary, setBrandColorSecondary] = useState("");
   const [mapImageUrl, setMapImageUrl] = useState("");
   const [sponsorName, setSponsorName] = useState("");
   const [sponsorLogoUrl, setSponsorLogoUrl] = useState("");
@@ -186,6 +193,10 @@ export function ConferencesPanel() {
     setActiveFrom("");
     setActiveUntil("");
     setHeroImageUrl("");
+    setLogoUrl("");
+    setLogoError(null);
+    setBrandColor("");
+    setBrandColorSecondary("");
     setHeroImageFile(null);
     setMapImageUrl("");
     setSponsorName("");
@@ -210,6 +221,10 @@ export function ConferencesPanel() {
     setMapImageUrl(c.mapImageUrl ?? "");
     setSponsorName(c.heroSponsor?.name ?? "");
     setSponsorLogoUrl(c.heroSponsor?.logoUrl ?? "");
+    setLogoUrl(c.logoUrl ?? "");
+    setBrandColor(c.brandColor ?? "");
+    setBrandColorSecondary(c.brandColorSecondary ?? "");
+    setLogoError(null);
   }, []);
 
   const resolveHeroImageUrl = async (): Promise<string> => {
@@ -221,6 +236,47 @@ export function ConferencesPanel() {
       return await getDownloadURL(storageRef);
     }
     return heroImageUrl.trim();
+  };
+
+  /// Validates and uploads the square event logo.
+  ///
+  /// Square is enforced here rather than left to the layout: the mark renders
+  /// uncropped beside the conference name and on the entry screen, so a
+  /// rectangular source would come out stretched.
+  const pickLogo = async (file: File | null) => {
+    if (!file) return;
+    setLogoError(null);
+    if (!file.type.startsWith("image/")) {
+      setLogoError("Choose an image file (PNG recommended).");
+      return;
+    }
+    if (file.size > 4 * 1024 * 1024) {
+      setLogoError(`That file is ${(file.size / 1024 / 1024).toFixed(1)} MB — keep it under 4 MB.`);
+      return;
+    }
+    try {
+      const size = await new Promise<{ w: number; h: number }>((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const img = new window.Image();
+        img.onload = () => { const s = { w: img.naturalWidth, h: img.naturalHeight }; URL.revokeObjectURL(url); resolve(s); };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("That file could not be read as an image.")); };
+        img.src = url;
+      });
+      if (size.w !== size.h) {
+        setLogoError(`The logo must be square — that one is ${size.w}×${size.h}.`);
+        return;
+      }
+      if (size.w < 512) {
+        setLogoError(`That logo is ${size.w}×${size.h}. Use at least 512×512 so it stays sharp.`);
+        return;
+      }
+      const safe = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+      const path = `conferences/logo_${Date.now()}_${safe}`;
+      await uploadBytes(ref(storage, path), file, { contentType: file.type || "image/png" });
+      setLogoUrl(await getDownloadURL(ref(storage, path)));
+    } catch (e) {
+      setLogoError(e instanceof Error ? e.message : String(e));
+    }
   };
 
   const saveConference = async () => {
@@ -251,6 +307,9 @@ export function ConferencesPanel() {
         activeFrom: localInputToTs(activeFrom),
         activeUntil: localInputToTs(activeUntil),
         heroImageUrl: hero || null,
+        logoUrl: logoUrl.trim() || null,
+        brandColor: brandColor.trim() || null,
+        brandColorSecondary: brandColorSecondary.trim() || null,
         mapImageUrl: mapImageUrl.trim() || null,
         heroSponsor:
           sponsorName.trim() || sponsorLogoUrl.trim()
@@ -489,7 +548,80 @@ export function ConferencesPanel() {
           <div className="space-y-2">
             <Label className="text-foreground">…or upload hero image</Label>
             <Input type="file" accept="image/*" className="bg-background" onChange={(e) => setHeroImageFile(e.target.files?.[0] ?? null)} />
+            <p className="text-xs text-muted-foreground">
+              Landscape, <strong>1600 × 900</strong> or wider (16:9). JPG or PNG, under 4 MB.
+              It sits behind the lobby header under a dark scrim, so keep the focal point
+              centred and avoid text near the edges — the bottom third is covered by the
+              conference name and dates.
+            </p>
           </div>
+
+          <div className="space-y-2">
+            <Label className="text-foreground">Event logo (square)</Label>
+            <Input
+              type="file"
+              accept="image/png,image/webp,image/jpeg"
+              className="bg-background"
+              onChange={(e) => void pickLogo(e.target.files?.[0] ?? null)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Square, <strong>512 × 512</strong> minimum. PNG with a transparent background looks
+              best — it replaces the generic sparkle beside the conference name and appears on the
+              entry screen.
+            </p>
+            {logoError ? <p className="text-xs text-destructive">{logoError}</p> : null}
+            {logoUrl ? (
+              <div className="flex items-center gap-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={logoUrl} alt="Event logo preview" className="h-12 w-12 rounded-lg border border-border object-contain bg-black/40" />
+                <Button type="button" variant="ghost" size="sm" onClick={() => setLogoUrl("")}>Remove</Button>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-foreground">Brand colour</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                type="color"
+                value={brandColor || "#497abd"}
+                onChange={(e) => setBrandColor(e.target.value)}
+                className="bg-background h-9 w-14 p-1"
+              />
+              <Input
+                value={brandColor}
+                onChange={(e) => setBrandColor(e.target.value)}
+                className="bg-background"
+                placeholder="#497abd"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Tints the background wash behind the conference screens. Buttons and labels stay
+              MORTAR gold, so this can safely be a deep or saturated colour.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-foreground">Secondary brand colour</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                type="color"
+                value={brandColorSecondary || "#9661af"}
+                onChange={(e) => setBrandColorSecondary(e.target.value)}
+                className="bg-background h-9 w-14 p-1"
+              />
+              <Input
+                value={brandColorSecondary}
+                onChange={(e) => setBrandColorSecondary(e.target.value)}
+                className="bg-background"
+                placeholder="#9661af"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              The second colour in the wash gradient. Leave blank to use the brand colour alone.
+            </p>
+          </div>
+
           <div className="space-y-2">
             <Label className="text-foreground">Sponsor name</Label>
             <Input value={sponsorName} onChange={(e) => setSponsorName(e.target.value)} className="bg-background" />

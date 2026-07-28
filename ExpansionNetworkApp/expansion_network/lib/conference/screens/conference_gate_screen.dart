@@ -16,6 +16,7 @@ import '../services/conference_calendar.dart';
 import '../services/conference_repository.dart';
 import '../services/conference_ticket_service.dart';
 import '../theme/conference_colors.dart';
+import '../widgets/conference_brand_mark.dart';
 
 /// Conference Center "first click" screen: the gate a user sees after tapping
 /// the Conference Center tile in the Mortarverse. It offers a **ticket code
@@ -61,6 +62,9 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
   String? _buyingId;
   String? _checkoutConferenceId;
   List<Conference> _upcoming = const [];
+
+  /// Conference the code field is currently open for; null hides the field.
+  String? _codeFor;
   // Conferences the user already has access to (redeemed) / has paid for.
   Set<String> _accessIds = {};
   Set<String> _ticketIds = {};
@@ -176,15 +180,26 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
     context.go('/conference/lobby');
   }
 
+  /// Reveals the code field for [c] and scrolls to it.
+  ///
+  /// Triggered by tapping a conference the user already holds a ticket for, so
+  /// the code prompt is a response to picking an event rather than the first
+  /// thing on the screen.
   void _promptCode(Conference c) {
-    setState(() => _conferenceId = c.id);
-    if (_scroll.hasClients) {
-      _scroll.animateTo(0, duration: const Duration(milliseconds: 350), curve: Curves.easeOut);
-    }
-    _codeFocus.requestFocus();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Enter the code from your ticket email to go in.')),
-    );
+    setState(() {
+      _conferenceId = c.id;
+      _codeFor = c.id;
+    });
+    // The card is rendered below the list, so let it lay out before scrolling.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scroll.hasClients) return;
+      _scroll.animateTo(
+        _scroll.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeOut,
+      );
+      _codeFocus.requestFocus();
+    });
   }
 
   Future<void> _bootstrap() async {
@@ -423,9 +438,26 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _buildCodeCard(context),
-                  const SizedBox(height: 30),
+                  // The conference list leads: this screen's job is to show
+                  // what's on, not to demand a code from someone who may not
+                  // have one yet. Code entry appears once a conference is
+                  // chosen (see [_promptCode]).
                   _buildUpcoming(context),
+                  if (_codeFor != null) ...[
+                    const SizedBox(height: 30),
+                    _buildCodeCard(context),
+                  ] else ...[
+                    const SizedBox(height: 18),
+                    Center(
+                      child: TextButton(
+                        onPressed: () => setState(() => _codeFor = _conferenceId ?? ''),
+                        style: TextButton.styleFrom(
+                          foregroundColor: ConferenceColors.mutedForeground,
+                        ),
+                        child: const Text('Already have a ticket code?'),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -674,66 +706,116 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
       Icons.rocket_launch_rounded,
       Icons.workspace_premium_rounded,
     ];
+    final hero = c.heroImageUrl?.trim();
+    final hasHero = hero != null && hero.isNotEmpty;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
       ),
-      child: Row(
+      child: Column(
         children: [
-          Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(
-              color: ConferenceColors.goldAlpha(0.12),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: ConferenceColors.gold, width: 1.4),
-            ),
-            child: Icon(icons[index % icons.length], color: ConferenceColors.gold, size: 24),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  c.name,
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: ConferenceColors.goldAlpha(0.14),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        priceLabel,
-                        style: const TextStyle(color: ConferenceColors.gold, fontSize: 11, fontWeight: FontWeight.w700),
+          // The event's own key art, when it has any — this is what makes one
+          // conference look different from the next in the list.
+          if (hasHero)
+            SizedBox(
+              height: 92,
+              width: double.infinity,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.network(
+                    hero,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  ),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.black.withValues(alpha: 0.1),
+                          Colors.black.withValues(alpha: 0.75),
+                        ],
                       ),
                     ),
-                    if (dateLabel != null) ...[
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          dateLabel,
-                          style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
-                          overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                if (c.logoUrl != null && c.logoUrl!.trim().isNotEmpty)
+                  ConferenceBrandMark(logoUrl: c.logoUrl, size: 50)
+                else
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: ConferenceColors.goldAlpha(0.12),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: ConferenceColors.gold, width: 1.4),
+                    ),
+                    child: Icon(icons[index % icons.length], color: ConferenceColors.gold, size: 24),
+                  ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        c.name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
                         ),
                       ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: ConferenceColors.goldAlpha(0.14),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              priceLabel,
+                              style: const TextStyle(
+                                color: ConferenceColors.gold,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          if (dateLabel != null) ...[
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                dateLabel,
+                                style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ],
-                  ],
+                  ),
                 ),
+                const SizedBox(width: 10),
+                _buildCardAction(c),
               ],
             ),
           ),
-          const SizedBox(width: 10),
-          _buildCardAction(c),
         ],
       ),
     );
