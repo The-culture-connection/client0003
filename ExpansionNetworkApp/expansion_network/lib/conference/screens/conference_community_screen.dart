@@ -10,6 +10,8 @@ import '../theme/conference_colors.dart';
 import '../widgets/community_widgets.dart';
 import '../widgets/conference_background.dart';
 import '../widgets/conference_scope.dart';
+import '../widgets/conference_tour.dart';
+import '../../widgets/expansion_tour.dart';
 
 /// Community Hub — an open forum feed for the current conference.
 ///
@@ -24,10 +26,32 @@ class ConferenceCommunityScreen extends StatefulWidget {
 }
 
 class _ConferenceCommunityScreenState extends State<ConferenceCommunityScreen> {
+  /// Spotlight target for the walkthrough's final chapter.
+  final GlobalKey _tourCompose = GlobalKey();
+
   @override
   void initState() {
     super.initState();
     logConferenceEvent(ConferenceAnalytics.communityViewed);
+    _maybeRunTour();
+  }
+
+  Future<void> _maybeRunTour() async {
+    if (!ConferenceTourRunner.instance.isRunning) return;
+    await Future<void>.delayed(const Duration(milliseconds: 700));
+    if (!mounted) return;
+    ConferenceTourRunner.instance.runIfPending(
+      context,
+      ConferenceTourChapter.community,
+      () => [
+        TourStep(
+          key: _tourCompose,
+          title: 'Say something',
+          body: 'The hub is an open feed for everyone at the conference. Post a '
+              'question or an introduction, and tap any message to reply.',
+        ),
+      ],
+    );
   }
 
   @override
@@ -43,7 +67,7 @@ class _ConferenceCommunityScreenState extends State<ConferenceCommunityScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _Header(conferenceId: conferenceId),
+              _Header(conferenceId: conferenceId, composeKey: _tourCompose),
               Expanded(
                 child: conferenceId == null
                     ? const _EmptyState(
@@ -66,9 +90,13 @@ class _ConferenceCommunityScreenState extends State<ConferenceCommunityScreen> {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.conferenceId});
+  const _Header({required this.conferenceId, this.composeKey});
 
   final String? conferenceId;
+
+  /// Spotlight target owned by the screen, so the walkthrough can point at the
+  /// compose button from here.
+  final Key? composeKey;
 
   @override
   Widget build(BuildContext context) {
@@ -116,7 +144,7 @@ class _Header extends StatelessWidget {
                   ),
                 ),
                 if (conferenceId != null)
-                  _ComposeButton(conferenceId: conferenceId!),
+                  _ComposeButton(key: composeKey, conferenceId: conferenceId!),
               ],
             ),
           ),
@@ -151,7 +179,7 @@ class _Header extends StatelessWidget {
 }
 
 class _ComposeButton extends StatelessWidget {
-  const _ComposeButton({required this.conferenceId});
+  const _ComposeButton({super.key, required this.conferenceId});
 
   final String conferenceId;
 

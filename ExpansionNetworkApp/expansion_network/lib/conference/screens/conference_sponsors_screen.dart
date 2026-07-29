@@ -10,6 +10,8 @@ import '../theme/conference_colors.dart';
 import '../widgets/booth_scan_fab.dart';
 import '../widgets/conference_background.dart';
 import '../widgets/conference_shell.dart';
+import '../widgets/conference_tour.dart';
+import '../../widgets/expansion_tour.dart';
 
 /// Sponsor Hall — ports `Conference App Figma Mockup/src/app/pages/ConferenceSponsors.tsx`,
 /// bound to the live `conferences/{id}/sponsors` collection. Package levels drive
@@ -31,10 +33,32 @@ class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
   final ConferenceRepository _repository = ConferenceRepository();
   String _filter = 'All'; // 'All' or a package level
 
+  /// Spotlight target for the walkthrough's booth-scanning chapter.
+  final GlobalKey _tourScanFab = GlobalKey();
+
   @override
   void initState() {
     super.initState();
     logConferenceEvent(ConferenceAnalytics.sponsorsViewed);
+    _maybeRunTour();
+  }
+
+  Future<void> _maybeRunTour() async {
+    if (!ConferenceTourRunner.instance.isRunning) return;
+    await Future<void>.delayed(const Duration(milliseconds: 700));
+    if (!mounted) return;
+    ConferenceTourRunner.instance.runIfPending(
+      context,
+      ConferenceTourChapter.sponsors,
+      () => [
+        TourStep(
+          key: _tourScanFab,
+          title: 'Scan a booth',
+          body: 'Each sponsor booth has a QR code. Scan it to record your visit '
+              'and jump straight to what that sponsor is offering.',
+        ),
+      ],
+    );
   }
 
   void _back() {
@@ -115,12 +139,12 @@ class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
       // over this screen's body, so the FAB has to clear it or it sits
       // underneath and cannot be tapped. Standalone, it needs no offset.
       floatingActionButton: widget.showBack
-          ? const BoothScanFab()
+          ? BoothScanFab(key: _tourScanFab)
           : Padding(
               padding: EdgeInsets.only(
                 bottom: ConferenceShell.navBarClearance(context),
               ),
-              child: const BoothScanFab(),
+              child: BoothScanFab(key: _tourScanFab),
             ),
       body: ConferenceGridBackground(
         child: SafeArea(

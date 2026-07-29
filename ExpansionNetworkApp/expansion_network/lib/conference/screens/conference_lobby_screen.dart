@@ -17,6 +17,8 @@ import '../theme/conference_colors.dart';
 import '../widgets/conference_brand_mark.dart';
 import '../widgets/conference_scope.dart';
 import '../widgets/conference_shell.dart';
+import '../widgets/conference_tour.dart';
+import '../../widgets/expansion_tour.dart';
 
 /// Conference home tab — based on
 /// `Conference App Figma Mockup/src/app/pages/ConferenceLobby.tsx`: a hero
@@ -46,6 +48,13 @@ class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen>
   Timer? _clockTimer;
 
   final ConferenceTicketService _tickets = ConferenceTicketService();
+
+  // Spotlight targets for the first-visit walkthrough.
+  final GlobalKey _tourCheckIn = GlobalKey();
+  final GlobalKey _tourZones = GlobalKey();
+  final GlobalKey _tourMissionsTab = GlobalKey();
+  final GlobalKey _tourFab = GlobalKey();
+
   bool _checkingIn = false;
   bool? _checkedInToday; // null = status not loaded yet
   int _todayCount = 0;
@@ -86,6 +95,7 @@ class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen>
       if (mounted) setState(() {});
     });
     _loadCheckInStatus();
+    _maybeRunTour();
   }
 
   @override
@@ -99,6 +109,54 @@ class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Refresh the check-in status when returning to the app (e.g. a new day).
     if (state == AppLifecycleState.resumed) _loadCheckInStatus();
+  }
+
+  /// Starts (or resumes) the first-visit walkthrough.
+  ///
+  /// Called on every lobby entry: [ConferenceTourRunner] no-ops unless this
+  /// conference hasn't been toured, and on the way back from the Community Hub
+  /// chapter it lands here with nothing pending.
+  Future<void> _maybeRunTour() async {
+    final conferenceId = CurrentConferenceHolder.instance.conferenceId;
+    if (conferenceId == null) return;
+    await ConferenceTourRunner.instance.maybeStart(conferenceId);
+    if (!mounted) return;
+    // Let the first frame settle so the spotlight targets have real positions.
+    await Future<void>.delayed(const Duration(milliseconds: 700));
+    if (!mounted) return;
+    ConferenceTourRunner.instance.runIfPending(
+      context,
+      ConferenceTourChapter.lobby,
+      () => [
+        TourStep(
+          key: _tourCheckIn,
+          shape: ShapeLightFocus.RRect,
+          title: 'Check in each day',
+          body: 'Tap here every day of the conference. Check-ins count toward '
+              'your missions and let organisers see who is here.',
+        ),
+        TourStep(
+          key: _tourZones,
+          shape: ShapeLightFocus.RRect,
+          title: 'Four places to go',
+          body: 'Meet people in the Networking Zone, plan your day in the '
+              'Schedule, talk in the Community Hub, and visit sponsor booths.',
+        ),
+        TourStep(
+          key: _tourMissionsTab,
+          shape: ShapeLightFocus.RRect,
+          title: 'Track your missions',
+          body: 'Missions are challenges set by the organisers. Complete one '
+              'and the badge lands on your profile.',
+        ),
+        TourStep(
+          key: _tourFab,
+          title: 'Your QR card',
+          body: 'Show your card for someone to scan, or scan theirs to start a '
+              'chat straight away.',
+        ),
+      ],
+    );
   }
 
   /// Non-writing status read so the button reflects today's state on load.
@@ -207,6 +265,7 @@ class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen>
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
       child: Container(
+        key: _tourCheckIn,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(18),
@@ -293,12 +352,16 @@ class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen>
   }
 
   Widget _buildTabBar() {
-    Widget tabButton(_LobbyTab tab, String label) {
+    // `key` lands on the inner Container, not the Expanded — the walkthrough
+    // needs a laid-out box to spotlight, and Expanded must stay a direct child
+    // of the Row.
+    Widget tabButton(_LobbyTab tab, String label, {Key? key}) {
       final selected = _tab == tab;
       return Expanded(
         child: GestureDetector(
           onTap: () => setState(() => _tab = tab),
           child: Container(
+            key: key,
             padding: const EdgeInsets.symmetric(vertical: 10),
             decoration: BoxDecoration(
               color: selected ? ConferenceColors.gold : Colors.transparent,
@@ -331,7 +394,9 @@ class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen>
         child: Row(
           children: [
             tabButton(_LobbyTab.explore, 'Explore'),
-            tabButton(_LobbyTab.missions, 'Missions'),
+            // Spotlit by the walkthrough — missions are the least discoverable
+            // thing on this screen.
+            tabButton(_LobbyTab.missions, 'Missions', key: _tourMissionsTab),
             tabButton(_LobbyTab.map, 'Map'),
           ],
         ),
@@ -344,7 +409,15 @@ class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen>
       case _LobbyTab.explore:
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Column(children: [for (final zone in _zones) _ZoneCard(zone: zone)]),
+          child: Column(
+            children: [
+              for (var i = 0; i < _zones.length; i++)
+                // Spotlight only the first card — keying the whole column made
+                // the highlight taller than the screen and left no room for the
+                // caption.
+                _ZoneCard(key: i == 0 ? _tourZones : null, zone: _zones[i]),
+            ],
+          ),
         );
       case _LobbyTab.missions:
         return Padding(
@@ -387,6 +460,7 @@ class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen>
       // has to clear it or it sits underneath and cannot be tapped.
       padding: EdgeInsets.only(bottom: ConferenceShell.navBarClearance(context)),
       child: FloatingActionButton(
+        key: _tourFab,
         backgroundColor: ConferenceColors.gold,
         tooltip: 'My card & scan',
         onPressed: () => context.push('/card?ctx=conference'),
@@ -639,7 +713,7 @@ class _Zone {
 }
 
 class _ZoneCard extends StatelessWidget {
-  const _ZoneCard({required this.zone});
+  const _ZoneCard({super.key, required this.zone});
 
   final _Zone zone;
 

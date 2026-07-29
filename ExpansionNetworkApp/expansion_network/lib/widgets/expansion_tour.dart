@@ -4,14 +4,44 @@ import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
 import '../theme/app_theme.dart';
 
+// Callers pick a spotlight shape per step; re-exported so screens don't need a
+// direct dependency on the coach-mark package.
+export 'package:tutorial_coach_mark/tutorial_coach_mark.dart' show ShapeLightFocus;
+
 /// A single stop in the alumni onboarding coach-mark tour: a spotlight on a
 /// bottom-navigation icon with a short caption explaining what lives there.
 class TourStep {
-  const TourStep({required this.key, required this.title, required this.body});
+  const TourStep({
+    required this.key,
+    required this.title,
+    required this.body,
+    this.shape = ShapeLightFocus.Circle,
+  });
 
   final GlobalKey key;
   final String title;
   final String body;
+
+  /// Circle suits icons; use [ShapeLightFocus.RRect] for cards, rows and tabs
+  /// so the spotlight doesn't balloon into a huge disc around a wide target.
+  final ShapeLightFocus shape;
+}
+
+/// Places the caption on whichever side of the target has room.
+///
+/// A fixed `ContentAlign.top` pushes the card off-screen for targets near the
+/// top of the display — and once it is off-screen its Next button stops
+/// receiving taps, which reads to the user as a frozen tour.
+ContentAlign _alignFor(GlobalKey key) {
+  final ctx = key.currentContext;
+  if (ctx == null) return ContentAlign.bottom;
+  final box = ctx.findRenderObject();
+  if (box is! RenderBox || !box.hasSize) return ContentAlign.bottom;
+  final screenH = MediaQuery.of(ctx).size.height;
+  final top = box.localToGlobal(Offset.zero).dy;
+  final bottom = top + box.size.height;
+  // Prefer the side with more free space, so tall targets still get a caption.
+  return top > (screenH - bottom) ? ContentAlign.top : ContentAlign.bottom;
 }
 
 /// Persisted flag so the tour only auto-runs once per install after sign-up.
@@ -29,9 +59,16 @@ Future<void> markExpansionTourSeen() async {
 
 /// Builds a spotlight walkthrough over the given [steps]. The caller shows it
 /// with `.show(context: context)` once the target widgets are laid out.
+///
+/// [accent] tints the Next button so the Conference tour can run gold while the
+/// Expansion tour stays red; [onSkip] fires only when the user bails out, which
+/// the Conference tour uses to abandon its remaining chapters.
 TutorialCoachMark buildExpansionTour({
   required List<TourStep> steps,
   VoidCallback? onDone,
+  VoidCallback? onSkip,
+  Color accent = AppColors.primary,
+  Color onAccent = AppColors.onPrimary,
 }) {
   final targets = <TargetFocus>[];
   for (var i = 0; i < steps.length; i++) {
@@ -41,16 +78,18 @@ TutorialCoachMark buildExpansionTour({
       TargetFocus(
         identify: 'expansion_tour_$i',
         keyTarget: step.key,
-        shape: ShapeLightFocus.Circle,
-        radius: 8,
+        shape: step.shape,
+        radius: 12,
         contents: [
           TargetContent(
-            align: ContentAlign.top,
+            align: _alignFor(step.key),
             builder: (context, controller) => _TourCard(
               step: step,
               index: i,
               total: steps.length,
               isLast: isLast,
+              accent: accent,
+              onAccent: onAccent,
               onNext: controller.next,
               onSkip: controller.skip,
             ),
@@ -69,6 +108,7 @@ TutorialCoachMark buildExpansionTour({
       onDone?.call();
     },
     onSkip: () {
+      onSkip?.call();
       onDone?.call();
       return true;
     },
@@ -81,6 +121,8 @@ class _TourCard extends StatelessWidget {
     required this.index,
     required this.total,
     required this.isLast,
+    required this.accent,
+    required this.onAccent,
     required this.onNext,
     required this.onSkip,
   });
@@ -89,6 +131,8 @@ class _TourCard extends StatelessWidget {
   final int index;
   final int total;
   final bool isLast;
+  final Color accent;
+  final Color onAccent;
   final VoidCallback onNext;
   final VoidCallback onSkip;
 
@@ -148,8 +192,8 @@ class _TourCard extends StatelessWidget {
                   FilledButton(
                     onPressed: onNext,
                     style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: AppColors.onPrimary,
+                      backgroundColor: accent,
+                      foregroundColor: onAccent,
                     ),
                     child: Text(isLast ? 'Got it' : 'Next'),
                   ),
