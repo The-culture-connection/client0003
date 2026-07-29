@@ -37,6 +37,7 @@ import { AdminCommandCenter } from "./pages/admin/AdminCommandCenter";
 import { AdminLayout } from "./layouts/AdminLayout";
 import { PublicCertificatePage } from "./pages/PublicCertificate";
 import { DeleteAccountPage } from "./pages/DeleteAccount";
+import { ChildSafetyPage } from "./pages/ChildSafety";
 import { AuthGuard } from "./components/auth/AuthGuard";
 import { OnboardingGate } from "./components/auth/OnboardingGate";
 import { RoleGate } from "./components/auth/RoleGate";
@@ -91,6 +92,13 @@ export const router = createBrowserRouter([
   {
     path: "/delete-account",
     Component: DeleteAccountPage,
+  },
+  // Public on purpose: Google Play's Child Safety Standards policy requires the
+  // published CSAE standards to be reachable without an account, and the URL is
+  // registered in Play Console — keep it stable.
+  {
+    path: "/child-safety",
+    Component: ChildSafetyPage,
   },
   {
     path: "/onboarding",
