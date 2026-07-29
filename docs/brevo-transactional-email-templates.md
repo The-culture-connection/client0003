@@ -41,6 +41,7 @@ Use these **exact template names** in Brevo (Transactional → Templates) so the
 | `payment_event_registration_confirmed` | You're registered — {{ params.event_title }} | Your event registration and payment are confirmed. |
 | `payment_module_purchase_confirmed` | Your course module purchase is confirmed | Your Mortar course module is unlocked — start learning. |
 | `shop_order_fulfillment_update` | Your Mortar shop order update — {{ params.fulfillment_status }} | Status update on your Mortar shop order. |
+| `conference_announcement_to_attendees` | {{ params.conference_name }}: {{ params.headline }} | An update for {{ params.conference_name }} attendees from the Mortar team. |
 
 > **Preheader in Brevo:** If the editor has a separate “Preview text” field, use the third column. The HTML files also include a hidden preheader `<span>` for clients that read it from the body.
 
@@ -282,6 +283,31 @@ Staff with **Admin** or **superAdmin** can open **Admin → Email testing** (`/a
 `Ready to expand your reach? Use your secure access code to unlock the MORTARverse app.`
 
 **HTML:** [`app_access_code_invite.html`](brevo-templates/html/app_access_code_invite.html)
+
+---
+
+## 10. `conference_announcement_to_attendees`
+
+Admin-composed announcement to one conference's attendees, sent from
+**Admin → Conferences → (select a conference) → Announce to attendees**.
+Audience is `conferences/{id}/attendees`, never the whole user base.
+
+**Params:** `first_name`, `conference_name`, `conference_dates`, `conference_location`, `headline`, `message_body`, `sender_name`, `cta_url` (optional), `cta_label` (optional), `support_email`
+
+**Subject:**  
+`{{ params.conference_name }}: {{ params.headline }}`
+
+**Preview text:**  
+`An update for {{ params.conference_name }} attendees from the Mortar team.`
+
+**HTML:** [`conference_announcement_to_attendees.html`](brevo-templates/html/conference_announcement_to_attendees.html)
+
+> **Brevo template ID 18** (override with env `BREVO_TPL_CONFERENCE_ANNOUNCEMENT`).
+
+> **Body formatting:** `message_body` is plain text from Functions — same rule as
+> `admin_custom_announcement`. `conference_dates` and `conference_location` fall
+> back to "Dates to be announced" / "Location to be announced" when the
+> conference doc has not set them.
 
 ---
 

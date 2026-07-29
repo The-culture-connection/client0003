@@ -8,6 +8,7 @@ import * as logger from "firebase-functions/logger";
 import {z} from "zod";
 
 import {callableCorsAllowlist} from "./callableCorsAllowlist";
+import {conferenceAttendeeUids} from "./conferencePushHelpers";
 
 if (getApps().length === 0) {
   initializeApp();
@@ -42,7 +43,18 @@ type PushEventType =
   | "admin_user_reported"
   | "admin_event_needs_approval"
   | "admin_digital_dm"
-  | "admin_shop_order_needs_fulfillment";
+  | "admin_shop_order_needs_fulfillment"
+  // --- Conference app ---
+  | "conference_announced"
+  | "conference_code_active"
+  | "conference_mission_available"
+  | "conference_session_reminder_1d"
+  | "conference_session_reminder_2h"
+  | "conference_session_message"
+  | "conference_community_message"
+  | "conference_match"
+  /** Admin-composed blast to one conference's attendees (not the whole user base). */
+  | "conference_admin_announcement";
 
 async function assertCallerIsNetworkAdmin(uid: string): Promise<void> {
   const udoc = await db.collection("users").doc(uid).get();
@@ -161,7 +173,10 @@ async function pruneDeadTokens(
   return pruned;
 }
 
-async function sendPushToUids(params: {
+export type {PushEventType};
+
+/** Exported so `conferencePushes.ts` can reuse the same delivery path. */
+export async function sendPushToUids(params: {
   type: PushEventType;
   uids: string[];
   title: string;
@@ -300,12 +315,24 @@ export const onUserBadgeEarnedPush = onDocumentWritten(
     if (addedBadges.length === 0) return;
 
     const latestBadge = addedBadges[addedBadges.length - 1]!;
+
+    // A completed conference mission awards its badge through this same field.
+    // Naming it a mission makes the notification match where the user earned it
+    // — and sends them to the lobby rather than the Expansion badge wall.
+    const badgeDoc = await db.collection("badge_definitions").doc(latestBadge).get();
+    const isMissionBadge = badgeDoc.data()?.source === "conference_mission";
+    const badgeName = typeof badgeDoc.data()?.name === "string" ?
+      (badgeDoc.data()?.name as string).trim() :
+      "";
+
     await sendPushToUids({
       type: "badge_earned",
       uids: [uid],
-      title: "Badge earned!",
-      body: "You unlocked a new badge. Tap to view your achievements.",
-      deepLink: "/profile/achievements",
+      title: isMissionBadge ? "Mission complete!" : "Badge earned!",
+      body: isMissionBadge ?
+        `${badgeName || "You completed a mission"} — the badge is on your profile.` :
+        "You unlocked a new badge. Tap to view your achievements.",
+      deepLink: isMissionBadge ? "/conference/lobby" : "/profile/achievements",
       data: {badge_id: latestBadge},
       source: "trigger",
       dedupeKey: `badge_earned_${uid}_${latestBadge}`,
@@ -320,6 +347,12 @@ export const onBadgeDefinitionCreatedPush = onDocumentCreated(
     const data = event.data?.data() as Record<string, unknown> | undefined;
     if (!data) return;
     if (data.active === false) return;
+    // Conference missions create a presentation-only badge doc each time one is
+    // authored. Without this guard every new mission blasts the entire user
+    // base — including people not attending that conference — with a generic
+    // "New badge available". Those are announced by
+    // [onConferenceMissionCreatedPush] to the conference's attendees instead.
+    if (data.source === "conference_mission") return;
 
     const name = typeof data.name === "string" && data.name.trim() ? data.name.trim() : badgeId;
     const usersSnap = await db.collection("users").select("fcm_token", "fcm_tokens").limit(2500).get();
@@ -727,9 +760,77 @@ export const scheduledEventReminderPushes = onSchedule(
       .where("date", "<=", Timestamp.fromMillis(now + 3 * 60 * 60 * 1000))
       .limit(300)
       .get();
+    // --- Conference sessions ---
+    // Same shape as events_mobile (a start time plus `registered_users`), but
+    // living in a subcollection, so this needs a collectionGroup sweep. Reusing
+    // this scheduler keeps one cadence and one dedupe store for all reminders.
+    const sessionSnap = await db
+      .collectionGroup("sessions")
+      .where("startTime", ">=", Timestamp.fromMillis(now))
+      .where("startTime", "<=", upper)
+      .limit(500)
+      .get()
+      .catch((err) => {
+        logger.warn("session reminder sweep failed (index may be building)", {err});
+        return null;
+      });
+
+    let sessionReminders = 0;
+    for (const docSnap of sessionSnap?.docs ?? []) {
+      const d = docSnap.data() as Record<string, unknown>;
+      const startMs = readEventDateMs(d.startTime);
+      if (!startMs) continue;
+      const diffMs = startMs - now;
+      if (diffMs <= 0) continue;
+
+      const users = Array.isArray(d.registered_users) ? (d.registered_users as string[]) : [];
+      if (users.length === 0) continue;
+
+      const isOneDayWindow = diffMs <= 25 * 60 * 60 * 1000 && diffMs >= 23 * 60 * 60 * 1000;
+      const isTwoHourWindow = diffMs <= 2.5 * 60 * 60 * 1000 && diffMs >= 1.5 * 60 * 60 * 1000;
+      if (!isOneDayWindow && !isTwoHourWindow) continue;
+
+      const type: PushEventType = isOneDayWindow ?
+        "conference_session_reminder_1d" :
+        "conference_session_reminder_2h";
+      const sessionTitle = typeof d.title === "string" && d.title.trim() ?
+        d.title.trim() :
+        "your session";
+      const title = isOneDayWindow ? "Session tomorrow" : "Session starting soon";
+      const body = isOneDayWindow ?
+        `${sessionTitle} is tomorrow. Tap to view the details.` :
+        `${sessionTitle} starts in about 2 hours. Tap to open it.`;
+
+      // conferences/{conferenceId}/sessions/{sessionId}
+      const conferenceId = docSnap.ref.parent.parent?.id;
+      if (!conferenceId) continue;
+
+      const recipients: string[] = [];
+      for (const uid of users) {
+        const marker = `${docSnap.id}_${uid}_${type}`;
+        // eslint-disable-next-line no-await-in-loop
+        const ok = await reminderDedupeOnce(marker);
+        if (ok) recipients.push(uid);
+      }
+      if (recipients.length === 0) continue;
+
+      await sendPushToUids({
+        type,
+        uids: recipients,
+        title,
+        body,
+        deepLink: `/conference/schedule/${docSnap.id}`,
+        data: {conference_id: conferenceId, session_id: docSnap.id},
+        source: "scheduler",
+      });
+      sessionReminders++;
+    }
+
     logger.info("scheduledEventReminderPushes sweep complete", {
       primaryDocs: snap.size,
       nearTwoHourDocs: snap2h.size,
+      sessionDocs: sessionSnap?.size ?? 0,
+      sessionReminders,
     });
   }
 );
@@ -738,8 +839,10 @@ const adminSendPushSchema = z.object({
   title: z.string().min(1).max(120),
   body: z.string().min(1).max(300),
   deepLink: z.string().min(1).max(400),
-  audience: z.enum(["all", "uids"]),
+  audience: z.enum(["all", "uids", "conference"]),
   uids: z.array(z.string().min(1)).max(2000).optional().default([]),
+  /** Required when audience is "conference"; resolved to that event's attendees. */
+  conference_id: z.string().min(1).optional(),
 });
 
 export const adminSendPushNotification = onCall(
@@ -759,13 +862,26 @@ export const adminSendPushNotification = onCall(
       if (uids.length === 0) {
         throw new HttpsError("invalid-argument", "uids required when audience is 'uids'");
       }
+    } else if (payload.audience === "conference") {
+      if (!payload.conference_id) {
+        throw new HttpsError(
+          "invalid-argument",
+          "conference_id required when audience is 'conference'"
+        );
+      }
+      uids = await conferenceAttendeeUids(payload.conference_id);
+      if (uids.length === 0) {
+        // Not an error: a conference with no redeemed tickets yet is a normal
+        // state, and reporting zero is more useful than a failure.
+        return {ok: true, successCount: 0, failureCount: 0, audienceCount: 0};
+      }
     } else {
       const usersSnap = await db.collection("users").select("fcm_token", "fcm_tokens").limit(2500).get();
       uids = usersSnap.docs.map((d) => d.id);
     }
 
     const result = await sendPushToUids({
-      type: "admin_manual",
+      type: payload.audience === "conference" ? "conference_admin_announcement" : "admin_manual",
       uids,
       title: payload.title.trim(),
       body: payload.body.trim(),

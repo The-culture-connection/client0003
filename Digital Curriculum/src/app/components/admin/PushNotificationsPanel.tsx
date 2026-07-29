@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { httpsCallable } from "firebase/functions";
+import { collection, onSnapshot } from "firebase/firestore";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 import { Badge } from "../ui/badge";
-import { functions } from "../../lib/firebase";
+import { db, functions } from "../../lib/firebase";
+
+type ConferenceOption = { id: string; name: string };
 
 type PushActivityItem = {
   id: string;
@@ -36,8 +39,10 @@ export function PushNotificationsPanel() {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [deepLink, setDeepLink] = useState("/home");
-  const [audience, setAudience] = useState<"all" | "uids">("all");
+  const [audience, setAudience] = useState<"all" | "uids" | "conference">("all");
   const [uidsText, setUidsText] = useState("");
+  const [conferences, setConferences] = useState<ConferenceOption[]>([]);
+  const [conferenceId, setConferenceId] = useState("");
   const [sending, setSending] = useState(false);
   const [sendMsg, setSendMsg] = useState<string | null>(null);
 
@@ -74,6 +79,23 @@ export function PushNotificationsPanel() {
     void loadActivity();
   }, []);
 
+  // Conference list for the "conference attendees" audience. Cheap enough to
+  // subscribe unconditionally — the collection is small.
+  useEffect(() => {
+    const unsub = onSnapshot(
+      collection(db, "conferences"),
+      (snap) =>
+        setConferences(
+          snap.docs.map((d) => ({
+            id: d.id,
+            name: (d.data().name as string | undefined)?.trim() || d.id,
+          }))
+        ),
+      () => setConferences([])
+    );
+    return () => unsub();
+  }, []);
+
   const sendPush = async () => {
     setSending(true);
     setSendMsg(null);
@@ -85,6 +107,7 @@ export function PushNotificationsPanel() {
         deepLink: deepLink.trim(),
         audience,
         uids: audience === "uids" ? parsedUids : [],
+        conference_id: audience === "conference" ? conferenceId : undefined,
       });
       const out = res.data as { successCount?: number; failureCount?: number; audienceCount?: number };
       setSendMsg(
@@ -127,12 +150,33 @@ export function PushNotificationsPanel() {
             <select
               className="w-full mt-1 px-3 py-2 rounded-md border border-border bg-background text-foreground"
               value={audience}
-              onChange={(e) => setAudience(e.target.value as "all" | "uids")}
+              onChange={(e) => setAudience(e.target.value as "all" | "uids" | "conference")}
             >
               <option value="all">All app users with push tokens</option>
               <option value="uids">Specific user IDs</option>
+              <option value="conference">Attendees of one conference</option>
             </select>
           </div>
+          {audience === "conference" ? (
+            <div>
+              <Label className="text-foreground">Conference</Label>
+              <select
+                className="w-full mt-1 px-3 py-2 rounded-md border border-border bg-background text-foreground"
+                value={conferenceId}
+                onChange={(e) => setConferenceId(e.target.value)}
+              >
+                <option value="">— Select a conference —</option>
+                {conferences.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Goes only to people who redeemed a ticket for that conference.
+              </p>
+            </div>
+          ) : null}
           {audience === "uids" ? (
             <div>
               <Label className="text-foreground">User IDs (comma or newline separated)</Label>
@@ -148,7 +192,14 @@ export function PushNotificationsPanel() {
           <Button
             type="button"
             className="bg-accent hover:bg-accent/90 text-accent-foreground"
-            disabled={sending || !title.trim() || !body.trim() || !deepLink.trim() || (audience === "uids" && parsedUids.length === 0)}
+            disabled={
+              sending ||
+              !title.trim() ||
+              !body.trim() ||
+              !deepLink.trim() ||
+              (audience === "uids" && parsedUids.length === 0) ||
+              (audience === "conference" && !conferenceId)
+            }
             onClick={() => void sendPush()}
           >
             {sending ? "Sending..." : "Send push"}

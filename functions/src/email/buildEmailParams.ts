@@ -175,6 +175,44 @@ export function eventRegistrantParams(input: {
   };
 }
 
+/**
+ * Params for an admin announcement to a conference's attendees.
+ *
+ * `conference_dates` and `conference_location` are pre-formatted by the caller
+ * and fall back to neutral copy, because a conference can legitimately be
+ * announced before its venue is locked in.
+ */
+export function conferenceAnnouncementParams(input: {
+  first_name?: string;
+  userName?: string;
+  userEmail?: string;
+  conference_name: string;
+  conference_dates: string;
+  conference_location?: string | null;
+  headline: string;
+  message_body: string;
+  sender_name?: string | null;
+  cta_url?: string | null;
+  cta_label?: string | null;
+}): JsonObject {
+  const shared = sharedFooterParams();
+  const platformUrl = shared.platform_url as string;
+  return {
+    first_name: input.first_name ?? firstNameFrom(input.userName, input.userEmail),
+    conference_name: input.conference_name.trim(),
+    conference_dates: input.conference_dates.trim() || "Dates to be announced",
+    conference_location: input.conference_location?.trim() || "Location to be announced",
+    headline: input.headline.trim(),
+    message_body: plainMessageBody(input.message_body),
+    sender_name: input.sender_name?.trim() || "MORTAR Team",
+    // Default target is the web platform, so the default label must not promise
+    // the mobile app. Admins can override both fields per send.
+    cta_url: input.cta_url?.trim() || platformUrl,
+    cta_label: input.cta_label?.trim() || "Open MORTAR",
+    ...shared,
+  };
+}
+
 export function adminCustomAnnouncementParams(input: {
   first_name?: string;
   userName?: string;
