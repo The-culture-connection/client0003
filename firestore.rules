@@ -1137,6 +1137,19 @@ service cloud.firestore {
       allow delete: if hasStaffClaim();
     }
 
+    // Account & data deletion requests (Google Play compliance).
+    // Written only by the submitAccountDeletionRequest callable via the Admin
+    // SDK, which bypasses rules — a public client create would let anyone forge
+    // requests against another person's address. Staff read them to action the
+    // deletion, and may update status/notes but never create or delete.
+    match /account_deletion_requests/{requestId} {
+      allow read: if hasStaffClaim();
+      allow update: if hasStaffClaim()
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['status', 'staff_notes', 'handled_at', 'handled_by_uid']);
+      allow create, delete: if false;
+    }
+
     // --- Deny everything else ---
     match /{document=**} {
       allow read, write: if false;

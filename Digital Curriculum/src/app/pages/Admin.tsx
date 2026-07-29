@@ -133,6 +133,7 @@ import { sendEventRegistrantEmail } from "../lib/adminEmail";
 import { MobileModerationPanel } from "../components/admin/MobileModerationPanel";
 import { MobileAnalyticsSummariesPanel } from "../components/admin/MobileAnalyticsSummariesPanel";
 import { PushNotificationsPanel } from "../components/admin/PushNotificationsPanel";
+import { AccountDeletionRequestsPanel } from "../components/admin/AccountDeletionRequestsPanel";
 import { MortarInfoAdminPanel } from "../components/admin/MortarInfoAdminPanel";
 import { AnalyticsDashboardPanel } from "../components/admin/AnalyticsDashboardPanel";
 import { AdminGoalReportsPanel } from "../components/admin/AdminGoalReportsPanel";
@@ -2274,6 +2275,7 @@ export function AdminPage() {
         </TabsContent>
 
         <TabsContent value="reports" className="space-y-6">
+          <AccountDeletionRequestsPanel />
           <AdminGoalReportsPanel />
           <div>
             <h2 className="text-base font-semibold mb-4">Survey Intelligence</h2>

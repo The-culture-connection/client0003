@@ -50,6 +50,7 @@ type PushEventType =
   | "conference_mission_available"
   | "conference_session_reminder_1d"
   | "conference_session_reminder_2h"
+  | "conference_session_reminder_15m"
   | "conference_session_message"
   | "conference_community_message"
   | "conference_match"
@@ -788,18 +789,33 @@ export const scheduledEventReminderPushes = onSchedule(
 
       const isOneDayWindow = diffMs <= 25 * 60 * 60 * 1000 && diffMs >= 23 * 60 * 60 * 1000;
       const isTwoHourWindow = diffMs <= 2.5 * 60 * 60 * 1000 && diffMs >= 1.5 * 60 * 60 * 1000;
-      if (!isOneDayWindow && !isTwoHourWindow) continue;
+      // 5–20 min: a 15-minute-wide window, matching this scheduler's */15 cadence
+      // so exactly one sweep can land inside it. A narrower window could fall
+      // between two sweeps and never fire.
+      const isFifteenMinWindow = diffMs <= 20 * 60 * 1000 && diffMs >= 5 * 60 * 1000;
+      if (!isOneDayWindow && !isTwoHourWindow && !isFifteenMinWindow) continue;
 
-      const type: PushEventType = isOneDayWindow ?
-        "conference_session_reminder_1d" :
-        "conference_session_reminder_2h";
+      let type: PushEventType;
+      let title: string;
+      let bodySuffix: string;
+      if (isOneDayWindow) {
+        type = "conference_session_reminder_1d";
+        title = "Session tomorrow";
+        bodySuffix = "is tomorrow. Tap to view the details.";
+      } else if (isTwoHourWindow) {
+        type = "conference_session_reminder_2h";
+        title = "Session starting soon";
+        bodySuffix = "starts in about 2 hours. Tap to open it.";
+      } else {
+        type = "conference_session_reminder_15m";
+        title = "Starting in 15 minutes";
+        bodySuffix = "starts in about 15 minutes. Head over now.";
+      }
+
       const sessionTitle = typeof d.title === "string" && d.title.trim() ?
         d.title.trim() :
         "your session";
-      const title = isOneDayWindow ? "Session tomorrow" : "Session starting soon";
-      const body = isOneDayWindow ?
-        `${sessionTitle} is tomorrow. Tap to view the details.` :
-        `${sessionTitle} starts in about 2 hours. Tap to open it.`;
+      const body = `${sessionTitle} ${bodySuffix}`;
 
       // conferences/{conferenceId}/sessions/{sessionId}
       const conferenceId = docSnap.ref.parent.parent?.id;

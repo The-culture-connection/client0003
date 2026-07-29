@@ -36,6 +36,7 @@ import { CourseBuilder } from "./pages/admin/CourseBuilder";
 import { AdminCommandCenter } from "./pages/admin/AdminCommandCenter";
 import { AdminLayout } from "./layouts/AdminLayout";
 import { PublicCertificatePage } from "./pages/PublicCertificate";
+import { DeleteAccountPage } from "./pages/DeleteAccount";
 import { AuthGuard } from "./components/auth/AuthGuard";
 import { OnboardingGate } from "./components/auth/OnboardingGate";
 import { RoleGate } from "./components/auth/RoleGate";
@@ -83,6 +84,13 @@ export const router = createBrowserRouter([
   {
     path: "/certificate/:shareId",
     Component: PublicCertificatePage,
+  },
+  // Public on purpose: Google Play requires the deletion request page to be
+  // reachable without signing in or installing the app. Keep it outside
+  // AuthGuard, and keep the URL stable — it is registered in Play Console.
+  {
+    path: "/delete-account",
+    Component: DeleteAccountPage,
   },
   {
     path: "/onboarding",

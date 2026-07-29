@@ -194,11 +194,45 @@ export const onConferenceMatchPush = onDocumentCreated(
       [];
     if (users.length === 0) return;
 
+    const title = "It is a match";
+    const body = "You both want to connect. Tap to start the conversation.";
+
+    // Each person is sent straight into the 1:1 chat with the *other* one, so the
+    // deep link differs per recipient — hence one send each rather than a single
+    // broadcast (sendPushToUids takes one deepLink for the whole list).
+    //
+    // The dedupe key has to be per-user for the same reason: a shared key would
+    // make the second send a no-op and only one of the pair would ever hear.
+    if (users.length === 2) {
+      await Promise.all(
+        users.map((uid, i) => {
+          const other = users[1 - i];
+          return sendPushToUids({
+            type: "conference_match",
+            uids: [uid],
+            title,
+            body,
+            deepLink: `/messages/direct/${other}`,
+            data: {
+              conference_id: conferenceId,
+              pair_id: pairId,
+              matched_uid: other,
+            },
+            source: "trigger",
+            dedupeKey: `conference_match_${pairId}_${uid}`,
+          });
+        })
+      );
+      return;
+    }
+
+    // Not a pair (unexpected shape): there is no single "other person" to open a
+    // chat with, so fall back to the networking screen.
     await sendPushToUids({
       type: "conference_match",
       uids: users,
-      title: "It is a match",
-      body: "You both want to connect. Tap to start the conversation.",
+      title,
+      body,
       deepLink: "/conference/network",
       data: { conference_id: conferenceId, pair_id: pairId },
       source: "trigger",
