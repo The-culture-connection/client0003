@@ -1,0 +1,80 @@
+/* Montserrat — the wearemortar.com headline font (style guide: Montserrat
+   Black/SemiBold/Regular). Loaded from Google Fonts; falls back to the
+   local stack if offline. Must stay the first statement in this file. */
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&display=swap");
+
+/**
+ * MORTAR brand fonts — UI overhaul foundation.
+ *
+ * Eksell Display  → expressive display headings (Large for big sizes,
+ *                   Small for compact headings, Stencil for accents).
+ * Maison Neue     → body / UI text (Light 300, Book 400, Bold 700) + Mono.
+ * Montserrat      → legacy style-guide contexts; falls back through the
+ *                   body stack (no webfont shipped here).
+ *
+ * Font files live in /public/fonts (served from /fonts/*).
+ */
+
+@font-face {
+  font-family: "Eksell Display";
+  src: url("/fonts/EksellDisplayLarge.otf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Eksell Display";
+  src: url("/fonts/EksellDisplaySmall.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Eksell Display Stencil";
+  src: url("/fonts/EksellDisplayStencil.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Maison Neue";
+  src: url("/fonts/MaisonNeue-Light.ttf") format("truetype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Maison Neue";
+  src: url("/fonts/MaisonNeue-LightItalic.ttf") format("truetype");
+  font-weight: 300;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Maison Neue";
+  src: url("/fonts/MaisonNeue-Book.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Maison Neue";
+  src: url("/fonts/MaisonNeue-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Maison Neue Mono";
+  src: url("/fonts/MaisonNeue-Mono.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}

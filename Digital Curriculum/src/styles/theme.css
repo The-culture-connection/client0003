@@ -78,6 +78,38 @@
   --sidebar-ring: oklch(0.439 0 0);
 }
 
+/* ------------------------------------------------------------------ */
+/* MORTAR UI overhaul — brand tokens (STYLEGUIDE_V1 + new card style)  */
+/* ------------------------------------------------------------------ */
+:root {
+  /* Textbook colors (style guide) */
+  --mortar-green: #81ac4b;
+  --mortar-yellow: #e2bb28;
+  --mortar-blue: #578ca9;
+  --mortar-red: #b56154;
+  /* Verse green from the new card style spec (MORTAR Masters) */
+  --mortar-verse-green: #74af38;
+  /* Brick red — brand trowell red (#870000) lifted to pass contrast on
+     the dark surface. App-shell accent. */
+  --mortar-brick: #c1442a;
+
+  /* Active verse/chapter theme color. Overridden per lesson via an
+     inline style (see verseTheme.ts) so progress bars, stats, quiz
+     results and textures all follow the chapter color. */
+  --verse-theme: var(--mortar-verse-green);
+
+  /* New card style: dark linear gradient surface */
+  --card-grad-from: #1c1c1c;
+  --card-grad-to: #0b0b0b;
+
+  /* Typography */
+  --brand-font-headline: "Montserrat", "Maison Neue", ui-sans-serif, system-ui, sans-serif;
+  --brand-font-display: "Eksell Display", "Montserrat", Georgia, serif;
+  --brand-font-stencil: "Eksell Display Stencil", "Eksell Display", serif;
+  --brand-font-body: "Maison Neue", "Montserrat", ui-sans-serif, system-ui, sans-serif;
+  --brand-font-mono: "Maison Neue Mono", ui-monospace, monospace;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -117,6 +149,157 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  /* MORTAR brand utilities: bg-verse / text-verse / border-verse, plus
+     bg-mortar-green, text-mortar-yellow, etc. */
+  --color-verse: var(--verse-theme);
+  --color-mortar-green: var(--mortar-green);
+  --color-mortar-yellow: var(--mortar-yellow);
+  --color-mortar-blue: var(--mortar-blue);
+  --color-mortar-red: var(--mortar-red);
+  --color-mortar-verse-green: var(--mortar-verse-green);
+  --color-mortar-brick: var(--mortar-brick);
+
+  /* font-display / font-body / font-stencil utilities */
+  --font-headline: var(--brand-font-headline);
+  --font-display: var(--brand-font-display);
+  --font-body: var(--brand-font-body);
+  --font-stencil: var(--brand-font-stencil);
+  /* font-technical: spec-sheet labels — Maison Neue (per brand guidelines),
+     styled via uppercase + tracking rather than a mono face */
+  --font-technical: var(--brand-font-body);
+}
+
+/* ------------------------------------------------------------------ */
+/* MORTAR UI overhaul — surfaces & textures                            */
+/* ------------------------------------------------------------------ */
+
+/* New card style: dark linear gradient (top #1c1c1c → bottom #0b0b0b) */
+.lesson-card-surface {
+  background: linear-gradient(to bottom, var(--card-grad-from), var(--card-grad-to));
+}
+
+/* Grunge texture pinned to the bottom of a card, tinted with the active
+   verse color; white paint splatters stay white. Place inside a
+   position:relative container:  <div aria-hidden className="verse-texture-bottom" /> */
+.verse-texture-bottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: min(38%, 340px);
+  pointer-events: none;
+}
+
+.verse-texture-bottom::before,
+.verse-texture-bottom::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  -webkit-mask-size: cover;
+  mask-size: cover;
+  -webkit-mask-position: bottom center;
+  mask-position: bottom center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+/* Tintable grunge layer */
+.verse-texture-bottom::before {
+  background-color: var(--verse-theme);
+  -webkit-mask-image: url("/textures/texture-mask-color.png");
+  mask-image: url("/textures/texture-mask-color.png");
+}
+
+/* White paint-splatter layer */
+.verse-texture-bottom::after {
+  background-color: #fff;
+  -webkit-mask-image: url("/textures/texture-mask-white.png");
+  mask-image: url("/textures/texture-mask-white.png");
+}
+
+/* Progress bars that follow the verse color (shadcn Progress uses
+   bg-primary internally; this override themes it per-card). */
+.verse-progress {
+  background-color: color-mix(in srgb, var(--verse-theme) 20%, transparent) !important;
+}
+.verse-progress [data-slot="progress-indicator"] {
+  background-color: var(--verse-theme);
+}
+
+/* ------------------------------------------------------------------ */
+/* Industrial / deconstructed utilities                                */
+/* ------------------------------------------------------------------ */
+
+/* Space surface — deeper black than the card gradient, with a hint of
+   depth at the top. Page background for Mortarverse-styled screens. */
+.space-surface {
+  background: radial-gradient(ellipse at 50% -20%, #0d0d0d, #000000 65%);
+}
+
+/* Starfield — two tiled layers of soft star dots; second layer drifts
+   through a slow twinkle so the sky feels alive without distracting. */
+.starfield {
+  background-image:
+    radial-gradient(1px 1px at 22px 34px, rgba(255, 255, 255, 0.9), transparent 100%),
+    radial-gradient(1px 1px at 130px 92px, rgba(255, 255, 255, 0.55), transparent 100%),
+    radial-gradient(1.5px 1.5px at 200px 180px, rgba(255, 255, 255, 0.75), transparent 100%),
+    radial-gradient(1px 1px at 68px 210px, rgba(255, 255, 255, 0.4), transparent 100%),
+    radial-gradient(1px 1px at 244px 60px, rgba(255, 255, 255, 0.6), transparent 100%),
+    radial-gradient(1.5px 1.5px at 160px 260px, rgba(255, 255, 255, 0.5), transparent 100%);
+  background-size: 280px 280px;
+}
+.starfield::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 80px 40px, rgba(255, 255, 255, 0.7), transparent 100%),
+    radial-gradient(2px 2px at 310px 150px, rgba(255, 255, 255, 0.8), transparent 100%),
+    radial-gradient(1px 1px at 210px 300px, rgba(255, 255, 255, 0.45), transparent 100%),
+    radial-gradient(1.5px 1.5px at 390px 240px, rgba(255, 255, 255, 0.6), transparent 100%);
+  background-size: 420px 420px;
+  animation: star-twinkle 9s ease-in-out infinite alternate;
+}
+@keyframes star-twinkle {
+  from { opacity: 0.35; }
+  to { opacity: 1; }
+}
+
+/* Glass card — translucent panel over the starfield (Mortarverse
+   prototype's glassy phone panels). */
+.glass-card {
+  background: rgba(255, 255, 255, 0.035);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Mortarverse-inspired glow accents — soft aura + element glow. Use
+   sparingly: one or two auras per screen, glow on the primary CTA only. */
+.aura-glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  background: radial-gradient(circle, color-mix(in srgb, var(--verse-theme) 50%, transparent), transparent 65%);
+  pointer-events: none;
+}
+.glow-brick {
+  box-shadow: 0 0 28px rgba(193, 68, 42, 0.45);
+}
+
+/* Faint blueprint grid — layer over a surface via an absolute div. */
+.blueprint-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+/* Square progress bars — industrial geometry, no pill ends. */
+.verse-progress,
+.verse-progress [data-slot="progress-indicator"] {
+  border-radius: 0;
 }
 
 @layer base {
@@ -126,6 +309,7 @@
 
   body {
     @apply bg-background text-foreground;
+    font-family: var(--brand-font-body);
   }
 
   /**

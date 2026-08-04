@@ -253,7 +253,7 @@ export function CourseDetail() {
                 </Badge>
               )}
             </div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">
+            <h1 className="font-headline font-black uppercase tracking-tight text-3xl text-foreground mb-2">
               {course.title}
             </h1>
             {course.description && (

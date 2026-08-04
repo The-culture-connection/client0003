@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MORTARVERSE — Concept Prototype</title>
+<style>
+  /* ============================================================
+     MORTARVERSE concept prototype — Afro-futurist galaxy
+     Each expansion city is a planet rendered as a shiny CD/record
+     floating over a starry, intergalactic-funk galaxy. Glowing
+     auras bleed in and out; rap-style affirmations drift by.
+     Sign-in = torn-paper overlay at lowered opacity so the
+     galaxy keeps moving behind it.
+     NOTE: quote lines are original placeholders — swap in
+     licensed lyrics from the MORTAR curriculum.
+     ============================================================ */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --ink: #f5f2ec;
+    --red: #c1121f;
+  }
+
+  html, body { height: 100%; }
+  body {
+    background: #000;
+    overflow: hidden;
+    font-family: "Montserrat", "Segoe UI", system-ui, sans-serif;
+    color: var(--ink);
+  }
+
+  #galaxy { position: fixed; inset: 0; display: block; }
+
+  /* Nebula glows that bleed in and out of each other */
+  .nebula {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(70px);
+    opacity: .5;
+    mix-blend-mode: screen;
+    animation: bleed 14s ease-in-out infinite alternate;
+    pointer-events: none;
+  }
+  @keyframes bleed {
+    0%   { transform: scale(1) translate(0, 0); opacity: .32; }
+    100% { transform: scale(1.35) translate(4vw, -3vh); opacity: .62; }
+  }
+
+  /* ---------------- planets (CD/records) ---------------- */
+  .planet {
+    position: fixed;
+    border-radius: 50%;
+    cursor: pointer;
+    transform: translate(-50%, -50%);
+    transition: scale .35s ease;
+    animation: drift 12s ease-in-out infinite alternate;
+    z-index: 20;
+  }
+  .planet:hover { scale: 1.12; }
+  @keyframes drift {
+    from { margin-top: -1.2vh; }
+    to   { margin-top:  1.2vh; }
+  }
+
+  .disc {
+    position: relative;
+    width: 100%; height: 100%;
+    border-radius: 50%;
+    background:
+      /* iridescent CD sheen */
+      conic-gradient(from 210deg,
+        rgba(255,255,255,.0) 0deg,
+        rgba(255,180,220,.55) 40deg,
+        rgba(140,220,255,.5) 80deg,
+        rgba(255,255,255,.06) 120deg,
+        rgba(255,230,150,.45) 190deg,
+        rgba(170,150,255,.5) 240deg,
+        rgba(255,255,255,.0) 300deg),
+      /* record grooves */
+      repeating-radial-gradient(circle at 50% 50%,
+        rgba(255,255,255,.13) 0px, rgba(0,0,0,0) 2px, rgba(0,0,0,.28) 4px);
+    box-shadow: inset 0 0 30px rgba(0,0,0,.75);
+    animation: spin 60s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* label + spindle hole */
+  .disc::before {
+    content: "";
+    position: absolute; inset: 33%;
+    border-radius: 50%;
+    background: var(--label, var(--red));
+    box-shadow: 0 0 14px rgba(0,0,0,.6) inset, 0 0 0 2px rgba(255,255,255,.25);
+  }
+  .disc::after {
+    content: "";
+    position: absolute; inset: 46%;
+    border-radius: 50%;
+    background: #050505;
+    box-shadow: 0 0 0 2px rgba(255,255,255,.35);
+  }
+
+  /* glowing aura */
+  .planet .aura {
+    position: absolute; inset: -34%;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--glow) 0%, transparent 62%);
+    filter: blur(14px);
+    animation: pulse 5.5s ease-in-out infinite alternate;
+    pointer-events: none;
+  }
+  @keyframes pulse {
+    from { opacity: .5; transform: scale(.94); }
+    to   { opacity: .95; transform: scale(1.1); }
+  }
+
+  /* orbit ring accent, like the mockups */
+  .planet .ring {
+    position: absolute; inset: -16%;
+    border-radius: 50%;
+    border: 1px solid color-mix(in srgb, var(--glow) 60%, white 20%);
+    opacity: .5;
+    pointer-events: none;
+  }
+
+  .planet .tag {
+    position: absolute;
+    left: 50%; top: calc(100% + 16%);
+    transform: translateX(-50%);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .34em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity .3s;
+    text-shadow: 0 0 12px #000;
+  }
+  .planet:hover .tag, .planet.active .tag { opacity: 1; }
+
+  /* ---------------- title & quote ---------------- */
+  .wordmark {
+    position: fixed;
+    top: 16vh; left: 50%;
+    transform: translateX(-50%);
+    font-size: clamp(34px, 6vw, 64px);
+    font-weight: 800;
+    letter-spacing: .1em;
+    z-index: 30;
+    text-shadow: 0 0 30px rgba(255,80,80,.35);
+    pointer-events: none;
+  }
+
+  .quote {
+    position: fixed;
+    top: 33vh; left: 50%;
+    transform: translateX(-50%);
+    max-width: 520px;
+    text-align: center;
+    font-style: italic;
+    font-size: 15px;
+    letter-spacing: .04em;
+    line-height: 1.7;
+    color: #e9e2d6;
+    opacity: 0;
+    transition: opacity 1.4s ease;
+    z-index: 30;
+    padding: 0 24px;
+    pointer-events: none;
+    text-shadow: 0 0 16px #000;
+  }
+  .quote.show { opacity: .92; }
+  .quote small { display: block; font-style: normal; font-size: 10px; letter-spacing: .3em; margin-top: 10px; color: #9b8f80; text-transform: uppercase; }
+
+  /* ---------------- bottom torn strip (landing) ---------------- */
+  .bottom-strip {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    height: 17vh;
+    background: rgba(12, 6, 6, .82);
+    backdrop-filter: blur(3px);
+    clip-path: polygon(0 34%, 3% 22%, 7% 36%, 11% 18%, 16% 30%, 21% 14%, 26% 32%, 31% 20%, 36% 34%, 41% 16%, 47% 28%, 52% 12%, 57% 30%, 62% 18%, 67% 32%, 72% 16%, 77% 28%, 82% 12%, 87% 26%, 92% 16%, 96% 30%, 100% 20%, 100% 100%, 0 100%);
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    z-index: 40;
+  }
+  .glow-btn {
+    background: none;
+    border: 0;
+    color: var(--ink);
+    font-family: inherit;
+    font-size: clamp(15px, 2.2vw, 19px);
+    font-weight: 700;
+    letter-spacing: .22em;
+    cursor: pointer;
+    padding: 14px 30px;
+    border-radius: 999px;
+    text-shadow: 0 0 18px rgba(255,60,60,.9);
+    box-shadow: 0 0 44px rgba(193,18,31,.55);
+    background: radial-gradient(circle, rgba(193,18,31,.38), transparent 70%);
+    transition: box-shadow .3s, transform .2s;
+  }
+  .glow-btn:hover { box-shadow: 0 0 70px rgba(193,18,31,.95); transform: translateY(-2px); }
+
+  /* ---------------- torn-paper sign-in overlay ---------------- */
+  .signin {
+    position: fixed; inset: 0;
+    z-index: 60;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .5s ease;
+  }
+  .signin.open { opacity: 1; pointer-events: auto; }
+
+  .paper {
+    position: relative;
+    width: min(460px, 92vw);
+    padding: 60px 44px 54px;
+    background:
+      /* paper fiber */
+      repeating-linear-gradient(93deg, rgba(255,255,255,.028) 0 2px, transparent 2px 5px),
+      rgba(16, 10, 10, .68);            /* lowered opacity: galaxy shows through */
+    backdrop-filter: blur(2.5px);
+    clip-path: polygon(1% 6%, 6% 2%, 13% 5%, 20% 1%, 28% 4%, 36% 0%, 45% 4%, 54% 1%, 63% 5%, 71% 2%, 80% 5%, 88% 1%, 95% 4%, 99% 8%, 98% 20%, 100% 34%, 98% 47%, 100% 61%, 98% 74%, 100% 88%, 96% 96%, 88% 99%, 78% 96%, 68% 100%, 57% 97%, 47% 100%, 37% 96%, 27% 99%, 17% 96%, 8% 99%, 2% 94%, 0% 82%, 2% 68%, 0% 54%, 2% 40%, 0% 26%, 2% 14%);
+    box-shadow: 0 30px 90px rgba(0,0,0,.8);
+    text-align: center;
+  }
+  .paper h2 {
+    font-size: 26px; font-weight: 800; letter-spacing: .12em; margin-bottom: 42px;
+  }
+  .field { margin-bottom: 30px; text-align: center; }
+  .field label {
+    display: block;
+    font-style: italic;
+    font-weight: 600;
+    letter-spacing: .28em;
+    font-size: 13px;
+    margin-bottom: 12px;
+    color: #ded7cb;
+  }
+  .field input {
+    width: 100%;
+    background: rgba(60,60,60,.55);
+    border: 0;
+    border-bottom: 2px solid #f0ede8;
+    height: 38px;
+    color: var(--ink);
+    font-size: 15px;
+    padding: 0 10px;
+    outline: none;
+  }
+  .field input:focus { border-bottom-color: #ff5a5a; box-shadow: 0 10px 30px -12px rgba(255,60,60,.5); }
+  .paper .cta {
+    margin-top: 8px;
+  }
+  .paper .join {
+    margin-top: 34px;
+    font-style: italic;
+    font-weight: 700;
+    letter-spacing: .06em;
+    font-size: 14px;
+  }
+  .paper .join a {
+    display: inline-block;
+    margin-top: 8px;
+    color: #ffd7d7;
+    text-decoration: none;
+    letter-spacing: .2em;
+    font-size: 15px;
+    text-shadow: 0 0 16px rgba(255,50,50,1);
+  }
+  .paper .close {
+    position: absolute; top: 26px; right: 30px;
+    background: none; border: 0; color: #cbb; font-size: 18px; cursor: pointer;
+  }
+
+  /* ---------------- city focus card ---------------- */
+  .focus {
+    position: fixed;
+    left: 50%; bottom: 20vh;
+    transform: translateX(-50%) translateY(20px);
+    background: rgba(10,8,8,.78);
+    border: 1px solid rgba(255,255,255,.14);
+    border-radius: 14px;
+    padding: 18px 26px;
+    z-index: 50;
+    text-align: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .35s, transform .35s;
+    backdrop-filter: blur(4px);
+  }
+  .focus.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .focus h3 { font-size: 17px; letter-spacing: .3em; font-weight: 800; }
+  .focus p { font-size: 12px; color: #beb4a6; margin-top: 6px; letter-spacing: .06em; }
+</style>
+</head>
+<body>
+  <canvas id="galaxy"></canvas>
+
+  <!-- nebula bleed -->
+  <div class="nebula" style="width:44vw;height:44vw;left:-12vw;top:-10vh;background:#8f1d2c;"></div>
+  <div class="nebula" style="width:36vw;height:36vw;right:-10vw;top:8vh;background:#b3244a;animation-delay:-6s;"></div>
+  <div class="nebula" style="width:40vw;height:40vw;left:4vw;bottom:-14vh;background:#5e2a72;animation-delay:-3s;"></div>
+  <div class="nebula" style="width:26vw;height:26vw;right:6vw;bottom:-6vh;background:#a56a1e;animation-delay:-9s;"></div>
+
+  <div class="wordmark">MORTARVERSE</div>
+  <div class="quote" id="quote"></div>
+
+  <!-- planets are injected by JS from the CITIES array -->
+
+  <div class="bottom-strip" id="strip">
+    <button class="glow-btn" onclick="openSignin()">SIGN&nbsp;IN</button>
+    <button class="glow-btn" onclick="openSignin()">SIGN&nbsp;UP</button>
+  </div>
+
+  <div class="focus" id="focus"><h3></h3><p></p></div>
+
+  <!-- torn paper sign-in -->
+  <div class="signin" id="signin">
+    <div class="paper">
+      <button class="close" onclick="closeSignin()">✕</button>
+      <h2>MORTARVERSE</h2>
+      <div class="field">
+        <label>USERNAME</label>
+        <input type="text" autocomplete="username" />
+      </div>
+      <div class="field">
+        <label>PASSWORD</label>
+        <input type="password" autocomplete="current-password" />
+      </div>
+      <button class="glow-btn cta">SIGN&nbsp;IN</button>
+      <div class="join">
+        HAVEN'T JOINED THE CREW YET?
+        <br /><a href="#">SIGN UP</a>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* ------- starfield ------- */
+const cv = document.getElementById('galaxy');
+const cx = cv.getContext('2d');
+let stars = [];
+function seedStars() {
+  cv.width = innerWidth; cv.height = innerHeight;
+  stars = Array.from({ length: Math.floor(innerWidth * innerHeight / 3800) }, () => ({
+    x: Math.random() * cv.width,
+    y: Math.random() * cv.height,
+    r: Math.random() * 1.3 + .2,
+    p: Math.random() * Math.PI * 2,        // twinkle phase
+    s: Math.random() * .0018 + .0006,      // twinkle speed
+    big: Math.random() > .985              // occasional 4-point sparkle
+  }));
+}
+seedStars();
+addEventListener('resize', seedStars);
+(function draw(t) {
+  cx.clearRect(0, 0, cv.width, cv.height);
+  for (const st of stars) {
+    const a = .25 + .75 * Math.abs(Math.sin(st.p + t * st.s));
+    cx.globalAlpha = a;
+    cx.fillStyle = '#fff';
+    cx.beginPath();
+    cx.arc(st.x, st.y, st.r, 0, 7);
+    cx.fill();
+    if (st.big) {
+      cx.globalAlpha = a * .8;
+      cx.fillRect(st.x - 5, st.y - .4, 10, .8);
+      cx.fillRect(st.x - .4, st.y - 5, .8, 10);
+    }
+  }
+  requestAnimationFrame(draw);
+})(0);
+
+/* ------- city planets (edit freely) -------
+   Each expansion city = a CD/record planet with its own personality. */
+const CITIES = [
+  { name: 'CINCINNATI', tag: 'Where it all began — HQ',        x: 24, y: 40, size: 15, label: '#c1121f', glow: 'rgba(220,40,60,.85)' },
+  { name: 'TULSA',      tag: 'Black Wall Street legacy',       x: 74, y: 30, size: 12, label: '#a56a1e', glow: 'rgba(226,187,40,.8)'  },
+  { name: 'ST. LOUIS',  tag: 'Gateway to the next chapter',    x: 62, y: 62, size: 10, label: '#2f6f8f', glow: 'rgba(87,140,169,.85)' },
+  { name: 'MILWAUKEE',  tag: 'North star hustle',              x: 38, y: 68, size: 9,  label: '#4c7a2f', glow: 'rgba(129,172,75,.85)' },
+  { name: 'LOUISVILLE', tag: 'Legacy in motion',               x: 86, y: 58, size: 8,  label: '#5e2a72', glow: 'rgba(160,80,200,.85)' },
+];
+
+const focusEl = document.getElementById('focus');
+CITIES.forEach((c, i) => {
+  const el = document.createElement('div');
+  el.className = 'planet';
+  const px = c.size + 'vmin';
+  el.style.cssText = `left:${c.x}vw; top:${c.y}vh; width:${px}; height:${px};
+    --label:${c.label}; --glow:${c.glow}; animation-delay:${-i * 2.3}s;`;
+  el.innerHTML = `<div class="aura"></div><div class="ring"></div>
+    <div class="disc"></div><div class="tag">${c.name}</div>`;
+  el.addEventListener('click', () => {
+    document.querySelectorAll('.planet').forEach(p => p.classList.remove('active'));
+    el.classList.add('active');
+    focusEl.querySelector('h3').textContent = c.name;
+    focusEl.querySelector('p').textContent = c.tag;
+    focusEl.classList.add('show');
+    clearTimeout(focusEl._t);
+    focusEl._t = setTimeout(() => focusEl.classList.remove('show'), 4200);
+  });
+  document.body.appendChild(el);
+});
+
+/* ------- floating "rap quote" generator -------
+   PLACEHOLDER original lines — replace with licensed lyrics
+   from the MORTAR curriculum. */
+const LINES = [
+  ['Stack every lesson like bricks, that’s how the empire gets built.', 'grind'],
+  ['Mind on my legacy, legacy on my mind.', 'legacy'],
+  ['They sleep on the block I own — I stayed woke and bought two more.', 'wealth'],
+  ['Education is the plug; I’m never running out of supply.', 'education'],
+  ['Elevate the crew, the whole city levels up.', 'community'],
+  ['Rest is part of the hustle — sharpen the mind, then swing.', 'wellness'],
+  ['High state of mind: I see the whole board, not just the move.', 'vision'],
+];
+const quoteEl = document.getElementById('quote');
+let qi = Math.floor(Math.random() * LINES.length);
+function cycleQuote() {
+  const [line, theme] = LINES[qi % LINES.length]; qi++;
+  quoteEl.innerHTML = `“${line}”<small>${theme} · mortarverse radio</small>`;
+  quoteEl.classList.add('show');
+  setTimeout(() => quoteEl.classList.remove('show'), 6400);
+}
+cycleQuote();
+setInterval(cycleQuote, 8000);
+
+/* ------- sign-in overlay ------- */
+const signin = document.getElementById('signin');
+function openSignin() { signin.classList.add('open'); }
+function closeSignin() { signin.classList.remove('open'); }
+signin.addEventListener('click', (e) => { if (e.target === signin) closeSignin(); });
+</script>
+</body>
+</html>

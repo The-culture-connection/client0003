@@ -125,7 +125,7 @@ export function WebQuizzes() {
   if (!user) {
     return (
       <div className="p-8">
-        <h1 className="text-3xl text-foreground mb-2">Quizzes</h1>
+        <h1 className="font-headline font-black uppercase tracking-tight text-3xl text-foreground mb-2">Quizzes</h1>
         <p className="text-muted-foreground">Sign in to view and take quizzes.</p>
       </div>
     );
@@ -299,7 +299,7 @@ export function WebQuizzes() {
   return (
     <div className="p-8">
       <div className="mb-8">
-        <h1 className="text-3xl text-foreground mb-2">Quizzes</h1>
+        <h1 className="font-headline font-black uppercase tracking-tight text-3xl text-foreground mb-2">Quizzes</h1>
         <p className="text-muted-foreground">
           Test your knowledge. Scores are recorded when you submit.
         </p>

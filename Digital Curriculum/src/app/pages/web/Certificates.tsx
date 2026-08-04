@@ -23,7 +23,7 @@ export function WebCertificates() {
     <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-foreground mb-1">
+        <h1 className="font-headline font-black uppercase tracking-tight text-3xl text-foreground mb-1">
           Achievements & Recognition
         </h1>
         <p className="text-sm text-muted-foreground">

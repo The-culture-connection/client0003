@@ -1058,7 +1058,7 @@ export function AdminPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-muted-foreground">Loading...</p>
@@ -1076,7 +1076,8 @@ export function AdminPage() {
           Admin command center
         </Button>
         <div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">Admin tools</h1>
+          <p className="font-technical uppercase tracking-[0.3em] text-verse text-xs mb-1.5">Command center //</p>
+          <h1 className="font-headline font-black uppercase tracking-tight text-3xl text-foreground mb-2">Admin tools</h1>
           <p className="text-muted-foreground">Manage groups, events, analytics, badges, courses, shop, and more.</p>
         </div>
       </div>
@@ -1166,7 +1167,7 @@ export function AdminPage() {
         <TabsContent value="groups" className="space-y-6">
           {/* Create Group */}
           <Card className="p-6">
-            <h2 className="text-xl font-semibold text-foreground mb-4">Create New Group</h2>
+            <h2 className="font-headline font-black uppercase tracking-wide text-lg text-foreground mb-4">Create New Group</h2>
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="group-name" className="text-foreground">
@@ -1215,7 +1216,7 @@ export function AdminPage() {
 
           {/* Groups List */}
           <div className="space-y-4">
-            <h2 className="text-xl font-semibold text-foreground">All Groups</h2>
+            <h2 className="font-headline font-black uppercase tracking-wide text-lg text-foreground">All Groups</h2>
             {groups.length === 0 ? (
               <Card className="p-8 text-center">
                 <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
@@ -1308,7 +1309,7 @@ export function AdminPage() {
         <TabsContent value="events" className="space-y-6">
           {/* Create Event */}
           <Card className="p-6">
-            <h2 className="text-xl font-semibold text-foreground mb-4">Create New Event</h2>
+            <h2 className="font-headline font-black uppercase tracking-wide text-lg text-foreground mb-4">Create New Event</h2>
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -1546,7 +1547,7 @@ export function AdminPage() {
 
           {/* Events List */}
           <div className="space-y-4 mt-6">
-            <h2 className="text-xl font-semibold text-foreground">All Events</h2>
+            <h2 className="font-headline font-black uppercase tracking-wide text-lg text-foreground">All Events</h2>
             <p className="text-sm text-muted-foreground">
               Lists <strong>events</strong> (curriculum web) and <strong>events_mobile</strong> (Expansion app), merged by id. Member submissions from the app are <strong>Pending approval</strong> in <code className="text-xs bg-muted px-1 rounded">events_mobile</code>. Approve to publish on the mobile feed; use <strong>Where to publish</strong> above when creating from admin. Use <strong>Email registrants</strong> on any event card (all types; available even at 0 registered — send is enabled once someone registers).
             </p>
@@ -1905,7 +1906,7 @@ export function AdminPage() {
             </Card>
           )}
           <div>
-            <h2 className="text-xl font-semibold text-foreground mb-4">
+            <h2 className="font-headline font-black uppercase tracking-wide text-lg text-foreground mb-4">
               Alumni Applications
             </h2>
             {loadingApplications ? (
@@ -2183,7 +2184,7 @@ export function AdminPage() {
         {/* Admins Tab */}
         <TabsContent value="admins" className="space-y-6">
           <Card className="p-6">
-            <h2 className="text-xl font-semibold text-foreground mb-4">Add Admin</h2>
+            <h2 className="font-headline font-black uppercase tracking-wide text-lg text-foreground mb-4">Add Admin</h2>
             <p className="text-sm text-muted-foreground mb-4">
               Grant a user the Admin or superAdmin role. Enter their account email and choose the role.
             </p>
@@ -2238,7 +2239,7 @@ export function AdminPage() {
           </Card>
 
           <Card className="p-6">
-            <h2 className="text-xl font-semibold text-foreground mb-4">Current Admins</h2>
+            <h2 className="font-headline font-black uppercase tracking-wide text-lg text-foreground mb-4">Current Admins</h2>
             {loadingAdmins ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -2345,7 +2346,7 @@ export function AdminPage() {
           <AdminShopOrdersPanel />
 
           <Card className="p-6">
-            <h2 className="text-xl font-semibold text-foreground mb-4">Add Shop Item</h2>
+            <h2 className="font-headline font-black uppercase tracking-wide text-lg text-foreground mb-4">Add Shop Item</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div className="space-y-2">
                 <Label htmlFor="shop-item-name" className="text-foreground">Item Name *</Label>
@@ -2516,7 +2517,7 @@ export function AdminPage() {
           </Card>
 
           <Card className="p-6">
-            <h2 className="text-xl font-semibold text-foreground mb-4">Shop Items</h2>
+            <h2 className="font-headline font-black uppercase tracking-wide text-lg text-foreground mb-4">Shop Items</h2>
             {loadingShop ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -2804,7 +2805,7 @@ export function AdminPage() {
 
         {/* Direct Messages Tab */}
         <TabsContent value="messages" className="space-y-4">
-          <h2 className="text-xl font-semibold text-foreground">Direct Messages from Students</h2>
+          <h2 className="font-headline font-black uppercase tracking-wide text-lg text-foreground">Direct Messages from Students</h2>
           {dms.length === 0 ? (
             <Card className="p-8 text-center">
               <MessageSquare className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
@@ -3010,7 +3011,7 @@ export function AdminPage() {
 
           {/* Courses List */}
           <Card className="p-6">
-            <h2 className="text-xl font-semibold text-foreground mb-4">All Courses</h2>
+            <h2 className="font-headline font-black uppercase tracking-wide text-lg text-foreground mb-4">All Courses</h2>
             {loadingCourses ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />

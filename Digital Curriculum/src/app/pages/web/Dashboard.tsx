@@ -57,6 +57,17 @@ import {
 
 const MOCK_BORDER = "border-2 border-red-500";
 
+// MORTAR UI overhaul — textbook colors (STYLEGUIDE_V1) drive each
+// dashboard section's verse theme (progress bars, icons, accents).
+import { verseThemeStyle } from "../../lib/verseTheme";
+const VERSE = {
+  green: "#74af38",
+  yellow: "#e2bb28",
+  brick: "#c1442a",
+  blue: "#578ca9",
+  red: "#b56154",
+} as const;
+
 interface UserProfile {
   first_name?: string;
   last_name?: string;
@@ -321,28 +332,49 @@ export function WebDashboard() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      {/* Welcome Header - Real name/profile; mock "lessons this week" */}
-      <div className="mb-5">
-        <h1 className="text-2xl text-foreground mb-1">
-          Welcome back, <span className="text-accent">{displayName}</span>
-        </h1>
-        <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+    // One unified accent across the dashboard: MORTAR yellow. Set once here;
+    // every bg-verse/text-verse/.verse-* below inherits it.
+    <div className="relative" style={verseThemeStyle(VERSE.brick)}>
+      <div className="relative z-10 p-6 max-w-7xl mx-auto">
+      {/* Welcome Header — wearemortar.com hero pattern: yellow uppercase
+          kicker over a giant Montserrat Black uppercase headline */}
+      <div className="mb-6 pt-2">
+        <div className="flex items-center gap-4">
+          <img src="/brand/white-trowell.png" alt="" aria-hidden className="h-12 w-auto opacity-90" />
+          <div>
+            <p className="font-technical uppercase tracking-[0.3em] text-verse text-xs mb-1.5">
+              Welcome back //
+            </p>
+            <h1 className="font-headline font-black uppercase tracking-tight text-4xl leading-none text-foreground">
+              {displayName}
+            </h1>
+          </div>
+        </div>
+        {/* Spec line: hairline rule + technical metadata */}
+        <div className="mt-4 border-t border-white/15 pt-1.5 flex items-center gap-4 font-technical text-[11px] uppercase tracking-wider text-muted-foreground flex-wrap">
+          <span className="text-verse">Site: Dashboard</span>
           {profile?.cohort_id && <span>Cohort: {profile.cohort_id}</span>}
-          {profile?.city && (
-            <>
-              {profile?.cohort_id && <span>•</span>}
-              <span>City: {profile.city}</span>
-            </>
-          )}
+          {profile?.city && <span>City: {profile.city}</span>}
+          <span>Status: In progress</span>
         </div>
       </div>
 
       {/* Hero - Next step from real course + progress */}
-      <Card className="p-5 mb-5 bg-gradient-to-br from-accent/20 via-card to-card border-accent/30 shadow-lg hover:shadow-xl transition-shadow">
-        <div className="flex items-start justify-between">
+      <Card
+        className="relative overflow-hidden rounded-none glass-card p-5 mb-5 shadow-lg hover:shadow-xl transition-shadow"
+      >
+        {/* White paint-tear at the card bottom — the wearemortar.com
+            signature section edge */}
+        <div aria-hidden className="verse-texture-bottom opacity-90" style={{ ...verseThemeStyle("#f0ede6"), height: "30%" }} />
+        <img
+          src="/brand/white-trowell.png"
+          alt=""
+          aria-hidden
+          className="pointer-events-none absolute -right-4 -top-6 h-40 w-auto opacity-[0.07] rotate-12"
+        />
+        <div className="relative z-10 flex items-start justify-between">
           <div className="flex-1">
-            <Badge className="mb-2 bg-accent text-accent-foreground text-xs">
+            <Badge className="mb-2 rounded-none bg-verse text-white font-technical font-bold text-xs tracking-wider -rotate-1 origin-left">
               NEXT STEP
             </Badge>
             <h2 className="text-xl font-bold text-foreground mb-1">
@@ -357,7 +389,7 @@ export function WebDashboard() {
             <p className="text-sm text-muted-foreground mb-1">
               {nextStepCourse ? nextStepCourse.title : "No courses assigned yet."}
             </p>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-4">
+            <div className="flex items-center gap-2 font-technical text-xs uppercase tracking-wider text-muted-foreground mb-4">
               <Clock className="w-3 h-3" />
               <span>
                 {nextStepCourse ? `Progress: ${nextStepPct}%` : "Go to Curriculum to see available courses."}
@@ -366,7 +398,7 @@ export function WebDashboard() {
             <div className="flex items-center gap-3">
               <Button
                 size="sm"
-                className="bg-accent hover:bg-accent/90 text-accent-foreground"
+                className="rounded-none glow-brick bg-verse hover:bg-verse/90 text-white font-bold"
                 onClick={handleContinueLearningClick}
               >
                 <PlayCircle className="w-4 h-4 mr-2" />
@@ -378,9 +410,8 @@ export function WebDashboard() {
               </Button>
               {nextStepCourse?.id && (
                 <Button
-                  variant="outline"
                   size="sm"
-                  className="border-border"
+                  className="rounded-none bg-black text-white hover:bg-black/80 font-headline font-bold uppercase tracking-widest text-xs"
                   onClick={() => navigate(`/courses/${nextStepCourse.id}`)}
                 >
                   View Course
@@ -388,9 +419,9 @@ export function WebDashboard() {
               )}
             </div>
           </div>
-          <div className="relative w-20 h-20">
+          <div className="relative w-20 h-20 rounded-full glow-brick">
             <svg className="w-20 h-20 transform -rotate-90">
-              <circle cx="40" cy="40" r="34" stroke="currentColor" strokeWidth="5" fill="none" className="text-muted" />
+              <circle cx="40" cy="40" r="34" stroke="currentColor" strokeWidth="5" fill="none" className="text-white/10" />
               <circle
                 cx="40"
                 cy="40"
@@ -400,7 +431,7 @@ export function WebDashboard() {
                 fill="none"
                 strokeDasharray={`${2 * Math.PI * 34}`}
                 strokeDashoffset={`${2 * Math.PI * 34 * (1 - nextStepPct / 100)}`}
-                className="text-accent"
+                className="text-verse"
               />
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
@@ -414,16 +445,16 @@ export function WebDashboard() {
         <div className="lg:col-span-8 space-y-5">
           {/* Module Journey - from primary course + progress */}
           <Card
-            className="p-5 bg-card border-border shadow-md cursor-pointer hover:border-accent/50 hover:shadow-lg transition-all"
+            className="rounded-none glass-card p-5 shadow-md cursor-pointer hover:border-verse/60 hover:shadow-lg transition-all"
             onClick={() => navigate("/curriculum")}
             role="button"
             tabIndex={0}
             onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate("/curriculum"); } }}
           >
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-foreground">Module Journey</h2>
+              <h2 className="font-headline text-base font-black uppercase tracking-wider text-foreground"><span className="font-technical text-xs text-verse mr-2 align-middle">01 /</span>Module Journey</h2>
               {primaryCourse && moduleJourneyRows.length > 0 && (
-                <Badge variant="outline" className="border-accent text-accent text-xs">
+                <Badge variant="outline" className="rounded-none border-verse text-verse font-technical text-xs">
                   {moduleJourneyRows.filter((r) => r.status === "Completed").length} of {moduleJourneyRows.length} Modules
                 </Badge>
               )}
@@ -439,19 +470,19 @@ export function WebDashboard() {
                   return (
                     <div
                       key={moduleIndex}
-                      className={`p-3 rounded-lg border transition-all ${
-                        locked ? "bg-muted/30 border-border/50" : "bg-card border-border hover:border-accent hover:shadow-md"
+                      className={`p-3 rounded-none border transition-all ${
+                        locked ? "bg-white/[0.02] border-white/5" : "bg-white/[0.04] border-white/10 hover:border-verse hover:shadow-md"
                       }`}
                     >
                       <div className="flex items-center gap-3">
                         <div
-                          className={`p-2 rounded-lg ${
-                            locked ? "bg-muted" : progress === 100 ? "bg-green-500/10" : "bg-accent/10"
+                          className={`p-2 rounded-none ${
+                            locked ? "bg-muted" : "bg-verse/10"
                           }`}
                         >
                           <Icon
                             className={`w-5 h-5 ${
-                              locked ? "text-muted-foreground" : progress === 100 ? "text-green-500" : "text-accent"
+                              locked ? "text-muted-foreground" : "text-verse"
                             }`}
                           />
                         </div>
@@ -466,18 +497,18 @@ export function WebDashboard() {
                             </h3>
                             <Badge
                               variant="secondary"
-                              className={`text-xs ${
+                              className={`rounded-none font-technical text-xs font-bold -rotate-1 ${
                                 locked
                                   ? "bg-muted text-muted-foreground"
                                   : progress === 100
-                                    ? "bg-green-500/10 text-green-500"
-                                    : "bg-accent/10 text-accent"
+                                    ? "bg-verse text-white"
+                                    : "bg-verse/10 text-verse"
                               }`}
                             >
                               {status}
                             </Badge>
                           </div>
-                          {!locked && <Progress value={progress} className="h-1.5" />}
+                          {!locked && <Progress value={progress} className="verse-progress h-1.5" />}
                         </div>
                       </div>
                     </div>
@@ -489,26 +520,26 @@ export function WebDashboard() {
 
           {/* Data Room - real certificates + survey docs */}
           <Card
-            className="p-5 bg-card border-border shadow-md cursor-pointer hover:border-accent/50 hover:shadow-lg transition-all"
+            className="rounded-none glass-card p-5 shadow-md cursor-pointer hover:border-verse/60 hover:shadow-lg transition-all"
             onClick={() => navigate("/data-room")}
             role="button"
             tabIndex={0}
             onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate("/data-room"); } }}
           >
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-foreground">Data Room Progress</h2>
-              <FileText className="w-5 h-5 text-accent" />
+              <h2 className="font-headline text-base font-black uppercase tracking-wider text-foreground"><span className="font-technical text-xs text-verse mr-2 align-middle">02 /</span>Data Room Progress</h2>
+              <FileText className="w-5 h-5 text-verse" />
             </div>
             <div className="space-y-2.5 mb-4">
               {certificates.map((cert) => (
                 <div key={cert.id} className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-green-500" />
+                  <CheckCircle2 className="w-4 h-4 text-verse" />
                   <span className="text-sm text-muted-foreground">Certificate: {cert.skill}</span>
                 </div>
               ))}
               {surveyDocs.map((d) => (
                 <div key={d.id} className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-green-500" />
+                  <CheckCircle2 className="w-4 h-4 text-verse" />
                   <span className="text-sm text-muted-foreground">Survey: {d.lessonTitle}</span>
                 </div>
               ))}
@@ -524,7 +555,7 @@ export function WebDashboard() {
                   ? Math.min(100, (certificates.length + surveyDocs.length) * 25)
                   : 0
               }
-              className="h-2 mb-2"
+              className="verse-progress h-2 mb-2"
             />
             <p className="text-xs text-muted-foreground">
               Certificates and survey documents appear here when you complete courses and lessons.
@@ -533,15 +564,15 @@ export function WebDashboard() {
 
           {/* Community Activity - groups the user is in */}
           <Card
-            className="p-5 bg-card border-border shadow-md cursor-pointer hover:border-accent/50 hover:shadow-lg transition-all"
+            className="rounded-none glass-card p-5 shadow-md cursor-pointer hover:border-verse/60 hover:shadow-lg transition-all"
             onClick={() => navigate("/community")}
             role="button"
             tabIndex={0}
             onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate("/community"); } }}
           >
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-foreground">Community Activity</h2>
-              <Users className="w-5 h-5 text-accent" />
+              <h2 className="font-headline text-base font-black uppercase tracking-wider text-foreground"><span className="font-technical text-xs text-verse mr-2 align-middle">03 /</span>Community Activity</h2>
+              <Users className="w-5 h-5 text-verse" />
             </div>
             <div className="space-y-3">
               {userGroups.length === 0 ? (
@@ -550,11 +581,11 @@ export function WebDashboard() {
                 userGroups.slice(0, 5).map((group) => (
                   <div
                     key={group.id}
-                    className="p-3 rounded-lg bg-muted/50 border border-border hover:border-accent transition-colors cursor-pointer"
+                    className="p-3 rounded-none bg-white/[0.04] border border-white/10 hover:border-verse transition-colors cursor-pointer"
                     onClick={(e) => { e.stopPropagation(); navigate(`/groups/${group.id}`); }}
                   >
                     <div className="flex items-start gap-2 mb-1">
-                      <MessageCircle className="w-4 h-4 text-accent mt-0.5 shrink-0" />
+                      <MessageCircle className="w-4 h-4 text-verse mt-0.5 shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-foreground font-medium">{group.Name}</p>
                         <p className="text-xs text-muted-foreground line-clamp-1">{group.lastMessage}</p>
@@ -573,7 +604,7 @@ export function WebDashboard() {
             <Button
               variant="outline"
               size="sm"
-              className="w-full mt-4 text-accent border-accent"
+              className="w-full mt-4 rounded-none border-0 border-b-2 border-verse bg-transparent font-headline font-bold uppercase tracking-widest text-xs text-foreground hover:bg-white/5"
               onClick={(e) => { e.stopPropagation(); navigate("/community"); }}
             >
               View Community Hub
@@ -581,43 +612,49 @@ export function WebDashboard() {
           </Card>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            <Card className="p-5 bg-card border-border shadow-md h-full">
-              <h2 className="text-lg font-bold text-foreground mb-4">Progress</h2>
+            <Card className="rounded-none glass-card p-5 shadow-md h-full">
+              <h2 className="font-headline text-base font-black uppercase tracking-wider text-foreground mb-4"><span className="font-technical text-xs text-verse mr-2 align-middle">04 /</span>Progress</h2>
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Target className="w-4 h-4 text-accent" />
+                    <Target className="w-4 h-4 text-verse" />
                     <span className="text-sm text-foreground">Lessons Completed</span>
                   </div>
-                  <span className="text-sm font-bold text-accent">{totalLessonsCompleted}</span>
+                  <span className="font-headline text-2xl font-black text-verse">{totalLessonsCompleted}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-accent" />
+                    <FileText className="w-4 h-4 text-verse" />
                     <span className="text-sm text-foreground">Assets Created</span>
                   </div>
-                  <span className="text-sm font-bold text-accent">{totalAssets}</span>
+                  <span className="font-headline text-2xl font-black text-verse">{totalAssets}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <MessageCircle className="w-4 h-4 text-accent" />
+                    <MessageCircle className="w-4 h-4 text-verse" />
                     <span className="text-sm text-foreground">Groups</span>
                   </div>
-                  <span className="text-sm font-bold text-accent">{userGroups.length}</span>
+                  <span className="font-headline text-2xl font-black text-verse">{userGroups.length}</span>
                 </div>
               </div>
             </Card>
 
             <Card
-              className="p-5 h-full flex flex-col bg-gradient-to-br from-accent/10 via-card to-card border-accent/30 shadow-md hover:shadow-lg transition-shadow cursor-pointer hover:border-accent/50"
+              className="relative overflow-hidden rounded-none glass-card p-5 h-full flex flex-col shadow-md hover:shadow-lg transition-shadow cursor-pointer hover:border-verse/60"
               onClick={() => navigate("/shop")}
               role="button"
               tabIndex={0}
               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate("/shop"); } }}
             >
+              <img
+                src="/brand/white-trowell.png"
+                alt=""
+                aria-hidden
+                className="pointer-events-none absolute -right-3 -bottom-4 h-28 w-auto opacity-[0.06] -rotate-12"
+              />
               <div className="flex items-center gap-2 mb-3">
-                <ShoppingBag className="w-5 h-5 text-accent" />
-                <h2 className="text-lg font-bold text-foreground">Shop MORTAR</h2>
+                <ShoppingBag className="w-5 h-5 text-verse" />
+                <h2 className="font-headline text-base font-black uppercase tracking-wider text-foreground"><span className="font-technical text-xs text-verse mr-2 align-middle">05 /</span>Shop MORTAR</h2>
               </div>
               <p className="text-sm text-muted-foreground mb-3">
                 Discover resources, courses, and services to grow your business
@@ -638,7 +675,7 @@ export function WebDashboard() {
               </div>
               <Button
                 onClick={(e) => { e.stopPropagation(); navigate("/shop"); }}
-                className="w-full mt-4 bg-accent hover:bg-accent/90 text-accent-foreground"
+                className="w-full mt-4 rounded-none bg-verse hover:bg-verse/90 text-white font-bold"
               >
                 Browse Shop
                 <ArrowRight className="w-4 h-4 ml-2" />
@@ -649,13 +686,13 @@ export function WebDashboard() {
 
         <div className="lg:col-span-4 space-y-5">
           {/* Achievements - real certificates as badges */}
-          <Card className="p-5 bg-card border-border shadow-md">
-            <h2 className="text-lg font-bold text-foreground mb-4">Your Achievements</h2>
+          <Card className="rounded-none glass-card p-5 shadow-md">
+            <h2 className="font-headline text-base font-black uppercase tracking-wider text-foreground mb-4"><span className="font-technical text-xs text-verse mr-2 align-middle">06 /</span>Your Achievements</h2>
             <div className="space-y-3">
               {certificates.slice(0, 5).map((cert) => (
                 <div key={cert.id} className="flex items-center gap-2.5">
-                  <div className="p-2 rounded-lg bg-yellow-500/10">
-                    <Award className="w-5 h-5 text-yellow-500" />
+                  <div className="p-2 rounded-none bg-verse/10">
+                    <Award className="w-5 h-5 text-verse" />
                   </div>
                   <div>
                     <p className="text-sm font-medium text-foreground">{cert.skill}</p>
@@ -667,11 +704,11 @@ export function WebDashboard() {
                 <p className="text-sm text-muted-foreground">Complete courses to earn skill certificates.</p>
               )}
               {certificates.length > 0 && (
-                <div className="border-t border-border pt-3 mt-3">
+                <div className="border-t border-white/10 pt-3 mt-3">
                   <p className="text-xs font-medium text-muted-foreground mb-2">NEXT BADGE</p>
                   <div className="flex items-center gap-2.5">
-                    <div className="p-2 rounded-lg bg-accent/10">
-                      <Trophy className="w-5 h-5 text-accent" />
+                    <div className="p-2 rounded-none bg-verse/10">
+                      <Trophy className="w-5 h-5 text-verse" />
                     </div>
                     <div>
                       <p className="text-sm font-medium text-foreground">Complete more courses</p>
@@ -691,17 +728,17 @@ export function WebDashboard() {
           />
 
           {/* Upcoming Events - real */}
-          <Card className="p-5 bg-card border-border shadow-md">
+          <Card className="rounded-none glass-card p-5 shadow-md">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-foreground">Upcoming Events</h2>
-              <Calendar className="w-5 h-5 text-accent" />
+              <h2 className="font-headline text-base font-black uppercase tracking-wider text-foreground"><span className="font-technical text-xs text-verse mr-2 align-middle">08 /</span>Upcoming Events</h2>
+              <Calendar className="w-5 h-5 text-verse" />
             </div>
             <div className="space-y-3">
               {upcomingEvents.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No upcoming events. Check back later.</p>
               ) : (
                 upcomingEvents.map((event) => (
-                  <div key={event.id} className="p-3 rounded-lg bg-muted/50 border border-border">
+                  <div key={event.id} className="p-3 rounded-none bg-white/[0.04] border border-white/10">
                     <p className="text-sm font-medium text-foreground mb-1">{event.title}</p>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
                       <span>
@@ -711,7 +748,7 @@ export function WebDashboard() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="w-full text-accent border-accent hover:bg-accent/10"
+                      className="w-full rounded-none border-0 border-b-2 border-verse bg-transparent font-headline font-bold uppercase tracking-widest text-xs text-foreground hover:bg-white/5"
                       onClick={() => navigate(`/events/${event.id}`)}
                     >
                       View / RSVP
@@ -722,6 +759,7 @@ export function WebDashboard() {
             </div>
           </Card>
         </div>
+      </div>
       </div>
     </div>
   );

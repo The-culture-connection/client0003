@@ -276,7 +276,7 @@ export function WebCurriculum() {
                 <Badge className="mb-2 bg-accent text-accent-foreground">
                   MY CURRICULUM
                 </Badge>
-                <h1 className="text-2xl font-bold text-foreground mb-2">
+                <h1 className="font-headline font-black uppercase tracking-tight text-3xl text-foreground mb-2">
                   Assigned Courses
                 </h1>
                 <p className="text-sm text-muted-foreground mb-4">

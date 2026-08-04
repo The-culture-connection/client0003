@@ -378,7 +378,7 @@ export function WebDataRoom() {
   return (
     <div className="p-8">
       <div className="mb-8">
-        <h1 className="text-3xl text-foreground mb-2">Data Room</h1>
+        <h1 className="font-headline font-black uppercase tracking-tight text-3xl text-foreground mb-2">Data Room</h1>
         <p className="text-muted-foreground">
           Organize and manage your business documents and assets
         </p>

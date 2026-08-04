@@ -14,20 +14,31 @@ interface SlideRendererProps {
 }
 
 export function SlideRenderer({ slide, blocks, className }: SlideRendererProps) {
-  const backgroundColor = slide.background_color || "#000000";
+  // New card style: slides without an explicit background color get the
+  // dark gradient surface + verse-color texture at the card bottom.
+  // Legacy flat black backgrounds are upgraded to the gradient too.
+  const customBg =
+    slide.background_color && slide.background_color !== "#000000"
+      ? slide.background_color
+      : null;
   const textColor = "#fafcfc";
-  
+
   // Get blocks sorted by order
   const sortedBlocks = [...blocks].sort((a, b) => (a.order || 0) - (b.order || 0));
-  
+
   return (
     <div
-      className={cn("w-full h-full min-h-screen p-8 flex flex-col", className)}
-      style={{ backgroundColor, color: textColor }}
+      className={cn(
+        "relative w-full h-full min-h-screen p-8 flex flex-col",
+        !customBg && "lesson-card-surface",
+        className
+      )}
+      style={{ ...(customBg ? { backgroundColor: customBg } : {}), color: textColor }}
     >
+      {!customBg && <div aria-hidden className="verse-texture-bottom" />}
       <div
         className={cn(
-          "flex-1 flex flex-col justify-center space-y-6",
+          "relative z-10 flex-1 flex flex-col justify-center space-y-6",
           slide.text_align === "center" && "items-center text-center",
           slide.text_align === "right" && "items-end text-right",
           slide.text_align === "justify" && "text-justify"

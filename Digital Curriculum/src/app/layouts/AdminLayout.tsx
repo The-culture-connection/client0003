@@ -47,7 +47,7 @@ export function AdminLayout() {
 
   return (
     <div className="flex w-full min-h-[calc(100vh-4rem)]">
-      <aside className="hidden md:flex w-[min(18rem,92vw)] shrink-0 flex-col border-r border-border bg-card/60 sticky top-16 self-start max-h-[calc(100vh-4rem)]">
+      <aside className="hidden md:flex w-[min(18rem,92vw)] shrink-0 flex-col border-r border-white/10 bg-black/30 backdrop-blur-sm sticky top-16 self-start max-h-[calc(100vh-4rem)]">
         <div className="p-4 border-b border-border space-y-3">
           <Link
             to="/admin"
@@ -113,8 +113,8 @@ export function AdminLayout() {
         </ScrollArea>
       </aside>
 
-      <div className="flex-1 min-w-0 bg-background">
-        <div className="md:hidden border-b border-border bg-muted/30 px-4 py-2 flex gap-2 overflow-x-auto">
+      <div className="flex-1 min-w-0">
+        <div className="md:hidden border-b border-white/10 bg-black/30 px-4 py-2 flex gap-2 overflow-x-auto">
           <Button variant="outline" size="sm" asChild>
             <Link to="/admin">Hub</Link>
           </Button>

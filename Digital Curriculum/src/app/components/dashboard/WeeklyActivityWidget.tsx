@@ -11,6 +11,7 @@ import {
 } from "../ui/dialog";
 import type { CourseProgress } from "../../lib/courseProgress";
 import type { SkillCertificate } from "../../lib/dataroom";
+import { verseThemeStyle } from "../../lib/verseTheme";
 import {
   analyticsRowsToWeeklyItems,
   buildLocalWeeklyActivityItems,
@@ -27,6 +28,11 @@ type WeeklyActivityWidgetProps = {
   progressMap: Record<string, CourseProgress>;
   courseTitles: Record<string, string>;
 };
+
+// MORTAR UI overhaul — unified dashboard accent (brick red).
+const CARD_THEME = "#c1442a";
+
+const DAY_MS = 86400000;
 
 export function WeeklyActivityWidget({
   userId,
@@ -84,6 +90,20 @@ export function WeeklyActivityWidget({
 
   const summary = useMemo(() => summarizeWeeklyItems(items), [items]);
 
+  // Activity count per day of the week (indexed from the week start, so it
+  // works regardless of whether the week begins Sunday or Monday).
+  const dayCounts = useMemo(() => {
+    const counts = [0, 0, 0, 0, 0, 0, 0];
+    for (const item of items) {
+      const idx = Math.floor((item.atMs - weekStartMs) / DAY_MS);
+      if (idx >= 0 && idx < 7) counts[idx] += 1;
+    }
+    return counts;
+  }, [items, weekStartMs]);
+  const maxCount = Math.max(1, ...dayCounts);
+  const activeDays = dayCounts.filter((c) => c > 0).length;
+  const todayIdx = Math.floor((Date.now() - weekStartMs) / DAY_MS);
+
   const groupedByDay = useMemo(() => {
     const groups: { day: Date; items: WeeklyActivityItem[] }[] = [];
     for (const item of items) {
@@ -101,7 +121,8 @@ export function WeeklyActivityWidget({
   return (
     <>
       <Card
-        className="p-5 bg-card border-border shadow-md cursor-pointer hover:border-accent/40 transition-colors"
+        className="rounded-none glass-card p-5 shadow-md cursor-pointer hover:border-verse/60 transition-colors"
+        style={verseThemeStyle(CARD_THEME)}
         role="button"
         tabIndex={0}
         onClick={() => setOpen(true)}
@@ -114,12 +135,14 @@ export function WeeklyActivityWidget({
       >
         <div className="flex items-start justify-between gap-3 mb-3">
           <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-accent/10">
-              <Activity className="w-5 h-5 text-accent" />
+            <div className="p-2 rounded-none bg-verse/10">
+              <Activity className="w-5 h-5 text-verse" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-foreground">Weekly snapshot</h2>
-              <p className="text-xs text-muted-foreground">{weekLabel}</p>
+              <h2 className="font-headline text-base font-black uppercase tracking-wider text-foreground">
+                <span className="font-technical text-xs text-verse mr-2 align-middle">07 /</span>Weekly snapshot
+              </h2>
+              <p className="font-technical text-[11px] uppercase tracking-wider text-muted-foreground">{weekLabel}</p>
             </div>
           </div>
           <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0 mt-1" />
@@ -134,28 +157,80 @@ export function WeeklyActivityWidget({
           <p className="text-sm text-destructive">{error}</p>
         ) : (
           <>
-            <p className="text-2xl font-bold text-foreground mb-1">
-              {summary.total}
-              <span className="text-base font-normal text-muted-foreground ml-2">
-                {summary.total === 1 ? "activity" : "activities"}
-              </span>
-            </p>
-            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-              <span>{summary.learning} learning</span>
-              <span>·</span>
-              <span>{summary.community} community</span>
-              <span>·</span>
-              <span>{summary.events} events</span>
+            <div className="flex items-end justify-between gap-4">
+              <div>
+                <p className="font-headline font-black text-5xl leading-none text-verse mb-1">
+                  {summary.total}
+                </p>
+                <p className="font-technical text-[11px] uppercase tracking-wider text-muted-foreground">
+                  {summary.total === 1 ? "activity" : "activities"}
+                  {summary.total > 0 && (
+                    <>
+                      {" "}· active {activeDays} of 7 days
+                    </>
+                  )}
+                </p>
+              </div>
+
+              {/* 7-day mini bar chart — single hue (magnitude), baseline
+                  stubs keep the week skeleton readable on empty days. */}
+              <div className="flex items-end gap-[3px] h-16" aria-hidden={summary.total === 0}>
+                {dayCounts.map((count, i) => {
+                  const h = count === 0 ? 3 : Math.max(8, Math.round((count / maxCount) * 56));
+                  return (
+                    <div key={i} className="flex flex-col items-center gap-1 w-4">
+                      <div
+                        title={`${format(new Date(weekStartMs + i * DAY_MS), "EEE")}: ${count} ${count === 1 ? "activity" : "activities"}`}
+                        className={`w-3 rounded-none ${count === 0 ? "bg-white/15" : "bg-verse"}`}
+                        style={{ height: `${h}px` }}
+                      />
+                      <span
+                        className={`text-[9px] leading-none ${
+                          i === todayIdx ? "text-verse font-bold" : "text-muted-foreground"
+                        }`}
+                      >
+                        {format(new Date(weekStartMs + i * DAY_MS), "EEEEE")}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground mt-3">Click to see your full week</p>
+
+            {summary.total === 0 ? (
+              <p className="text-sm text-muted-foreground mt-3">
+                No bricks laid yet this week — start a lesson and it shows up here.
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2 mt-3">
+                {(
+                  [
+                    ["learning", summary.learning],
+                    ["community", summary.community],
+                    ["events", summary.events],
+                  ] as const
+                ).map(([key, count]) => (
+                  <span
+                    key={key}
+                    className="inline-flex items-center gap-1.5 rounded-none px-2.5 py-1 font-technical text-xs border border-white/10 bg-white/[0.04] text-foreground"
+                  >
+                    <span className="font-bold text-verse">{count}</span> {key}
+                  </span>
+                ))}
+              </div>
+            )}
+            <p className="font-technical text-[11px] uppercase tracking-wider text-verse mt-3">Click to see your full week →</p>
           </>
         )}
       </Card>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
+        <DialogContent
+          className="rounded-none max-w-lg max-h-[85vh] flex flex-col lesson-card-surface border-white/10"
+          style={verseThemeStyle(CARD_THEME)}
+        >
           <DialogHeader>
-            <DialogTitle>Your week in MORTAR</DialogTitle>
+            <DialogTitle className="uppercase tracking-wider">Your week in MORTAR</DialogTitle>
             <p className="text-sm text-muted-foreground">{weekLabel}</p>
           </DialogHeader>
 
@@ -174,14 +249,14 @@ export function WeeklyActivityWidget({
               <div className="space-y-6">
                 {groupedByDay.map(({ day, items: dayItems }) => (
                   <div key={day.toISOString()}>
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                    <p className="text-xs font-bold text-verse uppercase tracking-wider mb-2">
                       {format(day, "EEEE, MMM d")}
                     </p>
                     <ul className="space-y-2">
                       {dayItems.map((item) => (
                         <li
                           key={item.id}
-                          className="flex gap-3 p-3 rounded-lg border border-border bg-muted/30"
+                          className="flex gap-3 p-3 rounded-none border border-white/10 bg-white/[0.04]"
                         >
                           <div className="shrink-0 text-xs text-muted-foreground w-14 pt-0.5">
                             {format(new Date(item.atMs), "h:mm a")}
@@ -206,7 +281,12 @@ export function WeeklyActivityWidget({
             )}
           </div>
 
-          <Button type="button" variant="outline" className="mt-2 shrink-0" onClick={() => setOpen(false)}>
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-2 shrink-0 rounded-none border-verse text-verse hover:bg-verse/10"
+            onClick={() => setOpen(false)}
+          >
             Close
           </Button>
         </DialogContent>

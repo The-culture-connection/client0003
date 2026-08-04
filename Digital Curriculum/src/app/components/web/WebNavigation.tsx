@@ -166,11 +166,19 @@ export function WebNavigation() {
       size="sm"
       className="shrink-0 flex"
     >
-      <ToggleGroupItem value="student" aria-label="Student view" className="px-2.5 md:px-3">
+      <ToggleGroupItem
+        value="student"
+        aria-label="Student view"
+        className="px-2.5 md:px-3 data-[state=on]:bg-mortar-brick data-[state=on]:text-white data-[state=on]:font-bold"
+      >
         <GraduationCap className="w-4 h-4 shrink-0" />
         <span className="ml-1.5 hidden md:inline">Student</span>
       </ToggleGroupItem>
-      <ToggleGroupItem value="admin" aria-label="Admin view" className="px-2.5 md:px-3">
+      <ToggleGroupItem
+        value="admin"
+        aria-label="Admin view"
+        className="px-2.5 md:px-3 data-[state=on]:bg-mortar-brick data-[state=on]:text-white data-[state=on]:font-bold"
+      >
         <Crown className="w-4 h-4 shrink-0" />
         <span className="ml-1.5 hidden md:inline">Admin</span>
       </ToggleGroupItem>
@@ -178,12 +186,12 @@ export function WebNavigation() {
   ) : null;
 
   return (
-    <nav className="bg-card border-b border-border">
+    <nav className="bg-[#050505] border-b border-white/10">
       <div className={adminMinimalHeader ? "max-w-[1600px] mx-auto px-8" : "max-w-7xl mx-auto px-8"}>
         <div className="flex items-center justify-between h-16 gap-4">
           <div className="flex items-center gap-6 min-w-0 flex-1">
-            <Link to={logoTo} className="text-xl font-bold text-foreground shrink-0">
-              MORTAR
+            <Link to={logoTo} className="shrink-0" aria-label="MORTAR">
+              <img src="/brand/mortar-text-white.png" alt="MORTAR" className="h-6 w-auto" />
             </Link>
             {adminMinimalHeader && <span data-tour="admin-view-toggle">{staffViewToggle}</span>}
             {showStudentNavLinks && (
@@ -209,8 +217,8 @@ export function WebNavigation() {
                       }
                       className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
                         isActive
-                          ? "bg-accent text-accent-foreground"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                          ? "rounded-none bg-mortar-brick text-white font-bold shadow-[0_0_18px_rgba(193,68,42,0.45)]"
+                          : "text-muted-foreground hover:text-foreground hover:bg-white/5"
                       }`}
                     >
                       <Icon className="w-4 h-4" />
@@ -230,7 +238,7 @@ export function WebNavigation() {
                   <Button variant="ghost" size="icon" className="relative" data-tour="nav-notifications">
                     <Bell className="w-5 h-5 text-muted-foreground" />
                     {unreadCount > 0 && (
-                      <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-[10px] font-medium text-accent-foreground">
+                      <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-mortar-brick text-[10px] font-bold text-white">
                         {unreadCount > 9 ? "9+" : unreadCount}
                       </span>
                     )}
@@ -277,7 +285,7 @@ export function WebNavigation() {
                   <Button variant="ghost" size="icon" className="relative" data-tour="nav-cart">
                     <ShoppingCart className="w-5 h-5 text-muted-foreground" />
                     {itemCount > 0 && (
-                      <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-[10px] font-medium text-accent-foreground">
+                      <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-mortar-brick text-[10px] font-bold text-white">
                         {itemCount > 9 ? "9+" : itemCount}
                       </span>
                     )}
@@ -348,7 +356,7 @@ export function WebNavigation() {
                           Tax and shipping are added at Stripe Checkout.
                         </p>
                         <Button
-                          className="w-full mt-2 bg-accent hover:bg-accent/90 text-accent-foreground"
+                          className="w-full mt-2 bg-mortar-brick hover:bg-mortar-brick/90 text-white font-bold"
                           disabled={checkoutBusy}
                           onClick={async () => {
                             setCheckoutBusy(true);

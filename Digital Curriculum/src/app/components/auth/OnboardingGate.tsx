@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router";
 import { useAuth } from "./AuthProvider";
+import { BrandedLoading } from "../BrandedLoading";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { trackEvent } from "../../analytics/trackEvent";
@@ -96,12 +97,7 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
 
   if (loading || checking) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
+      <BrandedLoading />
     );
   }
 

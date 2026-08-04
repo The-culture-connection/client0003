@@ -32,31 +32,35 @@ export function LessonSlideScreen({
     <div className="w-full h-full flex flex-col items-center justify-center gap-4 p-4 md:p-6">
       {/* Viewer window — sized to the viewport height (not a fixed 16:9
           letterbox) so more of each tall slide is visible at once; vertical
-          scroll for the rest. Background matches the slides' dark theme
-          (#2e2e2e) so short slides don't show a white filler block. */}
-      <div className="w-full max-w-5xl h-[72vh] min-h-[420px] overflow-y-auto rounded-xl bg-[#2e2e2e] shadow-2xl ring-1 ring-black/10">
-        <div className="relative w-full">
-          <img src={src} alt={alt} className="w-full block" draggable={false} />
-          {popups.map((popup) => (
-            <Popover
-              key={popup.id}
-              open={openPopupId === popup.id}
-              onOpenChange={(open) => setOpenPopupId(open ? popup.id : null)}
-            >
-              <PopoverTrigger asChild>
-                <button
-                  type="button"
-                  className="absolute -translate-x-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow-lg border-2 border-accent flex items-center justify-center text-xl hover:scale-110 transition-transform z-10"
-                  style={{ left: `${popup.x_percent}%`, top: `${popup.y_percent}%` }}
-                >
-                  {popup.emoji || "💬"}
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="max-w-xs z-[200]" side="top">
-                <p className="text-sm whitespace-pre-wrap">{popup.message}</p>
-              </PopoverContent>
-            </Popover>
-          ))}
+          scroll for the rest. New card style: dark gradient surface with the
+          verse-color grunge texture pinned to the card bottom (visible
+          wherever the slide render doesn't cover it). */}
+      <div className="relative w-full max-w-5xl h-[72vh] min-h-[420px] overflow-hidden rounded-xl lesson-card-surface shadow-2xl ring-1 ring-black/10">
+        <div aria-hidden className="verse-texture-bottom" />
+        <div className="absolute inset-0 overflow-y-auto">
+          <div className="relative w-full">
+            <img src={src} alt={alt} className="w-full block" draggable={false} />
+            {popups.map((popup) => (
+              <Popover
+                key={popup.id}
+                open={openPopupId === popup.id}
+                onOpenChange={(open) => setOpenPopupId(open ? popup.id : null)}
+              >
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="absolute -translate-x-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow-lg border-2 border-verse flex items-center justify-center text-xl hover:scale-110 transition-transform z-10"
+                    style={{ left: `${popup.x_percent}%`, top: `${popup.y_percent}%` }}
+                  >
+                    {popup.emoji || "💬"}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="max-w-xs z-[200]" side="top">
+                  <p className="text-sm whitespace-pre-wrap">{popup.message}</p>
+                </PopoverContent>
+              </Popover>
+            ))}
+          </div>
         </div>
       </div>
 

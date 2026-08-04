@@ -66,7 +66,7 @@ function TitleBlockRenderer({ block }: BlockRendererProps) {
   return (
     <HeadingTag
       className={cn(
-        "font-bold",
+        "font-bold tracking-tight leading-tight",
         fontSizeMap[block.font_size || "3xl"]
       )}
       style={{ color: block.color || "#fafcfc" }}
@@ -82,6 +82,7 @@ function TextBlockRenderer({ block }: BlockRendererProps) {
   return (
     <p
       className={cn(
+        "leading-relaxed",
         fontSizeMap[block.font_size || "md"],
         block.font_weight === "bold" && "font-bold",
         block.font_weight === "semibold" && "font-semibold"
@@ -101,9 +102,9 @@ function HeadingBlockRenderer({ block }: BlockRendererProps) {
   return (
     <HeadingTag
       className={cn(
+        "tracking-tight",
         fontSizeMap[block.font_size || "xl"],
-        block.font_weight === "bold" && "font-bold",
-        block.font_weight === "semibold" && "font-semibold"
+        block.font_weight === "bold" ? "font-bold" : block.font_weight === "semibold" ? "font-semibold" : "font-bold"
       )}
       style={{ color: block.color || "#fafcfc" }}
     >

@@ -104,7 +104,7 @@ export function ModuleDetail() {
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Curriculum
         </Button>
-        <h1 className="text-3xl font-bold text-foreground mb-2">Test Curriculum</h1>
+        <h1 className="font-headline font-black uppercase tracking-tight text-3xl text-foreground mb-2">Test Curriculum</h1>
         <p className="text-muted-foreground">
           Complete all courses to unlock the Alumni Application
         </p>

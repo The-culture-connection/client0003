@@ -31,6 +31,7 @@ import {
   updateModulesCompletionMap,
 } from "../../lib/courseProgress";
 import { setAdminReviewSession } from "../../lib/adminReviewMode";
+import { getVerseThemeColor, verseThemeStyle } from "../../lib/verseTheme";
 import { formatQuizQuestionPrompt } from "../../lib/quizText";
 import { AdminReviewNotesPanel } from "../../components/curriculum/AdminReviewNotesPanel";
 import { awardSkillAndCertificate, createSkillCertificatesForCompletedCourse, uploadSurveyResponsePdf } from "../../lib/dataroom";
@@ -77,6 +78,7 @@ export function LessonPlayer() {
   const [curriculumId, setCurriculumId] = useState<string | null>(null);
   const [moduleId, setModuleId] = useState<string | null>(null);
   const [chapterId, setChapterId] = useState<string | null>(null);
+  const [verseIndex, setVerseIndex] = useState<number | null>(null);
   const [quizAnswers, setQuizAnswers] = useState<Record<number, "A" | "B" | "C" | "D">>({});
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [quizPassed, setQuizPassed] = useState<boolean | null>(null);
@@ -220,6 +222,12 @@ export function LessonPlayer() {
             getCourse(courseIdParam),
             getPaidModuleIds(user.uid),
           ]);
+          // Verse/chapter theme color follows the module ("verse") position
+          // in the course (new card style spec).
+          const verseIdx = courseData?.curriculumMapping?.modules?.findIndex(
+            (m) => m.moduleId === moduleIdParam
+          );
+          if (verseIdx != null && verseIdx >= 0) setVerseIndex(verseIdx);
           if (!isAdmin && courseData) {
             const modIndex = courseData.curriculumMapping?.modules?.findIndex(
               (m) => m.moduleId === moduleIdParam
@@ -959,7 +967,10 @@ export function LessonPlayer() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white relative">
+    <div
+      className="min-h-screen lesson-card-surface text-white relative"
+      style={verseThemeStyle(getVerseThemeColor({ verseIndex, chapterId }))}
+    >
       {/* Header */}
       <div className="sticky top-0 z-50 bg-black/80 backdrop-blur-sm border-b border-gray-800">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
@@ -995,7 +1006,7 @@ export function LessonPlayer() {
         {/* Progress Bar */}
         <div className="h-1 bg-gray-800">
           <div
-            className="h-full bg-accent transition-all duration-300"
+            className="h-full bg-verse transition-all duration-300"
             style={{ width: `${progressPct}%` }}
           />
         </div>
@@ -1071,7 +1082,7 @@ export function LessonPlayer() {
             ) : !activeSurveySubmitted && surveyInteractiveStep === "feedback" ? (
               <div className="grid md:grid-cols-2 gap-6 items-start">
                 <div className="rounded-lg border border-gray-700 p-4 bg-gray-950/80 min-h-[200px] max-h-[60vh] overflow-y-auto">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-accent mb-2">AI feedback</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-verse mb-2">AI feedback</p>
                   <p className="text-sm whitespace-pre-wrap text-gray-200">
                     {surveyAiFeedbackText?.trim()
                       ? surveyAiFeedbackText
@@ -1119,7 +1130,7 @@ export function LessonPlayer() {
                 </div>
               </div>
             ) : (
-              <p className="text-green-400 font-medium">Thank you! Your responses have been saved. You can close the lesson.</p>
+              <p className="text-verse font-medium">Thank you! Your responses have been saved. You can close the lesson.</p>
             )}
           </div>
         ) : showQuizView && hasQuiz ? (
@@ -1182,7 +1193,7 @@ export function LessonPlayer() {
             ) : (
               <div className="space-y-4">
                 {quizScore && (
-                  <p className="text-lg">
+                  <p className="text-lg font-bold text-verse">
                     Score: {quizScore.correct} / {quizScore.total} (
                     {quiz.questions.length > 0
                       ? Math.round((quizScore.correct / quizScore.total) * 100)
@@ -1191,7 +1202,7 @@ export function LessonPlayer() {
                   </p>
                 )}
                 {quizPassed ? (
-                  <p className="text-green-400 font-medium">You passed! You can close the lesson.</p>
+                  <p className="text-verse font-medium">You passed! You can close the lesson.</p>
                 ) : canTryAgain ? (
                   <>
                     <p className="text-amber-400">You need {passPct}% to pass. Try again.</p>
