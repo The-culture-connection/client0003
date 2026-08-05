@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 
 import '../analytics/expansion_analytics.dart';
 import '../auth/auth_controller.dart';
+import '../mortarverse/widgets/glow_pill_button.dart';
 import '../mortarverse/widgets/torn_panel.dart';
 import '../theme/app_theme.dart';
 
@@ -90,6 +91,26 @@ class _AuthSignUpScreenState extends State<AuthSignUpScreen> {
     }
   }
 
+  static const _fieldLabel = TextStyle(
+    color: Color(0xFFDED7CB),
+    fontSize: 12,
+    fontStyle: FontStyle.italic,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 3,
+  );
+  static const _fieldDecoration = InputDecoration(
+    filled: true,
+    fillColor: Color(0x30FFFFFF),
+    border: UnderlineInputBorder(),
+    enabledBorder: UnderlineInputBorder(
+      borderSide: BorderSide(color: Colors.white, width: 1.4),
+    ),
+    focusedBorder: UnderlineInputBorder(
+      borderSide: BorderSide(color: AppColors.primary, width: 2),
+    ),
+    contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+  );
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -135,11 +156,13 @@ class _AuthSignUpScreenState extends State<AuthSignUpScreen> {
                       ),
                 ),
                 const SizedBox(height: 24),
-                TextFormField(
+                Text('EMAIL', textAlign: TextAlign.center, style: _fieldLabel),
+                const SizedBox(height: 8),
+                                TextFormField(
                   controller: _email,
                   keyboardType: TextInputType.emailAddress,
                   autocorrect: false,
-                  decoration: const InputDecoration(labelText: 'Email'),
+                  decoration: _fieldDecoration,
                   validator: (v) {
                     final t = v?.trim() ?? '';
                     if (t.isEmpty) return 'Enter your email';
@@ -148,17 +171,21 @@ class _AuthSignUpScreenState extends State<AuthSignUpScreen> {
                   },
                 ),
                 const SizedBox(height: 16),
-                TextFormField(
+                Text('PASSWORD  ·  MIN 6 CHARACTERS', textAlign: TextAlign.center, style: _fieldLabel),
+                const SizedBox(height: 8),
+                                TextFormField(
                   controller: _password,
                   obscureText: true,
-                  decoration: const InputDecoration(labelText: 'Password (min 6 characters)'),
+                  decoration: _fieldDecoration,
                   validator: (v) => (v == null || v.length < 6) ? 'At least 6 characters' : null,
                 ),
                 const SizedBox(height: 16),
-                TextFormField(
+                Text('CONFIRM PASSWORD', textAlign: TextAlign.center, style: _fieldLabel),
+                const SizedBox(height: 8),
+                                TextFormField(
                   controller: _confirm,
                   obscureText: true,
-                  decoration: const InputDecoration(labelText: 'Confirm password'),
+                  decoration: _fieldDecoration,
                   validator: (v) => v != _password.text ? 'Passwords do not match' : null,
                 ),
                 if (_error != null) ...[
@@ -166,19 +193,31 @@ class _AuthSignUpScreenState extends State<AuthSignUpScreen> {
                   Text(_error!, style: const TextStyle(color: Colors.redAccent)),
                 ],
                 const SizedBox(height: 24),
-                FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                GlowPillButton(
+                  label: 'Create account',
+                  filled: true,
+                  expand: true,
+                  busy: _busy,
+                  onPressed: _submit,
+                ),
+                const SizedBox(height: 22),
+                const Text(
+                  'ALREADY IN THE CREW?',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12.5,
+                    fontStyle: FontStyle.italic,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.6,
                   ),
-                  onPressed: _busy ? null : _submit,
-                  child: _busy
-                      ? const SizedBox(
-                          height: 22,
-                          width: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.onPrimary),
-                        )
-                      : const Text('Create account'),
+                ),
+                const SizedBox(height: 10),
+                Center(
+                  child: GlowPillButton(
+                    label: 'Sign in',
+                    onPressed: () => context.push('/auth/sign-in'),
+                  ),
                 ),
                 TextButton(
                   onPressed: () => context.push('/auth/sign-in'),

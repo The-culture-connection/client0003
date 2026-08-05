@@ -31,11 +31,10 @@ class ConferenceTheme extends StatelessWidget {
             foregroundColor: Colors.black,
             disabledBackgroundColor: ConferenceColors.goldAlpha(0.16),
             disabledForegroundColor: ConferenceColors.goldDim,
-            shadowColor: ConferenceColors.gold,
             padding: AppButtons.padding,
             shape: AppButtons.shape,
             textStyle: AppButtons.label,
-          ).copyWith(elevation: AppButtons.glow(10)),
+          ).copyWith(elevation: AppButtons.flat),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
@@ -43,11 +42,10 @@ class ConferenceTheme extends StatelessWidget {
             foregroundColor: Colors.black,
             disabledBackgroundColor: ConferenceColors.goldAlpha(0.16),
             disabledForegroundColor: ConferenceColors.goldDim,
-            shadowColor: ConferenceColors.gold,
             padding: AppButtons.padding,
             shape: AppButtons.shape,
             textStyle: AppButtons.label,
-          ).copyWith(elevation: AppButtons.glow(10)),
+          ).copyWith(elevation: AppButtons.flat),
         ),
         // SECONDARY — sunken slab ringed in gold.
         outlinedButtonTheme: OutlinedButtonThemeData(
@@ -55,12 +53,11 @@ class ConferenceTheme extends StatelessWidget {
             backgroundColor: Colors.black.withValues(alpha: 0.55),
             foregroundColor: ConferenceColors.gold,
             disabledForegroundColor: ConferenceColors.mutedForeground,
-            shadowColor: ConferenceColors.gold,
             padding: AppButtons.padding,
             shape: AppButtons.shape,
             textStyle: AppButtons.label,
           ).copyWith(
-            elevation: AppButtons.glow(7),
+            elevation: AppButtons.flat,
             side: WidgetStateProperty.resolveWith((states) {
               if (states.contains(WidgetState.disabled)) {
                 return const BorderSide(color: ConferenceColors.cardBorder);

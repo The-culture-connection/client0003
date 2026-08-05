@@ -97,6 +97,31 @@ class ConferenceRepository {
     return ids;
   }
 
+  /// The ticket code Stripe's webhook issued for [conferenceId] on one of
+  /// [uid]'s completed orders, or null if there isn't one.
+  ///
+  /// `fulfillConferenceTicket` generates the code and stashes it on the order
+  /// but does **not** write the attendee record — the buyer is expected to
+  /// redeem in-app. Reading it here lets the gate finish that last step for
+  /// them instead of sending them to their email for a code we already have.
+  Future<String?> issuedTicketCodeFor(String uid, String conferenceId) async {
+    final snap = await _db
+        .collection('payment_orders')
+        .where('uid', isEqualTo: uid)
+        .get();
+    for (final d in snap.docs) {
+      final data = d.data();
+      if (data['status'] != 'completed') continue;
+      if (data['purchase_type'] != 'conference') continue;
+      final meta = data['metadata'];
+      if (meta is! Map) continue;
+      if (meta['conference_id'] != conferenceId) continue;
+      final code = (meta['conference_ticket_code'] as String?)?.trim();
+      if (code != null && code.isNotEmpty) return code;
+    }
+    return null;
+  }
+
   Stream<List<ConferenceSession>> watchSessions(String conferenceId) {
     return _conferences
         .doc(conferenceId)

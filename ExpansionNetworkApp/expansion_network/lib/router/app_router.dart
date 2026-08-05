@@ -17,9 +17,11 @@ import '../conference/screens/conference_session_detail_screen.dart';
 import '../conference/screens/conference_sponsor_detail_screen.dart';
 import '../conference/screens/conference_sponsors_screen.dart';
 import '../conference/screens/conference_networking_screen.dart';
+import '../conference/current_conference_holder.dart';
 import '../conference/theme/conference_buttons.dart';
 import '../conference/widgets/conference_shell.dart';
 import '../mortarverse/screens/mortarverse_chooser_screen.dart';
+import '../theme/cosmic.dart';
 import '../screens/admin_events_screen.dart';
 import '../screens/admin_reports_screen.dart';
 import '../screens/auth_claim_screen.dart';
@@ -68,9 +70,29 @@ GoRouter createAppRouter(AuthController auth) {
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: '/session',
-    refreshListenable: auth,
+    // The holder is a refresh source as well as auth: when a conference closes
+    // or its window lapses mid-session it notifies, the redirect below re-runs,
+    // and anyone sitting inside is ejected to the gate.
+    refreshListenable: Listenable.merge([auth, CurrentConferenceHolder.instance]),
     redirect: (context, state) {
       final loc = state.matchedLocation;
+
+      // ---- Conference entry gate -------------------------------------
+      // The single choke point for getting *inside* a conference. Every
+      // `/conference/*` destination except the gate itself requires an
+      // admitted, currently-open conference — a redeemed ticket alone is not
+      // enough, because a conference that has closed or run past its
+      // `activeUntil` must stop admitting even people who already hold codes.
+      //
+      // It fails closed: `isOpenForEntry` is false until a conference doc has
+      // been read and checked, so a cold deep link into `/conference/lobby`
+      // bounces to the gate, which resolves it properly and forwards on.
+      // The gate is exempt, so this cannot loop.
+      if (loc.startsWith('/conference/') && loc != '/conference/gate') {
+        if (!CurrentConferenceHolder.instance.isOpenForEntry) {
+          return '/conference/gate';
+        }
+      }
 
       /// Where a signed-in, onboarded user belongs: through the Mortarverse
       /// welcome animation once after an actual sign-in, otherwise straight to
@@ -134,7 +156,12 @@ GoRouter createAppRouter(AuthController auth) {
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,
         path: '/mortarverse',
-        builder: (context, state) => const MortarverseChooserScreen(),
+        // First zone on the cosmic language. Opting in per route rather than
+        // globally is what keeps the app shippable mid-migration — the other
+        // zones keep `buildAppTheme()` until their screens are converted.
+        builder: (context, state) => const CosmicZone(
+          child: MortarverseChooserScreen(),
+        ),
       ),
       // Every `/conference/*` screen is wrapped in [ConferenceTheme] so the
       // gold sub-brand keeps its own button glow instead of inheriting the
@@ -306,7 +333,11 @@ GoRouter createAppRouter(AuthController auth) {
             routes: [
               GoRoute(
                 path: '/home',
-                pageBuilder: (context, state) => const NoTransitionPage<void>(child: HomeScreen()),
+                pageBuilder: (context, state) => const NoTransitionPage<void>(
+                  // Converted to the 2d design; its sibling branches are not,
+                  // so the zone is scoped to this page rather than the shell.
+                  child: CosmicZone(child: HomeScreen()),
+                ),
               ),
             ],
           ),

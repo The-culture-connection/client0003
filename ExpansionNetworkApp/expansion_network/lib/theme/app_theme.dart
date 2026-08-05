@@ -38,10 +38,9 @@ abstract final class AppColors {
 /// weight. Tuned to the Mortarverse mock: tracked-out caps on a tall slab
 /// with a red bloom bleeding off the edge.
 abstract final class AppButtons {
-  /// Softened just off-square. The rest of the system is zero-radius, but the
-  /// mock's buttons carry a slight round — it keeps the ember ring from
-  /// spiking at the corners.
-  static const double radius = 6;
+  /// Full pill, per the Mortarverse mockups: the buttons are stadium-shaped
+  /// glow pills while every other surface stays zero-radius.
+  static const double radius = 999;
 
   static const EdgeInsets padding = EdgeInsets.symmetric(
     horizontal: 22,
@@ -60,19 +59,13 @@ abstract final class AppButtons {
         borderRadius: BorderRadius.circular(radius),
       );
 
-  /// Material elevation carries the glow: `shadowColor` tints the drop shadow
-  /// brick red, so every themed button blooms without a wrapper widget. Falls
-  /// to zero when disabled so dead controls don't advertise themselves.
-  static WidgetStateProperty<double> glow(double resting) =>
-      WidgetStateProperty.resolveWith((states) {
-        if (states.contains(WidgetState.disabled)) return 0;
-        if (states.contains(WidgetState.pressed)) return resting * 0.4;
-        if (states.contains(WidgetState.hovered) ||
-            states.contains(WidgetState.focused)) {
-          return resting * 1.5;
-        }
-        return resting;
-      });
+  /// Buttons sit flat on the surface — no elevation, so Material paints no
+  /// drop shadow, and with no `shadowColor` there is nothing to tint one.
+  ///
+  /// This replaced a state-driven glow that bloomed brick red on every button
+  /// in the app. It read as noise rather than emphasis, so weight is carried
+  /// by fill and border alone now.
+  static const WidgetStateProperty<double> flat = WidgetStatePropertyAll(0);
 }
 
 /// Shared text voices from the webapp system.
@@ -200,11 +193,10 @@ ThemeData buildAppTheme() {
         foregroundColor: AppColors.onPrimary,
         disabledBackgroundColor: AppColors.secondary,
         disabledForegroundColor: AppColors.mutedForeground,
-        shadowColor: AppColors.primary,
         padding: AppButtons.padding,
         shape: AppButtons.shape,
         textStyle: AppButtons.label,
-      ).copyWith(elevation: AppButtons.glow(14)),
+      ).copyWith(elevation: AppButtons.flat),
     ),
 
     // ElevatedButton is near-extinct in this app but must not fall back to
@@ -215,11 +207,10 @@ ThemeData buildAppTheme() {
         foregroundColor: AppColors.onPrimary,
         disabledBackgroundColor: AppColors.secondary,
         disabledForegroundColor: AppColors.mutedForeground,
-        shadowColor: AppColors.primary,
         padding: AppButtons.padding,
         shape: AppButtons.shape,
         textStyle: AppButtons.label,
-      ).copyWith(elevation: AppButtons.glow(14)),
+      ).copyWith(elevation: AppButtons.flat),
     ),
 
     // SECONDARY — the mock's signature: a sunken near-black slab ringed in
@@ -230,12 +221,11 @@ ThemeData buildAppTheme() {
         backgroundColor: AppColors.buttonSunken,
         foregroundColor: AppColors.foreground,
         disabledForegroundColor: AppColors.mutedForeground,
-        shadowColor: AppColors.primary,
         padding: AppButtons.padding,
         shape: AppButtons.shape,
         textStyle: AppButtons.label,
       ).copyWith(
-        elevation: AppButtons.glow(10),
+        elevation: AppButtons.flat,
         side: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.disabled)) {
             return const BorderSide(color: AppColors.border);

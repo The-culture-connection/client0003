@@ -15,6 +15,7 @@ import '../services/explore_listings_repository.dart';
 import '../services/feed_posts_repository.dart';
 import '../services/group_thread_repository.dart';
 import '../theme/app_theme.dart';
+import '../theme/cosmic_widgets.dart';
 import '../utils/content_action_guard.dart';
 import '../utils/safe_launch_url.dart';
 import '../widgets/feed_post_card.dart';
@@ -55,9 +56,30 @@ class _HomeScreenState extends State<HomeScreen> {
           }
           if (context.mounted) context.push('/feed/post/create');
         },
-        backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.onPrimary,
-        child: const Icon(Icons.add),
+        // 2d's compose button: a lit ring rather than a solid Material circle.
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        highlightElevation: 0,
+        shape: const CircleBorder(
+          side: BorderSide(color: Color(0x80FFFFFF)),
+        ),
+        child: DecoratedBox(
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: RadialGradient(
+              center: Alignment(0, 1.6),
+              radius: 1.1,
+              colors: [Color(0xE6FF2837), Color(0x26FF2837)],
+              stops: [0, 0.72],
+            ),
+          ),
+          child: const SizedBox(
+            width: 56,
+            height: 56,
+            child: Icon(Icons.add, size: 26, color: Colors.white),
+          ),
+        ),
       ),
       body: Stack(
         children: [
@@ -69,22 +91,14 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  SizedBox(
-                    height: 160,
-                    child: _WelcomeCard(
-                      onMatching: () => context.push('/matching'),
-                    ),
+                  _WelcomeCard(
+                    onMatching: () => context.push('/matching'),
                   ),
                   const SizedBox(height: 12),
-                  FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: AppColors.onPrimary,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    icon: const Icon(Icons.storefront_outlined),
-                    label: const Text('MORTAR shop'),
-                    onPressed: () async {
+                  // 2d gives the shop its own gold-outlined pill — the one
+                  // place on this screen carrying the conference accent.
+                  _ShopPill(
+                    onTap: () async {
                       final u = Uri.parse(_kMortarShopUrl);
                       final ok = await safeLaunchExternalUrl(
                         u,
@@ -957,23 +971,19 @@ class _WelcomeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.zero,
-        gradient: LinearGradient(
-          colors: [
-            AppColors.primary,
-            AppColors.primary.withValues(alpha: 0.85),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
+    // Option 2d's hero: glass rather than a solid red slab, with the red mass
+    // bleeding off the top-right corner and a full-width lit pill.
+    return GlassPanel(
+      radius: 22,
+      padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
+      borderColor: const Color(0x3DFFFFFF),
+      bloomAt: const Alignment(2.0, -2.2),
+      bloomSize: 190,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Column(
@@ -981,37 +991,129 @@ class _WelcomeCard extends StatelessWidget {
                   children: [
                     Text(
                       'Welcome Back!',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: AppColors.onPrimary,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      style: Cosmic.headline.copyWith(fontSize: 20, height: 1),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 9),
                     Text(
                       'Discover new opportunities',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppColors.onPrimary.withValues(alpha: 0.9),
-                          ),
+                      style: Cosmic.caption.copyWith(
+                        fontSize: 12,
+                        height: 1,
+                        color: const Color(0x8CFFFFFF),
+                      ),
                     ),
                   ],
                 ),
               ),
-              Icon(Icons.auto_awesome, color: AppColors.onPrimary.withValues(alpha: 0.95), size: 32),
+              // The design's bare 30px ring, not a filled icon.
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: const Color(0x66FFFFFF)),
+                ),
+              ),
             ],
           ),
-          const Spacer(),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.white.withValues(alpha: 0.2),
-                foregroundColor: AppColors.onPrimary,
+          const SizedBox(height: 18),
+          _WideGlowPill(label: 'Run smart matching', onTap: onMatching),
+        ],
+      ),
+    );
+  }
+}
+
+/// The MORTAR shop entry — a gold-outlined pill. It is the one control on this
+/// screen wearing the conference accent rather than the Expansion red, which
+/// is how option 2d marks it as leaving the app.
+class _ShopPill extends StatelessWidget {
+  const _ShopPill({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    const gold = Cosmic.accentConference;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const StadiumBorder(),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 13),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(Cosmic.radiusPill),
+            border: Border.all(color: gold.withValues(alpha: 0.5)),
+            color: gold.withValues(alpha: 0.07),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 15,
+                height: 15,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: gold.withValues(alpha: 0.7)),
+                ),
               ),
-              onPressed: onMatching,
-              child: const Text('Run Smart Matching'),
+              const SizedBox(width: 10),
+              Text(
+                'MORTAR SHOP',
+                style: Cosmic.pillLabel.copyWith(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 1.54,
+                  color: gold,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A full-width version of the design's lit pill, used for the hero action and
+/// anywhere a primary action spans the panel.
+class _WideGlowPill extends StatelessWidget {
+  const _WideGlowPill({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const StadiumBorder(),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 13),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(Cosmic.radiusPill),
+            border: Border.all(color: const Color(0x80FFFFFF)),
+            gradient: const RadialGradient(
+              center: Alignment(0, 1.6),
+              radius: 1.1,
+              colors: [Color(0xD9FF2837), Color(0x1FFF2837)],
+              stops: [0, 0.7],
             ),
           ),
-        ],
+          child: Text(
+            label.toUpperCase(),
+            style: Cosmic.pillLabel.copyWith(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.43,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -1032,52 +1134,51 @@ class _CardShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Option 2d's section block: a 20px-radius glass panel with a tracked-out
+    // uppercase label and an italic accent link on the right.
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.glassFill,
-        borderRadius: BorderRadius.zero,
-        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Cosmic.chipBorder),
+        gradient: Cosmic.chipFill,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
             children: [
               Expanded(
                 child: Text(
-                  title,
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
+                  title.toUpperCase(),
+                  style: Cosmic.sectionLabel.copyWith(
+                    fontSize: 10,
+                    letterSpacing: 2,
+                    color: const Color(0xCCFFFFFF),
+                  ),
                 ),
               ),
               if (onAction != null)
-                TextButton(
-                  onPressed: onAction,
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (actionLabel != null)
-                        Text(
-                          actionLabel!,
-                          style: const TextStyle(fontSize: 12, color: AppColors.primary),
-                        ),
-                      if (actionLabel == null)
-                        const Icon(Icons.arrow_forward, size: 16, color: AppColors.primary),
-                      if (actionLabel != null)
-                        const Icon(Icons.arrow_forward, size: 14, color: AppColors.primary),
-                    ],
+                GestureDetector(
+                  onTap: onAction,
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: Text(
+                      '${actionLabel ?? 'View'} →',
+                      style: Cosmic.caption.copyWith(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w400,
+                        color: Cosmic.textAccent,
+                      ),
+                    ),
                   ),
                 ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 14),
           child,
         ],
       ),

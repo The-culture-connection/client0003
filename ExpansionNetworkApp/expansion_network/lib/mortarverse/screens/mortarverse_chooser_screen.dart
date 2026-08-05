@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -17,8 +16,9 @@ import '../../models/community_event.dart';
 import '../../services/events_repository.dart';
 import '../../theme/app_theme.dart';
 import '../mortarverse_signals.dart';
+import '../../theme/cosmic_widgets.dart';
 import '../widgets/mortarverse_focus_card.dart';
-import '../widgets/planet_disc.dart';
+import '../widgets/mortarverse_planet.dart';
 
 /// Post-login landing screen: a live action widget answering "what needs me?",
 /// then the three shops as a horizontally scrollable street.
@@ -48,7 +48,7 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
     // reliably clear the holder — without it the id stays set for the life of
     // the process and analytics would stamp conference_id onto Expansion events
     // logged after the user left.
-    CurrentConferenceHolder.instance.conferenceId = null;
+    CurrentConferenceHolder.instance.clear();
     _activeConferenceFuture = _conferenceRepository.fetchActiveConference();
   }
 
@@ -92,7 +92,7 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
     if (item.type == 'conference') {
       // The gate needs to know which conference it is gating.
       unawaited(_activeConferenceFuture.then((c) {
-        if (c != null) CurrentConferenceHolder.instance.conferenceId = c.id;
+        if (c != null) CurrentConferenceHolder.instance.target(c.id);
       }));
     }
     context.go(item.route);
@@ -153,12 +153,9 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: AppColors.primary,
-        tooltip: 'My card & scan',
-        onPressed: () => context.go('/card'),
-        child: const Icon(Icons.qr_code_scanner_rounded, size: 27, color: Colors.white),
-      ),
+      // The design puts the card/scan control top-right beside the wordmark as
+      // a squircle lit from below, not a floating circle bottom-right.
+      floatingActionButton: null,
     );
   }
 
@@ -192,21 +189,44 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
     return ListView(
       padding: EdgeInsets.zero,
       children: [
+        // Wordmark centred, card/scan parked at the right edge of the same
+        // band — the design's `position:absolute; right:18px; top:52px`.
         Padding(
-          padding: const EdgeInsets.fromLTRB(22, 20, 22, 0),
-          child: const Text(
-            'THE MORTARVERSE',
-            style: TextStyle(
-              fontFamily: 'ArchivoBlack',
-              color: Colors.white,
-              fontSize: 24,
-              height: 1.1,
-              letterSpacing: 0.6,
-            ),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 64, vertical: 14),
+                child: Text(
+                  'MORTARVERSE',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    height: 1,
+                    fontWeight: FontWeight.w700,
+                    // .1em at 20px.
+                    letterSpacing: 2,
+                    shadows: [
+                      Shadow(color: Color(0x73FF505A), blurRadius: 22),
+                    ],
+                  ),
+                ),
+              ),
+              Positioned(
+                right: 0,
+                child: _CardScanButton(onTap: () => context.go('/card')),
+              ),
+            ],
           ),
         ),
+        const Padding(
+          padding: EdgeInsets.only(top: 22, bottom: 18),
+          child: TornHorizon(),
+        ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(22, 18, 22, 0),
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
           child: MortarverseFocusCard(
             queue: queue,
             onOpen: _openAction,
@@ -214,7 +234,7 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(22, 14, 22, 0),
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
           child: Row(
             children: [
               Expanded(
@@ -227,9 +247,17 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
                           : 'No conference\nopen right now',
                   accent: ConferenceColors.gold,
                   muted: conference == null,
+                  // Only live when there is somewhere to go. While loading, or
+                  // with no open conference, the chip is a status read-out.
+                  onTap: conference == null
+                      ? null
+                      : () {
+                          CurrentConferenceHolder.instance.target(conference.id);
+                          context.go('/conference/gate');
+                        },
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 12),
               Expanded(
                 child: _SecondaryChip(
                   icon: Icons.account_circle_rounded,
@@ -238,42 +266,108 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
                       : '${signals.badgesEarned} badges\nearned',
                   accent: CommonsColors.accent,
                   muted: true,
+                  // Both states are about the user's profile, so both land on
+                  // it — incomplete to finish it, complete to see the badges.
+                  onTap: () => context.go('/commons/profile'),
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 22),
-        // Lower section rides on a torn-paper glass panel (the mockup's
-        // ripped bottom strip), with the galaxy still moving behind it.
-        _TornPanel(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Padding(
-                padding: EdgeInsets.fromLTRB(22, 30, 22, 12),
-                child: _SectionHeader(
-                  title: 'WHERE TO GO',
-                  trailing: 'Swipe the street →',
-                ),
-              ),
-              _ShopStreet(
-                hasExpansionAccess: hasExpansionAccess,
-                waiting: waiting,
-                conference: conference,
-                conferenceLoading: conferenceLoading,
-                signals: signals,
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(22, 26, 22, 26),
-                child: _EventsStrip(events: upcoming),
-              ),
-              // Clears the FAB.
-              const SizedBox(height: 60),
-            ],
+        // In option 1a the street sits directly on the deep field — the single
+        // torn edge lives under the wordmark, so there is no panel down here.
+        const Padding(
+          padding: EdgeInsets.fromLTRB(20, 30, 20, 16),
+          child: _SectionHeader(
+            title: 'WHERE TO GO',
+            trailing: 'Swipe the street →',
           ),
+        ),
+        _ShopStreet(
+          hasExpansionAccess: hasExpansionAccess,
+          waiting: waiting,
+          conference: conference,
+          conferenceLoading: conferenceLoading,
+          signals: signals,
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 30, 20, 40),
+          child: _EventsStrip(events: upcoming),
         ),
       ],
+    );
+  }
+}
+
+/// The card/scan control: a lit squircle beside the wordmark, with the
+/// design's 3×3 QR glyph rather than a Material icon.
+class _CardScanButton extends StatelessWidget {
+  const _CardScanButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: 'My card and scan',
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(15),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(15),
+          onTap: onTap,
+          child: Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(15),
+              border: Border.all(color: const Color(0x73FFFFFF)),
+              gradient: const RadialGradient(
+                center: Alignment(0, 1.4),
+                radius: 1.1,
+                colors: [Color(0xE6FF2837), Color(0x26FF2837)],
+                stops: [0, 0.72],
+              ),
+            ),
+            child: const Center(child: _QrGlyph()),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The design's QR mark: a 3×3 grid with the four corners, centre and edges
+/// lit — five dots on the diagonal pattern.
+class _QrGlyph extends StatelessWidget {
+  const _QrGlyph();
+
+  static const List<bool> _on = [
+    true, false, true,
+    false, true, false,
+    true, false, true,
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 19,
+      height: 19,
+      child: GridView.count(
+        crossAxisCount: 3,
+        mainAxisSpacing: 2,
+        crossAxisSpacing: 2,
+        physics: const NeverScrollableScrollPhysics(),
+        children: [
+          for (final lit in _on)
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: lit ? Colors.white : Colors.transparent,
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -287,21 +381,30 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         Text(
           title,
           style: const TextStyle(
-            fontFamily: 'ArchivoBlack',
-            color: Colors.white,
+            color: Color(0xD9FFFFFF),
             fontSize: 11,
-            letterSpacing: 1.6,
+            fontWeight: FontWeight.w600,
+            // .24em at 11px.
+            letterSpacing: 2.64,
+            height: 1,
           ),
         ),
         const Spacer(),
         if (trailing != null)
           Text(
             trailing!,
-            style: TextStyle(color: Colors.grey.shade600, fontSize: 11),
+            style: const TextStyle(
+              color: Cosmic.textFaint,
+              fontSize: 10.5,
+              fontWeight: FontWeight.w300,
+              fontStyle: FontStyle.italic,
+              height: 1,
+            ),
           ),
       ],
     );
@@ -314,6 +417,7 @@ class _SecondaryChip extends StatelessWidget {
     required this.label,
     required this.accent,
     required this.muted,
+    this.onTap,
   });
 
   final IconData icon;
@@ -321,38 +425,88 @@ class _SecondaryChip extends StatelessWidget {
   final Color accent;
   final bool muted;
 
+  /// Null leaves the chip inert — a status read-out rather than a control.
+  final VoidCallback? onTap;
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
-      decoration: BoxDecoration(
-        color: muted
-            ? Colors.white.withValues(alpha: 0.05)
-            : accent.withValues(alpha: 0.08),
-        border: Border.all(
-          color: muted
-              ? Colors.white.withValues(alpha: 0.12)
-              : accent.withValues(alpha: 0.3),
-        ),
-      ),
+    // The design splits the chip's copy across two lines with different
+    // weights: the fact on top, its qualifier under it.
+    final lines = label.split('\n');
+    final head = lines.first;
+    final tail = lines.length > 1 ? lines.sublist(1).join(' ') : null;
+
+    final body = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
       child: Row(
         children: [
-          Icon(icon, size: 17, color: muted ? CommonsColors.accent : accent),
-          const SizedBox(width: 7),
+          // The option draws a bare 22px ring here; the icon inside keeps the
+          // two chips distinguishable without changing the silhouette.
+          Container(
+            width: 22,
+            height: 22,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: const Color(0x73FFFFFF)),
+            ),
+            child: Icon(icon, size: 12, color: muted ? Cosmic.textMuted : accent),
+          ),
+          const SizedBox(width: 10),
           Expanded(
-            child: Text(
-              label,
+            child: Text.rich(
+              TextSpan(
+                text: head,
+                children: [
+                  if (tail != null)
+                    TextSpan(
+                      text: '\n$tail',
+                      style: const TextStyle(
+                        color: Cosmic.textMuted,
+                        fontWeight: FontWeight.w300,
+                      ),
+                    ),
+                ],
+              ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: muted ? Colors.grey.shade400 : accent,
-                fontSize: 11,
-                height: 1.25,
-                fontWeight: FontWeight.w500,
+              style: const TextStyle(
+                color: Cosmic.textPrimary,
+                fontSize: 11.5,
+                height: 1.35,
+                fontWeight: FontWeight.w400,
               ),
             ),
           ),
+          // A chevron only where there is somewhere to go, so a tappable chip
+          // is distinguishable from an inert one at a glance.
+          if (onTap != null)
+            const Padding(
+              padding: EdgeInsets.only(left: 4),
+              child: Icon(
+                Icons.chevron_right_rounded,
+                size: 16,
+                color: Cosmic.textFaint,
+              ),
+            ),
         ],
+      ),
+    );
+
+    final shape = BorderRadius.circular(16);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: shape,
+        border: Border.all(color: Cosmic.chipBorder),
+        gradient: Cosmic.chipFill,
+      ),
+      // Material + InkWell rather than GestureDetector so the tap gets the
+      // standard ripple; the chip previously had no handler at all.
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: shape,
+        child: onTap == null
+            ? body
+            : InkWell(borderRadius: shape, onTap: onTap, child: body),
       ),
     );
   }
@@ -395,6 +549,7 @@ class _ShopStreet extends StatelessWidget {
                 ? (waiting > 0 ? '$waiting WAITING' : 'OPEN')
                 : 'LOCKED',
             shopColor: AppColors.primary,
+            planetAsset: MortarversePlanets.networkingHall,
             enabled: true,
             onTap: () => context.go(
               hasExpansionAccess ? '/home' : '/expansion/enter-code',
@@ -412,10 +567,11 @@ class _ShopStreet extends StatelessWidget {
                     ? 'OPEN NOW'
                     : 'CLOSED',
             shopColor: ConferenceColors.gold,
+            planetAsset: MortarversePlanets.conferenceCenter,
             enabled: conferenceOpen,
             onTap: conferenceOpen
                 ? () {
-                    CurrentConferenceHolder.instance.conferenceId = conference!.id;
+                    CurrentConferenceHolder.instance.target(conference!.id);
                     // Land on the ticket gate ("first click") screen; it routes
                     // on to the lobby once a ticket code has been redeemed.
                     context.go('/conference/gate');
@@ -432,6 +588,7 @@ class _ShopStreet extends StatelessWidget {
                 ? 'PROFILE ${signals.profileCompletion}%'
                 : 'COMPLETE',
             shopColor: CommonsColors.accent,
+            planetAsset: MortarversePlanets.commons,
             enabled: true,
             outlinedPill: true,
             onTap: () => context.go('/commons/profile'),
@@ -448,6 +605,7 @@ class _ShopTile extends StatefulWidget {
     required this.subtitle,
     required this.pill,
     required this.shopColor,
+    required this.planetAsset,
     required this.enabled,
     required this.onTap,
     this.outlinedPill = false,
@@ -457,6 +615,10 @@ class _ShopTile extends StatefulWidget {
   final String subtitle;
   final String pill;
   final Color shopColor;
+
+  /// The destination's planet illustration.
+  final String planetAsset;
+
   final bool enabled;
   final VoidCallback? onTap;
   final bool outlinedPill;
@@ -471,7 +633,6 @@ class _ShopTileState extends State<_ShopTile> {
   @override
   Widget build(BuildContext context) {
     final color = widget.shopColor;
-    final glow = widget.enabled && !widget.outlinedPill;
 
     return Opacity(
       opacity: widget.enabled ? 1 : 0.45,
@@ -484,39 +645,78 @@ class _ShopTileState extends State<_ShopTile> {
           scale: _pressed ? 0.97 : 1,
           duration: const Duration(milliseconds: 100),
           child: SizedBox(
-            width: 148,
+            width: 132,
             child: Column(
               children: [
-                // The destination as a CD/record planet floating in the sky.
-                PlanetDisc(color: color, size: 104, enabled: glow),
-                const SizedBox(height: 12),
-                _Pill(
-                  label: widget.pill,
-                  color: color,
-                  outlined: widget.outlinedPill,
+                // Planet with its orbit ring, and the status pill riding up
+                // over the lower edge — the option's `margin-top:-12px`.
+                Stack(
+                  alignment: Alignment.topCenter,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: SizedBox(
+                        width: 132,
+                        height: 132,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            // `inset:-9px` ring around the disc.
+                            Container(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: const Color(0x1FFFFFFF),
+                                ),
+                              ),
+                            ),
+                            MortarversePlanet(
+                              asset: widget.planetAsset,
+                              size: 114,
+                              enabled: widget.enabled,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      child: _StatusPill(
+                        label: widget.pill,
+                        lit: !widget.outlinedPill && widget.enabled,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 7),
+                const SizedBox(height: 12),
                 Text(
                   widget.title,
                   textAlign: TextAlign.center,
                   style: const TextStyle(
-                    fontFamily: 'ArchivoBlack',
                     color: Colors.white,
-                    fontSize: 11,
+                    fontSize: 12.5,
                     height: 1.3,
-                    letterSpacing: 1.1,
+                    fontWeight: FontWeight.w600,
+                    // .1em at 12.5px.
+                    letterSpacing: 1.25,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 7),
                 Flexible(
                   child: Text(
                     widget.subtitle,
                     textAlign: TextAlign.center,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Color(0xFF999999),
-                      fontSize: 10,
+                    style: TextStyle(
+                      // Urgency reads in the accent; everything else recedes.
+                      color: color == AppColors.primary && widget.subtitle.contains('waiting')
+                          ? Cosmic.textAccent
+                          : Cosmic.textFaint,
+                      fontSize: 10.5,
+                      height: 1.25,
+                      fontWeight: FontWeight.w300,
+                      fontStyle: FontStyle.italic,
                     ),
                   ),
                 ),
@@ -529,29 +729,35 @@ class _ShopTileState extends State<_ShopTile> {
   }
 }
 
-class _Pill extends StatelessWidget {
-  const _Pill({required this.label, required this.color, required this.outlined});
+/// The status capsule that sits over a planet's lower edge.
+///
+/// [lit] is the design's "OPEN NOW" treatment — near-solid white with dark
+/// ink. Everything else takes the recessed "LOCKED" treatment: a smoked
+/// capsule with a hairline, so a closed venue never shouts.
+class _StatusPill extends StatelessWidget {
+  const _StatusPill({required this.label, required this.lit});
 
   final String label;
-  final Color color;
-  final bool outlined;
+  final bool lit;
 
   @override
   Widget build(BuildContext context) {
-    final onColor = color.computeLuminance() > 0.5 ? Colors.black : Colors.white;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
       decoration: BoxDecoration(
-        color: outlined ? Colors.transparent : color,
-        border: outlined ? Border.all(color: color.withValues(alpha: 0.7)) : null,
+        borderRadius: BorderRadius.circular(999),
+        color: lit ? const Color(0xEBFFFFFF) : const Color(0xD90A0004),
+        border: lit ? null : Border.all(color: const Color(0x4DFFFFFF)),
       ),
       child: Text(
         label,
         style: TextStyle(
-          color: outlined ? color : onColor,
+          color: lit ? const Color(0xFF12040A) : const Color(0xB3FFFFFF),
           fontSize: 9,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 1,
+          fontWeight: FontWeight.w500,
+          // .16em at 9px.
+          letterSpacing: 1.44,
+          height: 1,
         ),
       ),
     );
@@ -687,52 +893,5 @@ class _EventRow extends StatelessWidget {
       ),
     );
   }
-}
-
-
-/// Translucent panel with a torn-paper top edge — the Mortarverse mockup's
-/// ripped strip, rendered as a deterministic jagged clip.
-class _TornPanel extends StatelessWidget {
-  const _TornPanel({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipPath(
-      clipper: _TornEdgeClipper(),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.045),
-          border: const Border(
-            top: BorderSide(color: Color(0x26FFFFFF), width: 0.5),
-          ),
-        ),
-        child: child,
-      ),
-    );
-  }
-}
-
-class _TornEdgeClipper extends CustomClipper<Path> {
-  @override
-  Path getClip(Size size) {
-    final rng = Random(11);
-    final path = Path()..moveTo(0, 14);
-    var x = 0.0;
-    while (x < size.width) {
-      x += 14 + rng.nextDouble() * 26;
-      final y = 2 + rng.nextDouble() * 16;
-      path.lineTo(min(x, size.width), y);
-    }
-    path
-      ..lineTo(size.width, size.height)
-      ..lineTo(0, size.height)
-      ..close();
-    return path;
-  }
-
-  @override
-  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
 }
 

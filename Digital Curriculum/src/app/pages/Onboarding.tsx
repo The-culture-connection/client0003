@@ -16,6 +16,7 @@ import { Step4WorkStructure } from "../components/onboarding/Step4WorkStructure"
 import { Step5ProfileLinks } from "../components/onboarding/Step5ProfileLinks";
 import type { OnboardingData, BusinessGoal, Industry } from "../lib/onboardingData";
 import { Button } from "../components/ui/button";
+import { SpaceBackdrop } from "../components/SpaceBackdrop";
 import { Card } from "../components/ui/card";
 
 export function OnboardingPage() {
@@ -247,7 +248,8 @@ export function OnboardingPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="relative min-h-screen overflow-x-clip space-surface flex items-center justify-center">
+        <SpaceBackdrop />
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-muted-foreground">Loading...</p>
@@ -259,7 +261,8 @@ export function OnboardingPage() {
   // Completion screen
   if (currentStep === 8) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="relative min-h-screen overflow-x-clip space-surface flex items-center justify-center p-4">
+        <SpaceBackdrop />
         <Card className="max-w-2xl w-full p-8 text-center">
           <div className="mb-6">
             <div className="w-16 h-16 bg-accent rounded-full flex items-center justify-center mx-auto mb-4">
@@ -277,7 +280,7 @@ export function OnboardingPage() {
                 />
               </svg>
             </div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">Profile Complete!</h1>
+            <h1 className="font-headline font-black uppercase tracking-tight text-3xl text-foreground mb-2">Profile Complete!</h1>
             <p className="text-muted-foreground mb-8">
               Your profile has been saved. You&apos;re all set to start your journey.
             </p>
@@ -296,14 +299,16 @@ export function OnboardingPage() {
   // Step 0: Terms & Email consent — shown before the profile steps
   if (currentStep === 0) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="relative min-h-screen overflow-x-clip space-surface">
+        <SpaceBackdrop />
         <Step0TermsAndEmail onAccept={handleTermsAccepted} />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="relative min-h-screen overflow-x-clip space-surface">
+        <SpaceBackdrop />
       {/* Progress indicator — only shown for profile steps 1-7 */}
       <div className="border-b border-border bg-card">
         <div className="max-w-4xl mx-auto px-8 py-4">

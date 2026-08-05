@@ -597,16 +597,36 @@ export const checkInToConference = onCall(defaultCallableOptions, async (request
   const conf = await assertConferenceExists(conferenceId);
   const todayKey = conferenceDayKey(conf.timezone as string | undefined);
 
+  // The active window is enforced here as well as at redemption. Holding a
+  // redeemed ticket is not a standing entitlement: once a conference closes or
+  // runs past `activeUntil`, the actions taken from inside it have to stop too,
+  // otherwise a stale client could keep checking in to a dead conference.
+  const windowCheck = checkConferenceWindow(conf);
+
   const attendeeRef = conferenceRef(conferenceId).collection(ATTENDEES).doc(uid);
   const dayRef = conferenceRef(conferenceId).collection(CHECKIN_DAYS).doc(todayKey);
 
-  // Status-only read for the lobby — never writes.
+  // Status-only read for the lobby — never writes. Reports the window rather
+  // than failing, so the client can show the right state instead of an error.
   if (peek) {
     const [attSnap, daySnap] = await Promise.all([attendeeRef.get(), dayRef.get()]);
     const isAttendee = attSnap.exists;
     const checkedInToday = isAttendee && attSnap.data()?.lastCheckInDate === todayKey;
     const todayCount = (daySnap.data()?.count as number | undefined) ?? 0;
-    return { checkedInToday, todayCount, isAttendee, todayKey };
+    return {
+      checkedInToday,
+      todayCount,
+      isAttendee,
+      todayKey,
+      conferenceOpen: windowCheck.ok,
+    };
+  }
+
+  if (!windowCheck.ok) {
+    throw new HttpsError(
+      "failed-precondition",
+      windowCheck.client.message ?? "This conference is closed.",
+    );
   }
 
   // Idempotent per day: the transaction reads the attendee doc, so a rapid

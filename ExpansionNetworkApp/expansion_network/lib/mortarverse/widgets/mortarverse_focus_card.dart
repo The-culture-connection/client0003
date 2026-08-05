@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../commons/theme/commons_colors.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/cosmic_widgets.dart';
 
 /// One item in the Mortarverse action queue.
 ///
@@ -242,59 +243,37 @@ class _CardBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final accent = item.accent;
-    // Gold and grey accents need dark text on their CTA to stay legible.
-    final onAccent = accent.computeLuminance() > 0.5 ? Colors.black : Colors.white;
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.zero,
-        border: Border.all(color: accent.withValues(alpha: 0.55)),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            accent.withValues(alpha: 0.22),
-            accent.withValues(alpha: 0.04),
-            Colors.transparent,
-          ],
-          stops: const [0, 0.6, 1],
-        ),
-        boxShadow: [
-          BoxShadow(color: accent.withValues(alpha: 0.22), blurRadius: 40),
-        ],
-      ),
+    // The design's glass panel, with the item's own accent driving the bloom
+    // and the eyebrow so the queue still reads as distinct items.
+    return GlassPanel(
+      // 220px circle centred off the top-right corner, per the option.
+      bloomAt: const Alignment(1.9, -2.0),
+      bloomColor: accent,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
-                width: 7,
-                height: 7,
+                width: 6,
+                height: 6,
                 decoration: BoxDecoration(
                   color: accent,
                   shape: BoxShape.circle,
-                  boxShadow: item.urgent
-                      ? [
-                          BoxShadow(
-                            color: accent.withValues(alpha: 0.8),
-                            blurRadius: 8,
-                            spreadRadius: 2,
-                          ),
-                        ]
-                      : null,
                 ),
               ),
               const SizedBox(width: 8),
               Text(
-                item.eyebrow,
+                item.eyebrow.toUpperCase(),
                 style: TextStyle(
                   color: accent,
                   fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.6,
+                  fontWeight: FontWeight.w500,
+                  fontStyle: FontStyle.italic,
+                  // .22em at 10px.
+                  letterSpacing: 2.2,
+                  height: 1,
                 ),
               ),
             ],
@@ -303,43 +282,27 @@ class _CardBody extends StatelessWidget {
           Text(
             item.headline,
             style: const TextStyle(
-              color: Colors.white,
-              fontSize: 30,
+              color: Cosmic.textPrimary,
+              fontSize: 27,
               height: 1.15,
-              fontWeight: FontWeight.w900,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.27,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Text(
             item.body,
-            style: TextStyle(
-              color: Colors.grey.shade400,
-              fontSize: 13,
+            style: const TextStyle(
+              color: Cosmic.textBody,
+              fontSize: 12.5,
               height: 1.5,
+              fontWeight: FontWeight.w300,
             ),
           ),
           const SizedBox(height: 18),
           Align(
             alignment: Alignment.centerRight,
-            child: Material(
-              color: accent,
-              borderRadius: BorderRadius.zero,
-              child: InkWell(
-                borderRadius: BorderRadius.zero,
-                onTap: onCta,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 11),
-                  child: Text(
-                    item.ctaLabel,
-                    style: TextStyle(
-                      color: onAccent,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ),
-            ),
+            child: GlowPill(label: item.ctaLabel, onTap: onCta),
           ),
         ],
       ),
@@ -375,11 +338,12 @@ class _PagerDots extends StatelessWidget {
               padding: EdgeInsets.fromLTRB(i == 0 ? 0 : 3.5, 10, i == count - 1 ? 0 : 3.5, 10),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                width: i == active ? 20 : 5,
-                height: 5,
+                width: i == active ? 16 : 5,
+                height: 3,
                 decoration: BoxDecoration(
-                  color: colors[i].withValues(alpha: i == active ? 1 : 0.5),
-                  borderRadius: BorderRadius.zero,
+                  // Lit bar for the current item, neutral stubs for the rest.
+                  color: i == active ? colors[i] : const Color(0x47FFFFFF),
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ),

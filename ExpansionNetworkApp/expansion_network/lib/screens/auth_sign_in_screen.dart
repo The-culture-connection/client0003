@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 
 import '../analytics/expansion_analytics.dart';
 import '../auth/auth_controller.dart';
+import '../mortarverse/widgets/glow_pill_button.dart';
 import '../mortarverse/widgets/torn_panel.dart';
 import '../theme/app_theme.dart';
 
@@ -82,6 +83,28 @@ class _AuthSignInScreenState extends State<AuthSignInScreen> {
     }
   }
 
+  // Mockup field styling: italic tracked label above a translucent bar
+  // with a white underline.
+  static const _fieldLabel = TextStyle(
+    color: Color(0xFFDED7CB),
+    fontSize: 12,
+    fontStyle: FontStyle.italic,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 3,
+  );
+  static const _fieldDecoration = InputDecoration(
+    filled: true,
+    fillColor: Color(0x30FFFFFF),
+    border: UnderlineInputBorder(),
+    enabledBorder: UnderlineInputBorder(
+      borderSide: BorderSide(color: Colors.white, width: 1.4),
+    ),
+    focusedBorder: UnderlineInputBorder(
+      borderSide: BorderSide(color: AppColors.primary, width: 2),
+    ),
+    contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+  );
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -123,18 +146,22 @@ class _AuthSignInScreenState extends State<AuthSignInScreen> {
                           ),
                         ),
                         const SizedBox(height: 28),
+                const Text('EMAIL', textAlign: TextAlign.center, style: _fieldLabel),
+                const SizedBox(height: 8),
                 TextFormField(
                   controller: _email,
                   keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(labelText: 'Email'),
+                  decoration: _fieldDecoration,
                   validator: (v) =>
                       (v == null || v.trim().isEmpty) ? 'Enter your email' : null,
                 ),
                 const SizedBox(height: 16),
+                const Text('PASSWORD', textAlign: TextAlign.center, style: _fieldLabel),
+                const SizedBox(height: 8),
                 TextFormField(
                   controller: _password,
                   obscureText: true,
-                  decoration: const InputDecoration(labelText: 'Password'),
+                  decoration: _fieldDecoration,
                   validator: (v) =>
                       (v == null || v.isEmpty) ? 'Enter your password' : null,
                 ),
@@ -143,19 +170,31 @@ class _AuthSignInScreenState extends State<AuthSignInScreen> {
                   Text(_error!, style: const TextStyle(color: Colors.redAccent)),
                 ],
                 const SizedBox(height: 24),
-                FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                GlowPillButton(
+                  label: 'Sign in',
+                  filled: true,
+                  expand: true,
+                  busy: _busy,
+                  onPressed: _submit,
+                ),
+                const SizedBox(height: 26),
+                const Text(
+                  "HAVEN'T JOINED THE CREW YET?",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12.5,
+                    fontStyle: FontStyle.italic,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.6,
                   ),
-                  onPressed: _busy ? null : _submit,
-                  child: _busy
-                      ? const SizedBox(
-                          height: 22,
-                          width: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.onPrimary),
-                        )
-                      : const Text('Sign in'),
+                ),
+                const SizedBox(height: 10),
+                Center(
+                  child: GlowPillButton(
+                    label: 'Sign up',
+                    onPressed: () => context.push('/auth/sign-up'),
+                  ),
                 ),
                 TextButton(
                   onPressed: () {

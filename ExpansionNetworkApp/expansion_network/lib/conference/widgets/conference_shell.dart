@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../current_conference_holder.dart';
-import '../services/conference_repository.dart';
 import '../theme/conference_colors.dart';
 import '../widgets/conference_coming_soon_screen.dart';
 import 'conference_scope.dart';
@@ -42,30 +41,19 @@ class ConferenceShell extends StatefulWidget {
 }
 
 class _ConferenceShellState extends State<ConferenceShell> {
-  final ConferenceRepository _repository = ConferenceRepository();
   String? _conferenceId;
-  bool _loading = true;
+  final bool _loading = false;
 
   @override
   void initState() {
     super.initState();
-    _resolveConferenceId();
-  }
-
-  Future<void> _resolveConferenceId() async {
-    var id = CurrentConferenceHolder.instance.conferenceId;
-    if (id == null) {
-      // Cold deep link into /conference/* without going through the chooser first.
-      final conference = await _repository.fetchActiveConference();
-      id = conference?.id;
-      CurrentConferenceHolder.instance.conferenceId = id;
-    }
-    if (mounted) {
-      setState(() {
-        _conferenceId = id;
-        _loading = false;
-      });
-    }
+    // Nothing to resolve. Admission is decided by the router's conference gate
+    // and [CurrentConferenceHolder] before this shell can be built — a cold
+    // deep link into `/conference/*` is bounced to the ticket gate, which
+    // admits properly or refuses. Self-resolving an id here (the old
+    // `fetchActiveConference` fallback) would have handed the shell a
+    // conference nobody had checked, so it is deliberately gone.
+    _conferenceId = CurrentConferenceHolder.instance.conferenceId;
   }
 
   @override

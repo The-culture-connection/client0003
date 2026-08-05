@@ -1,129 +1,30 @@
-import 'dart:math';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import '../../theme/app_theme.dart';
-
-/// The Mortarverse sky: deep-space black, a twinkling starfield, and soft
-/// red nebula auras bleeding in from the edges — mirrors the webapp's
-/// `.space-surface` + `.starfield` + `.aura-glow` background stack.
+/// The app background from Claude Design `Mortarverse Home.dc.html`, option
+/// **1a — "Deep field"**: black space, four soft nebula masses bleeding in from
+/// the edges, and a sparse still starfield.
 ///
-/// Drop behind a screen's content with a [Stack]:
-/// ```dart
-/// Stack(children: [const MortarverseSky(), SafeArea(child: ...)])
-/// ```
-class MortarverseSky extends StatefulWidget {
-  const MortarverseSky({super.key, this.starCount = 90});
-
-  final int starCount;
-
-  @override
-  State<MortarverseSky> createState() => _MortarverseSkyState();
-}
-
-class _MortarverseSkyState extends State<MortarverseSky>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _twinkle;
-  late final List<_Star> _stars;
-
-  @override
-  void initState() {
-    super.initState();
-    _twinkle = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 9),
-    )..repeat(reverse: true);
-    final rng = Random(7);
-    _stars = List.generate(widget.starCount, (_) {
-      return _Star(
-        position: Offset(rng.nextDouble(), rng.nextDouble()),
-        radius: 0.4 + rng.nextDouble() * 1.1,
-        phase: rng.nextDouble() * 2 * pi,
-        baseAlpha: 0.25 + rng.nextDouble() * 0.6,
-      );
-    });
-  }
-
-  @override
-  void dispose() {
-    _twinkle.dispose();
-    super.dispose();
-  }
+/// Ported from the option's two background layers. The nebula radii follow CSS
+/// `radial-gradient` semantics — a stop percentage is measured against the
+/// distance to the *farthest corner*, not the box size — so they are computed
+/// per-frame in [_DeepFieldPainter] rather than guessed at in [Alignment]
+/// space, which is what keeps the masses the same shape the design has.
+///
+/// Mounted ONCE in [MaterialApp.builder]; every screen renders a transparent
+/// scaffold over it.
+class MortarverseSky extends StatelessWidget {
+  const MortarverseSky({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Positioned.fill(
+    return const Positioned.fill(
       child: RepaintBoundary(
-        child: Stack(
-          children: [
-            // Space surface: near-black with a hint of depth at the top.
-            const DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: RadialGradient(
-                  center: Alignment(0, -1.2),
-                  radius: 1.4,
-                  colors: [Color(0xFF0D0D0D), Colors.black],
-                ),
-              ),
-              child: SizedBox.expand(),
-            ),
-            // Twinkling stars.
-            AnimatedBuilder(
-              animation: _twinkle,
-              builder: (context, _) => CustomPaint(
-                size: Size.infinite,
-                painter: _StarfieldPainter(_stars, _twinkle.value),
-              ),
-            ),
-            // Nebula auras — brick glows bleeding in from the edges.
-            const _Aura(
-              alignment: Alignment(1.35, -1.1),
-              size: 340,
-              color: AppColors.primary,
-              opacity: 0.30,
-            ),
-            const _Aura(
-              alignment: Alignment(-1.4, 0.55),
-              size: 300,
-              color: AppColors.deepRed,
-              opacity: 0.24,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _Aura extends StatelessWidget {
-  const _Aura({
-    required this.alignment,
-    required this.size,
-    required this.color,
-    required this.opacity,
-  });
-
-  final Alignment alignment;
-  final double size;
-  final Color color;
-  final double opacity;
-
-  @override
-  Widget build(BuildContext context) {
-    return Align(
-      alignment: alignment,
-      child: IgnorePointer(
-        child: Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: RadialGradient(
-              colors: [
-                color.withValues(alpha: opacity),
-                color.withValues(alpha: 0),
-              ],
-            ),
+        child: ClipRect(
+          child: CustomPaint(
+            size: Size.infinite,
+            painter: _DeepFieldPainter(),
           ),
         ),
       ),
@@ -131,43 +32,93 @@ class _Aura extends StatelessWidget {
   }
 }
 
-class _Star {
-  const _Star({
-    required this.position,
-    required this.radius,
-    required this.phase,
-    required this.baseAlpha,
-  });
+/// A nebula mass: colour, centre as a fraction of the frame, and the radius as
+/// the CSS stop fraction of the farthest-corner distance.
+class _Nebula {
+  const _Nebula(this.cx, this.cy, this.color, this.stop);
 
-  final Offset position; // normalized 0..1
-  final double radius;
-  final double phase;
-  final double baseAlpha;
+  final double cx;
+  final double cy;
+  final Color color;
+  final double stop;
 }
 
-class _StarfieldPainter extends CustomPainter {
-  _StarfieldPainter(this.stars, this.t);
+/// A star: position as a fraction of the frame, radius in px, opacity.
+class _Star {
+  const _Star(this.x, this.y, this.r, this.a);
 
-  final List<_Star> stars;
-  final double t; // 0..1 twinkle progress
+  final double x;
+  final double y;
+  final double r;
+  final double a;
+}
+
+class _DeepFieldPainter extends CustomPainter {
+  const _DeepFieldPainter();
+
+  static const List<_Nebula> _nebulae = [
+    _Nebula(0.84, 0.10, Color(0x6BE41A28), 0.26),
+    _Nebula(0.08, 0.63, Color(0x4DC42A60), 0.24),
+    _Nebula(0.66, 0.97, Color(0x57961428), 0.25),
+    _Nebula(0.34, 0.16, Color(0x24DC5A78), 0.18),
+  ];
+
+  static const List<_Star> _stars = [
+    _Star(0.18, 0.09, 1.4, 0.95),
+    _Star(0.64, 0.15, 1.0, 0.70),
+    _Star(0.86, 0.30, 1.2, 0.80),
+    _Star(0.34, 0.27, 1.0, 0.55),
+    _Star(0.08, 0.41, 1.4, 0.85),
+    _Star(0.72, 0.47, 1.0, 0.60),
+    _Star(0.46, 0.58, 1.2, 0.75),
+    _Star(0.90, 0.63, 1.0, 0.50),
+    _Star(0.22, 0.74, 1.3, 0.80),
+    _Star(0.58, 0.82, 1.0, 0.55),
+    _Star(0.80, 0.90, 1.2, 0.70),
+    _Star(0.38, 0.95, 1.0, 0.50),
+  ];
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint();
-    for (final star in stars) {
-      final twinkle =
-          0.55 + 0.45 * sin(star.phase + t * 2 * pi).abs();
-      paint.color =
-          Colors.white.withValues(alpha: star.baseAlpha * twinkle);
+    if (size.isEmpty) return;
+    final rect = Offset.zero & size;
+
+    canvas.drawRect(rect, Paint()..color = const Color(0xFF000000));
+
+    for (final n in _nebulae) {
+      final center = Offset(n.cx * size.width, n.cy * size.height);
+      // CSS default is farthest-corner: the 100% stop lands on whichever
+      // corner is furthest from the centre, and n.stop is a fraction of that.
+      final radius = _farthestCorner(center, size) * n.stop;
+      if (radius <= 0) continue;
       canvas.drawCircle(
-        Offset(star.position.dx * size.width, star.position.dy * size.height),
-        star.radius,
-        paint,
+        center,
+        radius,
+        Paint()
+          ..shader = RadialGradient(
+            colors: [n.color, n.color.withValues(alpha: 0)],
+          ).createShader(Rect.fromCircle(center: center, radius: radius)),
+      );
+    }
+
+    final star = Paint();
+    for (final s in _stars) {
+      star.color = Colors.white.withValues(alpha: s.a);
+      canvas.drawCircle(
+        Offset(s.x * size.width, s.y * size.height),
+        s.r,
+        star,
       );
     }
   }
 
+  double _farthestCorner(Offset c, Size size) {
+    final dx = math.max(c.dx, size.width - c.dx);
+    final dy = math.max(c.dy, size.height - c.dy);
+    return math.sqrt(dx * dx + dy * dy);
+  }
+
+  /// Fixed composition, no animation.
   @override
-  bool shouldRepaint(covariant _StarfieldPainter oldDelegate) =>
-      oldDelegate.t != t;
+  bool shouldRepaint(covariant _DeepFieldPainter oldDelegate) => false;
 }

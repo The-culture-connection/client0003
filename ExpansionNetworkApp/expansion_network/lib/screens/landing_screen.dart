@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../analytics/expansion_analytics.dart';
 import '../auth/auth_controller.dart';
+import '../mortarverse/widgets/glow_pill_button.dart';
 import '../mortarverse/widgets/torn_panel.dart';
 import '../theme/app_theme.dart';
 
@@ -115,27 +116,34 @@ class _LandingScreenState extends State<LandingScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // Styling comes from the button themes in
-                        // app_theme.dart — fill, ember border, and glow are
-                        // app-wide, so nothing is overridden here.
-                        FilledButton(
-                          onPressed: () {
-                            unawaited(
-                              ExpansionAnalytics.log('landing_sign_up_clicked', sourceScreen: 'landing'),
-                            );
-                            context.push('/auth/sign-up');
-                          },
-                          child: const Text('SIGN UP'),
-                        ),
-                        const SizedBox(height: 12),
-                        OutlinedButton(
-                          onPressed: () {
-                            unawaited(
-                              ExpansionAnalytics.log('landing_sign_in_clicked', sourceScreen: 'landing'),
-                            );
-                            context.push('/auth/sign-in');
-                          },
-                          child: const Text('SIGN IN'),
+                        // Mockup bottom strip: SIGN IN | SIGN UP as glow pills.
+                        Row(
+                          children: [
+                            Expanded(
+                              child: GlowPillButton(
+                                label: 'Sign in',
+                                onPressed: () {
+                                  unawaited(
+                                    ExpansionAnalytics.log('landing_sign_in_clicked', sourceScreen: 'landing'),
+                                  );
+                                  context.push('/auth/sign-in');
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: GlowPillButton(
+                                label: 'Sign up',
+                                filled: true,
+                                onPressed: () {
+                                  unawaited(
+                                    ExpansionAnalytics.log('landing_sign_up_clicked', sourceScreen: 'landing'),
+                                  );
+                                  context.push('/auth/sign-up');
+                                },
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 12),
                         TextButton(

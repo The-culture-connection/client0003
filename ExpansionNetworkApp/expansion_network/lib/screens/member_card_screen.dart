@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -91,6 +92,23 @@ class _MemberCardScreenState extends State<MemberCardScreen>
       appBar: AppBar(
         title: const Text('My Card'),
         backgroundColor: Colors.transparent,
+        // Set explicitly rather than left to AppBar's automatic back button:
+        // the Mortarverse opens this with `go`, which replaces the stack, so
+        // `canPop` is false there and no button would be drawn at all. The
+        // profile and conference lobby `push`, so they still pop normally.
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          tooltip: 'Back',
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+              return;
+            }
+            context.go(
+              widget.conferenceStyled ? '/conference/lobby' : '/mortarverse',
+            );
+          },
+        ),
         bottom: TabBar(
           controller: _tabs,
           indicatorColor: _accent,

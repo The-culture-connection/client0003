@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router";
 import { Button } from "../components/ui/button";
+import { SpaceBackdrop } from "../components/SpaceBackdrop";
 import { Input } from "../components/ui/input";
 import { Card } from "../components/ui/card";
 import { useAuth } from "../components/auth/AuthProvider";
@@ -82,10 +83,11 @@ export function LoginPage() {
 
   if (showForgotPassword) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="relative min-h-screen overflow-x-clip space-surface flex items-center justify-center p-4">
+        <SpaceBackdrop />
         <Card className="w-full max-w-md p-8">
           <div className="mb-8 text-center">
-            <h1 className="text-3xl text-foreground mb-2">Reset Password</h1>
+            <h1 className="font-headline font-black uppercase tracking-tight text-3xl text-foreground mb-2">Reset Password</h1>
             <p className="text-muted-foreground">
               Enter your email to receive a password reset link
             </p>
@@ -135,7 +137,7 @@ export function LoginPage() {
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+                  className="w-full glow-brick bg-accent hover:bg-accent/90 text-accent-foreground font-bold"
                 >
                   {loading ? "Sending..." : "Send Reset Link"}
                 </Button>
@@ -158,10 +160,11 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="relative min-h-screen overflow-x-clip space-surface flex items-center justify-center p-4">
+        <SpaceBackdrop />
       <Card className="w-full max-w-md p-8">
         <div className="mb-8 text-center">
-          <h1 className="text-3xl text-foreground mb-2">MORTAR</h1>
+          <h1 className="font-headline font-black uppercase tracking-tight text-3xl text-foreground mb-2">MORTAR</h1>
           <p className="text-muted-foreground">
             {isSignUp ? "Create your account" : "Sign in to your account"}
           </p>
@@ -216,7 +219,7 @@ export function LoginPage() {
           <Button
             type="submit"
             disabled={loading}
-            className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+            className="w-full glow-brick bg-accent hover:bg-accent/90 text-accent-foreground font-bold"
           >
             {loading ? "Loading..." : isSignUp ? "Sign Up" : "Sign In"}
           </Button>

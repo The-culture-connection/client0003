@@ -83,6 +83,52 @@ class Conference {
     return true;
   }
 
+  /// Whether a signed-in attendee may be inside this conference *right now*.
+  ///
+  /// Mirrors `conferenceTickets.checkConferenceWindow` on the server exactly,
+  /// so the app never walks someone into a place the backend would reject.
+  /// Holding a redeemed ticket is necessary but **not** sufficient: a ticket
+  /// redeemed while the window was open must stop working once it shuts.
+  bool get isOpenForEntry {
+    if (status != 'active') return false;
+    final now = DateTime.now();
+    final exp = expiresAt;
+    if (exp != null && exp.isBefore(now)) return false;
+    final from = activeFrom;
+    if (from != null && now.isBefore(from)) return false;
+    final until = activeUntil;
+    if (until != null && now.isAfter(until)) return false;
+    return true;
+  }
+
+  /// Why entry was refused, for the message shown at the gate.
+  String get entryBlockedReason {
+    if (status == 'closed') return 'This conference has closed.';
+    if (status != 'active') return 'This conference isn\'t open.';
+    final now = DateTime.now();
+    final exp = expiresAt;
+    if (exp != null && exp.isBefore(now)) return 'This conference has ended.';
+    final from = activeFrom;
+    if (from != null && now.isBefore(from)) {
+      return 'This conference hasn\'t opened yet.';
+    }
+    return 'This conference has ended.';
+  }
+
+  /// Whether code entry is over for good — the conference closed, or its
+  /// active window has run out.
+  ///
+  /// Deliberately narrower than `!isTicketWindowOpen`: a conference whose
+  /// `activeFrom` is still in the future is *not* stopped. You can buy or
+  /// register for it today and redeem once it opens (the server's free
+  /// registration only rejects `status == 'closed'`), so it belongs in the
+  /// buy list rather than on the grey shelf.
+  bool get isTicketCodeStopped {
+    if (isClosed) return true;
+    final until = activeUntil;
+    return until != null && DateTime.now().isAfter(until);
+  }
+
   static Conference? fromDoc(String id, Map<String, dynamic>? data) {
     if (data == null) return null;
     final heroSponsor = data['heroSponsor'] as Map<String, dynamic>?;
