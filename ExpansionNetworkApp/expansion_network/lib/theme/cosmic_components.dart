@@ -2,8 +2,11 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
-import 'cosmic.dart';
+// Pulls in the tokens too — cosmic_widgets re-exports them.
 import 'cosmic_widgets.dart';
+
+/// One import gives a screen the whole language: tokens, surfaces, components.
+export 'cosmic_widgets.dart';
 
 /// Composed components ported from Claude Design turn 2 — options **2a**
 /// (Conference lobby), **2b** (Profile) and **2d** (Home dashboard).
@@ -218,12 +221,19 @@ class CosmicSegmented extends StatelessWidget {
     required this.index,
     required this.onChanged,
     this.accent = Cosmic.accentExpansion,
+    this.segmentKeys,
   });
 
   final List<String> segments;
   final int index;
   final ValueChanged<int> onChanged;
   final Color accent;
+
+  /// Per-segment keys, for walkthroughs that spotlight one tab. Must be the
+  /// same length as [segments] when supplied. The key lands on the laid-out
+  /// segment box rather than the [Expanded], which is what a spotlight needs
+  /// to measure.
+  final List<Key?>? segmentKeys;
 
   @override
   Widget build(BuildContext context) {
@@ -245,6 +255,9 @@ class CosmicSegmented extends StatelessWidget {
                 onTap: () => onChanged(i),
                 behavior: HitTestBehavior.opaque,
                 child: AnimatedContainer(
+                  key: segmentKeys != null && i < segmentKeys!.length
+                      ? segmentKeys![i]
+                      : null,
                   duration: const Duration(milliseconds: 180),
                   padding: const EdgeInsets.symmetric(vertical: 9),
                   alignment: Alignment.center,

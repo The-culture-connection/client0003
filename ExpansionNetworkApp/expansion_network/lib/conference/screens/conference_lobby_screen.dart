@@ -13,6 +13,7 @@ import '../models/conference_mission.dart';
 import '../services/conference_mission_service.dart';
 import '../services/conference_ticket_service.dart';
 import '../theme/conference_brand.dart';
+import '../../theme/cosmic_components.dart';
 import '../theme/conference_colors.dart';
 import '../widgets/conference_brand_mark.dart';
 import '../widgets/conference_scope.dart';
@@ -352,54 +353,17 @@ class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen>
   }
 
   Widget _buildTabBar() {
-    // `key` lands on the inner Container, not the Expanded — the walkthrough
-    // needs a laid-out box to spotlight, and Expanded must stay a direct child
-    // of the Row.
-    Widget tabButton(_LobbyTab tab, String label, {Key? key}) {
-      final selected = _tab == tab;
-      return Expanded(
-        child: GestureDetector(
-          onTap: () => setState(() => _tab = tab),
-          child: Container(
-            key: key,
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            decoration: BoxDecoration(
-              color: selected ? ConferenceColors.gold : Colors.transparent,
-              borderRadius: BorderRadius.zero,
-            ),
-            child: Text(
-              label.toUpperCase(),
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 12,
-                letterSpacing: 1,
-                fontWeight: FontWeight.w600,
-                color: selected ? Colors.black : Colors.grey.shade400,
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
+    const tabs = [_LobbyTab.explore, _LobbyTab.missions, _LobbyTab.map];
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-      child: Container(
-        padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.zero,
-          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-        ),
-        child: Row(
-          children: [
-            tabButton(_LobbyTab.explore, 'Explore'),
-            // Spotlit by the walkthrough — missions are the least discoverable
-            // thing on this screen.
-            tabButton(_LobbyTab.missions, 'Missions', key: _tourMissionsTab),
-            tabButton(_LobbyTab.map, 'Map'),
-          ],
-        ),
+      child: CosmicSegmented(
+        segments: const ['Explore', 'Missions', 'Map'],
+        index: tabs.indexOf(_tab),
+        accent: Cosmic.accentConference,
+        // Missions is spotlit by the walkthrough — it is the least
+        // discoverable thing on this screen.
+        segmentKeys: [null, _tourMissionsTab, null],
+        onChanged: (i) => setState(() => _tab = tabs[i]),
       ),
     );
   }
@@ -719,52 +683,15 @@ class _ZoneCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Option 2a's destination row, in the conference gold.
     return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: GestureDetector(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: CosmicNavRow(
+        title: zone.title,
+        subtitle: zone.subtitle,
+        icon: zone.icon,
+        accent: Cosmic.accentConference,
         onTap: () => context.go(zone.route),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.zero,
-            color: Colors.white.withValues(alpha: 0.06),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      color: ConferenceColors.goldAlpha(0.12),
-                      borderRadius: BorderRadius.zero,
-                      border: Border.all(color: ConferenceColors.gold, width: 1.5),
-                    ),
-                    child: Icon(zone.icon, color: ConferenceColors.gold, size: 26),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          zone.title.toUpperCase(),
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, letterSpacing: 0.5),
-                        ),
-                        Text(zone.subtitle, style: TextStyle(color: Colors.grey.shade400, fontSize: 12)),
-                      ],
-                    ),
-                  ),
-                  const Icon(Icons.chevron_right_rounded,
-                      color: ConferenceColors.gold, size: 22),
-                ],
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

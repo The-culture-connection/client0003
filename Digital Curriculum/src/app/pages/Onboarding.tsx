@@ -309,27 +309,45 @@ export function OnboardingPage() {
   return (
     <div className="relative min-h-screen overflow-x-clip space-surface">
         <SpaceBackdrop />
-      {/* Progress indicator — only shown for profile steps 1-7 */}
-      <div className="border-b border-border bg-card">
+      {/* Progress header — glass bar, headline title, segmented brick
+          progress with a glowing current segment (industrial system) */}
+      <div className="border-b border-white/10 bg-black/30 backdrop-blur-sm">
         <div className="max-w-4xl mx-auto px-8 py-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-muted-foreground">
-              Step {currentStep} of 7
-            </span>
+          <div className="flex items-center justify-between gap-4 mb-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <img
+                src="/brand/white-trowell.png"
+                alt=""
+                aria-hidden
+                className="h-6 w-auto opacity-80 shrink-0"
+              />
+              <span className="font-headline font-black uppercase tracking-wider text-sm text-foreground truncate">
+                Building your profile
+              </span>
+            </div>
             <Button
               onClick={handleSkip}
               variant="ghost"
               size="sm"
-              className="text-muted-foreground"
+              className="rounded-none border-b-2 border-verse bg-transparent font-headline font-bold uppercase tracking-widest text-xs text-muted-foreground hover:text-foreground hover:bg-white/5 shrink-0"
             >
               Skip for now
             </Button>
           </div>
-          <div className="w-full bg-muted rounded-full h-2">
-            <div
-              className="bg-accent h-2 rounded-full transition-all duration-300"
-              style={{ width: `${(currentStep / 7) * 100}%` }}
-            />
+          <div className="flex items-center gap-3">
+            <div className="flex flex-1 gap-1.5">
+              {Array.from({ length: 7 }, (_, i) => (
+                <div
+                  key={i}
+                  className={`h-1.5 flex-1 transition-all duration-300 ${
+                    i < currentStep ? "bg-verse" : "bg-white/10"
+                  } ${i === currentStep - 1 ? "glow-brick" : ""}`}
+                />
+              ))}
+            </div>
+            <span className="font-technical text-[11px] font-bold uppercase tracking-[0.2em] text-verse shrink-0">
+              Step {String(currentStep).padStart(2, "0")} / 07
+            </span>
           </div>
         </div>
       </div>
