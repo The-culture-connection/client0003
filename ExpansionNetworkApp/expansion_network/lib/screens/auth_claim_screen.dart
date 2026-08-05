@@ -11,6 +11,7 @@ import '../auth/auth_controller.dart';
 import '../constants/alumni_network_constants.dart';
 import '../services/expansion_session_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/mortar_card.dart';
 
 enum _ClaimStep {
   /// Email + invite code, then Continue.
@@ -459,7 +460,7 @@ class _AuthClaimScreenState extends State<AuthClaimScreen> {
   }
 
   Widget _readOnlySummary() {
-    return Card(
+    return MortarCard(
       margin: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.all(12),

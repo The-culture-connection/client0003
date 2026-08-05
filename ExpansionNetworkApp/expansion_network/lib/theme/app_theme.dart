@@ -24,6 +24,55 @@ abstract final class AppColors {
   /// Glass panel fill/border over the starfield.
   static const Color glassFill = Color(0x09FFFFFF); // white ~3.5%
   static const Color glassBorder = Color(0x1AFFFFFF); // white 10%
+
+  /// Scorched near-black behind a secondary button — dark enough to read as
+  /// a cut-out in the panel, translucent enough for grunge to show through.
+  static const Color buttonSunken = Color(0x8C120A08); // ~55% over the panel
+
+  /// Ember ring on a secondary button's edge.
+  static const Color emberBorder = Color(0xB3C1442A); // primary @ 70%
+}
+
+/// Button geometry and glow, shared by every button theme below so primary,
+/// secondary, and tertiary stay dimensionally identical and differ only in
+/// weight. Tuned to the Mortarverse mock: tracked-out caps on a tall slab
+/// with a red bloom bleeding off the edge.
+abstract final class AppButtons {
+  /// Softened just off-square. The rest of the system is zero-radius, but the
+  /// mock's buttons carry a slight round — it keeps the ember ring from
+  /// spiking at the corners.
+  static const double radius = 6;
+
+  static const EdgeInsets padding = EdgeInsets.symmetric(
+    horizontal: 22,
+    vertical: 17,
+  );
+
+  /// Uppercase, tracked out. Flutter has no text-transform, so labels are
+  /// capitalised at the call site; this supplies the tracking and weight.
+  static const TextStyle label = TextStyle(
+    fontSize: 13,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 1.7,
+  );
+
+  static RoundedRectangleBorder get shape => RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(radius),
+      );
+
+  /// Material elevation carries the glow: `shadowColor` tints the drop shadow
+  /// brick red, so every themed button blooms without a wrapper widget. Falls
+  /// to zero when disabled so dead controls don't advertise themselves.
+  static WidgetStateProperty<double> glow(double resting) =>
+      WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.disabled)) return 0;
+        if (states.contains(WidgetState.pressed)) return resting * 0.4;
+        if (states.contains(WidgetState.hovered) ||
+            states.contains(WidgetState.focused)) {
+          return resting * 1.5;
+        }
+        return resting;
+      });
 }
 
 /// Shared text voices from the webapp system.
@@ -137,5 +186,83 @@ ThemeData buildAppTheme() {
       foregroundColor: AppColors.onPrimary,
     ),
     dividerTheme: const DividerThemeData(color: AppColors.border),
+
+    // ---- Buttons -------------------------------------------------------
+    // Three weights, one silhouette. Set here rather than per screen so all
+    // ~220 buttons across the app inherit the Mortarverse look; a screen that
+    // needs to deviate still wins by passing its own `styleFrom`.
+
+    // PRIMARY — solid brick red, hottest glow. The single "do the thing" on
+    // a screen.
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.onPrimary,
+        disabledBackgroundColor: AppColors.secondary,
+        disabledForegroundColor: AppColors.mutedForeground,
+        shadowColor: AppColors.primary,
+        padding: AppButtons.padding,
+        shape: AppButtons.shape,
+        textStyle: AppButtons.label,
+      ).copyWith(elevation: AppButtons.glow(14)),
+    ),
+
+    // ElevatedButton is near-extinct in this app but must not fall back to
+    // Material's grey-on-lavender default where it survives.
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.onPrimary,
+        disabledBackgroundColor: AppColors.secondary,
+        disabledForegroundColor: AppColors.mutedForeground,
+        shadowColor: AppColors.primary,
+        padding: AppButtons.padding,
+        shape: AppButtons.shape,
+        textStyle: AppButtons.label,
+      ).copyWith(elevation: AppButtons.glow(14)),
+    ),
+
+    // SECONDARY — the mock's signature: a sunken near-black slab ringed in
+    // ember, glowing softly. Carries equal visual weight to primary without
+    // competing for the eye.
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        backgroundColor: AppColors.buttonSunken,
+        foregroundColor: AppColors.foreground,
+        disabledForegroundColor: AppColors.mutedForeground,
+        shadowColor: AppColors.primary,
+        padding: AppButtons.padding,
+        shape: AppButtons.shape,
+        textStyle: AppButtons.label,
+      ).copyWith(
+        elevation: AppButtons.glow(10),
+        side: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) {
+            return const BorderSide(color: AppColors.border);
+          }
+          if (states.contains(WidgetState.pressed) ||
+              states.contains(WidgetState.hovered) ||
+              states.contains(WidgetState.focused)) {
+            return const BorderSide(color: AppColors.primary, width: 1.6);
+          }
+          return const BorderSide(color: AppColors.emberBorder, width: 1.2);
+        }),
+      ),
+    ),
+
+    // TERTIARY — no slab, no glow. Reserved for the quiet escape hatch
+    // ("Have an invite code?"), so it must stay visually cheap.
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(
+        foregroundColor: AppColors.primary,
+        disabledForegroundColor: AppColors.mutedForeground,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        shape: AppButtons.shape,
+        textStyle: AppButtons.label.copyWith(
+          fontSize: 12,
+          letterSpacing: 1.2,
+        ),
+      ),
+    ),
   );
 }

@@ -2,28 +2,46 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
-/// Translucent glass panel with a torn-paper top edge — the Mortarverse
-/// mockup's ripped strip. Shared across landing, auth, and hub screens.
+import '../../theme/grunge_texture.dart';
+
+/// Scorched panel with a torn-paper top edge — the Mortarverse mockup's
+/// ripped strip. Shared across landing, auth, and hub screens.
+///
+/// The fill is [GrungeSurface] rather than flat glass, so the ripped lip
+/// opens onto burnt material instead of a clean translucent sheet.
 class TornPanel extends StatelessWidget {
-  const TornPanel({super.key, required this.child, this.seed = 11});
+  const TornPanel({
+    super.key,
+    required this.child,
+    this.seed = 11,
+    this.intensity = 1,
+  });
 
   final Widget child;
 
-  /// Vary per screen so torn edges don't look stamped from one template.
+  /// Vary per screen so torn edges and grain don't look stamped from one
+  /// template. Feeds both the rip and the texture.
   final int seed;
+
+  /// Passed through to [GrungeSurface.intensity]; drop it on panels carrying
+  /// dense body copy.
+  final double intensity;
 
   @override
   Widget build(BuildContext context) {
     return ClipPath(
       clipper: _TornEdgeClipper(seed),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.045),
-          border: const Border(
-            top: BorderSide(color: Color(0x26FFFFFF), width: 0.5),
+      child: GrungeSurface(
+        seed: seed,
+        intensity: intensity,
+        child: DecoratedBox(
+          decoration: const BoxDecoration(
+            border: Border(
+              top: BorderSide(color: Color(0x26FFFFFF), width: 0.5),
+            ),
           ),
+          child: child,
         ),
-        child: child,
       ),
     );
   }

@@ -17,6 +17,7 @@ import '../conference/screens/conference_session_detail_screen.dart';
 import '../conference/screens/conference_sponsor_detail_screen.dart';
 import '../conference/screens/conference_sponsors_screen.dart';
 import '../conference/screens/conference_networking_screen.dart';
+import '../conference/theme/conference_buttons.dart';
 import '../conference/widgets/conference_shell.dart';
 import '../mortarverse/screens/mortarverse_chooser_screen.dart';
 import '../screens/admin_events_screen.dart';
@@ -135,21 +136,29 @@ GoRouter createAppRouter(AuthController auth) {
         path: '/mortarverse',
         builder: (context, state) => const MortarverseChooserScreen(),
       ),
+      // Every `/conference/*` screen is wrapped in [ConferenceTheme] so the
+      // gold sub-brand keeps its own button glow instead of inheriting the
+      // app-wide brick red. Wrapping here rather than inside each screen means
+      // a new conference route picks it up for free.
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,
         path: '/conference/gate',
         // `?switch=1` — arrived by leaving a conference, so show the list
         // instead of forwarding straight back into the one they just left.
-        builder: (context, state) => ConferenceGateScreen(
-          switchMode: state.uri.queryParameters['switch'] == '1',
+        builder: (context, state) => ConferenceTheme(
+          child: ConferenceGateScreen(
+            switchMode: state.uri.queryParameters['switch'] == '1',
+          ),
         ),
       ),
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,
         path: '/conference/map',
-        builder: (context, state) => ConferenceMapScreen(
-          initialFloorId: state.uri.queryParameters['floor'],
-          highlightRoomId: state.uri.queryParameters['room'],
+        builder: (context, state) => ConferenceTheme(
+          child: ConferenceMapScreen(
+            initialFloorId: state.uri.queryParameters['floor'],
+            highlightRoomId: state.uri.queryParameters['room'],
+          ),
         ),
       ),
       GoRoute(
@@ -157,7 +166,9 @@ GoRouter createAppRouter(AuthController auth) {
         path: '/conference/schedule/:sessionId',
         builder: (context, state) {
           final sessionId = state.pathParameters['sessionId']!;
-          return ConferenceSessionDetailScreen(sessionId: sessionId);
+          return ConferenceTheme(
+            child: ConferenceSessionDetailScreen(sessionId: sessionId),
+          );
         },
       ),
       GoRoute(
@@ -165,54 +176,68 @@ GoRouter createAppRouter(AuthController auth) {
         path: '/conference/session/:sessionId/chat',
         builder: (context, state) {
           final sessionId = state.pathParameters['sessionId']!;
-          return ConferenceSessionChatScreen(sessionId: sessionId);
+          return ConferenceTheme(
+            child: ConferenceSessionChatScreen(sessionId: sessionId),
+          );
         },
       ),
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,
         path: '/conference/community',
-        builder: (context, state) => const ConferenceCommunityScreen(),
+        builder: (context, state) =>
+            const ConferenceTheme(child: ConferenceCommunityScreen()),
       ),
       // Declared before `/conference/community/:postId` so "compose" is not
       // swallowed as a post id.
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,
         path: '/conference/community/compose',
-        builder: (context, state) => const ConferenceCommunityComposeScreen(),
+        builder: (context, state) =>
+            const ConferenceTheme(child: ConferenceCommunityComposeScreen()),
       ),
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,
         path: '/conference/community/:postId',
-        builder: (context, state) => ConferenceCommunityPostScreen(
-          postId: state.pathParameters['postId']!,
+        builder: (context, state) => ConferenceTheme(
+          child: ConferenceCommunityPostScreen(
+            postId: state.pathParameters['postId']!,
+          ),
         ),
       ),
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,
         path: '/conference/sponsors',
-        builder: (context, state) => const ConferenceSponsorsScreen(),
+        builder: (context, state) =>
+            const ConferenceTheme(child: ConferenceSponsorsScreen()),
       ),
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,
         path: '/conference/network',
-        builder: (context, state) => const ConferenceNetworkingScreen(),
+        builder: (context, state) =>
+            const ConferenceTheme(child: ConferenceNetworkingScreen()),
       ),
       // Declared before `/conference/sponsor/:sponsorId` so "scan" is not
       // swallowed as a sponsor id.
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,
         path: '/conference/booth/scan',
-        builder: (context, state) => const ConferenceBoothScanScreen(),
+        builder: (context, state) =>
+            const ConferenceTheme(child: ConferenceBoothScanScreen()),
       ),
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,
         path: '/conference/sponsor/:sponsorId',
-        builder: (context, state) =>
-            ConferenceSponsorDetailScreen(sponsorId: state.pathParameters['sponsorId']!),
+        builder: (context, state) => ConferenceTheme(
+          child: ConferenceSponsorDetailScreen(
+            sponsorId: state.pathParameters['sponsorId']!,
+          ),
+        ),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
-          return ConferenceShell(navigationShell: navigationShell);
+          return ConferenceTheme(
+            child: ConferenceShell(navigationShell: navigationShell),
+          );
         },
         branches: [
           StatefulShellBranch(

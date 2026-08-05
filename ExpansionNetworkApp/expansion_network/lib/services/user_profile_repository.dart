@@ -114,6 +114,8 @@ class UserProfileRepository {
     String? cohortId,
     required String bio,
     required String profession,
+    /// Business or company name. Null leaves any existing value untouched.
+    String? companyName,
     required String city,
     required String state,
     required List<String> businessGoals,
@@ -179,6 +181,8 @@ class UserProfileRepository {
       'state': state.trim(),
       'bio': bio.trim(),
       'profession': profession.trim(),
+      // Autofills the conference registration survey's "Company or Business name".
+      if (companyName != null) 'company_name': companyName.trim(),
       'not_in_cohort': notInCohort,
       'business_goals': businessGoals,
       'confident_skills': confidentSkills,
@@ -265,6 +269,8 @@ class UserProfileRepository {
     String? cohortId,
     required String bio,
     required String profession,
+    /// Business or company name. Null leaves any existing value untouched.
+    String? companyName,
     required String city,
     required String state,
     required List<String> businessGoals,
@@ -312,6 +318,8 @@ class UserProfileRepository {
       'state': state.trim(),
       'bio': bio.trim(),
       'profession': profession.trim(),
+      // Autofills the conference registration survey's "Company or Business name".
+      if (companyName != null) 'company_name': companyName.trim(),
       'not_in_cohort': notInCohort,
       'business_goals': businessGoals,
       'confident_skills': confidentSkills,

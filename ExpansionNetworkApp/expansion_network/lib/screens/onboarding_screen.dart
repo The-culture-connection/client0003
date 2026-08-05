@@ -13,6 +13,7 @@ import '../data/curriculum_onboarding_data.dart';
 import '../services/user_profile_repository.dart';
 import '../theme/app_theme.dart';
 import '../widgets/curriculum_skill_category_card.dart';
+import '../widgets/mortar_card.dart';
 
 /// Digital curriculum–aligned flow: identity → goals → skills ×2 → tribe → work structure → profile links.
 class OnboardingScreen extends StatefulWidget {
@@ -31,6 +32,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final _cohortId = TextEditingController();
   final _bio = TextEditingController();
   final _profession = TextEditingController();
+  final _company = TextEditingController();
   final _city = TextEditingController();
   final _state = TextEditingController();
 
@@ -113,6 +115,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     _cohortId.dispose();
     _bio.dispose();
     _profession.dispose();
+    _company.dispose();
     _city.dispose();
     _state.dispose();
     _linkedin.dispose();
@@ -145,6 +148,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         _lastName.text.trim().isEmpty ||
         _bio.text.trim().isEmpty ||
         _profession.text.trim().isEmpty ||
+        _company.text.trim().isEmpty ||
         _city.text.trim().isEmpty ||
         _state.text.trim().isEmpty) {
       _error = 'Please fill in all fields on this step.';
@@ -327,6 +331,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         cohortId: _notInCohort ? null : _cohortId.text.trim(),
         bio: _bio.text.trim(),
         profession: _profession.text.trim(),
+        companyName: _company.text.trim(),
         city: _city.text.trim(),
         state: _state.text.trim(),
         businessGoals: _selectedGoals.toList(),
@@ -882,6 +887,7 @@ www.wearemortar.com''';
           ),
           _labeledField('Bio', _bio, maxLines: 4),
           _labeledField('Profession', _profession),
+          _labeledField('Business or Company name', _company),
           const SizedBox(height: 8),
           InputDecorator(
             decoration: const InputDecoration(
@@ -928,8 +934,7 @@ www.wearemortar.com''';
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.mutedForeground),
                 ),
                 const SizedBox(height: 20),
-                Card(
-                  color: AppColors.secondary,
+                MortarCard(
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.zero,
                     side: const BorderSide(color: AppColors.border),
@@ -1153,8 +1158,7 @@ www.wearemortar.com''';
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.mutedForeground),
                 ),
                 const SizedBox(height: 16),
-                Card(
-                  color: AppColors.secondary,
+                MortarCard(
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.zero,
                     side: const BorderSide(color: AppColors.border),
@@ -1225,8 +1229,7 @@ www.wearemortar.com''';
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.mutedForeground),
                 ),
                 const SizedBox(height: 20),
-                Card(
-                  color: AppColors.secondary,
+                MortarCard(
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.zero,
                     side: const BorderSide(color: AppColors.border),
@@ -1394,8 +1397,7 @@ www.wearemortar.com''';
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.mutedForeground),
                 ),
                 const SizedBox(height: 20),
-                Card(
-                  color: AppColors.secondary,
+                MortarCard(
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.zero,
                     side: const BorderSide(color: AppColors.border),

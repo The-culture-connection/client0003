@@ -8,6 +8,7 @@ import '../profile/profile_edit_sections.dart';
 import '../services/user_profile_repository.dart';
 import '../theme/app_theme.dart';
 import '../widgets/curriculum_skill_category_card.dart';
+import '../widgets/mortar_card.dart';
 
 /// Edit all curriculum profile fields; loads/saves `users/{uid}`.
 class ProfileEditScreen extends StatefulWidget {
@@ -26,6 +27,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   final _cohortId = TextEditingController();
   final _bio = TextEditingController();
   final _profession = TextEditingController();
+  final _company = TextEditingController();
   final _city = TextEditingController();
   final _state = TextEditingController();
   final _linkedin = TextEditingController();
@@ -103,6 +105,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     _state.text = _s(d['state']) ?? '';
     _bio.text = _s(d['bio']) ?? '';
     _profession.text = _s(d['profession']) ?? '';
+    _company.text = _s(d['company_name']) ?? '';
     _notInCohort = d['not_in_cohort'] == true;
     _cohortId.text = _s(d['cohort_id']) ?? '';
 
@@ -151,6 +154,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     _cohortId.dispose();
     _bio.dispose();
     _profession.dispose();
+    _company.dispose();
     _city.dispose();
     _state.dispose();
     _linkedin.dispose();
@@ -166,6 +170,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
         _lastName.text.trim().isEmpty ||
         _bio.text.trim().isEmpty ||
         _profession.text.trim().isEmpty ||
+        _company.text.trim().isEmpty ||
         _city.text.trim().isEmpty ||
         _state.text.trim().isEmpty) {
       _error = 'Fill in identity, location, bio, and profession.';
@@ -261,6 +266,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
         cohortId: _notInCohort ? null : _cohortId.text.trim(),
         bio: _bio.text.trim(),
         profession: _profession.text.trim(),
+        companyName: _company.text.trim(),
         city: _city.text.trim(),
         state: _state.text.trim(),
         businessGoals: _selectedGoals.toList(),
@@ -470,6 +476,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                   if (!_notInCohort) _field('Cohort ID', _cohortId),
                   _field('Bio', _bio, maxLines: 4),
                   _field('Profession', _profession),
+                  _field('Business or Company name', _company),
                   InputDecorator(
                     decoration: const InputDecoration(labelText: 'Email', border: OutlineInputBorder()),
                     child: Text(email.isEmpty ? '—' : email, style: const TextStyle(color: AppColors.mutedForeground)),
@@ -478,8 +485,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                 ],
                 if (show(ProfileEditSections.goals)) ...[
                   _blockTitle(context, 'Business goals', _keyGoals),
-                  Card(
-                    color: AppColors.secondary,
+                  MortarCard(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.zero,
                       side: const BorderSide(color: AppColors.border),
@@ -569,8 +575,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                 ],
                 if (show(ProfileEditSections.industry)) ...[
                   _blockTitle(context, 'Tribe', _keyIndustry),
-                  Card(
-                    color: AppColors.secondary,
+                  MortarCard(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.zero,
                       side: const BorderSide(color: AppColors.border),
@@ -591,8 +596,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                 ],
                 if (show(ProfileEditSections.work)) ...[
                   _blockTitle(context, 'Ideal work structure', _keyWork),
-                  Card(
-                    color: AppColors.secondary,
+                  MortarCard(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.zero,
                       side: const BorderSide(color: AppColors.border),

@@ -17,6 +17,7 @@ import '../services/conference_repository.dart';
 import '../services/conference_ticket_service.dart';
 import '../theme/conference_colors.dart';
 import '../widgets/conference_brand_mark.dart';
+import 'conference_attendee_survey_screen.dart';
 
 /// Conference Center "first click" screen: the gate a user sees after tapping
 /// the Conference Center tile in the Mortarverse. It offers a **ticket code
@@ -341,6 +342,12 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
   }
 
   Future<void> _buyTicket(Conference c) async {
+    // Both the free "Register" and paid "Buy" CTAs land here, so gating on the
+    // survey at the top is what puts it ahead of checkout in either case. A
+    // dismissed survey means no profile was saved — don't send them to Stripe.
+    final surveyDone = await showConferenceAttendeeSurvey(context, c);
+    if (!surveyDone || !mounted) return;
+
     if (c.isFree) {
       await _registerFree(c);
       return;

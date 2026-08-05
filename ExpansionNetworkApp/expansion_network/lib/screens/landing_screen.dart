@@ -115,54 +115,38 @@ class _LandingScreenState extends State<LandingScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        DecoratedBox(
-                          decoration: BoxDecoration(
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.primary.withValues(alpha: 0.45),
-                                blurRadius: 26,
-                              ),
-                            ],
-                          ),
-                          child: FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-                onPressed: () {
-                  unawaited(
-                    ExpansionAnalytics.log('landing_sign_up_clicked', sourceScreen: 'landing'),
-                  );
-                  context.push('/auth/sign-up');
-                },
-                child: const Text('Sign up'),
-              ),
+                        // Styling comes from the button themes in
+                        // app_theme.dart — fill, ember border, and glow are
+                        // app-wide, so nothing is overridden here.
+                        FilledButton(
+                          onPressed: () {
+                            unawaited(
+                              ExpansionAnalytics.log('landing_sign_up_clicked', sourceScreen: 'landing'),
+                            );
+                            context.push('/auth/sign-up');
+                          },
+                          child: const Text('SIGN UP'),
                         ),
                         const SizedBox(height: 12),
                         OutlinedButton(
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.foreground,
-                  side: const BorderSide(color: AppColors.border),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-                onPressed: () {
-                  unawaited(
-                    ExpansionAnalytics.log('landing_sign_in_clicked', sourceScreen: 'landing'),
-                  );
-                  context.push('/auth/sign-in');
-                },
-                child: const Text('Sign in'),
-              ),
-              const SizedBox(height: 12),
-              TextButton(
-                onPressed: () {
-                  unawaited(
-                    ExpansionAnalytics.log('landing_claim_invite_clicked', sourceScreen: 'landing'),
-                  );
-                  context.push('/auth/claim');
-                },
-                child: const Text('Have an Expansion Network invite code?'),
-              ),
+                          onPressed: () {
+                            unawaited(
+                              ExpansionAnalytics.log('landing_sign_in_clicked', sourceScreen: 'landing'),
+                            );
+                            context.push('/auth/sign-in');
+                          },
+                          child: const Text('SIGN IN'),
+                        ),
+                        const SizedBox(height: 12),
+                        TextButton(
+                          onPressed: () {
+                            unawaited(
+                              ExpansionAnalytics.log('landing_claim_invite_clicked', sourceScreen: 'landing'),
+                            );
+                            context.push('/auth/claim');
+                          },
+                          child: const Text('Have an Expansion Network invite code?'),
+                        ),
                       ],
                     ),
                   ),

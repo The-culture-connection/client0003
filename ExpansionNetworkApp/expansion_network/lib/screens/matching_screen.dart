@@ -12,6 +12,7 @@ import '../services/expansion_matching_repository.dart';
 import '../services/expansion_session_service.dart';
 import '../services/user_profile_repository.dart';
 import '../theme/app_theme.dart';
+import '../widgets/mortar_card.dart';
 import '../widgets/user_profile_modal.dart';
 
 /// Smart Matching — runs **`runExpansionUserMatching`** and lists
@@ -47,7 +48,8 @@ class _MatchingScreenState extends State<MatchingScreen> {
       builder: (dialogContext) => PopScope(
         canPop: false,
         child: Center(
-          child: Card(
+          child: MortarCard(
+            seed: 23,
             margin: const EdgeInsets.all(32),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
