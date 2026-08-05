@@ -171,7 +171,7 @@ class _JobCreateScreenState extends State<JobCreateScreen> {
       body: Column(
         children: [
           Material(
-            color: AppColors.background,
+            color: Color(0xE6000000),
             child: SafeArea(
               bottom: false,
               child: Padding(

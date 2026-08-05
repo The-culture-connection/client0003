@@ -154,7 +154,7 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
       body: Column(
         children: [
           Material(
-            color: AppColors.card,
+            color: AppColors.glassFill,
             child: SafeArea(
               bottom: false,
               child: Padding(
@@ -298,7 +298,7 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
                                     color: mine ? AppColors.primary : AppColors.card,
-                                    borderRadius: BorderRadius.circular(16).copyWith(
+                                    borderRadius: BorderRadius.zero.copyWith(
                                       bottomRight: mine ? const Radius.circular(4) : null,
                                       bottomLeft: !mine ? const Radius.circular(4) : null,
                                     ),
@@ -332,7 +332,7 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
             ),
           ),
           Material(
-            color: AppColors.card,
+            color: AppColors.glassFill,
             child: SafeArea(
               top: false,
               child: Padding(
@@ -347,7 +347,7 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
                           filled: true,
                           fillColor: AppColors.background,
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(24),
+                            borderRadius: BorderRadius.zero,
                             borderSide: const BorderSide(color: AppColors.border),
                           ),
                         ),

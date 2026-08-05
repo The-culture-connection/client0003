@@ -246,7 +246,7 @@ class _EventCreateScreenState extends State<EventCreateScreen> {
         body: Column(
           children: [
             Material(
-              color: AppColors.background,
+              color: Color(0xE6000000),
               child: SafeArea(
                 bottom: false,
                 child: Padding(
@@ -292,7 +292,7 @@ class _EventCreateScreenState extends State<EventCreateScreen> {
       body: Column(
         children: [
           Material(
-            color: AppColors.background,
+            color: Color(0xE6000000),
             child: SafeArea(
               bottom: false,
               child: Padding(
@@ -402,12 +402,12 @@ class _EventCreateScreenState extends State<EventCreateScreen> {
                     color: Colors.transparent,
                     child: InkWell(
                       onTap: _submitting ? null : _pickFlyer,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.zero,
                       child: Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
                           border: Border.all(color: AppColors.border, style: BorderStyle.solid),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.zero,
                         ),
                         child: Column(
                           children: [
@@ -437,7 +437,7 @@ class _EventCreateScreenState extends State<EventCreateScreen> {
                     decoration: BoxDecoration(
                       color: const Color(0xFFFFF8E1),
                       border: Border.all(color: const Color(0xFFFFE082)),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.zero,
                     ),
                     child: const Text(
                       'Your event will be submitted for review in Digital Curriculum and will be visible to all members once published.',

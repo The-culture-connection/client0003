@@ -188,7 +188,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       body: Column(
         children: [
           Material(
-            color: AppColors.background,
+            color: Color(0xE6000000),
             child: SafeArea(
               bottom: false,
               child: Padding(
@@ -248,7 +248,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.zero,
                         child: _pickedPreviewBytes != null
                             ? Image.memory(_pickedPreviewBytes!, fit: BoxFit.cover)
                             : const SizedBox(

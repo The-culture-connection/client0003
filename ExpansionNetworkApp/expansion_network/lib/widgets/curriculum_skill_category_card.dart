@@ -25,7 +25,7 @@ class CurriculumSkillCategoryCard extends StatelessWidget {
     return Card(
       color: AppColors.secondary,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.zero,
         side: const BorderSide(color: AppColors.border),
       ),
       child: Padding(
@@ -35,7 +35,7 @@ class CurriculumSkillCategoryCard extends StatelessWidget {
           children: [
             InkWell(
               onTap: onHeaderTap,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.zero,
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

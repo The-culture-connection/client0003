@@ -146,7 +146,7 @@ class GroupCommentTree extends StatelessWidget {
                             isDense: true,
                             filled: true,
                             fillColor: AppColors.secondary,
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.zero, borderSide: BorderSide.none),
                           ),
                           onSubmitted: (_) => onSubmitReply(comment.id),
                         ),

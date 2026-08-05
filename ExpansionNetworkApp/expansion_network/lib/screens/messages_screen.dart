@@ -111,7 +111,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
                         final preview = data?['last_preview'] as String? ?? '';
                         if (other == null) return const SizedBox.shrink();
                         return Material(
-                          color: AppColors.background,
+                          color: Color(0xE6000000),
                           child: InkWell(
                             onTap: () {
                               unawaited(

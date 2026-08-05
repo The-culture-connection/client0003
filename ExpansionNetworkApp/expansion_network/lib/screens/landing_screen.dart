@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../analytics/expansion_analytics.dart';
 import '../auth/auth_controller.dart';
+import '../mortarverse/widgets/torn_panel.dart';
 import '../theme/app_theme.dart';
 
 class LandingScreen extends StatefulWidget {
@@ -67,31 +68,63 @@ class _LandingScreenState extends State<LandingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+      body: Stack(
+        children: [
+          Column(
             children: [
-              const Spacer(),
-              Text(
-                'MORTAR Alumni Network',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.foreground,
+              Expanded(
+                child: SafeArea(
+                  bottom: false,
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            'MORTARVERSE',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontFamily: 'ArchivoBlack',
+                              color: AppColors.foreground,
+                              fontSize: 30,
+                              letterSpacing: 3,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'MORTAR Alumni Network\nConnect with alumni. Grow your network.',
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: AppColors.mutedForeground,
+                                  height: 1.6,
+                                ),
+                          ),
+                        ],
+                      ),
                     ),
+                  ),
+                ),
               ),
-              const SizedBox(height: 12),
-              Text(
-                'Connect with alumni. Grow your network.',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.mutedForeground,
-                    ),
-              ),
-              const Spacer(),
-              FilledButton(
+              TornPanel(
+                seed: 5,
+                child: SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 30, 24, 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.primary.withValues(alpha: 0.45),
+                                blurRadius: 26,
+                              ),
+                            ],
+                          ),
+                          child: FilledButton(
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   padding: const EdgeInsets.symmetric(vertical: 16),
@@ -104,8 +137,9 @@ class _LandingScreenState extends State<LandingScreen> {
                 },
                 child: const Text('Sign up'),
               ),
-              const SizedBox(height: 12),
-              OutlinedButton(
+                        ),
+                        const SizedBox(height: 12),
+                        OutlinedButton(
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.foreground,
                   side: const BorderSide(color: AppColors.border),
@@ -129,10 +163,14 @@ class _LandingScreenState extends State<LandingScreen> {
                 },
                 child: const Text('Have an Expansion Network invite code?'),
               ),
-              const SizedBox(height: 32),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
-        ),
+        ],
       ),
     );
   }

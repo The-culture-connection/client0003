@@ -90,7 +90,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       body: Column(
         children: [
           Material(
-            color: AppColors.background,
+            color: Color(0xE6000000),
             child: SafeArea(
               bottom: false,
               child: Padding(
@@ -136,7 +136,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                     constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.75),
                     decoration: BoxDecoration(
                       color: m.senderMe ? AppColors.primary : AppColors.secondary,
-                      borderRadius: BorderRadius.circular(18),
+                      borderRadius: BorderRadius.zero,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -173,7 +173,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
             ),
           ),
           Material(
-            color: AppColors.background,
+            color: Color(0xE6000000),
             child: SafeArea(
               top: false,
               child: Padding(
@@ -189,7 +189,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                           hintText: 'Type a message...',
                           filled: true,
                           fillColor: AppColors.secondary,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.zero, borderSide: BorderSide.none),
                         ),
                       ),
                     ),
@@ -198,7 +198,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         padding: const EdgeInsets.all(12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
                       ),
                       onPressed: _send,
                       child: const Icon(Icons.send, color: AppColors.onPrimary),

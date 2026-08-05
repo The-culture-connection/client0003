@@ -184,7 +184,7 @@ class _MatchingScreenState extends State<MatchingScreen> {
                       Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.zero,
                           gradient: LinearGradient(
                             colors: [AppColors.primary, AppColors.primary.withValues(alpha: 0.85)],
                             begin: Alignment.topLeft,
@@ -224,8 +224,8 @@ class _MatchingScreenState extends State<MatchingScreen> {
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: AppColors.card,
-                          borderRadius: BorderRadius.circular(12),
+                          color: AppColors.glassFill,
+                          borderRadius: BorderRadius.zero,
                           border: Border.all(color: AppColors.border),
                         ),
                         child: Column(
@@ -286,8 +286,8 @@ class _MatchingScreenState extends State<MatchingScreen> {
                           width: double.infinity,
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: AppColors.card,
-                            borderRadius: BorderRadius.circular(12),
+                            color: AppColors.glassFill,
+                            borderRadius: BorderRadius.zero,
                             border: Border.all(color: AppColors.border),
                           ),
                           child: Text(
@@ -339,7 +339,7 @@ class _MatchingScreenState extends State<MatchingScreen> {
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           color: AppColors.card.withValues(alpha: 0.5),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.zero,
                           border: Border.all(color: AppColors.border),
                         ),
                         child: Text(
@@ -433,9 +433,9 @@ class _ExpansionMatchCard extends StatelessWidget {
     final me = FirebaseAuth.instance.currentUser?.uid;
 
     return Material(
-      color: AppColors.card,
+      color: AppColors.glassFill,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.zero,
         side: const BorderSide(color: AppColors.border),
       ),
       clipBehavior: Clip.antiAlias,
@@ -520,7 +520,7 @@ class _ExpansionMatchCard extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
                               color: AppColors.primary.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.zero,
                             ),
                             child: Text(
                               '${match.score}%',

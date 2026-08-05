@@ -136,7 +136,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
                       filled: true,
                       fillColor: AppColors.inputBackground,
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.zero,
                         borderSide: const BorderSide(color: AppColors.border),
                       ),
                     ),
@@ -278,13 +278,13 @@ class _FeaturedCard extends StatelessWidget {
     final threads = group.threadCount;
     return InkWell(
       onTap: () => context.push('/groups/${group.id}'),
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.zero,
       child: Container(
         width: 228,
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: AppColors.card,
-          borderRadius: BorderRadius.circular(14),
+          color: AppColors.glassFill,
+          borderRadius: BorderRadius.zero,
           border: Border.all(color: AppColors.border),
         ),
         child: Column(
@@ -298,7 +298,7 @@ class _FeaturedCard extends StatelessWidget {
                   height: 40,
                   decoration: BoxDecoration(
                     color: AppColors.primary.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.zero,
                   ),
                   child: Icon(Icons.groups_rounded, color: AppColors.primary, size: 22),
                 ),
@@ -323,7 +323,7 @@ class _FeaturedCard extends StatelessWidget {
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
                                 color: AppColors.primary.withValues(alpha: 0.18),
-                                borderRadius: BorderRadius.circular(4),
+                                borderRadius: BorderRadius.zero,
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -407,12 +407,12 @@ class _GroupListCard extends StatelessWidget {
     final threads = group.threadCount;
     return InkWell(
       onTap: () => context.push('/groups/${group.id}'),
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.zero,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.card,
-          borderRadius: BorderRadius.circular(12),
+          color: AppColors.glassFill,
+          borderRadius: BorderRadius.zero,
           border: Border.all(color: AppColors.border),
         ),
         child: Column(
@@ -426,7 +426,7 @@ class _GroupListCard extends StatelessWidget {
                   height: 44,
                   decoration: BoxDecoration(
                     color: AppColors.primary.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.zero,
                   ),
                   alignment: Alignment.center,
                   child: Text(
@@ -449,7 +449,7 @@ class _GroupListCard extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             color: AppColors.primary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(4),
+                            borderRadius: BorderRadius.zero,
                           ),
                           child: Text(
                             group.category!,
@@ -465,7 +465,7 @@ class _GroupListCard extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.zero,
                     ),
                     child: const Text('Joined', style: TextStyle(fontSize: 11, color: AppColors.onPrimary)),
                   )
@@ -474,7 +474,7 @@ class _GroupListCard extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: AppColors.secondary,
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.zero,
                       border: Border.all(color: AppColors.border),
                     ),
                     child: const Text(

@@ -248,7 +248,7 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: ConferenceColors.background,
+      backgroundColor: Colors.transparent,
       body: ConferenceGridBackground(
         child: SafeArea(
           child: Stack(
@@ -382,11 +382,11 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
     final p = cand.profile;
     final connectOp = (dragDx / 110).clamp(0.0, 1.0);
     final passOp = (-dragDx / 110).clamp(0.0, 1.0);
-    const panelColor = Color(0xFF141414);
+    const panelColor = Color(0x0DFFFFFF);
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.zero,
         color: panelColor,
         border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
         boxShadow: interactive
@@ -428,7 +428,7 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
                         color: ConferenceColors.gold,
-                        borderRadius: BorderRadius.circular(999),
+                        borderRadius: BorderRadius.zero,
                         boxShadow: [BoxShadow(color: ConferenceColors.goldAlpha(0.4), blurRadius: 12)],
                       ),
                       child: Row(
@@ -555,7 +555,7 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: tint.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(999),
+                    borderRadius: BorderRadius.zero,
                     border: Border.all(color: tint.withValues(alpha: 0.3)),
                   ),
                   child: Text(it, style: TextStyle(color: tint == ConferenceColors.gold ? ConferenceColors.gold : Colors.white, fontSize: 11)),
@@ -573,7 +573,7 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.zero,
           border: Border.all(color: color, width: 3),
           color: Colors.black.withValues(alpha: 0.3),
         ),
@@ -690,7 +690,7 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
                 backgroundColor: ConferenceColors.gold,
                 foregroundColor: Colors.black,
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
               ),
               onPressed: () => _setEnabled(true),
               child: const Text('TURN NETWORKING ON',
@@ -754,7 +754,7 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.04),
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.zero,
                     border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
                   ),
                   child: SwitchListTile(
@@ -842,7 +842,7 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
                       color: ConferenceColors.goldAlpha(0.14),
-                      borderRadius: BorderRadius.circular(999),
+                      borderRadius: BorderRadius.zero,
                       border: Border.all(color: ConferenceColors.goldAlpha(0.4)),
                     ),
                     child: Text(cand.reason!, style: const TextStyle(color: ConferenceColors.gold, fontWeight: FontWeight.w700)),
@@ -856,7 +856,7 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
                       backgroundColor: ConferenceColors.gold,
                       foregroundColor: Colors.black,
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
                     ),
                     onPressed: () {
                       setState(() => _matchWith = null);

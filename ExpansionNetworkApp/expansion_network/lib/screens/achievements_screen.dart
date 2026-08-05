@@ -50,7 +50,7 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
             },
           ),
           title: const Text('Achievements'),
-          backgroundColor: AppColors.background,
+          backgroundColor: Colors.transparent,
           foregroundColor: AppColors.foreground,
         ),
         body: const Center(child: Text('Sign in to view achievements.')),
@@ -68,10 +68,10 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
           onPressed: () => context.go('/mortarverse'),
         ),
         title: const Text('Achievements'),
-        backgroundColor: AppColors.background,
+        backgroundColor: Colors.transparent,
         foregroundColor: AppColors.foreground,
       ),
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       body: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
         stream: usersRepo.watchUserDoc(uid),
         builder: (context, userSnap) {
@@ -143,8 +143,8 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(12),
+        color: AppColors.glassFill,
+        borderRadius: BorderRadius.zero,
         border: Border.all(color: AppColors.border),
       ),
       child: Column(
@@ -185,7 +185,7 @@ class _BadgeTile extends StatelessWidget {
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: unlocked ? AppColors.primary.withValues(alpha: 0.08) : AppColors.card,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.zero,
           border: Border.all(color: unlocked ? AppColors.primary.withValues(alpha: 0.35) : AppColors.border),
         ),
         child: Row(
@@ -193,7 +193,7 @@ class _BadgeTile extends StatelessWidget {
           children: [
             if (img != null && img.isNotEmpty)
               ClipRRect(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.zero,
                 child: CachedNetworkImage(
                   imageUrl: img,
                   width: 48,

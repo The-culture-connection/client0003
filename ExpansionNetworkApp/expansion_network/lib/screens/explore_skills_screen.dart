@@ -100,8 +100,8 @@ class _SkillCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(12),
+        color: AppColors.glassFill,
+        borderRadius: BorderRadius.zero,
         border: Border.all(color: AppColors.border),
       ),
       child: Column(
@@ -116,7 +116,7 @@ class _SkillCard extends StatelessWidget {
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: AppColors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.zero,
                 ),
                 child: const Icon(Icons.psychology_outlined, color: AppColors.primary, size: 22),
               ),

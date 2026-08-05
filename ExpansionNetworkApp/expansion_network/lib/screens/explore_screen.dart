@@ -444,10 +444,10 @@ class _FilterChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: selected ? AppColors.primary : AppColors.secondary,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.zero,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.zero,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           child: Text(
@@ -476,8 +476,8 @@ class _JobCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(12),
+        color: AppColors.glassFill,
+        borderRadius: BorderRadius.zero,
         border: Border.all(color: AppColors.border),
       ),
       child: Column(
@@ -492,7 +492,7 @@ class _JobCard extends StatelessWidget {
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: AppColors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.zero,
                 ),
                 child: const Icon(Icons.work_outline, color: AppColors.primary, size: 22),
               ),
@@ -593,8 +593,8 @@ class _ExploreSkillRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(12),
+        color: AppColors.glassFill,
+        borderRadius: BorderRadius.zero,
         border: Border.all(color: AppColors.border),
       ),
       child: Column(
@@ -691,7 +691,7 @@ class _NetworkSearchSection extends StatelessWidget {
 
   static OutlineInputBorder _border(Color color) {
     return OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.zero,
       borderSide: BorderSide(color: color),
     );
   }
@@ -768,8 +768,8 @@ class _NetworkMemberCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Material(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(12),
+        color: AppColors.glassFill,
+        borderRadius: BorderRadius.zero,
         child: InkWell(
           onTap: () {
           unawaited(
@@ -781,11 +781,11 @@ class _NetworkMemberCard extends StatelessWidget {
           );
           showUserProfileModal(context, userId: hit.uid);
         },
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.zero,
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.zero,
               border: Border.all(color: AppColors.border),
             ),
             child: Column(

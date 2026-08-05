@@ -18,6 +18,7 @@ import '../../services/events_repository.dart';
 import '../../theme/app_theme.dart';
 import '../mortarverse_signals.dart';
 import '../widgets/mortarverse_focus_card.dart';
+import '../widgets/planet_disc.dart';
 
 /// Post-login landing screen: a live action widget answering "what needs me?",
 /// then the three shops as a horizontally scrollable street.
@@ -38,7 +39,6 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
   final EventsRepository _events = EventsRepository();
 
   late final Future<Conference?> _activeConferenceFuture;
-  late final List<Offset> _starPositions;
 
   @override
   void initState() {
@@ -50,15 +50,6 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
     // logged after the user left.
     CurrentConferenceHolder.instance.conferenceId = null;
     _activeConferenceFuture = _conferenceRepository.fetchActiveConference();
-    final rng = Random(7);
-    _starPositions = List.generate(60, (_) => Offset(rng.nextDouble(), rng.nextDouble()));
-  }
-
-  String get _greeting {
-    final h = DateTime.now().hour;
-    if (h < 12) return 'Good morning';
-    if (h < 18) return 'Good afternoon';
-    return 'Good evening';
   }
 
   /// Priority order: conversations waiting → a conference to enter → the next
@@ -120,21 +111,9 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
     final hasExpansionAccess = context.watch<AuthController>().hasExpansionAccess;
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Colors.transparent,
       body: Stack(
         children: [
-          const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: RadialGradient(
-                center: Alignment.topCenter,
-                radius: 1.2,
-                colors: [Color(0xFF262626), Colors.black],
-              ),
-            ),
-          ),
-          Positioned.fill(
-            child: CustomPaint(painter: _StarfieldPainter(_starPositions)),
-          ),
           SafeArea(
             child: StreamBuilder<int>(
               stream: _signals.watchWaitingConversations(),
@@ -215,25 +194,15 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(22, 20, 22, 0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                _greeting,
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
-              ),
-              const SizedBox(height: 2),
-              const Text(
-                'THE MORTARVERSE',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 22,
-                  height: 1.25,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.2,
-                ),
-              ),
-            ],
+          child: const Text(
+            'THE MORTARVERSE',
+            style: TextStyle(
+              fontFamily: 'ArchivoBlack',
+              color: Colors.white,
+              fontSize: 24,
+              height: 1.1,
+              letterSpacing: 0.6,
+            ),
           ),
         ),
         Padding(
@@ -274,23 +243,36 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
             ],
           ),
         ),
-        const Padding(
-          padding: EdgeInsets.fromLTRB(22, 26, 22, 12),
-          child: _SectionHeader(title: 'WHERE TO GO', trailing: 'Swipe the street →'),
+        const SizedBox(height: 22),
+        // Lower section rides on a torn-paper glass panel (the mockup's
+        // ripped bottom strip), with the galaxy still moving behind it.
+        _TornPanel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(22, 30, 22, 12),
+                child: _SectionHeader(
+                  title: 'WHERE TO GO',
+                  trailing: 'Swipe the street →',
+                ),
+              ),
+              _ShopStreet(
+                hasExpansionAccess: hasExpansionAccess,
+                waiting: waiting,
+                conference: conference,
+                conferenceLoading: conferenceLoading,
+                signals: signals,
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(22, 26, 22, 26),
+                child: _EventsStrip(events: upcoming),
+              ),
+              // Clears the FAB.
+              const SizedBox(height: 60),
+            ],
+          ),
         ),
-        _ShopStreet(
-          hasExpansionAccess: hasExpansionAccess,
-          waiting: waiting,
-          conference: conference,
-          conferenceLoading: conferenceLoading,
-          signals: signals,
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(22, 26, 22, 26),
-          child: _EventsStrip(events: upcoming),
-        ),
-        // Clears the FAB.
-        const SizedBox(height: 60),
       ],
     );
   }
@@ -309,10 +291,10 @@ class _SectionHeader extends StatelessWidget {
         Text(
           title,
           style: const TextStyle(
+            fontFamily: 'ArchivoBlack',
             color: Colors.white,
             fontSize: 11,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.4,
+            letterSpacing: 1.6,
           ),
         ),
         const Spacer(),
@@ -347,7 +329,6 @@ class _SecondaryChip extends StatelessWidget {
         color: muted
             ? Colors.white.withValues(alpha: 0.05)
             : accent.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: muted
               ? Colors.white.withValues(alpha: 0.12)
@@ -398,7 +379,7 @@ class _ShopStreet extends StatelessWidget {
     final conferenceOpen = !conferenceLoading && conference != null;
 
     return SizedBox(
-      height: 196,
+      height: 226,
       child: ListView(
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
@@ -502,82 +483,40 @@ class _ShopTileState extends State<_ShopTile> {
         child: AnimatedScale(
           scale: _pressed ? 0.97 : 1,
           duration: const Duration(milliseconds: 100),
-          child: Container(
+          child: SizedBox(
             width: 148,
-            decoration: BoxDecoration(
-              color: const Color(0xFF0D0D0D),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: widget.outlinedPill ? color.withValues(alpha: 0.8) : color,
-                width: 2,
-              ),
-              boxShadow: glow
-                  ? [BoxShadow(color: color.withValues(alpha: 0.32), blurRadius: 34)]
-                  : null,
-            ),
-            clipBehavior: Clip.antiAlias,
             child: Column(
               children: [
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.only(top: 18, bottom: 10),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        color.withValues(alpha: widget.outlinedPill ? 0.12 : 0.16),
-                        Colors.transparent,
-                      ],
-                    ),
-                  ),
-                  child: ColorFiltered(
-                    colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
-                    child: Image.asset(
-                      'assets/conference/shop_storefront.png',
-                      height: 52,
-                      width: 92,
-                      fit: BoxFit.contain,
-                    ),
+                // The destination as a CD/record planet floating in the sky.
+                PlanetDisc(color: color, size: 104, enabled: glow),
+                const SizedBox(height: 12),
+                _Pill(
+                  label: widget.pill,
+                  color: color,
+                  outlined: widget.outlinedPill,
+                ),
+                const SizedBox(height: 7),
+                Text(
+                  widget.title,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontFamily: 'ArchivoBlack',
+                    color: Colors.white,
+                    fontSize: 11,
+                    height: 1.3,
+                    letterSpacing: 1.1,
                   ),
                 ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(10, 0, 10, 14),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        _Pill(
-                          label: widget.pill,
-                          color: color,
-                          outlined: widget.outlinedPill,
-                        ),
-                        const SizedBox(height: 5),
-                        Text(
-                          widget.title,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            height: 1.25,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.7,
-                          ),
-                        ),
-                        const SizedBox(height: 5),
-                        Flexible(
-                          child: Text(
-                            widget.subtitle,
-                            textAlign: TextAlign.center,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Color(0xFF999999),
-                              fontSize: 10,
-                            ),
-                          ),
-                        ),
-                      ],
+                const SizedBox(height: 4),
+                Flexible(
+                  child: Text(
+                    widget.subtitle,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Color(0xFF999999),
+                      fontSize: 10,
                     ),
                   ),
                 ),
@@ -604,7 +543,6 @@ class _Pill extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: outlined ? Colors.transparent : color,
-        borderRadius: BorderRadius.circular(999),
         border: outlined ? Border.all(color: color.withValues(alpha: 0.7)) : null,
       ),
       child: Text(
@@ -665,14 +603,11 @@ class _EventRow extends StatelessWidget {
 
     return Material(
       color: Colors.white.withValues(alpha: 0.04),
-      borderRadius: BorderRadius.circular(14),
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
         onTap: () => context.go('/events/${event.id}'),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
             border: Border.all(color: Colors.white.withValues(alpha: 0.09)),
           ),
           child: Row(
@@ -680,10 +615,7 @@ class _EventRow extends StatelessWidget {
               Container(
                 width: 38,
                 height: 38,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1A1A1A),
-                  borderRadius: BorderRadius.circular(10),
-                ),
+                decoration: const BoxDecoration(color: Color(0x0DFFFFFF)),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -738,7 +670,6 @@ class _EventRow extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(999),
                   border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
                 ),
                 child: const Text(
@@ -758,19 +689,50 @@ class _EventRow extends StatelessWidget {
   }
 }
 
-class _StarfieldPainter extends CustomPainter {
-  _StarfieldPainter(this.positions);
 
-  final List<Offset> positions;
+/// Translucent panel with a torn-paper top edge — the Mortarverse mockup's
+/// ripped strip, rendered as a deterministic jagged clip.
+class _TornPanel extends StatelessWidget {
+  const _TornPanel({required this.child});
+
+  final Widget child;
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.grey.shade600.withValues(alpha: 0.5);
-    for (final p in positions) {
-      canvas.drawCircle(Offset(p.dx * size.width, p.dy * size.height), 0.8, paint);
+  Widget build(BuildContext context) {
+    return ClipPath(
+      clipper: _TornEdgeClipper(),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.045),
+          border: const Border(
+            top: BorderSide(color: Color(0x26FFFFFF), width: 0.5),
+          ),
+        ),
+        child: child,
+      ),
+    );
+  }
+}
+
+class _TornEdgeClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    final rng = Random(11);
+    final path = Path()..moveTo(0, 14);
+    var x = 0.0;
+    while (x < size.width) {
+      x += 14 + rng.nextDouble() * 26;
+      final y = 2 + rng.nextDouble() * 16;
+      path.lineTo(min(x, size.width), y);
     }
+    path
+      ..lineTo(size.width, size.height)
+      ..lineTo(0, size.height)
+      ..close();
+    return path;
   }
 
   @override
-  bool shouldRepaint(covariant _StarfieldPainter oldDelegate) => false;
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
 }
+

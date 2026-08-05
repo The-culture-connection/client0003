@@ -29,15 +29,15 @@ class EventRsvpAttendeeTile extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.only(bottom: dense ? 8 : 10),
       child: Material(
-        color: AppColors.card,
+        color: AppColors.glassFill,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.zero,
           side: const BorderSide(color: AppColors.border),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: () => showUserProfileModal(context, userId: userId),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.zero,
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: dense ? 10 : 12, vertical: dense ? 8 : 12),
             child: FutureBuilder<Map<String, dynamic>?>(

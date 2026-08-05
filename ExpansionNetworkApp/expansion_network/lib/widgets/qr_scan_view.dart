@@ -161,7 +161,7 @@ class _QrScanViewState extends State<QrScanView> with WidgetsBindingObserver {
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.6),
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.zero,
                   ),
                   child: Text(
                     widget.hint!,
@@ -211,7 +211,7 @@ class _ScanReticle extends StatelessWidget {
         height: 240,
         decoration: BoxDecoration(
           border: Border.all(color: accent, width: 3),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.zero,
         ),
       ),
     );

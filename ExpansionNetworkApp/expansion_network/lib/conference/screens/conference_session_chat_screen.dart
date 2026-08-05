@@ -87,7 +87,7 @@ class _ConferenceSessionChatScreenState extends State<ConferenceSessionChatScree
   Widget build(BuildContext context) {
     final cid = _conferenceId;
     return Scaffold(
-      backgroundColor: ConferenceColors.background,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: ConferenceColors.atmosphere,
         foregroundColor: ConferenceColors.gold,
@@ -259,15 +259,15 @@ class _ConferenceSessionChatScreenState extends State<ConferenceSessionChatScree
                   fillColor: Colors.white.withValues(alpha: 0.05),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.zero,
                     borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
                   ),
                   enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.zero,
                     borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.zero,
                     borderSide: const BorderSide(color: ConferenceColors.gold),
                   ),
                 ),

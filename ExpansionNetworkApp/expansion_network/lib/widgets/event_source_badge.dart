@@ -7,14 +7,14 @@ import '../theme/app_theme.dart';
 BoxDecoration mortarEventListCardDecoration(CommunityEvent event) {
   if (!event.isMortarHostedEvent) {
     return BoxDecoration(
-      color: AppColors.card,
-      borderRadius: BorderRadius.circular(12),
+      color: AppColors.glassFill,
+      borderRadius: BorderRadius.zero,
       border: Border.all(color: AppColors.border),
     );
   }
   return BoxDecoration(
-    color: AppColors.card,
-    borderRadius: BorderRadius.circular(12),
+    color: AppColors.glassFill,
+    borderRadius: BorderRadius.zero,
     border: Border.all(color: AppColors.primary, width: 1.5),
     boxShadow: [
       BoxShadow(
@@ -90,8 +90,8 @@ class _OfficialMortarEventPill extends StatelessWidget {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: dense ? 12 : 14, vertical: dense ? 7 : 9),
       decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(24),
+        color: AppColors.glassFill,
+        borderRadius: BorderRadius.zero,
         border: Border.all(color: AppColors.primary, width: 1.5),
       ),
       child: Row(

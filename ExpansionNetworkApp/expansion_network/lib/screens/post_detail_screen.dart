@@ -206,7 +206,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       body: Column(
         children: [
           Material(
-            color: AppColors.background,
+            color: Color(0xE6000000),
             child: SafeArea(
               bottom: false,
               child: Padding(
@@ -245,8 +245,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                     Container(
                                       padding: const EdgeInsets.all(16),
                                       decoration: BoxDecoration(
-                                        color: AppColors.card,
-                                        borderRadius: BorderRadius.circular(12),
+                                        color: AppColors.glassFill,
+                                        borderRadius: BorderRadius.zero,
                                         border: Border.all(color: AppColors.border),
                                       ),
                                       child: Column(
@@ -266,7 +266,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                                   onTap: post.authorId.isEmpty
                                                       ? null
                                                       : () => showUserProfileModal(context, userId: post.authorId),
-                                                  borderRadius: BorderRadius.circular(8),
+                                                  borderRadius: BorderRadius.zero,
                                                   child: Padding(
                                                     padding: const EdgeInsets.symmetric(vertical: 4),
                                                     child: Text(
@@ -288,7 +288,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                           if (post.imageUrl != null && post.imageUrl!.trim().isNotEmpty) ...[
                                             if (post.postDetails.trim().isNotEmpty) const SizedBox(height: 16),
                                             ClipRRect(
-                                              borderRadius: BorderRadius.circular(10),
+                                              borderRadius: BorderRadius.zero,
                                               child: AspectRatio(
                                                 aspectRatio: 4 / 3,
                                                 child: Image.network(
@@ -376,7 +376,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                 ),
                               ),
                               Material(
-                                color: AppColors.card,
+                                color: AppColors.glassFill,
                                 child: SafeArea(
                                   top: false,
                                   child: Padding(
@@ -552,7 +552,7 @@ class _PostLikeRow extends StatelessWidget {
                             }
                           }
                         },
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.zero,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
                     child: Row(
@@ -608,8 +608,8 @@ class _ReplyTile extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(10),
+        color: Color(0xE6000000),
+        borderRadius: BorderRadius.zero,
         border: Border.all(color: AppColors.border),
       ),
       child: Column(
@@ -666,7 +666,7 @@ class _ReplyTile extends StatelessWidget {
                                   }
                                 }
                               },
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.zero,
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
                           child: Row(

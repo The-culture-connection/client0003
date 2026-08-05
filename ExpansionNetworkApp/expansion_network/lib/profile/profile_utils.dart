@@ -73,7 +73,7 @@ Widget profileChip(String text, {required bool filled}) {
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
     decoration: BoxDecoration(
       color: filled ? AppColors.primary : AppColors.primary.withValues(alpha: 0.1),
-      borderRadius: BorderRadius.circular(4),
+      borderRadius: BorderRadius.zero,
     ),
     child: Text(
       text,

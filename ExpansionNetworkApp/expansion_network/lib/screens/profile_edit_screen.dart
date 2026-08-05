@@ -357,7 +357,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
       body: Column(
         children: [
           Material(
-            color: AppColors.background,
+            color: Color(0xE6000000),
             child: SafeArea(
               bottom: false,
               child: Padding(
@@ -481,7 +481,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                   Card(
                     color: AppColors.secondary,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.zero,
                       side: const BorderSide(color: AppColors.border),
                     ),
                     child: Padding(
@@ -572,7 +572,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                   Card(
                     color: AppColors.secondary,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.zero,
                       side: const BorderSide(color: AppColors.border),
                     ),
                     child: Column(
@@ -594,7 +594,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                   Card(
                     color: AppColors.secondary,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.zero,
                       side: const BorderSide(color: AppColors.border),
                     ),
                     child: Padding(
@@ -665,7 +665,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
             ),
           ),
           Material(
-            color: AppColors.background,
+            color: Color(0xE6000000),
             child: SafeArea(
               top: false,
               child: Padding(

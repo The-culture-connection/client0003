@@ -61,7 +61,7 @@ class _ConferenceCommunityScreenState extends State<ConferenceCommunityScreen> {
     final myUid = FirebaseAuth.instance.currentUser?.uid;
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Colors.transparent,
       body: ConferenceGridBackground(
         child: SafeArea(
           child: Column(
@@ -293,7 +293,7 @@ class _PostCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: ConferenceColors.card,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.zero,
         border: Border.all(color: ConferenceColors.cardBorder),
       ),
       clipBehavior: Clip.antiAlias,

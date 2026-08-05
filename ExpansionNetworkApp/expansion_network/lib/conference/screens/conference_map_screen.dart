@@ -179,9 +179,9 @@ class _ConferenceMapScreenState extends State<ConferenceMapScreen> with SingleTi
   Widget _roomSponsorTile(BuildContext sheetCtx, ConferenceSponsor sp) {
     return Material(
       color: Colors.white.withValues(alpha: 0.05),
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.zero,
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.zero,
         onTap: () {
           Navigator.of(sheetCtx).pop();
           context.push('/conference/sponsor/${sp.id}');
@@ -197,7 +197,7 @@ class _ConferenceMapScreenState extends State<ConferenceMapScreen> with SingleTi
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: ConferenceColors.goldAlpha(0.18),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.zero,
                   border: Border.all(color: ConferenceColors.goldAlpha(0.5)),
                 ),
                 child: (sp.logoUrl != null && sp.logoUrl!.isNotEmpty)
@@ -230,9 +230,9 @@ class _ConferenceMapScreenState extends State<ConferenceMapScreen> with SingleTi
         : 'Time TBD';
     return Material(
       color: Colors.white.withValues(alpha: 0.05),
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.zero,
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.zero,
         onTap: () {
           Navigator.of(sheetCtx).pop();
           context.push('/conference/schedule/${s.id}');
@@ -263,7 +263,7 @@ class _ConferenceMapScreenState extends State<ConferenceMapScreen> with SingleTi
   Widget build(BuildContext context) {
     final floor = _selectedFloor;
     return Scaffold(
-      backgroundColor: ConferenceColors.background,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: ConferenceColors.atmosphere,
         foregroundColor: ConferenceColors.gold,
@@ -303,7 +303,7 @@ class _ConferenceMapScreenState extends State<ConferenceMapScreen> with SingleTi
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
                 decoration: BoxDecoration(
                   color: _selectedFloorId == f.id ? ConferenceColors.gold : Colors.white.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.zero,
                   border: Border.all(
                     color: _selectedFloorId == f.id ? ConferenceColors.gold : Colors.white.withValues(alpha: 0.1),
                   ),
@@ -378,7 +378,7 @@ class _ConferenceMapScreenState extends State<ConferenceMapScreen> with SingleTi
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(
             color: Colors.black.withValues(alpha: 0.7),
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.zero,
             border: Border.all(color: ConferenceColors.goldAlpha(highlighted ? 1 : 0.5)),
           ),
           child: Text(
@@ -443,7 +443,7 @@ class _ConferenceMapScreenState extends State<ConferenceMapScreen> with SingleTi
                   return Material(
                     color: Colors.transparent,
                     child: InkWell(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.zero,
                       onTap: () => _openRoom(room),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),

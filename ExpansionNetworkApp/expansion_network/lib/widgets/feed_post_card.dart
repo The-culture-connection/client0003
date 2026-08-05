@@ -50,7 +50,7 @@ class FeedPostCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onPostTap,
-        borderRadius: BorderRadius.circular(compact ? 0 : 12),
+        borderRadius: BorderRadius.zero,
         child: Padding(
           padding: padding,
           child: SizedBox(
@@ -85,7 +85,7 @@ class FeedPostCard extends StatelessWidget {
                   Expanded(
                     child: InkWell(
                       onTap: post.authorId.isEmpty ? null : () => _openProfile(context),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.zero,
                       child: Padding(
                         padding: const EdgeInsets.only(right: 4, bottom: 4),
                         child: post.authorId.isEmpty
@@ -161,7 +161,7 @@ class FeedPostCard extends StatelessWidget {
               if (showImage && post.imageUrl != null && post.imageUrl!.trim().isNotEmpty) ...[
                 SizedBox(height: compact ? 8 : 10),
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.zero,
                   child: AspectRatio(
                     aspectRatio: compact ? 16 / 10 : 4 / 3,
                     child: Image.network(
@@ -235,7 +235,7 @@ class FeedPostCard extends StatelessWidget {
                                       }
                                     }
                                   },
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.zero,
                             child: Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                               child: Row(

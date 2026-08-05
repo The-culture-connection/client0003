@@ -13,6 +13,7 @@ import 'expansion_release_trace.dart';
 import 'firebase_options.dart';
 import 'router/app_router.dart';
 import 'services/push_notifications_service.dart';
+import 'mortarverse/widgets/mortarverse_sky.dart';
 import 'theme/app_theme.dart';
 import 'widgets/content_suspension_gate.dart';
 
@@ -189,7 +190,14 @@ class _ExpansionNetworkAppState extends State<ExpansionNetworkApp> {
       theme: buildAppTheme(),
       routerConfig: widget.router,
       builder: (context, child) {
-        return ContentSuspensionGate(child: child);
+        // One persistent Mortarverse sky under every screen (screens render
+        // transparent scaffolds on top — mirrors the webapp's Root shell).
+        return Stack(
+          children: [
+            const MortarverseSky(),
+            ContentSuspensionGate(child: child),
+          ],
+        );
       },
     );
   }

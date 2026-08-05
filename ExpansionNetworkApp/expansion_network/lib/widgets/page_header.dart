@@ -23,7 +23,7 @@ class PageHeader extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       decoration: const BoxDecoration(
-        color: AppColors.background,
+        color: Color(0xE6000000),
         border: Border(bottom: BorderSide(color: AppColors.border)),
       ),
       child: Column(

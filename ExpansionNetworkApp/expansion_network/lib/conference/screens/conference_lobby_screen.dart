@@ -220,7 +220,7 @@ class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen>
     );
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Colors.transparent,
       body: Stack(
         children: [
           // Ambient wash takes the event's palette when it has one; otherwise
@@ -268,7 +268,7 @@ class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen>
         key: _tourCheckIn,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.zero,
           border: Border.all(color: ConferenceColors.goldAlpha(checkedIn ? 0.5 : 0.3)),
           gradient: LinearGradient(
             begin: Alignment.topLeft,
@@ -283,7 +283,7 @@ class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen>
               height: 46,
               decoration: BoxDecoration(
                 color: ConferenceColors.goldAlpha(0.12),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.zero,
                 border: Border.all(color: ConferenceColors.gold, width: 1.4),
               ),
               child: Icon(
@@ -335,7 +335,7 @@ class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen>
                   foregroundColor: checkedIn ? ConferenceColors.gold : Colors.black,
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.zero,
                     side: BorderSide(color: ConferenceColors.goldAlpha(0.5)),
                   ),
                 ),
@@ -365,7 +365,7 @@ class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen>
             padding: const EdgeInsets.symmetric(vertical: 10),
             decoration: BoxDecoration(
               color: selected ? ConferenceColors.gold : Colors.transparent,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.zero,
             ),
             child: Text(
               label.toUpperCase(),
@@ -388,7 +388,7 @@ class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen>
         padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.zero,
           border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
         ),
         child: Row(
@@ -531,10 +531,10 @@ class _HeroBanner extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           ClipRRect(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.zero,
             child: DecoratedBox(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.zero,
                 border: Border.all(color: ConferenceColors.goldAlpha(0.3)),
                 gradient: heroImage == null
                     ? LinearGradient(
@@ -676,7 +676,7 @@ class _StatusPill extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999)),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.zero),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -726,7 +726,7 @@ class _ZoneCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.zero,
             color: Colors.white.withValues(alpha: 0.06),
             border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
           ),
@@ -740,7 +740,7 @@ class _ZoneCard extends StatelessWidget {
                     height: 52,
                     decoration: BoxDecoration(
                       color: ConferenceColors.goldAlpha(0.12),
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.zero,
                       border: Border.all(color: ConferenceColors.gold, width: 1.5),
                     ),
                     child: Icon(zone.icon, color: ConferenceColors.gold, size: 26),
@@ -885,7 +885,7 @@ class _MissionTile extends StatelessWidget {
         color: done
             ? ConferenceColors.goldAlpha(0.10)
             : Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.zero,
         border: Border.all(
           color: done
               ? ConferenceColors.goldAlpha(0.45)
@@ -934,7 +934,7 @@ class _MissionTile extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           ClipRRect(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.zero,
             child: LinearProgressIndicator(
               value: fraction,
               minHeight: 6,
@@ -971,7 +971,7 @@ class _MapTabContent extends StatelessWidget {
             width: double.infinity,
             height: 200,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.zero,
               color: Colors.white.withValues(alpha: 0.05),
               border: Border.all(color: ConferenceColors.goldAlpha(0.2)),
             ),
@@ -1012,7 +1012,7 @@ class _MapTabContent extends StatelessWidget {
               backgroundColor: ConferenceColors.gold,
               foregroundColor: Colors.black,
               padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
             ),
             onPressed: () => context.push('/conference/map'),
             icon: const Icon(Icons.map_rounded, size: 18),

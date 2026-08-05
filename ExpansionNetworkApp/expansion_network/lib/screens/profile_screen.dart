@@ -204,7 +204,7 @@ class _ProfileBody extends StatelessWidget {
                                     Row(
                                       children: [
                                         ClipRRect(
-                                          borderRadius: BorderRadius.circular(8),
+                                          borderRadius: BorderRadius.zero,
                                           child: CachedNetworkImage(
                                             imageUrl: businessLogoUrl,
                                             width: 40,
@@ -422,8 +422,8 @@ class _ProfileSubmittedEventsSection extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(12),
+        color: AppColors.glassFill,
+        borderRadius: BorderRadius.zero,
         border: Border.all(color: AppColors.border),
       ),
       child: Column(

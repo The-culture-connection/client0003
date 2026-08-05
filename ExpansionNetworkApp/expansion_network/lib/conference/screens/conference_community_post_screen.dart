@@ -126,7 +126,7 @@ class _ConferenceCommunityPostScreenState
     final conferenceId = _conferenceId;
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
@@ -275,7 +275,7 @@ class _ConferenceCommunityPostScreenState
   }
 
   OutlineInputBorder _pill({bool focused = false}) => OutlineInputBorder(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.zero,
         borderSide: BorderSide(
           color: focused ? ConferenceColors.gold : ConferenceColors.cardBorder,
         ),
@@ -301,7 +301,7 @@ class _PostHeader extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: ConferenceColors.card,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.zero,
         border: Border.all(color: ConferenceColors.cardBorder),
       ),
       child: Column(
@@ -428,7 +428,7 @@ class _RepliesList extends StatelessWidget {
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.04),
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.zero,
                   border: Border.all(color: ConferenceColors.cardBorder),
                 ),
                 child: Column(

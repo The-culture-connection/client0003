@@ -121,9 +121,9 @@ class _GroupEditScreenState extends State<GroupEditScreen> {
         final g = snap.data;
         if (snap.connectionState == ConnectionState.waiting && g == null) {
           return Scaffold(
-            backgroundColor: AppColors.background,
+            backgroundColor: Colors.transparent,
             appBar: AppBar(
-              backgroundColor: AppColors.background,
+              backgroundColor: Colors.transparent,
               foregroundColor: AppColors.foreground,
               title: const Text('Edit community'),
             ),
@@ -144,9 +144,9 @@ class _GroupEditScreenState extends State<GroupEditScreen> {
           builder: (context, permSnap) {
             if (permSnap.connectionState != ConnectionState.done) {
               return Scaffold(
-                backgroundColor: AppColors.background,
+                backgroundColor: Colors.transparent,
                 appBar: AppBar(
-                  backgroundColor: AppColors.background,
+                  backgroundColor: Colors.transparent,
                   foregroundColor: AppColors.foreground,
                   title: const Text('Edit community'),
                 ),
@@ -160,9 +160,9 @@ class _GroupEditScreenState extends State<GroupEditScreen> {
               );
             }
             return Scaffold(
-              backgroundColor: AppColors.background,
+              backgroundColor: Colors.transparent,
               appBar: AppBar(
-                backgroundColor: AppColors.background,
+                backgroundColor: Colors.transparent,
                 foregroundColor: AppColors.foreground,
                 title: const Text('Edit community'),
               ),

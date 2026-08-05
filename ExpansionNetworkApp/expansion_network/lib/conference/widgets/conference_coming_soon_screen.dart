@@ -22,9 +22,9 @@ class ConferenceComingSoonScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: Colors.black,
+        backgroundColor: Colors.transparent,
         title: Text(title.toUpperCase(), style: const TextStyle(letterSpacing: 1)),
       ),
       body: Center(

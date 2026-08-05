@@ -87,10 +87,10 @@ class _MemberCardScreenState extends State<MemberCardScreen>
     }
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text('My Card'),
-        backgroundColor: AppColors.background,
+        backgroundColor: Colors.transparent,
         bottom: TabBar(
           controller: _tabs,
           indicatorColor: _accent,
@@ -307,8 +307,8 @@ class _CardShell extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: AppColors.card,
-          borderRadius: BorderRadius.circular(20),
+          color: AppColors.glassFill,
+          borderRadius: BorderRadius.zero,
           border: Border.all(color: AppColors.border),
           boxShadow: [
             BoxShadow(
@@ -419,7 +419,7 @@ class _CardBack extends StatelessWidget {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.zero,
             ),
             child: QrImageView(
               data: buildMemberCardPayload(uid),

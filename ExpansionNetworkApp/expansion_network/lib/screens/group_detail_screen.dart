@@ -323,7 +323,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
           builder: (context, manageSnap) {
             final canManage = manageSnap.data == true;
             return Scaffold(
-              backgroundColor: AppColors.background,
+              backgroundColor: Colors.transparent,
               body: SafeArea(
                 child: Stack(
                   children: [
@@ -375,7 +375,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
 
   Widget _header(FsGroup g, bool joined, bool canManage) {
     return Material(
-      color: AppColors.background,
+      color: Color(0xE6000000),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -434,7 +434,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: AppColors.secondary,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.zero,
           border: Border.all(color: AppColors.border),
         ),
         child: Column(
@@ -460,8 +460,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppColors.card,
-                  borderRadius: BorderRadius.circular(6),
+                  color: AppColors.glassFill,
+                  borderRadius: BorderRadius.zero,
                   border: Border.all(color: AppColors.border),
                 ),
                 child: Text(
@@ -517,8 +517,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(8),
+        color: AppColors.glassFill,
+        borderRadius: BorderRadius.zero,
         border: Border.all(color: AppColors.border),
       ),
       child: Row(
@@ -536,10 +536,10 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
     return Expanded(
       child: Material(
         color: selected ? AppColors.primary : AppColors.secondary,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.zero,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.zero,
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 10),
             child: Text(
@@ -578,8 +578,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: AppColors.card,
-                borderRadius: BorderRadius.circular(12),
+                color: AppColors.glassFill,
+                borderRadius: BorderRadius.zero,
                 border: Border.all(color: AppColors.border),
               ),
               child: const Column(
@@ -606,8 +606,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: AppColors.card,
-              borderRadius: BorderRadius.circular(12),
+              color: AppColors.glassFill,
+              borderRadius: BorderRadius.zero,
               border: Border.all(color: AppColors.border),
             ),
             child: Column(
@@ -715,10 +715,10 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
   Widget _sortChip(String label, bool selected, VoidCallback onTap) {
     return Material(
       color: selected ? AppColors.primary : Colors.transparent,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.zero,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.zero,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           child: Text(
@@ -753,15 +753,15 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
         return Padding(
           padding: const EdgeInsets.only(bottom: 10),
           child: Material(
-            color: AppColors.card,
+            color: AppColors.glassFill,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.zero,
               side: const BorderSide(color: AppColors.border),
             ),
             clipBehavior: Clip.antiAlias,
             child: InkWell(
               onTap: () => showUserProfileModal(context, userId: memberUid),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.zero,
               child: Padding(
                 padding: const EdgeInsets.all(12),
                 child: Row(
@@ -820,8 +820,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppColors.card,
-            borderRadius: BorderRadius.circular(12),
+            color: AppColors.glassFill,
+            borderRadius: BorderRadius.zero,
             border: Border.all(color: AppColors.border),
           ),
           child: Column(
@@ -840,8 +840,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppColors.card,
-            borderRadius: BorderRadius.circular(12),
+            color: AppColors.glassFill,
+            borderRadius: BorderRadius.zero,
             border: Border.all(color: AppColors.border),
           ),
           child: Column(
@@ -892,7 +892,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
           child: GestureDetector(
             onTap: () {},
             child: Material(
-              color: AppColors.background,
+              color: Color(0xE6000000),
               borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
               child: SafeArea(
                 top: false,

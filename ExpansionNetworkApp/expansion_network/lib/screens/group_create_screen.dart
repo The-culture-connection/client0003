@@ -85,9 +85,9 @@ class _GroupCreateScreenState extends State<GroupCreateScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: AppColors.background,
+        backgroundColor: Colors.transparent,
         foregroundColor: AppColors.foreground,
         title: const Text('Create community'),
       ),

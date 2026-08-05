@@ -392,7 +392,7 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: ConferenceColors.background,
+      backgroundColor: Colors.transparent,
       body: Stack(
         children: [
           // Atmosphere gradient + gold halo + starfield.
@@ -488,7 +488,7 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
         final t = _glow.value;
         return Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.zero,
             boxShadow: [
               BoxShadow(
                 color: ConferenceColors.goldAlpha(0.10 + 0.16 * t),
@@ -503,7 +503,7 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
       child: Container(
         padding: const EdgeInsets.all(22),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.zero,
           border: Border.all(color: ConferenceColors.goldAlpha(0.45), width: 1.2),
           gradient: LinearGradient(
             begin: Alignment.topLeft,
@@ -526,7 +526,7 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
                     height: 42,
                     decoration: BoxDecoration(
                       color: ConferenceColors.goldAlpha(0.14),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.zero,
                       border: Border.all(color: ConferenceColors.gold, width: 1.4),
                     ),
                     child: const Icon(Icons.confirmation_number_rounded, color: ConferenceColors.gold, size: 22),
@@ -582,19 +582,19 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
                   fillColor: Colors.black.withValues(alpha: 0.4),
                   contentPadding: const EdgeInsets.symmetric(vertical: 16),
                   enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.zero,
                     borderSide: BorderSide(color: ConferenceColors.goldAlpha(0.35)),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.zero,
                     borderSide: const BorderSide(color: ConferenceColors.gold, width: 1.6),
                   ),
                   errorBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.zero,
                     borderSide: const BorderSide(color: Colors.redAccent),
                   ),
                   focusedErrorBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.zero,
                     borderSide: const BorderSide(color: Colors.redAccent, width: 1.6),
                   ),
                 ),
@@ -620,7 +620,7 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
                   style: FilledButton.styleFrom(
                     backgroundColor: ConferenceColors.gold,
                     foregroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
                   ),
                   onPressed: _busy ? null : _submit,
                   child: _busy
@@ -682,7 +682,7 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.zero,
               border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
             ),
             child: Text(
@@ -714,7 +714,7 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.zero,
         border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
       ),
       child: Column(
@@ -760,7 +760,7 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
                     height: 50,
                     decoration: BoxDecoration(
                       color: ConferenceColors.goldAlpha(0.12),
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.zero,
                       border: Border.all(color: ConferenceColors.gold, width: 1.4),
                     ),
                     child: Icon(icons[index % icons.length], color: ConferenceColors.gold, size: 24),
@@ -785,7 +785,7 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
                               color: ConferenceColors.goldAlpha(0.14),
-                              borderRadius: BorderRadius.circular(999),
+                              borderRadius: BorderRadius.zero,
                             ),
                             child: Text(
                               priceLabel,
@@ -860,7 +860,7 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
         foregroundColor: hasAccess ? Colors.black : ConferenceColors.gold,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.zero,
           side: BorderSide(color: ConferenceColors.goldAlpha(0.5)),
         ),
       ),

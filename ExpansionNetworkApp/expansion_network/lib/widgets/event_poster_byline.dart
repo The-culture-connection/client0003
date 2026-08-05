@@ -40,7 +40,7 @@ class EventPosterByline extends StatelessWidget {
             color: Colors.transparent,
             child: InkWell(
               onTap: () => showUserProfileModal(context, userId: userId),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.zero,
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
                 child: FutureBuilder<Map<String, dynamic>?>(

@@ -44,8 +44,8 @@ class MortarInfoFeedTile extends StatelessWidget {
     final card = Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(8),
+        color: AppColors.glassFill,
+        borderRadius: BorderRadius.zero,
         border: Border.all(color: scheme.outline.withValues(alpha: 0.5)),
         boxShadow: [
           BoxShadow(
@@ -162,7 +162,7 @@ class MortarInfoFeedTile extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onOpenDetail,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.zero,
           child: card,
         ),
       );
@@ -210,15 +210,15 @@ class _NewsletterLinkCard extends StatelessWidget {
 
     return Material(
       color: AppColors.secondary,
-      borderRadius: BorderRadius.circular(4),
+      borderRadius: BorderRadius.zero,
       child: InkWell(
         onTap: () => _open(context),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.zero,
         child: Container(
           width: double.infinity,
           padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 12, vertical: compact ? 10 : 12),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.zero,
             border: Border.all(color: scheme.outline.withValues(alpha: 0.45)),
           ),
           child: Row(
@@ -275,9 +275,9 @@ class _MediaStrip extends StatelessWidget {
     if (media.length == 1) {
       final m = media.first;
       return ClipRRect(
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.zero,
         child: ColoredBox(
-          color: const Color(0xFF0A0A0A),
+          color: const Color(0x0DFFFFFF),
           child: SizedBox(
             width: double.infinity,
             height: singleMaxH,
@@ -313,9 +313,9 @@ class _MediaStrip extends StatelessWidget {
           final m = media[i];
           final w = compact ? 220.0 : 300.0;
           return ClipRRect(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.zero,
             child: ColoredBox(
-              color: const Color(0xFF0A0A0A),
+              color: const Color(0x0DFFFFFF),
               child: SizedBox(
                 width: w,
                 height: carouselH,

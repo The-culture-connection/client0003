@@ -52,7 +52,7 @@ class EarnedBadgesStrip extends StatelessWidget {
                   Tooltip(
                     message: d.name,
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.zero,
                       child: CachedNetworkImage(
                         imageUrl: d.imageUrl!,
                         width: 44,

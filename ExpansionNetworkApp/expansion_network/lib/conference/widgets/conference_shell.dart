@@ -72,15 +72,15 @@ class _ConferenceShellState extends State<ConferenceShell> {
   Widget build(BuildContext context) {
     if (_loading) {
       return const Scaffold(
-        backgroundColor: Colors.black,
+        backgroundColor: Colors.transparent,
         body: Center(child: CircularProgressIndicator(color: ConferenceColors.gold)),
       );
     }
     final conferenceId = _conferenceId;
     if (conferenceId == null) {
       return Scaffold(
-        backgroundColor: Colors.black,
-        appBar: AppBar(backgroundColor: Colors.black, title: const Text('Conference')),
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Conference')),
         body: const Center(
           child: Text('No conference is open right now.', style: TextStyle(color: ConferenceColors.mutedForeground)),
         ),
@@ -89,7 +89,7 @@ class _ConferenceShellState extends State<ConferenceShell> {
     return ConferenceScope(
       conferenceId: conferenceId,
       child: Scaffold(
-        backgroundColor: Colors.black,
+        backgroundColor: Colors.transparent,
         extendBody: true,
         body: widget.navigationShell,
         bottomNavigationBar: SafeArea(
@@ -98,7 +98,7 @@ class _ConferenceShellState extends State<ConferenceShell> {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             decoration: BoxDecoration(
               color: Colors.black.withValues(alpha: 0.85),
-              borderRadius: BorderRadius.circular(28),
+              borderRadius: BorderRadius.zero,
               border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
               boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.6), blurRadius: 20)],
             ),
@@ -139,13 +139,13 @@ class _NavButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = selected ? ConferenceColors.gold : Colors.grey.shade500;
     return InkWell(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.zero,
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: selected ? ConferenceColors.goldAlpha(0.15) : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.zero,
           border: selected ? Border.all(color: ConferenceColors.goldAlpha(0.4)) : null,
         ),
         child: Column(

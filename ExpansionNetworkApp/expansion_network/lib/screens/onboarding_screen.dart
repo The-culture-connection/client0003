@@ -666,7 +666,7 @@ www.wearemortar.com''';
             height: 220,
             decoration: BoxDecoration(
               border: Border.all(color: Colors.grey.shade300),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.zero,
               color: Colors.grey.shade50,
             ),
             child: const SingleChildScrollView(
@@ -681,7 +681,7 @@ www.wearemortar.com''';
           // Terms acceptance -- required
           InkWell(
             onTap: () => setState(() => _termsAccepted = !_termsAccepted),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.zero,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -718,7 +718,7 @@ www.wearemortar.com''';
           // Email opt-in -- optional
           InkWell(
             onTap: () => setState(() => _emailOptIn = !_emailOptIn),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.zero,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -931,7 +931,7 @@ www.wearemortar.com''';
                 Card(
                   color: AppColors.secondary,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.zero,
                     side: const BorderSide(color: AppColors.border),
                   ),
                   child: Padding(
@@ -1156,7 +1156,7 @@ www.wearemortar.com''';
                 Card(
                   color: AppColors.secondary,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.zero,
                     side: const BorderSide(color: AppColors.border),
                   ),
                   child: Column(
@@ -1228,7 +1228,7 @@ www.wearemortar.com''';
                 Card(
                   color: AppColors.secondary,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.zero,
                     side: const BorderSide(color: AppColors.border),
                   ),
                   child: Padding(
@@ -1397,7 +1397,7 @@ www.wearemortar.com''';
                 Card(
                   color: AppColors.secondary,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.zero,
                     side: const BorderSide(color: AppColors.border),
                   ),
                   child: Padding(

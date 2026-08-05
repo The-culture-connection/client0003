@@ -138,7 +138,7 @@ Widget _loadingOrMissing(bool loading, String label) {
     padding: const EdgeInsets.all(10),
     decoration: BoxDecoration(
       color: AppColors.secondary,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.zero,
       border: Border.all(color: AppColors.border),
     ),
     child: Text(
@@ -159,8 +159,8 @@ Widget _cardShell(
     width: double.infinity,
     padding: const EdgeInsets.all(10),
     decoration: BoxDecoration(
-      color: AppColors.background,
-      borderRadius: BorderRadius.circular(10),
+      color: Color(0xE6000000),
+      borderRadius: BorderRadius.zero,
       border: Border.all(color: AppColors.border),
     ),
     child: Row(
@@ -187,5 +187,5 @@ Widget _cardShell(
     ),
   );
   if (onTap == null) return child;
-  return InkWell(onTap: onTap, borderRadius: BorderRadius.circular(10), child: child);
+  return InkWell(onTap: onTap, borderRadius: BorderRadius.zero, child: child);
 }

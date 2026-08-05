@@ -113,7 +113,7 @@ class _ConferenceScheduleScreenState extends State<ConferenceScheduleScreen> {
     final conferenceName = scope.conference?.name ?? 'Conference';
 
     return Scaffold(
-      backgroundColor: ConferenceColors.background,
+      backgroundColor: Colors.transparent,
       body: ConferenceGridBackground(
         child: SafeArea(
           bottom: false,
@@ -267,7 +267,7 @@ class _ConferenceScheduleScreenState extends State<ConferenceScheduleScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
             decoration: BoxDecoration(
               color: selected ? ConferenceColors.gold : Colors.white.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.zero,
               border: Border.all(
                 color: selected ? ConferenceColors.gold : Colors.white.withValues(alpha: 0.1),
               ),
@@ -312,7 +312,7 @@ class _ConferenceScheduleScreenState extends State<ConferenceScheduleScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   decoration: BoxDecoration(
                     color: _activeDay == i ? ConferenceColors.gold : Colors.white.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.zero,
                     border: Border.all(
                       color: _activeDay == i ? ConferenceColors.gold : Colors.white.withValues(alpha: 0.1),
                     ),
@@ -349,14 +349,14 @@ class _ConferenceScheduleScreenState extends State<ConferenceScheduleScreen> {
       children: [
         Material(
           color: Colors.white.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.zero,
           child: InkWell(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.zero,
             onTap: () => context.push('/conference/schedule/${session.id}'),
             child: Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.zero,
                 border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
               ),
               child: Column(
@@ -399,7 +399,7 @@ class _ConferenceScheduleScreenState extends State<ConferenceScheduleScreen> {
                   if (showProgress) ...[
                     const SizedBox(height: 14),
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.zero,
                       child: LinearProgressIndicator(
                         value: (session.goingCount / capacity).clamp(0, 1).toDouble(),
                         minHeight: 6,
@@ -453,7 +453,7 @@ class _ConferenceScheduleScreenState extends State<ConferenceScheduleScreen> {
         foregroundColor: going ? Colors.black : ConferenceColors.gold,
         padding: const EdgeInsets.symmetric(vertical: 13),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.zero,
           side: BorderSide(color: ConferenceColors.goldAlpha(0.5)),
         ),
       ),
@@ -476,7 +476,7 @@ class _ConferenceScheduleScreenState extends State<ConferenceScheduleScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.zero,
           border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
         ),
         child: const Icon(Icons.forum_rounded, size: 20, color: ConferenceColors.gold),
@@ -489,7 +489,7 @@ class _ConferenceScheduleScreenState extends State<ConferenceScheduleScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: ConferenceColors.goldAlpha(0.12),
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.zero,
         border: Border.all(color: ConferenceColors.goldAlpha(0.25)),
       ),
       child: Text(

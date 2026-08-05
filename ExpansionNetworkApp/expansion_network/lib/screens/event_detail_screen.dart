@@ -224,7 +224,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
       body: Column(
         children: [
           Material(
-            color: AppColors.background,
+            color: Color(0xE6000000),
             child: SafeArea(
               bottom: false,
               child: Padding(
@@ -269,7 +269,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                                         padding: const EdgeInsets.all(12),
                                         decoration: BoxDecoration(
                                           color: AppColors.secondary,
-                                          borderRadius: BorderRadius.circular(8),
+                                          borderRadius: BorderRadius.zero,
                                           border: Border.all(color: AppColors.border),
                                         ),
                                         child: Text(
@@ -285,7 +285,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                                     ],
                                     if (e.imageUrl != null && e.imageUrl!.isNotEmpty)
                                       ClipRRect(
-                                        borderRadius: BorderRadius.circular(12),
+                                        borderRadius: BorderRadius.zero,
                                         child: AspectRatio(
                                           aspectRatio: 16 / 9,
                                           child: CachedNetworkImage(

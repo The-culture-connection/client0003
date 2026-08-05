@@ -249,7 +249,7 @@ class _CardBody extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.zero,
         border: Border.all(color: accent.withValues(alpha: 0.55)),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -323,9 +323,9 @@ class _CardBody extends StatelessWidget {
             alignment: Alignment.centerRight,
             child: Material(
               color: accent,
-              borderRadius: BorderRadius.circular(999),
+              borderRadius: BorderRadius.zero,
               child: InkWell(
-                borderRadius: BorderRadius.circular(999),
+                borderRadius: BorderRadius.zero,
                 onTap: onCta,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 11),
@@ -379,7 +379,7 @@ class _PagerDots extends StatelessWidget {
                 height: 5,
                 decoration: BoxDecoration(
                   color: colors[i].withValues(alpha: i == active ? 1 : 0.5),
-                  borderRadius: BorderRadius.circular(999),
+                  borderRadius: BorderRadius.zero,
                 ),
               ),
             ),

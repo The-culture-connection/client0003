@@ -282,7 +282,7 @@ class _WelcomeMortarverseIntroScreenState extends State<WelcomeMortarverseIntroS
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Colors.transparent,
       body: SafeArea(child: Center(child: _buildBody())),
     );
   }

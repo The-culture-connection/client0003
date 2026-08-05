@@ -124,8 +124,8 @@ class _BadgeFlipCelebrationDialogState extends State<BadgeFlipCelebrationDialog>
     final u = widget.imageUrl?.trim();
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(20),
+        color: AppColors.glassFill,
+        borderRadius: BorderRadius.zero,
         border: Border.all(color: AppColors.border, width: 2),
         boxShadow: [
           BoxShadow(
@@ -151,7 +151,7 @@ class _BadgeFlipCelebrationDialogState extends State<BadgeFlipCelebrationDialog>
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.primary,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.zero,
           border: Border.all(color: Colors.white24, width: 2),
           boxShadow: [
             BoxShadow(

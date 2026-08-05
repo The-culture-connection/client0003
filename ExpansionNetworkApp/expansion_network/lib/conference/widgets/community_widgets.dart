@@ -138,7 +138,7 @@ class CommunityAuthorLine extends StatelessWidget {
               child: PopupMenuButton<String>(
                 padding: EdgeInsets.zero,
                 iconSize: 18,
-                color: const Color(0xFF1A1A1A),
+                color: const Color(0x0DFFFFFF),
                 tooltip: 'More',
                 icon: const Icon(
                   Icons.more_horiz,
@@ -172,7 +172,7 @@ class CommunityTagChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.07),
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.zero,
         border: Border.all(color: ConferenceColors.cardBorder),
       ),
       child: Text(
@@ -226,7 +226,7 @@ Future<bool> confirmCommunityAction(
   final result = await showDialog<bool>(
     context: context,
     builder: (ctx) => AlertDialog(
-      backgroundColor: const Color(0xFF1A1A1A),
+      backgroundColor: const Color(0x0DFFFFFF),
       title: Text(title),
       content: Text(body),
       actions: [
@@ -308,7 +308,7 @@ class _ReportDialogState extends State<_ReportDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      backgroundColor: const Color(0xFF1A1A1A),
+      backgroundColor: const Color(0x0DFFFFFF),
       title: const Text('Report message'),
       content: SingleChildScrollView(
         child: Column(

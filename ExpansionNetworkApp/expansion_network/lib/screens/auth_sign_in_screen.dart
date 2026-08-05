@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 
 import '../analytics/expansion_analytics.dart';
 import '../auth/auth_controller.dart';
+import '../mortarverse/widgets/torn_panel.dart';
 import '../theme/app_theme.dart';
 
 class AuthSignInScreen extends StatefulWidget {
@@ -85,6 +86,7 @@ class _AuthSignInScreenState extends State<AuthSignInScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
@@ -94,16 +96,33 @@ class _AuthSignInScreenState extends State<AuthSignInScreen> {
             context.go('/');
           },
         ),
-        title: const Text('Sign in'),
+        title: const Text('SIGN IN'),
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
+      body: Stack(
+        children: [
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 28, 20, 24),
+              child: TornPanel(
+                seed: 8,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 40, 24, 28),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Text(
+                          'MORTARVERSE',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontFamily: 'ArchivoBlack',
+                            color: AppColors.foreground,
+                            fontSize: 20,
+                            letterSpacing: 2.4,
+                          ),
+                        ),
+                        const SizedBox(height: 28),
                 TextFormField(
                   controller: _email,
                   keyboardType: TextInputType.emailAddress,
@@ -147,10 +166,14 @@ class _AuthSignInScreenState extends State<AuthSignInScreen> {
                   },
                   child: const Text('Have an invite? Claim account'),
                 ),
-              ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }

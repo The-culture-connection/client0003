@@ -147,7 +147,7 @@ class _EventsScreenState extends State<EventsScreen> {
                                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                         decoration: BoxDecoration(
                                           color: AppColors.primary,
-                                          borderRadius: BorderRadius.circular(4),
+                                          borderRadius: BorderRadius.zero,
                                         ),
                                         child: const Text(
                                           'Registered',

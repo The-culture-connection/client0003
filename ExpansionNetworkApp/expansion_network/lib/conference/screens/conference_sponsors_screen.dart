@@ -72,7 +72,7 @@ class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
   Color _tierColor(String level) {
     switch (level.trim().toLowerCase()) {
       case 'platinum':
-        return const Color(0xFFC1121F);
+        return const Color(0xFFC1442A);
       case 'gold':
         return const Color(0xFFF59E0B);
       case 'silver':
@@ -115,7 +115,7 @@ class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
                   style: FilledButton.styleFrom(
                     backgroundColor: ConferenceColors.gold,
                     foregroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
                   ),
                   onPressed: () => Navigator.of(ctx).pop(),
                   child: const Text('Got it', style: TextStyle(fontWeight: FontWeight.w800)),
@@ -134,7 +134,7 @@ class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
     // conference id comes from the ambient holder set on entry, not ConferenceScope.
     final conferenceId = CurrentConferenceHolder.instance.conferenceId;
     return Scaffold(
-      backgroundColor: ConferenceColors.background,
+      backgroundColor: Colors.transparent,
       // As a shell tab (`showBack: false`) ConferenceShell's nav pill floats
       // over this screen's body, so the FAB has to clear it or it sits
       // underneath and cannot be tapped. Standalone, it needs no offset.
@@ -208,7 +208,7 @@ class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.zero,
         border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
       child: Text('No sponsors have been added yet — check back soon.',
@@ -267,7 +267,7 @@ class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
                   decoration: BoxDecoration(
                     color: _filter == t ? ConferenceColors.gold : Colors.white.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.zero,
                     border: Border.all(
                       color: _filter == t ? ConferenceColors.gold : Colors.white.withValues(alpha: 0.1),
                     ),
@@ -318,7 +318,7 @@ class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.zero,
         border: Border.all(color: _amber.withValues(alpha: 0.2)),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -352,7 +352,7 @@ class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
                 color: _amber.withValues(alpha: 0.25),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.zero,
                 border: Border.all(color: _amber.withValues(alpha: 0.5)),
               ),
               child: const Text('ENTER',
@@ -374,7 +374,7 @@ class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.zero,
         border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
       child: Column(
@@ -436,7 +436,7 @@ class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(999),
+                      borderRadius: BorderRadius.zero,
                       border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
                     ),
                     child: Text(perk, style: const TextStyle(color: Colors.white, fontSize: 12)),
@@ -457,7 +457,7 @@ class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         color: tierColor.withValues(alpha: 0.25),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.zero,
                         border: Border.all(color: tierColor.withValues(alpha: 0.5)),
                       ),
                       child: Row(
@@ -484,7 +484,7 @@ class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.zero,
                       border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
                     ),
                     child: Icon(Icons.chat_bubble_outline_rounded, size: 18, color: Colors.grey.shade300),
@@ -508,7 +508,7 @@ class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: _amber.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.zero,
                   border: Border.all(color: _amber.withValues(alpha: 0.2)),
                 ),
                 child: const Row(
@@ -539,7 +539,7 @@ class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: tierColor.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.zero,
         border: Border.all(color: tierColor, width: 2),
       ),
       child: (s.logoUrl != null && s.logoUrl!.isNotEmpty)
@@ -554,7 +554,7 @@ class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.zero,
         border: Border.all(color: color.withValues(alpha: 0.4)),
       ),
       child: Row(

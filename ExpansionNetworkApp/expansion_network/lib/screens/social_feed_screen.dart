@@ -32,12 +32,12 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
     final repo = FeedPostsRepository();
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.transparent,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Material(
-            color: AppColors.background,
+            color: Color(0xE6000000),
             child: SafeArea(
               bottom: false,
               child: Padding(
@@ -103,8 +103,8 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
                     final p = posts[i];
                     return Container(
                       decoration: BoxDecoration(
-                        color: AppColors.card,
-                        borderRadius: BorderRadius.circular(12),
+                        color: AppColors.glassFill,
+                        borderRadius: BorderRadius.zero,
                         border: Border.all(color: AppColors.border),
                       ),
                       child: FeedPostCard(

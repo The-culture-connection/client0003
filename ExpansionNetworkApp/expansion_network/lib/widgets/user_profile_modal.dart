@@ -57,7 +57,7 @@ Future<void> showUserProfileModal(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
-    backgroundColor: AppColors.background,
+    backgroundColor: Colors.transparent,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
     ),
@@ -317,7 +317,7 @@ class _UserProfileModalBody extends StatelessWidget {
                               Row(
                                 children: [
                                   ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
+                                    borderRadius: BorderRadius.zero,
                                     child: CachedNetworkImage(
                                       imageUrl: businessLogoUrl,
                                       width: 44,
@@ -611,8 +611,8 @@ class _ProfileModalListings extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(12),
+        color: AppColors.glassFill,
+        borderRadius: BorderRadius.zero,
         border: Border.all(color: AppColors.border),
       ),
       child: Column(

@@ -37,7 +37,7 @@ class _ConferenceSponsorDetailScreenState extends State<ConferenceSponsorDetailS
   Color _tierColor(String level) {
     switch (level.trim().toLowerCase()) {
       case 'platinum':
-        return const Color(0xFFC1121F);
+        return const Color(0xFFC1442A);
       case 'gold':
         return const Color(0xFFF59E0B);
       case 'silver':
@@ -60,7 +60,7 @@ class _ConferenceSponsorDetailScreenState extends State<ConferenceSponsorDetailS
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: ConferenceColors.background,
+      backgroundColor: Colors.transparent,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -142,7 +142,7 @@ class _ConferenceSponsorDetailScreenState extends State<ConferenceSponsorDetailS
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         color: tierColor.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.zero,
                         border: Border.all(color: tierColor, width: 2),
                       ),
                       child: hasLogo
@@ -193,7 +193,7 @@ class _ConferenceSponsorDetailScreenState extends State<ConferenceSponsorDetailS
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(999),
+                            borderRadius: BorderRadius.zero,
                             border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
                           ),
                           child: Text(perk, style: const TextStyle(color: Colors.white, fontSize: 12)),
@@ -208,7 +208,7 @@ class _ConferenceSponsorDetailScreenState extends State<ConferenceSponsorDetailS
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF59E0B).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.zero,
                       border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.3)),
                     ),
                     child: Column(
@@ -248,7 +248,7 @@ class _ConferenceSponsorDetailScreenState extends State<ConferenceSponsorDetailS
                         backgroundColor: ConferenceColors.gold,
                         foregroundColor: Colors.black,
                         padding: const EdgeInsets.symmetric(vertical: 15),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
                       ),
                       onPressed: () => _openUrl(s.ctaUrl),
                       icon: const Icon(Icons.open_in_new_rounded, size: 18),
@@ -277,7 +277,7 @@ class _ConferenceSponsorDetailScreenState extends State<ConferenceSponsorDetailS
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.zero,
         border: Border.all(color: color.withValues(alpha: 0.5)),
       ),
       child: Row(

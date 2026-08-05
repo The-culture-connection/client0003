@@ -59,7 +59,9 @@ class _HomeScreenState extends State<HomeScreen> {
         foregroundColor: AppColors.onPrimary,
         child: const Icon(Icons.add),
       ),
-      body: CustomScrollView(
+      body: Stack(
+        children: [
+          CustomScrollView(
         slivers: [
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
@@ -110,6 +112,8 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
+        ],
+      ),
         ],
       ),
     );
@@ -196,13 +200,13 @@ class _MyCommunitiesMessagesCardState extends State<_MyCommunitiesMessagesCard> 
                         padding: const EdgeInsets.only(bottom: 8),
                         child: InkWell(
                           onTap: () => context.push('/groups/${g.id}'),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.zero,
                           child: Container(
                             width: double.infinity,
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: AppColors.background,
-                              borderRadius: BorderRadius.circular(8),
+                              color: Color(0xE6000000),
+                              borderRadius: BorderRadius.zero,
                               border: Border.all(color: AppColors.border),
                             ),
                             child: Column(
@@ -418,12 +422,12 @@ class _MortarInfoHomeCardState extends State<_MortarInfoHomeCard> {
           if (posts.isEmpty) {
             return InkWell(
               onTap: () => context.push('/mortar-feed'),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.zero,
               child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.zero,
                   border: Border.all(color: scheme.outline.withValues(alpha: 0.35)),
                   color: AppColors.secondary,
                 ),
@@ -471,10 +475,10 @@ class _MortarInfoHomeCardState extends State<_MortarInfoHomeCard> {
             color: Colors.transparent,
             child: InkWell(
               onTap: () => context.push('/mortar-feed'),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.zero,
               child: Ink(
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.zero,
                   gradient: LinearGradient(
                     colors: [
                       AppColors.primary.withValues(alpha: 0.22),
@@ -503,7 +507,7 @@ class _MortarInfoHomeCardState extends State<_MortarInfoHomeCard> {
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                     decoration: BoxDecoration(
                                       color: AppColors.primary,
-                                      borderRadius: BorderRadius.circular(999),
+                                      borderRadius: BorderRadius.zero,
                                     ),
                                     child: const Text(
                                       'NEW',
@@ -618,7 +622,7 @@ class _MortarMetaChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: scheme.surface.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.zero,
         border: Border.all(color: scheme.outline.withValues(alpha: 0.35)),
       ),
       child: Row(
@@ -649,7 +653,7 @@ class _MortarInfoThumb extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const size = 88.0;
-    final borderRadius = BorderRadius.circular(10);
+    final borderRadius = BorderRadius.zero;
     if (url != null && url!.isNotEmpty) {
       return ClipRRect(
         borderRadius: borderRadius,
@@ -702,7 +706,7 @@ class _MortarThumbPlaceholder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.zero,
       child: DecoratedBox(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -897,13 +901,13 @@ class _LatestListingPane extends StatelessWidget {
           )
         : InkWell(
             onTap: onTap,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.zero,
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: AppColors.background,
-                borderRadius: BorderRadius.circular(8),
+                color: Color(0xE6000000),
+                borderRadius: BorderRadius.zero,
                 border: Border.all(color: AppColors.border),
               ),
               child: Column(
@@ -956,7 +960,7 @@ class _WelcomeCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.zero,
         gradient: LinearGradient(
           colors: [
             AppColors.primary,
@@ -1031,8 +1035,8 @@ class _CardShell extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(12),
+        color: AppColors.glassFill,
+        borderRadius: BorderRadius.zero,
         border: Border.all(color: AppColors.border),
       ),
       child: Column(

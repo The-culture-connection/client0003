@@ -173,7 +173,7 @@ class _AddToCalendarSheetState extends State<_AddToCalendarSheet> {
                 height: 4,
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(2),
+                  borderRadius: BorderRadius.zero,
                 ),
               ),
             ),
@@ -185,7 +185,7 @@ class _AddToCalendarSheetState extends State<_AddToCalendarSheet> {
                   height: 46,
                   decoration: BoxDecoration(
                     color: ConferenceColors.goldAlpha(0.14),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.zero,
                     border: Border.all(color: ConferenceColors.gold, width: 1.4),
                   ),
                   child: const Icon(Icons.event_available_rounded, color: ConferenceColors.gold),
@@ -216,7 +216,7 @@ class _AddToCalendarSheetState extends State<_AddToCalendarSheet> {
               padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
               decoration: BoxDecoration(
                 color: ConferenceColors.goldAlpha(0.08),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.zero,
                 border: Border.all(color: ConferenceColors.goldAlpha(0.2)),
               ),
               child: Row(
@@ -239,7 +239,7 @@ class _AddToCalendarSheetState extends State<_AddToCalendarSheet> {
                 style: FilledButton.styleFrom(
                   backgroundColor: ConferenceColors.gold,
                   foregroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
                 ),
                 onPressed: _busy ? null : _add,
                 child: _busy

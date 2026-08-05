@@ -81,7 +81,7 @@ class _ConferenceCommunityComposeScreenState
     final previewTag = normalizeCommunityTag(_tag.text);
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
@@ -198,7 +198,7 @@ class _ConferenceCommunityComposeScreenState
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.07),
-                      borderRadius: BorderRadius.circular(999),
+                      borderRadius: BorderRadius.zero,
                       border: Border.all(color: ConferenceColors.cardBorder),
                     ),
                     child: Text(
@@ -221,7 +221,7 @@ class _ConferenceCommunityComposeScreenState
   }
 
   OutlineInputBorder _border({bool focused = false}) => OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.zero,
         borderSide: BorderSide(
           color: focused ? ConferenceColors.gold : ConferenceColors.cardBorder,
         ),

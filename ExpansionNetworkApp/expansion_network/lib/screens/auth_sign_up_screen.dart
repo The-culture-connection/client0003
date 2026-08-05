@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 
 import '../analytics/expansion_analytics.dart';
 import '../auth/auth_controller.dart';
+import '../mortarverse/widgets/torn_panel.dart';
 import '../theme/app_theme.dart';
 
 /// Open account creation — no invite code required. Anyone can create a
@@ -93,20 +94,38 @@ class _AuthSignUpScreenState extends State<AuthSignUpScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.go('/'),
         ),
-        title: const Text('Create account'),
+        title: const Text('CREATE ACCOUNT'),
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
+      body: Stack(
+        children: [
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 28, 20, 24),
+              child: TornPanel(
+                seed: 9,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 40, 24, 28),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Text(
+                          'MORTARVERSE',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontFamily: 'ArchivoBlack',
+                            color: AppColors.foreground,
+                            fontSize: 20,
+                            letterSpacing: 2.4,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
                 Text(
                   'No invite code needed — sign up, then choose Networking Hall or '
                   'Conference Center. An invite code is only required to enter the '
@@ -165,10 +184,14 @@ class _AuthSignUpScreenState extends State<AuthSignUpScreen> {
                   onPressed: () => context.push('/auth/sign-in'),
                   child: const Text('Already have an account? Sign in'),
                 ),
-              ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }

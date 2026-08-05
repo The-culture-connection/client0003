@@ -37,7 +37,7 @@ Future<void> showGroupThreadDetailSheet(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
-    backgroundColor: AppColors.background,
+    backgroundColor: Colors.transparent,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
     ),
@@ -427,10 +427,10 @@ class _FirestoreThreadTileState extends State<FirestoreThreadTile> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       child: Material(
-        color: AppColors.card,
+        color: AppColors.glassFill,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.zero,
           side: const BorderSide(color: AppColors.border),
         ),
         clipBehavior: Clip.antiAlias,
@@ -461,7 +461,7 @@ class _FirestoreThreadTileState extends State<FirestoreThreadTile> {
                   isDense: true,
                   filled: true,
                   fillColor: AppColors.secondary,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.zero, borderSide: BorderSide.none),
                 ),
                 onSubmitted: (_) => onSubmit(),
               ),
