@@ -16,6 +16,7 @@ import '../widgets/event_poster_byline.dart';
 import '../widgets/event_rsvp_attendee_tile.dart';
 import '../widgets/event_source_badge.dart';
 import '../widgets/swipe_to_pay_button.dart';
+import '../theme/cosmic_content.dart';
 
 class EventDetailScreen extends StatefulWidget {
   const EventDetailScreen({super.key, required this.eventId});
@@ -269,7 +270,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                                         padding: const EdgeInsets.all(12),
                                         decoration: BoxDecoration(
                                           color: AppColors.secondary,
-                                          borderRadius: BorderRadius.zero,
+                                          borderRadius: Cosmic.chipRadius,
                                           border: Border.all(color: AppColors.border),
                                         ),
                                         child: Text(
@@ -285,7 +286,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                                     ],
                                     if (e.imageUrl != null && e.imageUrl!.isNotEmpty)
                                       ClipRRect(
-                                        borderRadius: BorderRadius.zero,
+                                        borderRadius: Cosmic.chipRadius,
                                         child: AspectRatio(
                                           aspectRatio: 16 / 9,
                                           child: CachedNetworkImage(

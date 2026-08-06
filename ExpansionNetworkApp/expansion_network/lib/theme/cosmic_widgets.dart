@@ -13,7 +13,7 @@ import 'cosmic.dart';
 /// re-exported here so existing imports keep working. There is deliberately
 /// one definition — a second copy would drift the moment a value changed.
 ///
-export 'cosmic.dart' show Cosmic, CosmicZone, cosmicTheme;
+export 'cosmic.dart';
 
 /// A frosted panel: hairline border, near-transparent gradient fill, and a
 /// real backdrop blur so the nebula reads through it.
@@ -158,39 +158,78 @@ class _TornPainter extends CustomPainter {
   bool shouldRepaint(covariant _TornPainter oldDelegate) => false;
 }
 
-/// The option's primary action: an uppercase pill lit from below by a red
-/// radial bloom, ringed in a bright hairline.
+/// The primary action across the whole app: an uppercase pill lit from below
+/// by a radial bloom, ringed in a bright hairline.
+///
+/// The bloom takes the **zone accent** rather than a fixed red — it reads from
+/// `ColorScheme.primary`, which `cosmicTheme` sets per zone. So the same
+/// widget blooms brick red in the Expansion app and gold under
+/// `/conference/*`, with no call site having to know which it is. Pass
+/// [accent] only to override that.
 class GlowPill extends StatelessWidget {
-  const GlowPill({super.key, required this.label, this.onTap});
+  const GlowPill({
+    super.key,
+    required this.label,
+    this.onTap,
+    this.accent,
+    this.expand = false,
+    this.dense = false,
+  });
 
   final String label;
   final VoidCallback? onTap;
 
+  /// Overrides the zone accent. Leave null in almost all cases.
+  final Color? accent;
+
+  /// Stretch to the parent's width, for a panel's primary action.
+  final bool expand;
+
+  /// Tighter padding for a pill sitting inside a dense row.
+  final bool dense;
+
+  /// The lit bloom, shared with the other lit controls so a pill, a squircle
+  /// button and a FAB are the same light source at different sizes.
+  static RadialGradient bloom(Color accent, {bool enabled = true}) =>
+      RadialGradient(
+        // `radial-gradient(circle at 50% 130%, …)` — the light sits below the
+        // control, so the underside is hottest.
+        center: const Alignment(0, 1.6),
+        radius: 1.1,
+        colors: [
+          accent.withValues(alpha: enabled ? 0.85 : 0.22),
+          accent.withValues(alpha: enabled ? 0.12 : 0.04),
+        ],
+        stops: const [0, 0.7],
+      );
+
   @override
   Widget build(BuildContext context) {
-    return Material(
+    final enabled = onTap != null;
+    final hue = accent ?? Theme.of(context).colorScheme.primary;
+
+    final pill = Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
         customBorder: const StadiumBorder(),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
+          padding: dense
+              ? const EdgeInsets.symmetric(horizontal: 16, vertical: 9)
+              : const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
+          alignment: expand ? Alignment.center : null,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: const Color(0x80FFFFFF)),
-            // `radial-gradient(circle at 50% 130%, …)` — the light source sits
-            // below the pill, so the underside is hottest.
-            gradient: const RadialGradient(
-              center: Alignment(0, 1.6),
-              radius: 1.1,
-              colors: [Color(0xD9FF2837), Color(0x1FFF2837)],
-              stops: [0, 0.7],
+            borderRadius: Cosmic.pillRadius,
+            border: Border.all(
+              color: enabled ? const Color(0x80FFFFFF) : const Color(0x33FFFFFF),
             ),
+            gradient: GlowPill.bloom(hue, enabled: enabled),
           ),
           child: Text(
             label.toUpperCase(),
-            style: const TextStyle(
-              color: Colors.white,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: enabled ? Colors.white : Cosmic.textFaint,
               fontSize: 12,
               fontWeight: FontWeight.w500,
               letterSpacing: 0.96,
@@ -200,6 +239,8 @@ class GlowPill extends StatelessWidget {
         ),
       ),
     );
+
+    return expand ? SizedBox(width: double.infinity, child: pill) : pill;
   }
 }
 

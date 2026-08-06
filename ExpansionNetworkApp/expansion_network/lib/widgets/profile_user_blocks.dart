@@ -5,6 +5,7 @@ import '../profile/profile_edit_sections.dart';
 import '../profile/profile_utils.dart';
 import '../theme/app_theme.dart';
 import 'earned_badges_strip.dart';
+import '../theme/cosmic_content.dart';
 
 class ProfileAvatar extends StatelessWidget {
   const ProfileAvatar({super.key, required this.photoUrl, required this.initials});
@@ -170,7 +171,7 @@ class ProfileAchievementsCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.glassFill,
-        borderRadius: BorderRadius.zero,
+        borderRadius: Cosmic.chipRadius,
         border: Border.all(color: AppColors.border),
       ),
       child: Column(
@@ -198,7 +199,7 @@ class ProfileAchievementsCard extends StatelessWidget {
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     border: Border.all(color: AppColors.border),
-                    borderRadius: BorderRadius.zero,
+                    borderRadius: Cosmic.chipRadius,
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -225,7 +226,7 @@ class ProfileCertificatesPlaceholderCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.glassFill,
-        borderRadius: BorderRadius.zero,
+        borderRadius: Cosmic.chipRadius,
         border: Border.all(color: AppColors.border),
       ),
       child: Column(

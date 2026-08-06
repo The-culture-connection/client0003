@@ -14,6 +14,7 @@ import '../theme/app_theme.dart';
 import '../utils/relative_time.dart';
 import 'poster_profile_avatar.dart';
 import 'user_profile_modal.dart';
+import '../theme/cosmic_content.dart';
 
 /// Feed-style post: author header (avatar + name open profile), body, optional image, like only (no reply/share UI).
 class FeedPostCard extends StatelessWidget {
@@ -43,14 +44,17 @@ class FeedPostCard extends StatelessWidget {
     final repo = FeedPostsRepository();
     final users = UserProfileRepository();
 
-    final padding = compact ? const EdgeInsets.symmetric(vertical: 10) : const EdgeInsets.all(16);
+    final padding = compact ? const EdgeInsets.symmetric(vertical: 10) : const EdgeInsets.all(15);
     final onPostTap = onOpenPost ?? () => context.push('/feed/post/${post.id}');
 
-    return Material(
+    // Option 2g's post card surface. `compact` keeps the bare inline form —
+    // it renders inside a host panel (the home dashboard) that already draws
+    // one, and nesting two glass surfaces muddies both.
+    final body = Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onPostTap,
-        borderRadius: BorderRadius.zero,
+        borderRadius: compact ? Cosmic.chipRadius : Cosmic.panelRadius,
         child: Padding(
           padding: padding,
           child: SizedBox(
@@ -85,7 +89,7 @@ class FeedPostCard extends StatelessWidget {
                   Expanded(
                     child: InkWell(
                       onTap: post.authorId.isEmpty ? null : () => _openProfile(context),
-                      borderRadius: BorderRadius.zero,
+                      borderRadius: Cosmic.chipRadius,
                       child: Padding(
                         padding: const EdgeInsets.only(right: 4, bottom: 4),
                         child: post.authorId.isEmpty
@@ -161,7 +165,7 @@ class FeedPostCard extends StatelessWidget {
               if (showImage && post.imageUrl != null && post.imageUrl!.trim().isNotEmpty) ...[
                 SizedBox(height: compact ? 8 : 10),
                 ClipRRect(
-                  borderRadius: BorderRadius.zero,
+                  borderRadius: Cosmic.chipRadius,
                   child: AspectRatio(
                     aspectRatio: compact ? 16 / 10 : 4 / 3,
                     child: Image.network(
@@ -235,7 +239,7 @@ class FeedPostCard extends StatelessWidget {
                                       }
                                     }
                                   },
-                            borderRadius: BorderRadius.zero,
+                            borderRadius: Cosmic.chipRadius,
                             child: Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                               child: Row(
@@ -315,6 +319,17 @@ class FeedPostCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+
+    if (compact) return body;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: Cosmic.panelRadius,
+        border: Border.all(color: const Color(0x2EFFFFFF)),
+        gradient: Cosmic.chipFill,
+      ),
+      child: body,
     );
   }
 }

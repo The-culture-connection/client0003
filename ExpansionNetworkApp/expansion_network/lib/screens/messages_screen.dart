@@ -9,6 +9,7 @@ import '../analytics/expansion_analytics.dart';
 import '../services/dm_repository.dart';
 import '../services/user_profile_repository.dart';
 import '../theme/app_theme.dart';
+import '../theme/cosmic_content.dart';
 import '../widgets/user_profile_modal.dart';
 
 String? _dmOtherParticipant(List<dynamic>? ids, String me) {
@@ -110,64 +111,43 @@ class _MessagesScreenState extends State<MessagesScreen> {
                         final other = _dmOtherParticipant(ids, me);
                         final preview = data?['last_preview'] as String? ?? '';
                         if (other == null) return const SizedBox.shrink();
-                        return Material(
-                          color: Color(0xE6000000),
-                          child: InkWell(
-                            onTap: () {
-                              unawaited(
-                                ExpansionAnalytics.log(
-                                  'messages_thread_opened',
-                                  entityId: other,
-                                  sourceScreen: 'messages_inbox',
-                                  attachmentType: 'dm',
-                                ),
+                        // Option 2f's conversation row.
+                        return Padding(
+                          padding: const EdgeInsets.fromLTRB(
+                            Cosmic.gutter,
+                            0,
+                            Cosmic.gutter,
+                            12,
+                          ),
+                          child: FutureBuilder<String>(
+                            future: users.getDisplayNameForUser(other),
+                            builder: (context, nameSnap) {
+                              final name = nameSnap.data ?? 'Member';
+                              return CosmicPersonRow(
+                                name: name,
+                                preview: preview,
+                                // The uid initial is a stable fallback while
+                                // the display name is still resolving.
+                                initials: (nameSnap.data ?? other).isNotEmpty
+                                    ? (nameSnap.data ?? other)[0]
+                                    : '?',
+                                // The disc keeps its own target: the row opens
+                                // the thread, the avatar opens the person.
+                                onAvatarTap: () =>
+                                    showUserProfileModal(context, userId: other),
+                                onTap: () {
+                                  unawaited(
+                                    ExpansionAnalytics.log(
+                                      'messages_thread_opened',
+                                      entityId: other,
+                                      sourceScreen: 'messages_inbox',
+                                      attachmentType: 'dm',
+                                    ),
+                                  );
+                                  context.push('/messages/direct/$other');
+                                },
                               );
-                              context.push('/messages/direct/$other');
                             },
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  InkWell(
-                                    onTap: () => showUserProfileModal(context, userId: other),
-                                    customBorder: const CircleBorder(),
-                                    child: CircleAvatar(
-                                      backgroundColor: AppColors.primary,
-                                      child: Text(
-                                        other.isNotEmpty ? other.substring(0, 1).toUpperCase() : '?',
-                                        style: const TextStyle(color: AppColors.onPrimary, fontSize: 14, fontWeight: FontWeight.w600),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: FutureBuilder<String>(
-                                      future: users.getDisplayNameForUser(other),
-                                      builder: (context, nameSnap) {
-                                        return Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              nameSnap.data ?? 'Member',
-                                              style: const TextStyle(fontWeight: FontWeight.w500),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              preview,
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: const TextStyle(fontSize: 13, color: AppColors.mutedForeground),
-                                            ),
-                                          ],
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
                           ),
                         );
                       },

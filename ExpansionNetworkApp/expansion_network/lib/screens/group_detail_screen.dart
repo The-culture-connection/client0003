@@ -15,6 +15,7 @@ import '../utils/content_action_guard.dart';
 import '../utils/staff_claims.dart';
 import '../widgets/group_thread/firestore_thread_tile.dart';
 import '../widgets/user_profile_modal.dart';
+import '../theme/cosmic_content.dart';
 
 /// Community hub (`groups_mobile`): each item in the list is a **thread** (like a Reddit post).
 class GroupDetailScreen extends StatefulWidget {
@@ -434,7 +435,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: AppColors.secondary,
-          borderRadius: BorderRadius.zero,
+          borderRadius: Cosmic.chipRadius,
           border: Border.all(color: AppColors.border),
         ),
         child: Column(
@@ -461,7 +462,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: AppColors.glassFill,
-                  borderRadius: BorderRadius.zero,
+                  borderRadius: Cosmic.chipRadius,
                   border: Border.all(color: AppColors.border),
                 ),
                 child: Text(
@@ -518,7 +519,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: AppColors.glassFill,
-        borderRadius: BorderRadius.zero,
+        borderRadius: Cosmic.chipRadius,
         border: Border.all(color: AppColors.border),
       ),
       child: Row(
@@ -536,10 +537,10 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
     return Expanded(
       child: Material(
         color: selected ? AppColors.primary : AppColors.secondary,
-        borderRadius: BorderRadius.zero,
+        borderRadius: Cosmic.chipRadius,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.zero,
+          borderRadius: Cosmic.chipRadius,
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 10),
             child: Text(
@@ -579,7 +580,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: AppColors.glassFill,
-                borderRadius: BorderRadius.zero,
+                borderRadius: Cosmic.chipRadius,
                 border: Border.all(color: AppColors.border),
               ),
               child: const Column(
@@ -607,7 +608,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: AppColors.glassFill,
-              borderRadius: BorderRadius.zero,
+              borderRadius: Cosmic.chipRadius,
               border: Border.all(color: AppColors.border),
             ),
             child: Column(
@@ -715,10 +716,10 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
   Widget _sortChip(String label, bool selected, VoidCallback onTap) {
     return Material(
       color: selected ? AppColors.primary : Colors.transparent,
-      borderRadius: BorderRadius.zero,
+      borderRadius: Cosmic.chipRadius,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.zero,
+        borderRadius: Cosmic.chipRadius,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           child: Text(
@@ -755,13 +756,13 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
           child: Material(
             color: AppColors.glassFill,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.zero,
+              borderRadius: Cosmic.chipRadius,
               side: const BorderSide(color: AppColors.border),
             ),
             clipBehavior: Clip.antiAlias,
             child: InkWell(
               onTap: () => showUserProfileModal(context, userId: memberUid),
-              borderRadius: BorderRadius.zero,
+              borderRadius: Cosmic.chipRadius,
               child: Padding(
                 padding: const EdgeInsets.all(12),
                 child: Row(
@@ -821,7 +822,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: AppColors.glassFill,
-            borderRadius: BorderRadius.zero,
+            borderRadius: Cosmic.chipRadius,
             border: Border.all(color: AppColors.border),
           ),
           child: Column(
@@ -841,7 +842,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: AppColors.glassFill,
-            borderRadius: BorderRadius.zero,
+            borderRadius: Cosmic.chipRadius,
             border: Border.all(color: AppColors.border),
           ),
           child: Column(

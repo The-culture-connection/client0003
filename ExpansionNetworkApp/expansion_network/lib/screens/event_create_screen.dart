@@ -11,6 +11,7 @@ import '../services/events_repository.dart';
 import '../services/user_profile_repository.dart';
 import '../theme/app_theme.dart';
 import '../utils/content_suspension.dart';
+import '../theme/cosmic_content.dart';
 
 class EventCreateScreen extends StatefulWidget {
   const EventCreateScreen({super.key});
@@ -402,12 +403,12 @@ class _EventCreateScreenState extends State<EventCreateScreen> {
                     color: Colors.transparent,
                     child: InkWell(
                       onTap: _submitting ? null : _pickFlyer,
-                      borderRadius: BorderRadius.zero,
+                      borderRadius: Cosmic.chipRadius,
                       child: Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
                           border: Border.all(color: AppColors.border, style: BorderStyle.solid),
-                          borderRadius: BorderRadius.zero,
+                          borderRadius: Cosmic.chipRadius,
                         ),
                         child: Column(
                           children: [
@@ -437,7 +438,7 @@ class _EventCreateScreenState extends State<EventCreateScreen> {
                     decoration: BoxDecoration(
                       color: const Color(0xFFFFF8E1),
                       border: Border.all(color: const Color(0xFFFFE082)),
-                      borderRadius: BorderRadius.zero,
+                      borderRadius: Cosmic.chipRadius,
                     ),
                     child: const Text(
                       'Your event will be submitted for review in Digital Curriculum and will be visible to all members once published.',

@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
 import '../analytics/expansion_analytics.dart';
-import '../theme/app_theme.dart';
+import '../theme/cosmic_content.dart';
 import 'badge_earned_session_listener.dart';
 import 'expansion_tour.dart';
 
@@ -27,11 +27,11 @@ class ExpansionShell extends StatefulWidget {
 class _ExpansionShellState extends State<ExpansionShell> {
   static _ExpansionShellState? _instance;
 
-  // Stable keys anchored to each bottom-nav icon so the coach-mark tour can
-  // spotlight them. NavigationBar renders both the unselected and selected
-  // icon, so we keep a key for each and target whichever the tour needs.
+  // Stable keys anchored to each bottom-nav destination so the coach-mark tour
+  // can spotlight them. One key per destination: unlike Material's
+  // NavigationBar, which builds a separate selected and unselected icon,
+  // CosmicBottomNav renders each destination as a single widget.
   final List<GlobalKey> _iconKeys = List.generate(4, (_) => GlobalKey());
-  final List<GlobalKey> _selectedIconKeys = List.generate(4, (_) => GlobalKey());
   TutorialCoachMark? _activeTour;
 
   static const _destinations = [
@@ -100,12 +100,10 @@ class _ExpansionShellState extends State<ExpansionShell> {
   void _startTour() {
     if (!mounted) return;
     _activeTour?.finish();
-    final currentIndex = widget.navigationShell.currentIndex;
     final steps = <TourStep>[
       for (var i = 0; i < _destinations.length; i++)
         TourStep(
-          // Spotlight the icon that is actually painted for this tab.
-          key: i == currentIndex ? _selectedIconKeys[i] : _iconKeys[i],
+          key: _iconKeys[i],
           title: _destinations[i].tourTitle,
           body: _destinations[i].tourBody,
         ),
@@ -149,45 +147,28 @@ class _ExpansionShellState extends State<ExpansionShell> {
           ],
         ),
       ),
-      bottomNavigationBar: SafeArea(
-        top: false,
-        minimum: EdgeInsets.zero,
-        child: NavigationBarTheme(
-          data: Theme.of(context).navigationBarTheme.copyWith(
-                height: 72,
-              ),
-          child: NavigationBar(
-            selectedIndex: widget.navigationShell.currentIndex,
-            onDestinationSelected: (i) {
-              unawaited(
-                ExpansionAnalytics.log(
-                  'main_tab_selected',
-                  sourceScreen: 'main_shell',
-                  extra: <String, Object?>{
-                    'tab_index': i,
-                    'tab_label': _destinations[i].label,
-                  },
-                ),
-              );
-              widget.navigationShell.goBranch(i);
-            },
-            backgroundColor: AppColors.card,
-            indicatorColor: AppColors.primary.withValues(alpha: 0.2),
-            labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-            destinations: [
-              for (var i = 0; i < _destinations.length; i++)
-                NavigationDestination(
-                  icon: Icon(_destinations[i].icon, key: _iconKeys[i]),
-                  selectedIcon: Icon(
-                    _destinations[i].selectedIcon,
-                    color: AppColors.primary,
-                    key: _selectedIconKeys[i],
-                  ),
-                  label: _destinations[i].label,
-                ),
-            ],
-          ),
-        ),
+      // The design's floating pill bar, not a docked Material NavigationBar.
+      extendBody: true,
+      bottomNavigationBar: CosmicBottomNav(
+        index: widget.navigationShell.currentIndex,
+        itemKeys: _iconKeys,
+        items: [
+          for (final d in _destinations)
+            CosmicNavItem(label: d.label, icon: d.selectedIcon),
+        ],
+        onSelect: (i) {
+          unawaited(
+            ExpansionAnalytics.log(
+              'main_tab_selected',
+              sourceScreen: 'main_shell',
+              extra: <String, Object?>{
+                'tab_index': i,
+                'tab_label': _destinations[i].label,
+              },
+            ),
+          );
+          widget.navigationShell.goBranch(i);
+        },
       ),
     );
   }

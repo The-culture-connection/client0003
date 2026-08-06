@@ -9,6 +9,7 @@ import '../services/feed_posts_repository.dart';
 import '../theme/app_theme.dart';
 import '../utils/content_action_guard.dart';
 import '../widgets/feed_post_card.dart';
+import '../theme/cosmic_content.dart';
 
 /// Full community post feed (`feed_posts`), separate from the Events tab.
 class SocialFeedScreen extends StatefulWidget {
@@ -104,7 +105,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
                     return Container(
                       decoration: BoxDecoration(
                         color: AppColors.glassFill,
-                        borderRadius: BorderRadius.zero,
+                        borderRadius: Cosmic.chipRadius,
                         border: Border.all(color: AppColors.border),
                       ),
                       child: FeedPostCard(

@@ -12,6 +12,7 @@ import '../services/user_profile_repository.dart';
 import '../theme/app_theme.dart';
 import '../widgets/messaging_attachment_preview.dart';
 import '../widgets/poster_profile_avatar.dart';
+import '../theme/cosmic_content.dart';
 
 class DirectChatScreen extends StatefulWidget {
   const DirectChatScreen({
@@ -298,7 +299,7 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
                                     color: mine ? AppColors.primary : AppColors.card,
-                                    borderRadius: BorderRadius.zero.copyWith(
+                                    borderRadius: Cosmic.chipRadius.copyWith(
                                       bottomRight: mine ? const Radius.circular(4) : null,
                                       bottomLeft: !mine ? const Radius.circular(4) : null,
                                     ),
@@ -347,7 +348,7 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
                           filled: true,
                           fillColor: AppColors.background,
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.zero,
+                            borderRadius: Cosmic.chipRadius,
                             borderSide: const BorderSide(color: AppColors.border),
                           ),
                         ),

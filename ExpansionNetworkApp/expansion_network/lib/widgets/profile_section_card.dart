@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import '../theme/cosmic_content.dart';
 
 /// Onboarding-style card; [onEdit] null = read-only (no pencil).
 class ProfileSectionCard extends StatelessWidget {
@@ -23,7 +24,7 @@ class ProfileSectionCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.glassFill,
-        borderRadius: BorderRadius.zero,
+        borderRadius: Cosmic.chipRadius,
         border: Border.all(color: AppColors.border),
       ),
       child: Column(

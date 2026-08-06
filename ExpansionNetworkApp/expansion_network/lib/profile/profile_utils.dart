@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import '../theme/cosmic_content.dart';
 
 String? profileString(dynamic v) {
   if (v is String && v.trim().isNotEmpty) return v.trim();
@@ -73,7 +74,7 @@ Widget profileChip(String text, {required bool filled}) {
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
     decoration: BoxDecoration(
       color: filled ? AppColors.primary : AppColors.primary.withValues(alpha: 0.1),
-      borderRadius: BorderRadius.zero,
+      borderRadius: Cosmic.chipRadius,
     ),
     child: Text(
       text,

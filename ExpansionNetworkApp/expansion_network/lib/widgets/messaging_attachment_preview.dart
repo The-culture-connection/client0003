@@ -8,6 +8,7 @@ import '../services/events_repository.dart';
 import '../services/explore_listings_repository.dart';
 import '../theme/app_theme.dart';
 import '../utils/relative_time.dart';
+import '../theme/cosmic_content.dart';
 
 /// Inline card for a job, skill listing, or event inside a DM bubble.
 class MessagingAttachmentPreview extends StatelessWidget {
@@ -138,7 +139,7 @@ Widget _loadingOrMissing(bool loading, String label) {
     padding: const EdgeInsets.all(10),
     decoration: BoxDecoration(
       color: AppColors.secondary,
-      borderRadius: BorderRadius.zero,
+      borderRadius: Cosmic.chipRadius,
       border: Border.all(color: AppColors.border),
     ),
     child: Text(
@@ -160,7 +161,7 @@ Widget _cardShell(
     padding: const EdgeInsets.all(10),
     decoration: BoxDecoration(
       color: Color(0xE6000000),
-      borderRadius: BorderRadius.zero,
+      borderRadius: Cosmic.chipRadius,
       border: Border.all(color: AppColors.border),
     ),
     child: Row(
@@ -187,5 +188,5 @@ Widget _cardShell(
     ),
   );
   if (onTap == null) return child;
-  return InkWell(onTap: onTap, borderRadius: BorderRadius.zero, child: child);
+  return InkWell(onTap: onTap, borderRadius: Cosmic.chipRadius, child: child);
 }

@@ -34,6 +34,7 @@ import {
   Shield,
   AlertCircle,
   RefreshCw,
+  Bug,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { HelpCircle } from "lucide-react";
@@ -252,6 +253,16 @@ export function AdminCommandCenter() {
       stats: "Groups",
       scope: "digital_curriculum",
     },
+    {
+      icon: Bug,
+      title: "Beta Testing",
+      description: "Tester reports with the screen and screenshot they came from",
+      href: adminPanelPath("beta-testing"),
+      gradient: "from-red-500/20 to-red-500/5",
+      iconColor: "text-red-500",
+      stats: "Feedback",
+      scope: "both",
+    },
   ];
 
   const actionStripItems: ActionStripItem[] = [
@@ -294,6 +305,16 @@ export function AdminCommandCenter() {
       icon: MessageSquare,
       variant: "info",
       scope: "digital_curriculum",
+    },
+    {
+      key: "beta_feedback",
+      title: "Beta tester reports",
+      description: "New shake-to-report and widget feedback awaiting triage.",
+      href: adminPanelPath("beta-testing"),
+      count: counts.newBetaFeedback,
+      icon: Bug,
+      variant: "warning",
+      scope: "both",
     },
     {
       key: "shop_orders",

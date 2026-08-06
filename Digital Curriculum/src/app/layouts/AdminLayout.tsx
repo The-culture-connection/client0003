@@ -26,6 +26,7 @@ const panelLinks: { label: string; tab: AdminPanelTabSlug }[] = [
   { label: "Direct messages", tab: "messages" },
   { label: "Courses", tab: "courses" },
   { label: "Shop", tab: "shop" },
+  { label: "Beta Testing", tab: "beta-testing" },
 ];
 
 export function AdminLayout() {

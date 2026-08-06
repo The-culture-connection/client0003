@@ -10,6 +10,7 @@ import '../services/user_reports_repository.dart';
 import '../services/expansion_session_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/staff_claims.dart';
+import '../theme/cosmic_content.dart';
 
 /// Staff-only: triage `user_reports` with Ban / Unsuspend and structured profile snapshot.
 class AdminReportsScreen extends StatefulWidget {
@@ -144,7 +145,7 @@ class _ModerationSnapshotPanel extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: AppColors.secondary,
-            borderRadius: BorderRadius.zero,
+            borderRadius: Cosmic.chipRadius,
             border: Border.all(color: AppColors.border),
           ),
           child: Column(
@@ -183,7 +184,7 @@ class _ModerationSnapshotPanel extends StatelessWidget {
               margin: const EdgeInsets.only(bottom: 8),
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.zero,
+                borderRadius: Cosmic.chipRadius,
                 border: Border.all(color: AppColors.border),
                 color: AppColors.glassFill,
               ),
@@ -210,7 +211,7 @@ class _ModerationSnapshotPanel extends StatelessWidget {
               margin: const EdgeInsets.only(bottom: 8),
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.zero,
+                borderRadius: Cosmic.chipRadius,
                 border: Border.all(color: AppColors.border),
                 color: AppColors.glassFill,
               ),
@@ -235,7 +236,7 @@ class _ModerationSnapshotPanel extends StatelessWidget {
               margin: const EdgeInsets.only(bottom: 8),
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.zero,
+                borderRadius: Cosmic.chipRadius,
                 border: Border.all(color: AppColors.border),
                 color: AppColors.glassFill,
               ),
@@ -427,7 +428,7 @@ class _AdminReportsBodyState extends State<_AdminReportsBody> {
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
                           color: finalized ? AppColors.secondary.withValues(alpha: 0.65) : AppColors.card,
-                          borderRadius: BorderRadius.zero,
+                          borderRadius: Cosmic.chipRadius,
                           border: Border.all(
                             color: finalized ? AppColors.mutedForeground.withValues(alpha: 0.35) : AppColors.border,
                           ),
@@ -448,7 +449,7 @@ class _AdminReportsBodyState extends State<_AdminReportsBody> {
                                       Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                         decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.zero,
+                                          borderRadius: Cosmic.chipRadius,
                                           border: Border.all(color: AppColors.border),
                                         ),
                                         child: Text('Status: $status', style: const TextStyle(fontSize: 11)),
@@ -457,7 +458,7 @@ class _AdminReportsBodyState extends State<_AdminReportsBody> {
                                         Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                           decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.zero,
+                                            borderRadius: Cosmic.chipRadius,
                                             color: sr == 'ban' ? Colors.red.shade900.withValues(alpha: 0.85) : AppColors.primary.withValues(alpha: 0.2),
                                           ),
                                           child: Text(

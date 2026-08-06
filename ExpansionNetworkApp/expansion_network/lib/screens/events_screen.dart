@@ -18,6 +18,7 @@ import '../widgets/event_rsvp_attendee_tile.dart';
 import '../widgets/event_source_badge.dart';
 import '../widgets/page_header.dart';
 import '../widgets/swipe_to_pay_button.dart';
+import '../theme/cosmic_content.dart';
 
 /// Events list driven by Firestore `events_mobile`.
 class EventsScreen extends StatefulWidget {
@@ -147,7 +148,7 @@ class _EventsScreenState extends State<EventsScreen> {
                                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                         decoration: BoxDecoration(
                                           color: AppColors.primary,
-                                          borderRadius: BorderRadius.zero,
+                                          borderRadius: Cosmic.chipRadius,
                                         ),
                                         child: const Text(
                                           'Registered',

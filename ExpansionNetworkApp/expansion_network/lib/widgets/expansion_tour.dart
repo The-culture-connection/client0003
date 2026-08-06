@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
 import '../theme/app_theme.dart';
+import '../theme/cosmic_content.dart';
 
 // Callers pick a spotlight shape per step; re-exported so screens don't need a
 // direct dependency on the coach-mark package.
@@ -143,7 +144,7 @@ class _TourCard extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppColors.glassFill,
-        borderRadius: BorderRadius.zero,
+        borderRadius: Cosmic.chipRadius,
         border: Border.all(color: AppColors.border),
       ),
       child: Column(

@@ -134,7 +134,7 @@ class CosmicNavRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final shape = BorderRadius.circular(Cosmic.radiusChip);
+    final shape = Cosmic.chipRadius;
     return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: shape,
@@ -732,12 +732,18 @@ class CosmicBottomNav extends StatelessWidget {
     required this.index,
     required this.onSelect,
     this.accent = Cosmic.accentExpansion,
+    this.itemKeys,
   });
 
   final List<CosmicNavItem> items;
   final int index;
   final ValueChanged<int> onSelect;
   final Color accent;
+
+  /// Per-item keys for coach-mark spotlights. Unlike Material's
+  /// [NavigationBar], which renders a separate selected and unselected icon,
+  /// each destination here is a single widget — so one key per item is enough.
+  final List<Key?>? itemKeys;
 
   /// Vertical space the bar occupies above the bottom edge. Screens that set
   /// [Scaffold.extendBody] must pad their scroll content by this much or the
@@ -773,6 +779,9 @@ class CosmicBottomNav extends StatelessWidget {
                       onTap: () => onSelect(i),
                       behavior: HitTestBehavior.opaque,
                       child: Column(
+                        key: itemKeys != null && i < itemKeys!.length
+                            ? itemKeys![i]
+                            : null,
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(

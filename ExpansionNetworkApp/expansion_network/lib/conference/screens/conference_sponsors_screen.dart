@@ -12,6 +12,7 @@ import '../widgets/conference_background.dart';
 import '../widgets/conference_shell.dart';
 import '../widgets/conference_tour.dart';
 import '../../widgets/expansion_tour.dart';
+import '../../theme/cosmic_content.dart';
 
 /// Sponsor Hall — ports `Conference App Figma Mockup/src/app/pages/ConferenceSponsors.tsx`,
 /// bound to the live `conferences/{id}/sponsors` collection. Package levels drive
@@ -107,7 +108,7 @@ class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
               Text(title,
                   style: const TextStyle(color: ConferenceColors.gold, fontSize: 16, fontWeight: FontWeight.w800)),
               const SizedBox(height: 10),
-              Text(body, style: TextStyle(color: Colors.grey.shade300, fontSize: 14, height: 1.4)),
+              Text(body, style: TextStyle(color: Cosmic.textMuted, fontSize: 14, height: 1.4)),
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
@@ -115,7 +116,7 @@ class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
                   style: FilledButton.styleFrom(
                     backgroundColor: ConferenceColors.gold,
                     foregroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                    shape: RoundedRectangleBorder(borderRadius: Cosmic.chipRadius),
                   ),
                   onPressed: () => Navigator.of(ctx).pop(),
                   child: const Text('Got it', style: TextStyle(fontWeight: FontWeight.w800)),
@@ -208,11 +209,11 @@ class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.zero,
+        borderRadius: Cosmic.chipRadius,
         border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
       child: Text('No sponsors have been added yet — check back soon.',
-          style: TextStyle(color: Colors.grey.shade400, fontSize: 13)),
+          style: TextStyle(color: Cosmic.textMuted, fontSize: 13)),
     );
   }
 
@@ -228,9 +229,9 @@ class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.arrow_back, size: 18, color: Colors.grey.shade400),
+                  Icon(Icons.arrow_back, size: 18, color: Cosmic.textMuted),
                   const SizedBox(width: 6),
-                  Text('Back', style: TextStyle(color: Colors.grey.shade400, fontSize: 13)),
+                  Text('Back', style: TextStyle(color: Cosmic.textMuted, fontSize: 13)),
                 ],
               ),
             ),
@@ -245,7 +246,7 @@ class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
             ],
           ),
           const SizedBox(height: 6),
-          Text('Meet our amazing sponsors', style: TextStyle(color: Colors.grey.shade400, fontSize: 13)),
+          Text('Meet our amazing sponsors', style: TextStyle(color: Cosmic.textMuted, fontSize: 13)),
         ],
       ),
     );
@@ -267,7 +268,7 @@ class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
                   decoration: BoxDecoration(
                     color: _filter == t ? ConferenceColors.gold : Colors.white.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.zero,
+                    borderRadius: Cosmic.chipRadius,
                     border: Border.all(
                       color: _filter == t ? ConferenceColors.gold : Colors.white.withValues(alpha: 0.1),
                     ),
@@ -275,7 +276,7 @@ class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
                   child: Text(
                     t.toUpperCase(),
                     style: TextStyle(
-                      color: _filter == t ? Colors.black : Colors.grey.shade400,
+                      color: _filter == t ? Colors.black : Cosmic.textMuted,
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 0.8,
@@ -318,7 +319,7 @@ class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.zero,
+        borderRadius: Cosmic.chipRadius,
         border: Border.all(color: _amber.withValues(alpha: 0.2)),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -336,7 +337,7 @@ class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
                 Text(s.giveawayPrize ?? 'Giveaway',
                     style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15)),
                 const SizedBox(height: 2),
-                Text('by ${s.companyName}', style: TextStyle(color: Colors.grey.shade400, fontSize: 13)),
+                Text('by ${s.companyName}', style: TextStyle(color: Cosmic.textMuted, fontSize: 13)),
               ],
             ),
           ),
@@ -352,7 +353,7 @@ class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
                 color: _amber.withValues(alpha: 0.25),
-                borderRadius: BorderRadius.zero,
+                borderRadius: Cosmic.chipRadius,
                 border: Border.all(color: _amber.withValues(alpha: 0.5)),
               ),
               child: const Text('ENTER',
@@ -374,7 +375,7 @@ class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.zero,
+        borderRadius: Cosmic.chipRadius,
         border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
       child: Column(
@@ -401,7 +402,7 @@ class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
                     ),
                     if (s.description.trim().isNotEmpty) ...[
                       const SizedBox(height: 4),
-                      Text(s.description, style: TextStyle(color: Colors.grey.shade400, fontSize: 13)),
+                      Text(s.description, style: TextStyle(color: Cosmic.textMuted, fontSize: 13)),
                     ],
                     if (s.booth != null && s.booth!.trim().isNotEmpty) ...[
                       const SizedBox(height: 8),
@@ -411,7 +412,7 @@ class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
                           const SizedBox(width: 3),
                           Flexible(
                             child: Text(s.booth!,
-                                style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+                                style: TextStyle(color: Cosmic.textMuted, fontSize: 12),
                                 overflow: TextOverflow.ellipsis),
                           ),
                         ],
@@ -425,7 +426,7 @@ class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
           if (s.perks.isNotEmpty) ...[
             const SizedBox(height: 16),
             Text('PERKS',
-                style: TextStyle(color: Colors.grey.shade400, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.8)),
+                style: TextStyle(color: Cosmic.textMuted, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.8)),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
@@ -436,7 +437,7 @@ class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.zero,
+                      borderRadius: Cosmic.chipRadius,
                       border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
                     ),
                     child: Text(perk, style: const TextStyle(color: Colors.white, fontSize: 12)),
@@ -457,7 +458,7 @@ class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         color: tierColor.withValues(alpha: 0.25),
-                        borderRadius: BorderRadius.zero,
+                        borderRadius: Cosmic.chipRadius,
                         border: Border.all(color: tierColor.withValues(alpha: 0.5)),
                       ),
                       child: Row(
@@ -484,10 +485,10 @@ class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.zero,
+                      borderRadius: Cosmic.chipRadius,
                       border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
                     ),
-                    child: Icon(Icons.chat_bubble_outline_rounded, size: 18, color: Colors.grey.shade300),
+                    child: Icon(Icons.chat_bubble_outline_rounded, size: 18, color: Cosmic.textMuted),
                   ),
                 ),
               ],
@@ -508,7 +509,7 @@ class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: _amber.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.zero,
+                  borderRadius: Cosmic.chipRadius,
                   border: Border.all(color: _amber.withValues(alpha: 0.2)),
                 ),
                 child: const Row(
@@ -539,7 +540,7 @@ class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: tierColor.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.zero,
+        borderRadius: Cosmic.chipRadius,
         border: Border.all(color: tierColor, width: 2),
       ),
       child: (s.logoUrl != null && s.logoUrl!.isNotEmpty)
@@ -554,7 +555,7 @@ class _ConferenceSponsorsScreenState extends State<ConferenceSponsorsScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.zero,
+        borderRadius: Cosmic.chipRadius,
         border: Border.all(color: color.withValues(alpha: 0.4)),
       ),
       child: Row(

@@ -9,6 +9,7 @@ import '../services/conference_community_service.dart';
 import '../theme/conference_colors.dart';
 import '../widgets/community_widgets.dart';
 import '../widgets/conference_background.dart';
+import '../../theme/cosmic_content.dart';
 
 /// Expanded view of one Community Hub message: the message, its replies, and a
 /// reply composer pinned to the bottom.
@@ -275,7 +276,7 @@ class _ConferenceCommunityPostScreenState
   }
 
   OutlineInputBorder _pill({bool focused = false}) => OutlineInputBorder(
-        borderRadius: BorderRadius.zero,
+        borderRadius: Cosmic.chipRadius,
         borderSide: BorderSide(
           color: focused ? ConferenceColors.gold : ConferenceColors.cardBorder,
         ),
@@ -301,7 +302,7 @@ class _PostHeader extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: ConferenceColors.card,
-        borderRadius: BorderRadius.zero,
+        borderRadius: Cosmic.chipRadius,
         border: Border.all(color: ConferenceColors.cardBorder),
       ),
       child: Column(
@@ -428,7 +429,7 @@ class _RepliesList extends StatelessWidget {
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.04),
-                  borderRadius: BorderRadius.zero,
+                  borderRadius: Cosmic.chipRadius,
                   border: Border.all(color: ConferenceColors.cardBorder),
                 ),
                 child: Column(

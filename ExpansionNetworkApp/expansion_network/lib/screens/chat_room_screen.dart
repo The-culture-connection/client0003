@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../data/mock_data.dart';
 import '../theme/app_theme.dart';
 import '../widgets/network_circle_avatar.dart';
+import '../theme/cosmic_content.dart';
 
 class _ChatMessage {
   const _ChatMessage({
@@ -136,7 +137,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                     constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.75),
                     decoration: BoxDecoration(
                       color: m.senderMe ? AppColors.primary : AppColors.secondary,
-                      borderRadius: BorderRadius.zero,
+                      borderRadius: Cosmic.chipRadius,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -189,7 +190,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                           hintText: 'Type a message...',
                           filled: true,
                           fillColor: AppColors.secondary,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.zero, borderSide: BorderSide.none),
+                          border: OutlineInputBorder(borderRadius: Cosmic.chipRadius, borderSide: BorderSide.none),
                         ),
                       ),
                     ),
@@ -198,7 +199,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         padding: const EdgeInsets.all(12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                        shape: RoundedRectangleBorder(borderRadius: Cosmic.chipRadius),
                       ),
                       onPressed: _send,
                       child: const Icon(Icons.send, color: AppColors.onPrimary),

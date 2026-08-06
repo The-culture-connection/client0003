@@ -21,7 +21,6 @@ import '../conference/current_conference_holder.dart';
 import '../conference/theme/conference_buttons.dart';
 import '../conference/widgets/conference_shell.dart';
 import '../mortarverse/screens/mortarverse_chooser_screen.dart';
-import '../theme/cosmic.dart';
 import '../screens/admin_events_screen.dart';
 import '../screens/admin_reports_screen.dart';
 import '../screens/auth_claim_screen.dart';
@@ -156,17 +155,12 @@ GoRouter createAppRouter(AuthController auth) {
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,
         path: '/mortarverse',
-        // First zone on the cosmic language. Opting in per route rather than
-        // globally is what keeps the app shippable mid-migration — the other
-        // zones keep `buildAppTheme()` until their screens are converted.
-        builder: (context, state) => const CosmicZone(
-          child: MortarverseChooserScreen(),
-        ),
+        builder: (context, state) => const MortarverseChooserScreen(),
       ),
       // Every `/conference/*` screen is wrapped in [ConferenceTheme] so the
-      // gold sub-brand keeps its own button glow instead of inheriting the
-      // app-wide brick red. Wrapping here rather than inside each screen means
-      // a new conference route picks it up for free.
+      // gold sub-brand keeps its accent instead of inheriting the app-wide
+      // Expansion red. Wrapping here rather than inside each screen means a
+      // new conference route picks it up for free.
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,
         path: '/conference/gate',
@@ -333,11 +327,7 @@ GoRouter createAppRouter(AuthController auth) {
             routes: [
               GoRoute(
                 path: '/home',
-                pageBuilder: (context, state) => const NoTransitionPage<void>(
-                  // Converted to the 2d design; its sibling branches are not,
-                  // so the zone is scoped to this page rather than the shell.
-                  child: CosmicZone(child: HomeScreen()),
-                ),
+                pageBuilder: (context, state) => const NoTransitionPage<void>(child: HomeScreen()),
               ),
             ],
           ),

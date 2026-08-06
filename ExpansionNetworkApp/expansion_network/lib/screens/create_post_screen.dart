@@ -13,6 +13,7 @@ import '../services/feed_posts_repository.dart';
 import '../services/user_profile_repository.dart';
 import '../theme/app_theme.dart';
 import '../utils/content_action_guard.dart';
+import '../theme/cosmic_content.dart';
 
 /// Create a community feed post: description and optional image (no separate title/category in UI).
 class CreatePostScreen extends StatefulWidget {
@@ -248,7 +249,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       ClipRRect(
-                        borderRadius: BorderRadius.zero,
+                        borderRadius: Cosmic.chipRadius,
                         child: _pickedPreviewBytes != null
                             ? Image.memory(_pickedPreviewBytes!, fit: BoxFit.cover)
                             : const SizedBox(

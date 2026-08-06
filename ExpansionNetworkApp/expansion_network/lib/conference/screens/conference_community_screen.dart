@@ -12,6 +12,7 @@ import '../widgets/conference_background.dart';
 import '../widgets/conference_scope.dart';
 import '../widgets/conference_tour.dart';
 import '../../widgets/expansion_tour.dart';
+import '../../theme/cosmic_content.dart';
 
 /// Community Hub — an open forum feed for the current conference.
 ///
@@ -293,7 +294,7 @@ class _PostCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: ConferenceColors.card,
-        borderRadius: BorderRadius.zero,
+        borderRadius: Cosmic.chipRadius,
         border: Border.all(color: ConferenceColors.cardBorder),
       ),
       clipBehavior: Clip.antiAlias,

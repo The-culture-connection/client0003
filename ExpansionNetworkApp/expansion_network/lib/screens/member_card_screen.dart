@@ -15,6 +15,7 @@ import '../services/member_card_link.dart';
 import '../services/user_profile_repository.dart';
 import '../theme/app_theme.dart';
 import 'member_card_scan_screen.dart';
+import '../theme/cosmic_content.dart';
 
 /// Member card: two tabs — "My Code" shows a flippable business card with your
 /// QR on the back, "Scan" opens the camera and drops you straight into a chat
@@ -326,7 +327,7 @@ class _CardShell extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
           color: AppColors.glassFill,
-          borderRadius: BorderRadius.zero,
+          borderRadius: Cosmic.chipRadius,
           border: Border.all(color: AppColors.border),
           boxShadow: [
             BoxShadow(
@@ -437,7 +438,7 @@ class _CardBack extends StatelessWidget {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.zero,
+              borderRadius: Cosmic.chipRadius,
             ),
             child: QrImageView(
               data: buildMemberCardPayload(uid),

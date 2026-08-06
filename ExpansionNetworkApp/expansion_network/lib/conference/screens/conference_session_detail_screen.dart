@@ -15,6 +15,7 @@ import '../models/conference_session.dart';
 import '../services/conference_repository.dart';
 import '../services/conference_session_service.dart';
 import '../theme/conference_colors.dart';
+import '../../theme/cosmic_content.dart';
 
 class ConferenceSessionDetailScreen extends StatefulWidget {
   const ConferenceSessionDetailScreen({required this.sessionId, super.key});
@@ -179,7 +180,7 @@ class _ConferenceSessionDetailScreenState extends State<ConferenceSessionDetailS
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
                 color: ConferenceColors.goldAlpha(0.12),
-                borderRadius: BorderRadius.zero,
+                borderRadius: Cosmic.chipRadius,
                 border: Border.all(color: ConferenceColors.goldAlpha(0.25)),
               ),
               child: Text(session.track!.toUpperCase(),
@@ -232,7 +233,7 @@ class _ConferenceSessionDetailScreenState extends State<ConferenceSessionDetailS
                     foregroundColor: going ? Colors.black : ConferenceColors.gold,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.zero,
+                      borderRadius: Cosmic.chipRadius,
                       side: BorderSide(color: ConferenceColors.goldAlpha(0.5)),
                     ),
                   ),
@@ -251,11 +252,11 @@ class _ConferenceSessionDetailScreenState extends State<ConferenceSessionDetailS
                   padding: const EdgeInsets.all(13),
                   decoration: BoxDecoration(
                     color: saved ? ConferenceColors.gold : Colors.white.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.zero,
+                    borderRadius: Cosmic.chipRadius,
                     border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
                   ),
                   child: Icon(saved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-                      size: 20, color: saved ? Colors.black : Colors.grey.shade300),
+                      size: 20, color: saved ? Colors.black : Cosmic.textMuted),
                 ),
               ),
             ],
@@ -270,7 +271,7 @@ class _ConferenceSessionDetailScreenState extends State<ConferenceSessionDetailS
                     foregroundColor: ConferenceColors.gold,
                     side: BorderSide(color: ConferenceColors.goldAlpha(0.5)),
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                    shape: RoundedRectangleBorder(borderRadius: Cosmic.chipRadius),
                   ),
                   onPressed: () => context.push('/conference/session/${session.id}/chat'),
                   icon: const Icon(Icons.forum_rounded, size: 18),
@@ -284,7 +285,7 @@ class _ConferenceSessionDetailScreenState extends State<ConferenceSessionDetailS
                     foregroundColor: Colors.grey.shade200,
                     side: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                    shape: RoundedRectangleBorder(borderRadius: Cosmic.chipRadius),
                   ),
                   onPressed: () => _addToCalendar(session),
                   icon: const Icon(Icons.calendar_month_outlined, size: 18),
@@ -302,7 +303,7 @@ class _ConferenceSessionDetailScreenState extends State<ConferenceSessionDetailS
                   foregroundColor: ConferenceColors.gold,
                   side: BorderSide(color: ConferenceColors.goldAlpha(0.5)),
                   padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                  shape: RoundedRectangleBorder(borderRadius: Cosmic.chipRadius),
                 ),
                 onPressed: () => context.push(
                   '/conference/map?floor=${session.mapFloorId ?? ''}&room=${session.mapRoomId}',

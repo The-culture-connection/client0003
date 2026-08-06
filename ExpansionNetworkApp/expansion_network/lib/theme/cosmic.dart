@@ -97,6 +97,18 @@ abstract final class Cosmic {
   /// Pills and any full-round control.
   static const double radiusPill = 999;
 
+  // Const-constructible forms of the radii above. `BorderRadius.circular` is
+  // not a const constructor, so a `const BoxDecoration` — or any default
+  // parameter value — needs these instead.
+  static const BorderRadius panelRadius =
+      BorderRadius.all(Radius.circular(radiusPanel));
+  static const BorderRadius chipRadius =
+      BorderRadius.all(Radius.circular(radiusChip));
+  static const BorderRadius controlRadius =
+      BorderRadius.all(Radius.circular(radiusControl));
+  static const BorderRadius pillRadius =
+      BorderRadius.all(Radius.circular(radiusPill));
+
   // ---- Type scale ----------------------------------------------------
   // Sizes, weights and tracking taken from option 1a. Tracking is absolute
   // px (Flutter's letterSpacing), converted from the design's em values.
@@ -203,6 +215,16 @@ abstract final class Cosmic {
       EdgeInsets.symmetric(horizontal: 14, vertical: 13);
 }
 
+/// A field outline at option 2e's 14px radius.
+///
+/// Public so `CosmicField` and any screen overriding one border can reuse the
+/// exact geometry instead of restating it.
+OutlineInputBorder cosmicFieldBorder(Color color, [double width = 1]) =>
+    OutlineInputBorder(
+      borderRadius: const BorderRadius.all(Radius.circular(14)),
+      borderSide: BorderSide(color: color, width: width),
+    );
+
 /// Builds the cosmic [ThemeData] for one zone.
 ///
 /// **Not applied globally yet.** Wrap a route subtree in [CosmicZone] to opt it
@@ -224,7 +246,7 @@ ThemeData cosmicTheme({required Color accent}) {
     side: const BorderSide(color: Cosmic.panelBorder),
   );
   final chipShape = RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(Cosmic.radiusChip),
+    borderRadius: Cosmic.chipRadius,
     side: const BorderSide(color: Cosmic.chipBorder),
   );
 
@@ -255,24 +277,50 @@ ThemeData cosmicTheme({required Color accent}) {
       margin: EdgeInsets.zero,
     ),
 
+    // Option 2e's field, specified on the theme rather than only in a widget,
+    // so every existing `TextFormField(decoration: InputDecoration(labelText:
+    // …))` in the app — 23 files at time of writing — gets the treatment
+    // without being rewritten. `CosmicField` is a thin wrapper over this.
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: const Color(0x0FFFFFFF),
-      contentPadding: Cosmic.chipPadding,
-      hintStyle: Cosmic.body.copyWith(color: Cosmic.textFaint),
-      labelStyle: Cosmic.chipLabel,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(Cosmic.radiusChip),
-        borderSide: const BorderSide(color: Cosmic.chipBorder),
+      fillColor: const Color(0x08FFFFFF),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
+      // Floats into a notch in the stroke, italic and tracked, in the zone
+      // accent. Flutter's own outline gap draws the notch — the mockup paints
+      // a solid chip over the stroke, which only works on a flat page colour
+      // and would leave a visible rectangle over the nebula.
+      floatingLabelStyle: TextStyle(
+        fontFamily: Cosmic.fontFamily,
+        fontSize: 11,
+        fontStyle: FontStyle.italic,
+        fontWeight: FontWeight.w400,
+        letterSpacing: 0.54,
+        color: accent,
       ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(Cosmic.radiusChip),
-        borderSide: const BorderSide(color: Cosmic.chipBorder),
+      labelStyle: const TextStyle(
+        fontFamily: Cosmic.fontFamily,
+        fontSize: 12,
+        fontWeight: FontWeight.w300,
+        color: Color(0x6BFFFFFF),
       ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(Cosmic.radiusChip),
-        borderSide: BorderSide(color: accent, width: 1.6),
+      hintStyle: const TextStyle(
+        fontFamily: Cosmic.fontFamily,
+        fontSize: 12,
+        fontWeight: FontWeight.w300,
+        color: Color(0x6BFFFFFF),
       ),
+      errorStyle: const TextStyle(
+        fontFamily: Cosmic.fontFamily,
+        fontSize: 10.5,
+        fontWeight: FontWeight.w300,
+        color: Cosmic.alert,
+      ),
+      border: cosmicFieldBorder(const Color(0x2EFFFFFF)),
+      enabledBorder: cosmicFieldBorder(const Color(0x2EFFFFFF)),
+      focusedBorder: cosmicFieldBorder(accent.withValues(alpha: 0.6), 1.4),
+      disabledBorder: cosmicFieldBorder(const Color(0x1AFFFFFF)),
+      errorBorder: cosmicFieldBorder(Cosmic.alert.withValues(alpha: 0.7)),
+      focusedErrorBorder: cosmicFieldBorder(Cosmic.alert, 1.4),
     ),
 
     // Every action is a pill in this language.

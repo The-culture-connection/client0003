@@ -18,6 +18,7 @@ export const ADMIN_PANEL_TAB_SLUGS = [
   "courses",
   "shop",
   "conferences",
+  "beta-testing",
 ] as const;
 
 export type AdminPanelTabSlug = (typeof ADMIN_PANEL_TAB_SLUGS)[number];

@@ -13,6 +13,7 @@ import '../services/badge_repository.dart';
 import '../services/user_profile_repository.dart';
 import '../theme/app_theme.dart';
 import '../widgets/profile_user_blocks.dart' show ProfileCertificatesPlaceholderCard;
+import '../theme/cosmic_content.dart';
 
 /// Reads `badge_definitions` + current user `badges.earned` / `gamification`.
 class AchievementsScreen extends StatefulWidget {
@@ -144,7 +145,7 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.glassFill,
-        borderRadius: BorderRadius.zero,
+        borderRadius: Cosmic.chipRadius,
         border: Border.all(color: AppColors.border),
       ),
       child: Column(
@@ -185,7 +186,7 @@ class _BadgeTile extends StatelessWidget {
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: unlocked ? AppColors.primary.withValues(alpha: 0.08) : AppColors.card,
-          borderRadius: BorderRadius.zero,
+          borderRadius: Cosmic.chipRadius,
           border: Border.all(color: unlocked ? AppColors.primary.withValues(alpha: 0.35) : AppColors.border),
         ),
         child: Row(
@@ -193,7 +194,7 @@ class _BadgeTile extends StatelessWidget {
           children: [
             if (img != null && img.isNotEmpty)
               ClipRRect(
-                borderRadius: BorderRadius.zero,
+                borderRadius: Cosmic.chipRadius,
                 child: CachedNetworkImage(
                   imageUrl: img,
                   width: 48,

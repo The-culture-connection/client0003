@@ -15,6 +15,7 @@ import '../services/conference_session_service.dart';
 import '../theme/conference_colors.dart';
 import '../widgets/conference_background.dart';
 import '../widgets/conference_scope.dart';
+import '../../theme/cosmic_content.dart';
 
 enum _Filter { all, going, saved }
 
@@ -233,7 +234,7 @@ class _ConferenceScheduleScreenState extends State<ConferenceScheduleScreen> {
             ],
           ),
           const SizedBox(height: 6),
-          Text(conferenceName, style: TextStyle(color: Colors.grey.shade400, fontSize: 13)),
+          Text(conferenceName, style: TextStyle(color: Cosmic.textMuted, fontSize: 13)),
         ],
       ),
     );
@@ -251,7 +252,7 @@ class _ConferenceScheduleScreenState extends State<ConferenceScheduleScreen> {
           color: Colors.white.withValues(alpha: 0.05),
           border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
         ),
-        child: Icon(icon, size: 20, color: Colors.grey.shade400),
+        child: Icon(icon, size: 20, color: Cosmic.textMuted),
       ),
     );
   }
@@ -267,7 +268,7 @@ class _ConferenceScheduleScreenState extends State<ConferenceScheduleScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
             decoration: BoxDecoration(
               color: selected ? ConferenceColors.gold : Colors.white.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.zero,
+              borderRadius: Cosmic.chipRadius,
               border: Border.all(
                 color: selected ? ConferenceColors.gold : Colors.white.withValues(alpha: 0.1),
               ),
@@ -275,7 +276,7 @@ class _ConferenceScheduleScreenState extends State<ConferenceScheduleScreen> {
             child: Text(
               label.toUpperCase(),
               style: TextStyle(
-                color: selected ? Colors.black : Colors.grey.shade400,
+                color: selected ? Colors.black : Cosmic.textMuted,
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 0.8,
@@ -312,7 +313,7 @@ class _ConferenceScheduleScreenState extends State<ConferenceScheduleScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   decoration: BoxDecoration(
                     color: _activeDay == i ? ConferenceColors.gold : Colors.white.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.zero,
+                    borderRadius: Cosmic.chipRadius,
                     border: Border.all(
                       color: _activeDay == i ? ConferenceColors.gold : Colors.white.withValues(alpha: 0.1),
                     ),
@@ -321,7 +322,7 @@ class _ConferenceScheduleScreenState extends State<ConferenceScheduleScreen> {
                     DateFormat('MMM d').format(DateTime.parse(dayKeys[i])).toUpperCase(),
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: _activeDay == i ? Colors.black : Colors.grey.shade400,
+                      color: _activeDay == i ? Colors.black : Cosmic.textMuted,
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 1,
@@ -349,14 +350,14 @@ class _ConferenceScheduleScreenState extends State<ConferenceScheduleScreen> {
       children: [
         Material(
           color: Colors.white.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.zero,
+          borderRadius: Cosmic.chipRadius,
           child: InkWell(
-            borderRadius: BorderRadius.zero,
+            borderRadius: Cosmic.chipRadius,
             onTap: () => context.push('/conference/schedule/${session.id}'),
             child: Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.zero,
+                borderRadius: Cosmic.chipRadius,
                 border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
               ),
               child: Column(
@@ -387,7 +388,7 @@ class _ConferenceScheduleScreenState extends State<ConferenceScheduleScreen> {
                                   style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
                               if (session.speakerTitle != null && session.speakerTitle!.isNotEmpty)
                                 Text(session.speakerTitle!,
-                                    style: TextStyle(color: Colors.grey.shade400, fontSize: 12)),
+                                    style: TextStyle(color: Cosmic.textMuted, fontSize: 12)),
                             ],
                           ),
                         ),
@@ -399,7 +400,7 @@ class _ConferenceScheduleScreenState extends State<ConferenceScheduleScreen> {
                   if (showProgress) ...[
                     const SizedBox(height: 14),
                     ClipRRect(
-                      borderRadius: BorderRadius.zero,
+                      borderRadius: Cosmic.chipRadius,
                       child: LinearProgressIndicator(
                         value: (session.goingCount / capacity).clamp(0, 1).toDouble(),
                         minHeight: 6,
@@ -436,7 +437,7 @@ class _ConferenceScheduleScreenState extends State<ConferenceScheduleScreen> {
               child: Icon(
                 saved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
                 size: 18,
-                color: saved ? Colors.black : Colors.grey.shade400,
+                color: saved ? Colors.black : Cosmic.textMuted,
               ),
             ),
           ),
@@ -453,7 +454,7 @@ class _ConferenceScheduleScreenState extends State<ConferenceScheduleScreen> {
         foregroundColor: going ? Colors.black : ConferenceColors.gold,
         padding: const EdgeInsets.symmetric(vertical: 13),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.zero,
+          borderRadius: Cosmic.chipRadius,
           side: BorderSide(color: ConferenceColors.goldAlpha(0.5)),
         ),
       ),
@@ -476,7 +477,7 @@ class _ConferenceScheduleScreenState extends State<ConferenceScheduleScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.zero,
+          borderRadius: Cosmic.chipRadius,
           border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
         ),
         child: const Icon(Icons.forum_rounded, size: 20, color: ConferenceColors.gold),
@@ -489,7 +490,7 @@ class _ConferenceScheduleScreenState extends State<ConferenceScheduleScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: ConferenceColors.goldAlpha(0.12),
-        borderRadius: BorderRadius.zero,
+        borderRadius: Cosmic.chipRadius,
         border: Border.all(color: ConferenceColors.goldAlpha(0.25)),
       ),
       child: Text(
@@ -561,7 +562,7 @@ class _ConferenceScheduleScreenState extends State<ConferenceScheduleScreen> {
         const SizedBox(width: 8),
         Expanded(
           child: Text(text,
-              style: TextStyle(color: Colors.grey.shade400, fontSize: 13), overflow: TextOverflow.ellipsis),
+              style: TextStyle(color: Cosmic.textMuted, fontSize: 13), overflow: TextOverflow.ellipsis),
         ),
       ],
     );

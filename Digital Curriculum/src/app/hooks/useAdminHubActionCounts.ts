@@ -27,6 +27,8 @@ export type AdminHubActionCounts = {
   pendingGraduation: number;
   openReports: number;
   unreadDms: number;
+  /** Beta tester reports still sitting at `status: "new"`. */
+  newBetaFeedback: number;
   /** Paid shop orders awaiting fulfillment (unfulfilled + processing). */
   shopOrdersNeedingFulfillment: number;
   /** Recent orders needing action (for hub preview text). */
@@ -46,6 +48,7 @@ export function useAdminHubActionCounts(): AdminHubActionCounts {
   const [reportDocs, setReportDocs] = useState<Record<string, unknown>[]>([]);
   const [dmDocs, setDmDocs] = useState<Record<string, unknown>[]>([]);
   const [shopOrders, setShopOrders] = useState<ShopOrder[]>([]);
+  const [newBetaFeedback, setNewBetaFeedback] = useState(0);
   const [streamsReady, setStreamsReady] = useState({
     eventsE: false,
     eventsM: false,
@@ -53,6 +56,7 @@ export function useAdminHubActionCounts(): AdminHubActionCounts {
     reports: false,
     dms: false,
     shopOrders: false,
+    betaFeedback: false,
   });
 
   useEffect(() => {
@@ -162,8 +166,33 @@ export function useAdminHubActionCounts(): AdminHubActionCounts {
   }, []);
 
   useEffect(() => {
-    const { eventsE, eventsM, graduation, reports, dms, shopOrders: shopReady } = streamsReady;
-    if (eventsE && eventsM && graduation && reports && dms && shopReady) setLoading(false);
+    const q = query(collection(db, "beta_feedback"), where("status", "==", "new"));
+    return onSnapshot(
+      q,
+      (snap) => {
+        setNewBetaFeedback(snap.size);
+        setStreamsReady((s) => ({ ...s, betaFeedback: true }));
+      },
+      () => {
+        setNewBetaFeedback(0);
+        setStreamsReady((s) => ({ ...s, betaFeedback: true }));
+      }
+    );
+  }, []);
+
+  useEffect(() => {
+    const {
+      eventsE,
+      eventsM,
+      graduation,
+      reports,
+      dms,
+      shopOrders: shopReady,
+      betaFeedback,
+    } = streamsReady;
+    if (eventsE && eventsM && graduation && reports && dms && shopReady && betaFeedback) {
+      setLoading(false);
+    }
   }, [streamsReady]);
 
   const pendingEvents = useMemo(
@@ -195,13 +224,15 @@ export function useAdminHubActionCounts(): AdminHubActionCounts {
     pendingGraduation +
     openReports +
     unreadDms +
-    shopOrdersNeedingFulfillment;
+    shopOrdersNeedingFulfillment +
+    newBetaFeedback;
 
   return {
     pendingEvents,
     pendingGraduation,
     openReports,
     unreadDms,
+    newBetaFeedback,
     shopOrdersNeedingFulfillment,
     shopOrdersNeedingFulfillmentPreview,
     loading,

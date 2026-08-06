@@ -22,6 +22,7 @@ import '../widgets/feed_post_card.dart';
 import '../models/mortar_info_post.dart';
 import '../services/mortar_info_repository.dart';
 import '../widgets/mortar_info_feed_tile.dart' show mortarInfoRelativeTime;
+import '../theme/cosmic_content.dart';
 
 /// Square storefront for Mortar merch (opens in browser / in-app web view).
 const _kMortarShopUrl = 'https://brick-walnut-hills.square.site/s/shop';
@@ -65,14 +66,10 @@ class _HomeScreenState extends State<HomeScreen> {
           side: BorderSide(color: Color(0x80FFFFFF)),
         ),
         child: DecoratedBox(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             shape: BoxShape.circle,
-            gradient: RadialGradient(
-              center: Alignment(0, 1.6),
-              radius: 1.1,
-              colors: [Color(0xE6FF2837), Color(0x26FF2837)],
-              stops: [0, 0.72],
-            ),
+            // Same light source as every other lit control, zone-accented.
+            gradient: GlowPill.bloom(Theme.of(context).colorScheme.primary),
           ),
           child: const SizedBox(
             width: 56,
@@ -214,13 +211,13 @@ class _MyCommunitiesMessagesCardState extends State<_MyCommunitiesMessagesCard> 
                         padding: const EdgeInsets.only(bottom: 8),
                         child: InkWell(
                           onTap: () => context.push('/groups/${g.id}'),
-                          borderRadius: BorderRadius.zero,
+                          borderRadius: Cosmic.chipRadius,
                           child: Container(
                             width: double.infinity,
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
                               color: Color(0xE6000000),
-                              borderRadius: BorderRadius.zero,
+                              borderRadius: Cosmic.chipRadius,
                               border: Border.all(color: AppColors.border),
                             ),
                             child: Column(
@@ -436,12 +433,12 @@ class _MortarInfoHomeCardState extends State<_MortarInfoHomeCard> {
           if (posts.isEmpty) {
             return InkWell(
               onTap: () => context.push('/mortar-feed'),
-              borderRadius: BorderRadius.zero,
+              borderRadius: Cosmic.chipRadius,
               child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.zero,
+                  borderRadius: Cosmic.chipRadius,
                   border: Border.all(color: scheme.outline.withValues(alpha: 0.35)),
                   color: AppColors.secondary,
                 ),
@@ -489,10 +486,10 @@ class _MortarInfoHomeCardState extends State<_MortarInfoHomeCard> {
             color: Colors.transparent,
             child: InkWell(
               onTap: () => context.push('/mortar-feed'),
-              borderRadius: BorderRadius.zero,
+              borderRadius: Cosmic.chipRadius,
               child: Ink(
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.zero,
+                  borderRadius: Cosmic.chipRadius,
                   gradient: LinearGradient(
                     colors: [
                       AppColors.primary.withValues(alpha: 0.22),
@@ -521,7 +518,7 @@ class _MortarInfoHomeCardState extends State<_MortarInfoHomeCard> {
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                     decoration: BoxDecoration(
                                       color: AppColors.primary,
-                                      borderRadius: BorderRadius.zero,
+                                      borderRadius: Cosmic.chipRadius,
                                     ),
                                     child: const Text(
                                       'NEW',
@@ -636,7 +633,7 @@ class _MortarMetaChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: scheme.surface.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.zero,
+        borderRadius: Cosmic.chipRadius,
         border: Border.all(color: scheme.outline.withValues(alpha: 0.35)),
       ),
       child: Row(
@@ -667,7 +664,7 @@ class _MortarInfoThumb extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const size = 88.0;
-    final borderRadius = BorderRadius.zero;
+    final borderRadius = Cosmic.chipRadius;
     if (url != null && url!.isNotEmpty) {
       return ClipRRect(
         borderRadius: borderRadius,
@@ -720,7 +717,7 @@ class _MortarThumbPlaceholder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
-      borderRadius: BorderRadius.zero,
+      borderRadius: Cosmic.chipRadius,
       child: DecoratedBox(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -915,13 +912,13 @@ class _LatestListingPane extends StatelessWidget {
           )
         : InkWell(
             onTap: onTap,
-            borderRadius: BorderRadius.zero,
+            borderRadius: Cosmic.chipRadius,
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: Color(0xE6000000),
-                borderRadius: BorderRadius.zero,
+                borderRadius: Cosmic.chipRadius,
                 border: Border.all(color: AppColors.border),
               ),
               child: Column(
@@ -1017,7 +1014,7 @@ class _WelcomeCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 18),
-          _WideGlowPill(label: 'Run smart matching', onTap: onMatching),
+          GlowPill(label: 'Run smart matching', onTap: onMatching, expand: true),
         ],
       ),
     );
@@ -1069,49 +1066,6 @@ class _ShopPill extends StatelessWidget {
                 ),
               ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// A full-width version of the design's lit pill, used for the hero action and
-/// anywhere a primary action spans the panel.
-class _WideGlowPill extends StatelessWidget {
-  const _WideGlowPill({required this.label, required this.onTap});
-
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        customBorder: const StadiumBorder(),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 13),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(Cosmic.radiusPill),
-            border: Border.all(color: const Color(0x80FFFFFF)),
-            gradient: const RadialGradient(
-              center: Alignment(0, 1.6),
-              radius: 1.1,
-              colors: [Color(0xD9FF2837), Color(0x1FFF2837)],
-              stops: [0, 0.7],
-            ),
-          ),
-          child: Text(
-            label.toUpperCase(),
-            style: Cosmic.pillLabel.copyWith(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 1.43,
-            ),
           ),
         ),
       ),

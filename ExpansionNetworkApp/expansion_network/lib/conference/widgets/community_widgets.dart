@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../services/user_reports_repository.dart';
 import '../../utils/relative_time.dart';
 import '../theme/conference_colors.dart';
+import '../../theme/cosmic_content.dart';
 
 /// Avatar tints, picked deterministically from the author's uid so a given
 /// member keeps the same colour everywhere without storing one.
@@ -172,7 +173,7 @@ class CommunityTagChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.07),
-        borderRadius: BorderRadius.zero,
+        borderRadius: Cosmic.chipRadius,
         border: Border.all(color: ConferenceColors.cardBorder),
       ),
       child: Text(

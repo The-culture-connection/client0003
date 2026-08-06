@@ -8,6 +8,7 @@ import '../models/community_post.dart';
 import '../services/conference_community_service.dart';
 import '../theme/conference_colors.dart';
 import '../widgets/conference_background.dart';
+import '../../theme/cosmic_content.dart';
 
 /// Compose a Community Hub message — reached from the `+` on the feed.
 ///
@@ -198,7 +199,7 @@ class _ConferenceCommunityComposeScreenState
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.07),
-                      borderRadius: BorderRadius.zero,
+                      borderRadius: Cosmic.chipRadius,
                       border: Border.all(color: ConferenceColors.cardBorder),
                     ),
                     child: Text(
@@ -221,7 +222,7 @@ class _ConferenceCommunityComposeScreenState
   }
 
   OutlineInputBorder _border({bool focused = false}) => OutlineInputBorder(
-        borderRadius: BorderRadius.zero,
+        borderRadius: Cosmic.chipRadius,
         borderSide: BorderSide(
           color: focused ? ConferenceColors.gold : ConferenceColors.cardBorder,
         ),

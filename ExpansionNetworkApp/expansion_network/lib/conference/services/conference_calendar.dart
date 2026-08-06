@@ -8,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../models/conference.dart';
 import '../theme/conference_colors.dart';
+import '../../theme/cosmic_content.dart';
 
 /// Adds a conference to the user's calendar with **two reminders** — 1 week and
 /// 2 days before it starts.
@@ -173,7 +174,7 @@ class _AddToCalendarSheetState extends State<_AddToCalendarSheet> {
                 height: 4,
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.zero,
+                  borderRadius: Cosmic.chipRadius,
                 ),
               ),
             ),
@@ -185,7 +186,7 @@ class _AddToCalendarSheetState extends State<_AddToCalendarSheet> {
                   height: 46,
                   decoration: BoxDecoration(
                     color: ConferenceColors.goldAlpha(0.14),
-                    borderRadius: BorderRadius.zero,
+                    borderRadius: Cosmic.chipRadius,
                     border: Border.all(color: ConferenceColors.gold, width: 1.4),
                   ),
                   child: const Icon(Icons.event_available_rounded, color: ConferenceColors.gold),
@@ -216,7 +217,7 @@ class _AddToCalendarSheetState extends State<_AddToCalendarSheet> {
               padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
               decoration: BoxDecoration(
                 color: ConferenceColors.goldAlpha(0.08),
-                borderRadius: BorderRadius.zero,
+                borderRadius: Cosmic.chipRadius,
                 border: Border.all(color: ConferenceColors.goldAlpha(0.2)),
               ),
               child: Row(
@@ -226,7 +227,7 @@ class _AddToCalendarSheetState extends State<_AddToCalendarSheet> {
                   Expanded(
                     child: Text(
                       "We'll remind you 1 week and 2 days before it starts.",
-                      style: TextStyle(color: Colors.grey.shade300, fontSize: 13),
+                      style: TextStyle(color: Cosmic.textMuted, fontSize: 13),
                     ),
                   ),
                 ],
@@ -239,7 +240,7 @@ class _AddToCalendarSheetState extends State<_AddToCalendarSheet> {
                 style: FilledButton.styleFrom(
                   backgroundColor: ConferenceColors.gold,
                   foregroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                  shape: RoundedRectangleBorder(borderRadius: Cosmic.chipRadius),
                 ),
                 onPressed: _busy ? null : _add,
                 child: _busy
@@ -254,7 +255,7 @@ class _AddToCalendarSheetState extends State<_AddToCalendarSheet> {
             const SizedBox(height: 8),
             TextButton(
               onPressed: _busy ? null : () => Navigator.of(context).pop(),
-              style: TextButton.styleFrom(foregroundColor: Colors.grey.shade400),
+              style: TextButton.styleFrom(foregroundColor: Cosmic.textMuted),
               child: const Text('Maybe later'),
             ),
           ],

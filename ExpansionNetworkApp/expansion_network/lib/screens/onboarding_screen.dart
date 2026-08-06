@@ -14,6 +14,7 @@ import '../services/user_profile_repository.dart';
 import '../theme/app_theme.dart';
 import '../widgets/curriculum_skill_category_card.dart';
 import '../widgets/mortar_card.dart';
+import '../theme/cosmic_content.dart';
 
 /// Digital curriculum–aligned flow: identity → goals → skills ×2 → tribe → work structure → profile links.
 class OnboardingScreen extends StatefulWidget {
@@ -670,8 +671,8 @@ www.wearemortar.com''';
           Container(
             height: 220,
             decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade300),
-              borderRadius: BorderRadius.zero,
+              border: Border.all(color: Cosmic.textMuted),
+              borderRadius: Cosmic.chipRadius,
               color: Colors.grey.shade50,
             ),
             child: const SingleChildScrollView(
@@ -686,7 +687,7 @@ www.wearemortar.com''';
           // Terms acceptance -- required
           InkWell(
             onTap: () => setState(() => _termsAccepted = !_termsAccepted),
-            borderRadius: BorderRadius.zero,
+            borderRadius: Cosmic.chipRadius,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -723,7 +724,7 @@ www.wearemortar.com''';
           // Email opt-in -- optional
           InkWell(
             onTap: () => setState(() => _emailOptIn = !_emailOptIn),
-            borderRadius: BorderRadius.zero,
+            borderRadius: Cosmic.chipRadius,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -936,7 +937,7 @@ www.wearemortar.com''';
                 const SizedBox(height: 20),
                 MortarCard(
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.zero,
+                    borderRadius: Cosmic.chipRadius,
                     side: const BorderSide(color: AppColors.border),
                   ),
                   child: Padding(
@@ -1160,7 +1161,7 @@ www.wearemortar.com''';
                 const SizedBox(height: 16),
                 MortarCard(
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.zero,
+                    borderRadius: Cosmic.chipRadius,
                     side: const BorderSide(color: AppColors.border),
                   ),
                   child: Column(
@@ -1231,7 +1232,7 @@ www.wearemortar.com''';
                 const SizedBox(height: 20),
                 MortarCard(
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.zero,
+                    borderRadius: Cosmic.chipRadius,
                     side: const BorderSide(color: AppColors.border),
                   ),
                   child: Padding(
@@ -1399,7 +1400,7 @@ www.wearemortar.com''';
                 const SizedBox(height: 20),
                 MortarCard(
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.zero,
+                    borderRadius: Cosmic.chipRadius,
                     side: const BorderSide(color: AppColors.border),
                   ),
                   child: Padding(

@@ -84,6 +84,26 @@ export const WEB_ANALYTICS_EVENTS = {
   ADMIN_LESSON_DECK_PUBLISH_CLICKED: "admin_lesson_deck_publish_clicked",
   ADMIN_EVENT_CREATE_SUBMITTED: "admin_event_create_submitted",
   ADMIN_SHOP_ITEM_CREATED: "admin_shop_item_created",
+  /** Survey / Implicit Feedback Layer */
+  IMPLICIT_FEEDBACK_SHOWN: "implicit_feedback_shown",
+  IMPLICIT_FEEDBACK_DISMISSED: "implicit_feedback_dismissed",
+  IMPLICIT_FEEDBACK_SUBMITTED: "implicit_feedback_submitted",
+  IMPLICIT_REACTION_SELECTED: "implicit_reaction_selected",
+  IMPLICIT_SENTIMENT_TAPPED: "implicit_sentiment_tapped",
+  CONTENT_HELPFUL_TAPPED: "content_helpful_tapped",
+  CONTENT_NOT_HELPFUL_TAPPED: "content_not_helpful_tapped",
+  LESSON_CONFUSION_SIGNAL_SELECTED: "lesson_confusion_signal_selected",
+  LESSON_CONTINUE_LATER_CLICKED: "lesson_continue_later_clicked",
+  LESSON_ABANDONMENT_FEEDBACK_TRIGGERED: "lesson_abandonment_feedback_triggered",
+  QUIZ_CONFUSION_FEEDBACK_TRIGGERED: "quiz_confusion_feedback_triggered",
+  NAVIGATION_DEAD_END_FEEDBACK_TRIGGERED: "navigation_dead_end_feedback_triggered",
+  CHECKOUT_HESITATION_FEEDBACK_TRIGGERED: "checkout_hesitation_feedback_triggered",
+  /** Badge engagement — learner-facing signals */
+  BADGE_EARNED_VIEWED: "badge_earned_viewed",
+  BADGE_PROGRESS_VIEWED: "badge_progress_viewed",
+  /** Admin badge management */
+  BADGE_DEFINITION_CREATED: "badge_definition_created",
+  BADGE_DEFINITION_UPDATED: "badge_definition_updated",
   /** Stripe Checkout — client + webhook */
   PAYMENT_CHECKOUT_STARTED: "payment_checkout_started",
   PAYMENT_CHECKOUT_REDIRECTED: "payment_checkout_redirected",

@@ -9,6 +9,7 @@ import '../models/conference.dart';
 import '../models/conference_attendee_survey.dart';
 import '../services/conference_attendee_survey_service.dart';
 import '../theme/conference_colors.dart';
+import '../../theme/cosmic_content.dart';
 
 /// Presents the registration survey and resolves `true` once it is saved.
 ///
@@ -371,7 +372,7 @@ class _ConferenceAttendeeSurveyScreenState
                           backgroundColor: ConferenceColors.gold,
                           foregroundColor: Colors.black,
                           shape: const RoundedRectangleBorder(
-                            borderRadius: BorderRadius.zero,
+                            borderRadius: Cosmic.chipRadius,
                           ),
                         ),
                         onPressed: _saving ? null : _submit,
@@ -446,7 +447,7 @@ class _ConferenceAttendeeSurveyScreenState
                 Text(
                   'A few quick questions before you register. '
                   'We prefilled what we already know — edit anything.',
-                  style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+                  style: TextStyle(color: Cosmic.textMuted, fontSize: 12),
                 ),
               ],
             ),
@@ -474,25 +475,25 @@ class _ConferenceAttendeeSurveyScreenState
   InputDecoration _decoration(String label) {
     return InputDecoration(
       labelText: label,
-      labelStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+      labelStyle: TextStyle(color: Cosmic.textMuted, fontSize: 13),
       floatingLabelStyle: const TextStyle(color: ConferenceColors.gold),
       filled: true,
       fillColor: Colors.black.withValues(alpha: 0.4),
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.zero,
+        borderRadius: Cosmic.chipRadius,
         borderSide: BorderSide(color: ConferenceColors.goldAlpha(0.35)),
       ),
       focusedBorder: const OutlineInputBorder(
-        borderRadius: BorderRadius.zero,
+        borderRadius: Cosmic.chipRadius,
         borderSide: BorderSide(color: ConferenceColors.gold, width: 1.6),
       ),
       errorBorder: const OutlineInputBorder(
-        borderRadius: BorderRadius.zero,
+        borderRadius: Cosmic.chipRadius,
         borderSide: BorderSide(color: Colors.redAccent),
       ),
       focusedErrorBorder: const OutlineInputBorder(
-        borderRadius: BorderRadius.zero,
+        borderRadius: Cosmic.chipRadius,
         borderSide: BorderSide(color: Colors.redAccent, width: 1.6),
       ),
     );

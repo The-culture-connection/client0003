@@ -3,6 +3,7 @@ import { WebNavigation } from "../components/web/WebNavigation";
 import { verseThemeStyle } from "../lib/verseTheme";
 import { MobileNavigation } from "../components/mobile/MobileNavigation";
 import { ImplicitFeedbackWidget } from "../components/feedback/ImplicitFeedbackWidget";
+import { BetaFeedbackWidget } from "../components/feedback/BetaFeedbackWidget";
 
 export function Root() {
   const location = useLocation();
@@ -24,6 +25,9 @@ export function Root() {
           <Outlet />
         </main>
         <ImplicitFeedbackWidget />
+        {/* Sentiment (above) and beta bug reports (below) are separate queues
+            on purpose — see BetaFeedbackWidget. */}
+        <BetaFeedbackWidget />
       </div>
     </div>
   );

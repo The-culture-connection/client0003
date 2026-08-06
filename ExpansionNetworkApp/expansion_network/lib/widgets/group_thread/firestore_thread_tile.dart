@@ -9,6 +9,7 @@ import '../../services/group_thread_repository.dart';
 import '../../theme/app_theme.dart';
 import '../user_profile_modal.dart';
 import 'group_comment_tree.dart';
+import '../../theme/cosmic_content.dart';
 
 /// How this tile is shown: compact card in the group feed, or full thread inside a sheet.
 enum GroupThreadTileVariant {
@@ -430,7 +431,7 @@ class _FirestoreThreadTileState extends State<FirestoreThreadTile> {
         color: AppColors.glassFill,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.zero,
+          borderRadius: Cosmic.chipRadius,
           side: const BorderSide(color: AppColors.border),
         ),
         clipBehavior: Clip.antiAlias,
@@ -461,7 +462,7 @@ class _FirestoreThreadTileState extends State<FirestoreThreadTile> {
                   isDense: true,
                   filled: true,
                   fillColor: AppColors.secondary,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.zero, borderSide: BorderSide.none),
+                  border: OutlineInputBorder(borderRadius: Cosmic.chipRadius, borderSide: BorderSide.none),
                 ),
                 onSubmitted: (_) => onSubmit(),
               ),

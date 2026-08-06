@@ -8,6 +8,7 @@ import '../utils/relative_time.dart';
 import '../widgets/page_header.dart';
 import '../widgets/poster_profile_avatar.dart';
 import '../widgets/user_profile_modal.dart';
+import '../theme/cosmic_content.dart';
 
 /// Skills-only list (sub-page of Explore).
 class ExploreSkillsScreen extends StatelessWidget {
@@ -101,7 +102,7 @@ class _SkillCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.glassFill,
-        borderRadius: BorderRadius.zero,
+        borderRadius: Cosmic.chipRadius,
         border: Border.all(color: AppColors.border),
       ),
       child: Column(
@@ -116,7 +117,7 @@ class _SkillCard extends StatelessWidget {
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: AppColors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.zero,
+                  borderRadius: Cosmic.chipRadius,
                 ),
                 child: const Icon(Icons.psychology_outlined, color: AppColors.primary, size: 22),
               ),

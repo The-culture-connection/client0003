@@ -60,6 +60,14 @@ export const ANALYTICS_COLLECTIONS = {
   USER_BADGE_AWARDS: "user_badges",
   /** Phase 6 — last evaluated progress snapshot per user (Functions only). */
   BADGE_PROGRESS: "badge_progress",
+  /** Survey / Implicit Feedback Layer — per-submission responses (auth write by owner; staff read). */
+  SURVEY_RESPONSES: "survey_responses",
+  /** Admin-defined prompt templates per context_type (staff write; authenticated read). */
+  SURVEY_TEMPLATES: "survey_templates",
+  /** Trigger configs: context → cooldown rules (staff write; authenticated read). */
+  SURVEY_TRIGGERS: "survey_triggers",
+  /** Daily aggregation rollups per context_type (staff read/write only). */
+  SURVEY_SUMMARIES: "survey_summaries",
 } as const;
 
 /**

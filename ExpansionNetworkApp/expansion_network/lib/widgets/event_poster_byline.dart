@@ -5,6 +5,7 @@ import '../profile/profile_utils.dart';
 import '../services/user_profile_repository.dart';
 import '../theme/app_theme.dart';
 import 'user_profile_modal.dart';
+import '../theme/cosmic_content.dart';
 
 /// “Posted by” with avatar + name; tap opens [showUserProfileModal] for [userId].
 class EventPosterByline extends StatelessWidget {
@@ -40,7 +41,7 @@ class EventPosterByline extends StatelessWidget {
             color: Colors.transparent,
             child: InkWell(
               onTap: () => showUserProfileModal(context, userId: userId),
-              borderRadius: BorderRadius.zero,
+              borderRadius: Cosmic.chipRadius,
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
                 child: FutureBuilder<Map<String, dynamic>?>(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../current_conference_holder.dart';
+import '../../theme/cosmic_content.dart';
 import '../theme/conference_colors.dart';
 import '../widgets/conference_coming_soon_screen.dart';
 import 'conference_scope.dart';
@@ -80,28 +81,14 @@ class _ConferenceShellState extends State<ConferenceShell> {
         backgroundColor: Colors.transparent,
         extendBody: true,
         body: widget.navigationShell,
-        bottomNavigationBar: SafeArea(
-          minimum: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.85),
-              borderRadius: BorderRadius.zero,
-              border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.6), blurRadius: 20)],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                for (var i = 0; i < ConferenceShell._destinations.length; i++)
-                  _NavButton(
-                    spec: ConferenceShell._destinations[i],
-                    selected: widget.navigationShell.currentIndex == i,
-                    onTap: () => widget.navigationShell.goBranch(i),
-                  ),
-              ],
-            ),
-          ),
+        bottomNavigationBar: CosmicBottomNav(
+          index: widget.navigationShell.currentIndex,
+          accent: Cosmic.accentConference,
+          items: [
+            for (final d in ConferenceShell._destinations)
+              CosmicNavItem(label: d.label, icon: d.selectedIcon),
+          ],
+          onSelect: widget.navigationShell.goBranch,
         ),
       ),
     );
@@ -114,42 +101,6 @@ class _NavSpec {
   final String label;
   final IconData icon;
   final IconData selectedIcon;
-}
-
-class _NavButton extends StatelessWidget {
-  const _NavButton({required this.spec, required this.selected, required this.onTap});
-
-  final _NavSpec spec;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = selected ? ConferenceColors.gold : Colors.grey.shade500;
-    return InkWell(
-      borderRadius: BorderRadius.zero,
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: selected ? ConferenceColors.goldAlpha(0.15) : Colors.transparent,
-          borderRadius: BorderRadius.zero,
-          border: selected ? Border.all(color: ConferenceColors.goldAlpha(0.4)) : null,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(selected ? spec.selectedIcon : spec.icon, size: 20, color: color),
-            const SizedBox(height: 2),
-            Text(
-              spec.label.toUpperCase(),
-              style: TextStyle(fontSize: 9, letterSpacing: 0.5, color: color),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 /// Network zone — Phase 4 (QR connect + matching).

@@ -14,6 +14,7 @@ import '../services/user_profile_repository.dart';
 import '../theme/app_theme.dart';
 import '../widgets/mortar_card.dart';
 import '../widgets/user_profile_modal.dart';
+import '../theme/cosmic_content.dart';
 
 /// Smart Matching — runs **`runExpansionUserMatching`** and lists
 /// `users/{uid}/expansion_matches`.
@@ -186,7 +187,7 @@ class _MatchingScreenState extends State<MatchingScreen> {
                       Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.zero,
+                          borderRadius: Cosmic.chipRadius,
                           gradient: LinearGradient(
                             colors: [AppColors.primary, AppColors.primary.withValues(alpha: 0.85)],
                             begin: Alignment.topLeft,
@@ -227,7 +228,7 @@ class _MatchingScreenState extends State<MatchingScreen> {
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           color: AppColors.glassFill,
-                          borderRadius: BorderRadius.zero,
+                          borderRadius: Cosmic.chipRadius,
                           border: Border.all(color: AppColors.border),
                         ),
                         child: Column(
@@ -289,7 +290,7 @@ class _MatchingScreenState extends State<MatchingScreen> {
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             color: AppColors.glassFill,
-                            borderRadius: BorderRadius.zero,
+                            borderRadius: Cosmic.chipRadius,
                             border: Border.all(color: AppColors.border),
                           ),
                           child: Text(
@@ -341,7 +342,7 @@ class _MatchingScreenState extends State<MatchingScreen> {
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           color: AppColors.card.withValues(alpha: 0.5),
-                          borderRadius: BorderRadius.zero,
+                          borderRadius: Cosmic.chipRadius,
                           border: Border.all(color: AppColors.border),
                         ),
                         child: Text(
@@ -437,7 +438,7 @@ class _ExpansionMatchCard extends StatelessWidget {
     return Material(
       color: AppColors.glassFill,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.zero,
+        borderRadius: Cosmic.chipRadius,
         side: const BorderSide(color: AppColors.border),
       ),
       clipBehavior: Clip.antiAlias,
@@ -522,7 +523,7 @@ class _ExpansionMatchCard extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
                               color: AppColors.primary.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.zero,
+                              borderRadius: Cosmic.chipRadius,
                             ),
                             child: Text(
                               '${match.score}%',

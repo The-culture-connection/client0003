@@ -9,12 +9,14 @@ import 'analytics/analytics_error_hooks.dart';
 import 'analytics/analytics_navigation_binding.dart';
 import 'analytics/analytics_service.dart';
 import 'auth/auth_controller.dart';
+import 'beta_feedback/beta_feedback_overlay.dart';
 import 'expansion_release_trace.dart';
 import 'firebase_options.dart';
 import 'router/app_router.dart';
 import 'services/push_notifications_service.dart';
 import 'mortarverse/widgets/mortarverse_sky.dart';
 import 'theme/app_theme.dart';
+import 'theme/cosmic.dart';
 import 'widgets/content_suspension_gate.dart';
 
 Future<void> main() async {
@@ -103,7 +105,7 @@ class _FirebaseBridgeLostApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: buildAppTheme(),
+      theme: cosmicTheme(accent: Cosmic.accentExpansion),
       home: Scaffold(
         body: SafeArea(
           child: Padding(
@@ -187,16 +189,22 @@ class _ExpansionNetworkAppState extends State<ExpansionNetworkApp> {
     return MaterialApp.router(
       title: 'MORTAR Alumni Network',
       debugShowCheckedModeBanner: false,
-      theme: buildAppTheme(),
+      theme: cosmicTheme(accent: Cosmic.accentExpansion),
       routerConfig: widget.router,
       builder: (context, child) {
         // One persistent Mortarverse sky under every screen (screens render
         // transparent scaffolds on top — mirrors the webapp's Root shell).
-        return Stack(
-          children: [
-            const MortarverseSky(),
-            ContentSuspensionGate(child: child),
-          ],
+        //
+        // [BetaFeedbackOverlay] sits outside that stack on purpose: it captures
+        // everything inside it as the report screenshot, so its own button and
+        // sheet must not be part of what it captures.
+        return BetaFeedbackOverlay(
+          child: Stack(
+            children: [
+              const MortarverseSky(),
+              ContentSuspensionGate(child: child),
+            ],
+          ),
         );
       },
     );

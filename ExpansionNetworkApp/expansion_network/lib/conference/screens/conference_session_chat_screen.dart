@@ -13,6 +13,7 @@ import '../models/session_message.dart';
 import '../services/conference_repository.dart';
 import '../services/conference_session_service.dart';
 import '../theme/conference_colors.dart';
+import '../../theme/cosmic_content.dart';
 
 /// Per-session chat room — `conferences/{id}/sessions/{sessionId}/messages`.
 /// Ports `Conference App Figma Mockup/src/app/pages/SessionChat.tsx`.
@@ -108,7 +109,7 @@ class _ConferenceSessionChatScreenState extends State<ConferenceSessionChatScree
             if (_session != null)
               Text(
                 '${_session!.goingCount} attending',
-                style: TextStyle(color: Colors.grey.shade400, fontSize: 12, fontWeight: FontWeight.normal),
+                style: TextStyle(color: Cosmic.textMuted, fontSize: 12, fontWeight: FontWeight.normal),
               ),
           ],
         ),
@@ -130,7 +131,7 @@ class _ConferenceSessionChatScreenState extends State<ConferenceSessionChatScree
                       if (messages.isEmpty) {
                         return Center(
                           child: Text('No messages yet — say hello 👋',
-                              style: TextStyle(color: Colors.grey.shade500)),
+                              style: TextStyle(color: Cosmic.textFaint)),
                         );
                       }
                       WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
@@ -177,7 +178,7 @@ class _ConferenceSessionChatScreenState extends State<ConferenceSessionChatScree
           if (!mine) const SizedBox(height: 2),
           Text(m.text, style: TextStyle(color: textColor, fontSize: 14, height: 1.3)),
           const SizedBox(height: 3),
-          Text(time, style: TextStyle(color: mine ? Colors.black54 : Colors.grey.shade500, fontSize: 10)),
+          Text(time, style: TextStyle(color: mine ? Colors.black54 : Cosmic.textFaint, fontSize: 10)),
         ],
       ),
     );
@@ -254,20 +255,20 @@ class _ConferenceSessionChatScreenState extends State<ConferenceSessionChatScree
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
                   hintText: 'Share your thoughts…',
-                  hintStyle: TextStyle(color: Colors.grey.shade600),
+                  hintStyle: TextStyle(color: Cosmic.textFaint),
                   filled: true,
                   fillColor: Colors.white.withValues(alpha: 0.05),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.zero,
+                    borderRadius: Cosmic.chipRadius,
                     borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
                   ),
                   enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.zero,
+                    borderRadius: Cosmic.chipRadius,
                     borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.zero,
+                    borderRadius: Cosmic.chipRadius,
                     borderSide: const BorderSide(color: ConferenceColors.gold),
                   ),
                 ),

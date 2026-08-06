@@ -6,6 +6,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../theme/app_theme.dart';
+import '../theme/cosmic_content.dart';
 
 /// What a scan handler wants to happen next.
 enum ScanOutcome {
@@ -161,7 +162,7 @@ class _QrScanViewState extends State<QrScanView> with WidgetsBindingObserver {
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.6),
-                    borderRadius: BorderRadius.zero,
+                    borderRadius: Cosmic.chipRadius,
                   ),
                   child: Text(
                     widget.hint!,
@@ -211,7 +212,7 @@ class _ScanReticle extends StatelessWidget {
         height: 240,
         decoration: BoxDecoration(
           border: Border.all(color: accent, width: 3),
-          borderRadius: BorderRadius.zero,
+          borderRadius: Cosmic.chipRadius,
         ),
       ),
     );

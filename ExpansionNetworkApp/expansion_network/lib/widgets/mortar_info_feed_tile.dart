@@ -8,6 +8,7 @@ import '../analytics/expansion_analytics.dart';
 import '../models/mortar_info_post.dart';
 import '../theme/app_theme.dart';
 import '../utils/safe_launch_url.dart';
+import '../theme/cosmic_content.dart';
 
 String mortarInfoRelativeTime(DateTime? at) {
   if (at == null) return 'Recently';
@@ -45,7 +46,7 @@ class MortarInfoFeedTile extends StatelessWidget {
       width: double.infinity,
       decoration: BoxDecoration(
         color: AppColors.glassFill,
-        borderRadius: BorderRadius.zero,
+        borderRadius: Cosmic.chipRadius,
         border: Border.all(color: scheme.outline.withValues(alpha: 0.5)),
         boxShadow: [
           BoxShadow(
@@ -162,7 +163,7 @@ class MortarInfoFeedTile extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onOpenDetail,
-          borderRadius: BorderRadius.zero,
+          borderRadius: Cosmic.chipRadius,
           child: card,
         ),
       );
@@ -210,15 +211,15 @@ class _NewsletterLinkCard extends StatelessWidget {
 
     return Material(
       color: AppColors.secondary,
-      borderRadius: BorderRadius.zero,
+      borderRadius: Cosmic.chipRadius,
       child: InkWell(
         onTap: () => _open(context),
-        borderRadius: BorderRadius.zero,
+        borderRadius: Cosmic.chipRadius,
         child: Container(
           width: double.infinity,
           padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 12, vertical: compact ? 10 : 12),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.zero,
+            borderRadius: Cosmic.chipRadius,
             border: Border.all(color: scheme.outline.withValues(alpha: 0.45)),
           ),
           child: Row(
@@ -275,7 +276,7 @@ class _MediaStrip extends StatelessWidget {
     if (media.length == 1) {
       final m = media.first;
       return ClipRRect(
-        borderRadius: BorderRadius.zero,
+        borderRadius: Cosmic.chipRadius,
         child: ColoredBox(
           color: const Color(0x0DFFFFFF),
           child: SizedBox(
@@ -313,7 +314,7 @@ class _MediaStrip extends StatelessWidget {
           final m = media[i];
           final w = compact ? 220.0 : 300.0;
           return ClipRRect(
-            borderRadius: BorderRadius.zero,
+            borderRadius: Cosmic.chipRadius,
             child: ColoredBox(
               color: const Color(0x0DFFFFFF),
               child: SizedBox(

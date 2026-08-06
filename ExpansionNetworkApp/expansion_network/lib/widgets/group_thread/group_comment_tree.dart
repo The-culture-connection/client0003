@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../models/group_thread_firestore.dart';
 import '../../services/group_thread_repository.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/cosmic_content.dart';
 
 class GroupCommentTree extends StatelessWidget {
   const GroupCommentTree({
@@ -146,7 +147,7 @@ class GroupCommentTree extends StatelessWidget {
                             isDense: true,
                             filled: true,
                             fillColor: AppColors.secondary,
-                            border: OutlineInputBorder(borderRadius: BorderRadius.zero, borderSide: BorderSide.none),
+                            border: OutlineInputBorder(borderRadius: Cosmic.chipRadius, borderSide: BorderSide.none),
                           ),
                           onSubmitted: (_) => onSubmitReply(comment.id),
                         ),

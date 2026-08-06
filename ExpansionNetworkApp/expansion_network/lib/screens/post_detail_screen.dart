@@ -12,6 +12,7 @@ import '../theme/app_theme.dart';
 import '../utils/relative_time.dart';
 import '../widgets/poster_profile_avatar.dart';
 import '../widgets/user_profile_modal.dart';
+import '../theme/cosmic_content.dart';
 
 class PostDetailScreen extends StatefulWidget {
   const PostDetailScreen({super.key, required this.postId});
@@ -246,7 +247,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                       padding: const EdgeInsets.all(16),
                                       decoration: BoxDecoration(
                                         color: AppColors.glassFill,
-                                        borderRadius: BorderRadius.zero,
+                                        borderRadius: Cosmic.chipRadius,
                                         border: Border.all(color: AppColors.border),
                                       ),
                                       child: Column(
@@ -266,7 +267,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                                   onTap: post.authorId.isEmpty
                                                       ? null
                                                       : () => showUserProfileModal(context, userId: post.authorId),
-                                                  borderRadius: BorderRadius.zero,
+                                                  borderRadius: Cosmic.chipRadius,
                                                   child: Padding(
                                                     padding: const EdgeInsets.symmetric(vertical: 4),
                                                     child: Text(
@@ -288,7 +289,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                           if (post.imageUrl != null && post.imageUrl!.trim().isNotEmpty) ...[
                                             if (post.postDetails.trim().isNotEmpty) const SizedBox(height: 16),
                                             ClipRRect(
-                                              borderRadius: BorderRadius.zero,
+                                              borderRadius: Cosmic.chipRadius,
                                               child: AspectRatio(
                                                 aspectRatio: 4 / 3,
                                                 child: Image.network(
@@ -552,7 +553,7 @@ class _PostLikeRow extends StatelessWidget {
                             }
                           }
                         },
-                  borderRadius: BorderRadius.zero,
+                  borderRadius: Cosmic.chipRadius,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
                     child: Row(
@@ -609,7 +610,7 @@ class _ReplyTile extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Color(0xE6000000),
-        borderRadius: BorderRadius.zero,
+        borderRadius: Cosmic.chipRadius,
         border: Border.all(color: AppColors.border),
       ),
       child: Column(
@@ -666,7 +667,7 @@ class _ReplyTile extends StatelessWidget {
                                   }
                                 }
                               },
-                        borderRadius: BorderRadius.zero,
+                        borderRadius: Cosmic.chipRadius,
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
                           child: Row(

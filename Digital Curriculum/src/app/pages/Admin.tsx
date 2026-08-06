@@ -48,6 +48,7 @@ import {
   ChevronLeft,
   Crown,
   FlaskConical,
+  Bug,
 } from "lucide-react";
 import { useAuth } from "../components/auth/AuthProvider";
 import {
@@ -140,6 +141,7 @@ import { AdminGoalReportsPanel } from "../components/admin/AdminGoalReportsPanel
 import { ImplicitFeedbackReportPanel } from "../components/admin/ImplicitFeedbackReportPanel";
 import { AdminBadgesPanel } from "../components/admin/AdminBadgesPanel";
 import { ConferencesPanel } from "../components/admin/ConferencesPanel";
+import { BetaTestingPanel } from "../components/admin/BetaTestingPanel";
 import { registerDigitalCurriculumAlumniEligible } from "../lib/expansionEligible";
 import {
   formatAvailabilityWindowLabel,
@@ -1160,6 +1162,10 @@ export function AdminPage() {
           <TabsTrigger value="conferences">
             <Calendar className="w-4 h-4 mr-2" />
             Conferences
+          </TabsTrigger>
+          <TabsTrigger value="beta-testing">
+            <Bug className="w-4 h-4 mr-2" />
+            Beta Testing
           </TabsTrigger>
         </TabsList>
 
@@ -2291,6 +2297,12 @@ export function AdminPage() {
         {/* Conference Center — create/price conferences, active window, ticket codes */}
         <TabsContent value="conferences" className="space-y-6">
           <ConferencesPanel />
+        </TabsContent>
+
+        {/* Beta Testing — shake-to-report (Expansion mobile) + the standing
+            widget on this app, with the screenshot each tester was looking at */}
+        <TabsContent value="beta-testing" className="space-y-6">
+          <BetaTestingPanel />
         </TabsContent>
 
         {/* Expansion Network — eligible users & invite codes */}

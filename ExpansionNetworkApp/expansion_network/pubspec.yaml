@@ -55,6 +55,11 @@ dependencies:
   qr_flutter: ^4.1.0
   mobile_scanner: ^7.4.0
   vibration: ^3.2.0
+  # Beta feedback: accelerometer for shake-to-report, package info to stamp
+  # each report with the build it came from.
+  sensors_plus: ^7.0.0
+  # ^10 (not ^9): 9.x pins win32 ^5, which conflicts with share_plus ^13.
+  package_info_plus: ^10.2.1
 
 dev_dependencies:
   flutter_test:

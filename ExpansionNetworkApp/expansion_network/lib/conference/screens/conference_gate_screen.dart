@@ -19,6 +19,7 @@ import '../services/conference_ticket_service.dart';
 import '../theme/conference_colors.dart';
 import '../widgets/conference_brand_mark.dart';
 import 'conference_attendee_survey_screen.dart';
+import '../../theme/cosmic_content.dart';
 
 /// Conference Center "first click" screen: the gate a user sees after tapping
 /// the Conference Center tile in the Mortarverse. It offers a **ticket code
@@ -583,7 +584,7 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
         final t = _glow.value;
         return Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.zero,
+            borderRadius: Cosmic.chipRadius,
             boxShadow: [
               BoxShadow(
                 color: ConferenceColors.goldAlpha(0.10 + 0.16 * t),
@@ -598,7 +599,7 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
       child: Container(
         padding: const EdgeInsets.all(22),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.zero,
+          borderRadius: Cosmic.chipRadius,
           border: Border.all(color: ConferenceColors.goldAlpha(0.45), width: 1.2),
           gradient: LinearGradient(
             begin: Alignment.topLeft,
@@ -621,7 +622,7 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
                     height: 42,
                     decoration: BoxDecoration(
                       color: ConferenceColors.goldAlpha(0.14),
-                      borderRadius: BorderRadius.zero,
+                      borderRadius: Cosmic.chipRadius,
                       border: Border.all(color: ConferenceColors.gold, width: 1.4),
                     ),
                     child: const Icon(Icons.confirmation_number_rounded, color: ConferenceColors.gold, size: 22),
@@ -647,7 +648,7 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
                           _targetConference != null
                               ? 'Entering ${_targetConference!.name}.'
                               : 'Use the code from your ticket email to enter.',
-                          style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+                          style: TextStyle(color: Cosmic.textMuted, fontSize: 12),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -678,24 +679,24 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
                 ),
                 decoration: InputDecoration(
                   hintText: '••••••••••',
-                  hintStyle: TextStyle(color: Colors.grey.shade700, letterSpacing: 6, fontSize: 22),
+                  hintStyle: TextStyle(color: Cosmic.textFaint, letterSpacing: 6, fontSize: 22),
                   filled: true,
                   fillColor: Colors.black.withValues(alpha: 0.4),
                   contentPadding: const EdgeInsets.symmetric(vertical: 16),
                   enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.zero,
+                    borderRadius: Cosmic.chipRadius,
                     borderSide: BorderSide(color: ConferenceColors.goldAlpha(0.35)),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.zero,
+                    borderRadius: Cosmic.chipRadius,
                     borderSide: const BorderSide(color: ConferenceColors.gold, width: 1.6),
                   ),
                   errorBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.zero,
+                    borderRadius: Cosmic.chipRadius,
                     borderSide: const BorderSide(color: Colors.redAccent),
                   ),
                   focusedErrorBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.zero,
+                    borderRadius: Cosmic.chipRadius,
                     borderSide: const BorderSide(color: Colors.redAccent, width: 1.6),
                   ),
                 ),
@@ -721,7 +722,7 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
                   style: FilledButton.styleFrom(
                     backgroundColor: ConferenceColors.gold,
                     foregroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                    shape: RoundedRectangleBorder(borderRadius: Cosmic.chipRadius),
                   ),
                   onPressed: _busy ? null : _submit,
                   child: _busy
@@ -802,12 +803,12 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.zero,
+              borderRadius: Cosmic.chipRadius,
               border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
             ),
             child: Text(
               'No conferences are open for tickets right now — check back soon.',
-              style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+              style: TextStyle(color: Cosmic.textMuted, fontSize: 13),
             ),
           )
         else
@@ -834,7 +835,7 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
     required String subtitle,
     bool muted = false,
   }) {
-    final accent = muted ? Colors.grey.shade600 : ConferenceColors.gold;
+    final accent = muted ? Cosmic.textFaint : ConferenceColors.gold;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -847,7 +848,7 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
                 title,
                 style: TextStyle(
                   color: muted
-                      ? Colors.grey.shade500
+                      ? Cosmic.textFaint
                       : Colors.white.withValues(alpha: 0.9),
                   fontWeight: FontWeight.w700,
                   fontSize: 13,
@@ -863,7 +864,7 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
           child: Text(
             subtitle,
             style: TextStyle(
-              color: muted ? Colors.grey.shade600 : Colors.grey.shade500,
+              color: muted ? Cosmic.textFaint : Cosmic.textFaint,
               fontSize: 12,
             ),
           ),
@@ -891,7 +892,7 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: muted ? 0.03 : 0.06),
-        borderRadius: BorderRadius.zero,
+        borderRadius: Cosmic.chipRadius,
         border: Border.all(
           color: Colors.white.withValues(alpha: muted ? 0.07 : 0.14),
         ),
@@ -944,15 +945,15 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
                       color: muted
                           ? Colors.white.withValues(alpha: 0.05)
                           : ConferenceColors.goldAlpha(0.12),
-                      borderRadius: BorderRadius.zero,
+                      borderRadius: Cosmic.chipRadius,
                       border: Border.all(
-                        color: muted ? Colors.grey.shade700 : ConferenceColors.gold,
+                        color: muted ? Cosmic.textFaint : ConferenceColors.gold,
                         width: 1.4,
                       ),
                     ),
                     child: Icon(
                       icons[index % icons.length],
-                      color: muted ? Colors.grey.shade600 : ConferenceColors.gold,
+                      color: muted ? Cosmic.textFaint : ConferenceColors.gold,
                       size: 24,
                     ),
                   ),
@@ -964,7 +965,7 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
                       Text(
                         c.name,
                         style: TextStyle(
-                          color: muted ? Colors.grey.shade500 : Colors.white,
+                          color: muted ? Cosmic.textFaint : Colors.white,
                           fontWeight: FontWeight.w700,
                           fontSize: 15,
                         ),
@@ -978,13 +979,13 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
                               color: muted
                                   ? Colors.white.withValues(alpha: 0.06)
                                   : ConferenceColors.goldAlpha(0.14),
-                              borderRadius: BorderRadius.zero,
+                              borderRadius: Cosmic.chipRadius,
                             ),
                             child: Text(
                               priceLabel,
                               style: TextStyle(
                                 color: muted
-                                    ? Colors.grey.shade500
+                                    ? Cosmic.textFaint
                                     : ConferenceColors.gold,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
@@ -996,7 +997,7 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
                             Flexible(
                               child: Text(
                                 dateLabel,
-                                style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+                                style: TextStyle(color: Cosmic.textMuted, fontSize: 12),
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
@@ -1043,7 +1044,7 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
           foregroundColor: Colors.black,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.zero,
+            borderRadius: Cosmic.chipRadius,
             side: BorderSide(color: ConferenceColors.gold),
           ),
         ),
@@ -1058,13 +1059,13 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.zero,
-          border: Border.all(color: Colors.grey.shade800),
+          borderRadius: Cosmic.chipRadius,
+          border: Border.all(color: Cosmic.textFaint),
         ),
         child: Text(
           'Closed',
           style: TextStyle(
-            color: Colors.grey.shade600,
+            color: Cosmic.textFaint,
             fontWeight: FontWeight.w700,
             fontSize: 13,
           ),
@@ -1081,12 +1082,12 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
         backgroundColor: muted
             ? Colors.white.withValues(alpha: 0.06)
             : ConferenceColors.goldAlpha(0.16),
-        foregroundColor: muted ? Colors.grey.shade300 : ConferenceColors.gold,
+        foregroundColor: muted ? Cosmic.textMuted : ConferenceColors.gold,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.zero,
+          borderRadius: Cosmic.chipRadius,
           side: BorderSide(
-            color: muted ? Colors.grey.shade700 : ConferenceColors.goldAlpha(0.5),
+            color: muted ? Cosmic.textFaint : ConferenceColors.goldAlpha(0.5),
           ),
         ),
       ),
@@ -1129,7 +1130,7 @@ class _StarfieldPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.grey.shade600.withValues(alpha: 0.5);
+    final paint = Paint()..color = Cosmic.textFaint.withValues(alpha: 0.5);
     for (final p in positions) {
       canvas.drawCircle(Offset(p.dx * size.width, p.dy * size.height), 0.8, paint);
     }

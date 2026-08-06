@@ -5,6 +5,7 @@ import '../badge/badge_platform_utils.dart';
 import '../models/badge_definition.dart';
 import '../services/badge_repository.dart';
 import '../theme/app_theme.dart';
+import '../theme/cosmic_content.dart';
 
 /// Thumbnails for earned badges that have `image_url` and apply to Expansion mobile.
 class EarnedBadgesStrip extends StatelessWidget {
@@ -52,7 +53,7 @@ class EarnedBadgesStrip extends StatelessWidget {
                   Tooltip(
                     message: d.name,
                     child: ClipRRect(
-                      borderRadius: BorderRadius.zero,
+                      borderRadius: Cosmic.chipRadius,
                       child: CachedNetworkImage(
                         imageUrl: d.imageUrl!,
                         width: 44,

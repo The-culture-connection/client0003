@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/curriculum_onboarding_data.dart';
 import '../theme/app_theme.dart';
 import 'mortar_card.dart';
+import '../theme/cosmic_content.dart';
 
 /// Expandable category + checkboxes (same UX as onboarding).
 class CurriculumSkillCategoryCard extends StatelessWidget {
@@ -25,7 +26,7 @@ class CurriculumSkillCategoryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return MortarCard(
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.zero,
+        borderRadius: Cosmic.chipRadius,
         side: const BorderSide(color: AppColors.border),
       ),
       child: Padding(
@@ -35,7 +36,7 @@ class CurriculumSkillCategoryCard extends StatelessWidget {
           children: [
             InkWell(
               onTap: onHeaderTap,
-              borderRadius: BorderRadius.zero,
+              borderRadius: Cosmic.chipRadius,
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

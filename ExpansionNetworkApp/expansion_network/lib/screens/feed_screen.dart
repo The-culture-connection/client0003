@@ -16,6 +16,7 @@ import '../widgets/event_poster_byline.dart';
 import '../widgets/event_rsvp_attendee_tile.dart';
 import '../widgets/event_source_badge.dart';
 import '../widgets/page_header.dart';
+import '../theme/cosmic_content.dart';
 
 /// Community feed: published [events] only (no feed posts).
 class FeedScreen extends StatefulWidget {
@@ -217,7 +218,7 @@ class _EventListTile extends StatelessWidget {
     final registered = uid != null && event.isRegistered(uid!);
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.zero,
+      borderRadius: Cosmic.chipRadius,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: mortarEventListCardDecoration(event),
@@ -226,7 +227,7 @@ class _EventListTile extends StatelessWidget {
           children: [
             if (event.imageUrl != null && event.imageUrl!.isNotEmpty)
               ClipRRect(
-                borderRadius: BorderRadius.zero,
+                borderRadius: Cosmic.chipRadius,
                 child: AspectRatio(
                   aspectRatio: 16 / 9,
                   child: CachedNetworkImage(
@@ -273,7 +274,7 @@ class _EventListTile extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: AppColors.primary,
-                      borderRadius: BorderRadius.zero,
+                      borderRadius: Cosmic.chipRadius,
                     ),
                     child: const Text('Registered', style: TextStyle(fontSize: 11, color: AppColors.onPrimary)),
                   ),

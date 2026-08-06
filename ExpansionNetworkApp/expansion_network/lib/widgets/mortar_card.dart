@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 import '../theme/grunge_texture.dart';
+import '../theme/cosmic_content.dart';
 
 /// A [Card] with the scorched grunge fill behind its contents.
 ///
@@ -63,7 +64,7 @@ class MortarPanel extends StatelessWidget {
     this.seed = 11,
     this.intensity = 0.55,
     this.padding,
-    this.borderRadius = BorderRadius.zero,
+    this.borderRadius = Cosmic.chipRadius,
     this.bordered = true,
   });
 

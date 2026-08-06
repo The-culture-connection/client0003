@@ -9,6 +9,7 @@ import '../services/user_profile_repository.dart';
 import '../theme/app_theme.dart';
 import '../widgets/curriculum_skill_category_card.dart';
 import '../widgets/mortar_card.dart';
+import '../theme/cosmic_content.dart';
 
 /// Edit all curriculum profile fields; loads/saves `users/{uid}`.
 class ProfileEditScreen extends StatefulWidget {
@@ -487,7 +488,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                   _blockTitle(context, 'Business goals', _keyGoals),
                   MortarCard(
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.zero,
+                      borderRadius: Cosmic.chipRadius,
                       side: const BorderSide(color: AppColors.border),
                     ),
                     child: Padding(
@@ -577,7 +578,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                   _blockTitle(context, 'Tribe', _keyIndustry),
                   MortarCard(
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.zero,
+                      borderRadius: Cosmic.chipRadius,
                       side: const BorderSide(color: AppColors.border),
                     ),
                     child: Column(
@@ -598,7 +599,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                   _blockTitle(context, 'Ideal work structure', _keyWork),
                   MortarCard(
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.zero,
+                      borderRadius: Cosmic.chipRadius,
                       side: const BorderSide(color: AppColors.border),
                     ),
                     child: Padding(

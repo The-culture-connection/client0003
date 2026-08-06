@@ -11,6 +11,7 @@ import '../models/conference_session.dart';
 import '../models/conference_sponsor.dart';
 import '../services/conference_repository.dart';
 import '../theme/conference_colors.dart';
+import '../../theme/cosmic_content.dart';
 
 /// Venue Map — interactive floor plan(s) with a floor toggle, zoomable image,
 /// room pins overlaid at normalized (0–1) positions, a real room legend, and
@@ -154,7 +155,7 @@ class _ConferenceMapScreenState extends State<ConferenceMapScreen> with SingleTi
               ),
               const SizedBox(height: 12),
               if (sessions.isEmpty && sponsors.isEmpty)
-                Text('Nothing scheduled here yet.', style: TextStyle(color: Colors.grey.shade400)),
+                Text('Nothing scheduled here yet.', style: TextStyle(color: Cosmic.textMuted)),
               if (sessions.isNotEmpty) ...[
                 _sheetLabel('SESSIONS'),
                 const SizedBox(height: 8),
@@ -179,9 +180,9 @@ class _ConferenceMapScreenState extends State<ConferenceMapScreen> with SingleTi
   Widget _roomSponsorTile(BuildContext sheetCtx, ConferenceSponsor sp) {
     return Material(
       color: Colors.white.withValues(alpha: 0.05),
-      borderRadius: BorderRadius.zero,
+      borderRadius: Cosmic.chipRadius,
       child: InkWell(
-        borderRadius: BorderRadius.zero,
+        borderRadius: Cosmic.chipRadius,
         onTap: () {
           Navigator.of(sheetCtx).pop();
           context.push('/conference/sponsor/${sp.id}');
@@ -197,7 +198,7 @@ class _ConferenceMapScreenState extends State<ConferenceMapScreen> with SingleTi
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: ConferenceColors.goldAlpha(0.18),
-                  borderRadius: BorderRadius.zero,
+                  borderRadius: Cosmic.chipRadius,
                   border: Border.all(color: ConferenceColors.goldAlpha(0.5)),
                 ),
                 child: (sp.logoUrl != null && sp.logoUrl!.isNotEmpty)
@@ -212,7 +213,7 @@ class _ConferenceMapScreenState extends State<ConferenceMapScreen> with SingleTi
                   children: [
                     Text(sp.companyName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
                     if (sp.packageLevel.trim().isNotEmpty)
-                      Text(sp.packageLevel, style: TextStyle(color: Colors.grey.shade400, fontSize: 12)),
+                      Text(sp.packageLevel, style: TextStyle(color: Cosmic.textMuted, fontSize: 12)),
                   ],
                 ),
               ),
@@ -230,9 +231,9 @@ class _ConferenceMapScreenState extends State<ConferenceMapScreen> with SingleTi
         : 'Time TBD';
     return Material(
       color: Colors.white.withValues(alpha: 0.05),
-      borderRadius: BorderRadius.zero,
+      borderRadius: Cosmic.chipRadius,
       child: InkWell(
-        borderRadius: BorderRadius.zero,
+        borderRadius: Cosmic.chipRadius,
         onTap: () {
           Navigator.of(sheetCtx).pop();
           context.push('/conference/schedule/${s.id}');
@@ -247,7 +248,7 @@ class _ConferenceMapScreenState extends State<ConferenceMapScreen> with SingleTi
                   children: [
                     Text(s.title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 2),
-                    Text(time, style: TextStyle(color: Colors.grey.shade400, fontSize: 12)),
+                    Text(time, style: TextStyle(color: Cosmic.textMuted, fontSize: 12)),
                   ],
                 ),
               ),
@@ -278,7 +279,7 @@ class _ConferenceMapScreenState extends State<ConferenceMapScreen> with SingleTi
           : floor == null || (floor.imageUrl == null || floor.imageUrl!.isEmpty)
               ? Center(
                   child: Text('No venue map has been published yet.',
-                      style: TextStyle(color: Colors.grey.shade400)))
+                      style: TextStyle(color: Cosmic.textMuted)))
               : Column(
                   children: [
                     if (_floors.length > 1) _floorToggle(),
@@ -303,7 +304,7 @@ class _ConferenceMapScreenState extends State<ConferenceMapScreen> with SingleTi
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
                 decoration: BoxDecoration(
                   color: _selectedFloorId == f.id ? ConferenceColors.gold : Colors.white.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.zero,
+                  borderRadius: Cosmic.chipRadius,
                   border: Border.all(
                     color: _selectedFloorId == f.id ? ConferenceColors.gold : Colors.white.withValues(alpha: 0.1),
                   ),
@@ -311,7 +312,7 @@ class _ConferenceMapScreenState extends State<ConferenceMapScreen> with SingleTi
                 child: Text(
                   f.name.toUpperCase(),
                   style: TextStyle(
-                    color: _selectedFloorId == f.id ? Colors.black : Colors.grey.shade400,
+                    color: _selectedFloorId == f.id ? Colors.black : Cosmic.textMuted,
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.5,
@@ -349,7 +350,7 @@ class _ConferenceMapScreenState extends State<ConferenceMapScreen> with SingleTi
                         floor.imageUrl!,
                         fit: BoxFit.fill,
                         errorBuilder: (_, __, ___) => Center(
-                          child: Text('Could not load the floor plan.', style: TextStyle(color: Colors.grey.shade500)),
+                          child: Text('Could not load the floor plan.', style: TextStyle(color: Cosmic.textFaint)),
                         ),
                       ),
                     ),
@@ -378,7 +379,7 @@ class _ConferenceMapScreenState extends State<ConferenceMapScreen> with SingleTi
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(
             color: Colors.black.withValues(alpha: 0.7),
-            borderRadius: BorderRadius.zero,
+            borderRadius: Cosmic.chipRadius,
             border: Border.all(color: ConferenceColors.goldAlpha(highlighted ? 1 : 0.5)),
           ),
           child: Text(
@@ -425,7 +426,7 @@ class _ConferenceMapScreenState extends State<ConferenceMapScreen> with SingleTi
           if (floor.rooms.isEmpty)
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-              child: Text('No rooms labeled on this floor.', style: TextStyle(color: Colors.grey.shade500, fontSize: 13)),
+              child: Text('No rooms labeled on this floor.', style: TextStyle(color: Cosmic.textFaint, fontSize: 13)),
             )
           else
             Flexible(
@@ -443,7 +444,7 @@ class _ConferenceMapScreenState extends State<ConferenceMapScreen> with SingleTi
                   return Material(
                     color: Colors.transparent,
                     child: InkWell(
-                      borderRadius: BorderRadius.zero,
+                      borderRadius: Cosmic.chipRadius,
                       onTap: () => _openRoom(room),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
@@ -456,7 +457,7 @@ class _ConferenceMapScreenState extends State<ConferenceMapScreen> with SingleTi
                                   style: const TextStyle(color: Colors.white, fontSize: 13), overflow: TextOverflow.ellipsis),
                             ),
                             Text(parts.isEmpty ? '—' : parts.join(' · '),
-                                style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+                                style: TextStyle(color: Cosmic.textFaint, fontSize: 12)),
                             const SizedBox(width: 4),
                             const Icon(Icons.chevron_right_rounded, color: ConferenceColors.gold, size: 18),
                           ],

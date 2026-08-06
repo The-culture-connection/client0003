@@ -13,13 +13,13 @@ import '../models/conference_mission.dart';
 import '../services/conference_mission_service.dart';
 import '../services/conference_ticket_service.dart';
 import '../theme/conference_brand.dart';
-import '../../theme/cosmic_components.dart';
 import '../theme/conference_colors.dart';
 import '../widgets/conference_brand_mark.dart';
 import '../widgets/conference_scope.dart';
 import '../widgets/conference_shell.dart';
 import '../widgets/conference_tour.dart';
 import '../../widgets/expansion_tour.dart';
+import '../../theme/cosmic_content.dart';
 
 /// Conference home tab — based on
 /// `Conference App Figma Mockup/src/app/pages/ConferenceLobby.tsx`: a hero
@@ -265,89 +265,22 @@ class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen>
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-      child: Container(
+      child: CosmicActionRow(
         key: _tourCheckIn,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.zero,
-          border: Border.all(color: ConferenceColors.goldAlpha(checkedIn ? 0.5 : 0.3)),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [ConferenceColors.goldAlpha(0.10), Colors.black.withValues(alpha: 0.4)],
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                color: ConferenceColors.goldAlpha(0.12),
-                borderRadius: BorderRadius.zero,
-                border: Border.all(color: ConferenceColors.gold, width: 1.4),
-              ),
-              child: Icon(
-                checkedIn ? Icons.how_to_reg_rounded : Icons.location_on_rounded,
-                color: ConferenceColors.gold,
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    checkedIn ? "YOU'RE CHECKED IN" : 'DAILY CHECK-IN',
-                    style: const TextStyle(
-                      color: ConferenceColors.gold,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 13,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                  if (countLabel != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      countLabel,
-                      style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(width: 10),
-            if (_checkingIn)
-              const SizedBox(
-                width: 44,
-                height: 40,
-                child: Center(
-                  child: SizedBox(
-                    height: 18,
-                    width: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: ConferenceColors.gold),
-                  ),
-                ),
-              )
-            else
-              FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: checkedIn ? ConferenceColors.goldAlpha(0.16) : ConferenceColors.gold,
-                  foregroundColor: checkedIn ? ConferenceColors.gold : Colors.black,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.zero,
-                    side: BorderSide(color: ConferenceColors.goldAlpha(0.5)),
-                  ),
-                ),
-                onPressed: checkedIn ? null : _handleCheckIn,
-                child: Text(
-                  checkedIn ? 'Checked in ✓' : 'Check In',
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-              ),
-          ],
-        ),
+        // Once checked in the label carries the crowd count, which is the only
+        // new information left to give. Null when nobody has checked in yet —
+        // an empty count is better left unsaid than dressed up.
+        label: checkedIn
+            ? (countLabel ?? "You're checked in")
+            : 'Daily check-in',
+        ctaLabel: _checkingIn
+            ? '…'
+            : checkedIn
+                ? 'Checked in'
+                : 'Check in',
+        accent: Cosmic.accentConference,
+        enabled: !checkedIn && !_checkingIn,
+        onTap: _handleCheckIn,
       ),
     );
   }
@@ -423,12 +356,13 @@ class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen>
       // ConferenceShell's nav pill floats over this screen's body, so the FAB
       // has to clear it or it sits underneath and cannot be tapped.
       padding: EdgeInsets.only(bottom: ConferenceShell.navBarClearance(context)),
-      child: FloatingActionButton(
+      // 2a's solid gold squircle, not a round Material FAB.
+      child: CosmicSquircleFab(
         key: _tourFab,
-        backgroundColor: ConferenceColors.gold,
+        icon: Icons.qr_code_2_rounded,
+        accent: Cosmic.accentConference,
         tooltip: 'My card & scan',
-        onPressed: () => context.push('/card?ctx=conference'),
-        child: const Icon(Icons.qr_code_2_rounded, size: 30, color: Colors.black),
+        onTap: () => context.push('/card?ctx=conference'),
       ),
     );
   }
@@ -473,7 +407,7 @@ class _HeroBanner extends StatelessWidget {
               TextButton.icon(
                 onPressed: () => context.go('/mortarverse'),
                 style: TextButton.styleFrom(
-                  foregroundColor: Colors.grey.shade400,
+                  foregroundColor: Cosmic.textMuted,
                   padding: EdgeInsets.zero,
                 ),
                 icon: const Icon(Icons.arrow_back, size: 16),
@@ -495,10 +429,10 @@ class _HeroBanner extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           ClipRRect(
-            borderRadius: BorderRadius.zero,
+            borderRadius: Cosmic.chipRadius,
             child: DecoratedBox(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.zero,
+                borderRadius: Cosmic.chipRadius,
                 border: Border.all(color: ConferenceColors.goldAlpha(0.3)),
                 gradient: heroImage == null
                     ? LinearGradient(
@@ -570,7 +504,7 @@ class _HeroBanner extends StatelessWidget {
                                     Text(
                                       dateLabel,
                                       style: TextStyle(
-                                        color: Colors.grey.shade400,
+                                        color: Cosmic.textMuted,
                                         fontSize: 13,
                                       ),
                                     ),
@@ -640,7 +574,7 @@ class _StatusPill extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.zero),
+      decoration: BoxDecoration(color: bg, borderRadius: Cosmic.chipRadius),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -812,7 +746,7 @@ class _MissionTile extends StatelessWidget {
         color: done
             ? ConferenceColors.goldAlpha(0.10)
             : Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.zero,
+        borderRadius: Cosmic.chipRadius,
         border: Border.all(
           color: done
               ? ConferenceColors.goldAlpha(0.45)
@@ -852,7 +786,7 @@ class _MissionTile extends StatelessWidget {
               Text(
                 done ? 'Complete' : '$shown/${mission.target}',
                 style: TextStyle(
-                  color: done ? ConferenceColors.gold : Colors.grey.shade400,
+                  color: done ? ConferenceColors.gold : Cosmic.textMuted,
                   fontSize: 12,
                   fontWeight: done ? FontWeight.w700 : FontWeight.w400,
                 ),
@@ -861,7 +795,7 @@ class _MissionTile extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           ClipRRect(
-            borderRadius: BorderRadius.zero,
+            borderRadius: Cosmic.chipRadius,
             child: LinearProgressIndicator(
               value: fraction,
               minHeight: 6,
@@ -898,7 +832,7 @@ class _MapTabContent extends StatelessWidget {
             width: double.infinity,
             height: 200,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.zero,
+              borderRadius: Cosmic.chipRadius,
               color: Colors.white.withValues(alpha: 0.05),
               border: Border.all(color: ConferenceColors.goldAlpha(0.2)),
             ),
@@ -939,7 +873,7 @@ class _MapTabContent extends StatelessWidget {
               backgroundColor: ConferenceColors.gold,
               foregroundColor: Colors.black,
               padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+              shape: RoundedRectangleBorder(borderRadius: Cosmic.chipRadius),
             ),
             onPressed: () => context.push('/conference/map'),
             icon: const Icon(Icons.map_rounded, size: 18),

@@ -18,6 +18,7 @@ import '../utils/relative_time.dart';
 import '../utils/staff_claims.dart';
 import '../widgets/profile_section_card.dart';
 import '../widgets/profile_user_blocks.dart';
+import '../theme/cosmic_content.dart';
 
 /// Profile tab — `users/{uid}` fields grouped like onboarding (steps 1–7).
 class ProfileScreen extends StatefulWidget {
@@ -204,7 +205,7 @@ class _ProfileBody extends StatelessWidget {
                                     Row(
                                       children: [
                                         ClipRRect(
-                                          borderRadius: BorderRadius.zero,
+                                          borderRadius: Cosmic.chipRadius,
                                           child: CachedNetworkImage(
                                             imageUrl: businessLogoUrl,
                                             width: 40,
@@ -423,7 +424,7 @@ class _ProfileSubmittedEventsSection extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.glassFill,
-        borderRadius: BorderRadius.zero,
+        borderRadius: Cosmic.chipRadius,
         border: Border.all(color: AppColors.border),
       ),
       child: Column(

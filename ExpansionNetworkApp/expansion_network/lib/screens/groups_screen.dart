@@ -11,6 +11,7 @@ import '../services/group_thread_repository.dart';
 import '../theme/app_theme.dart';
 import '../utils/content_action_guard.dart';
 import '../widgets/page_header.dart';
+import '../theme/cosmic_content.dart';
 
 /// Groups discovery: subreddit-style communities in `groups_mobile`, then threads inside each group.
 /// Layout: **Your groups** → **Featured communities** → **Explore** (everyone else).
@@ -136,7 +137,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
                       filled: true,
                       fillColor: AppColors.inputBackground,
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.zero,
+                        borderRadius: Cosmic.chipRadius,
                         borderSide: const BorderSide(color: AppColors.border),
                       ),
                     ),
@@ -278,13 +279,13 @@ class _FeaturedCard extends StatelessWidget {
     final threads = group.threadCount;
     return InkWell(
       onTap: () => context.push('/groups/${group.id}'),
-      borderRadius: BorderRadius.zero,
+      borderRadius: Cosmic.chipRadius,
       child: Container(
         width: 228,
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: AppColors.glassFill,
-          borderRadius: BorderRadius.zero,
+          borderRadius: Cosmic.chipRadius,
           border: Border.all(color: AppColors.border),
         ),
         child: Column(
@@ -298,7 +299,7 @@ class _FeaturedCard extends StatelessWidget {
                   height: 40,
                   decoration: BoxDecoration(
                     color: AppColors.primary.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.zero,
+                    borderRadius: Cosmic.chipRadius,
                   ),
                   child: Icon(Icons.groups_rounded, color: AppColors.primary, size: 22),
                 ),
@@ -323,7 +324,7 @@ class _FeaturedCard extends StatelessWidget {
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
                                 color: AppColors.primary.withValues(alpha: 0.18),
-                                borderRadius: BorderRadius.zero,
+                                borderRadius: Cosmic.chipRadius,
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -407,12 +408,12 @@ class _GroupListCard extends StatelessWidget {
     final threads = group.threadCount;
     return InkWell(
       onTap: () => context.push('/groups/${group.id}'),
-      borderRadius: BorderRadius.zero,
+      borderRadius: Cosmic.chipRadius,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: AppColors.glassFill,
-          borderRadius: BorderRadius.zero,
+          borderRadius: Cosmic.chipRadius,
           border: Border.all(color: AppColors.border),
         ),
         child: Column(
@@ -426,7 +427,7 @@ class _GroupListCard extends StatelessWidget {
                   height: 44,
                   decoration: BoxDecoration(
                     color: AppColors.primary.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.zero,
+                    borderRadius: Cosmic.chipRadius,
                   ),
                   alignment: Alignment.center,
                   child: Text(
@@ -449,7 +450,7 @@ class _GroupListCard extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             color: AppColors.primary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.zero,
+                            borderRadius: Cosmic.chipRadius,
                           ),
                           child: Text(
                             group.category!,
@@ -465,7 +466,7 @@ class _GroupListCard extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: AppColors.primary,
-                      borderRadius: BorderRadius.zero,
+                      borderRadius: Cosmic.chipRadius,
                     ),
                     child: const Text('Joined', style: TextStyle(fontSize: 11, color: AppColors.onPrimary)),
                   )
@@ -474,7 +475,7 @@ class _GroupListCard extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: AppColors.secondary,
-                      borderRadius: BorderRadius.zero,
+                      borderRadius: Cosmic.chipRadius,
                       border: Border.all(color: AppColors.border),
                     ),
                     child: const Text(

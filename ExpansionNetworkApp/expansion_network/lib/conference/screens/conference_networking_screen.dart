@@ -11,6 +11,7 @@ import '../models/conference_networking_profile.dart';
 import '../services/conference_networking_service.dart';
 import '../theme/conference_colors.dart';
 import '../widgets/conference_background.dart';
+import '../../theme/cosmic_content.dart';
 
 /// Networking Zone (Tinder-style). Attendees are auto-enrolled (discoverable on);
 /// the gear toggles that off. Cards are ranked by shared goals / complementary
@@ -301,13 +302,13 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
                       width: 7,
                       height: 7,
                       decoration: BoxDecoration(
-                        color: _enabled ? const Color(0xFF34D399) : Colors.grey.shade600,
+                        color: _enabled ? const Color(0xFF34D399) : Cosmic.textFaint,
                         shape: BoxShape.circle,
                       ),
                     ),
                     const SizedBox(width: 6),
                     Text(_enabled ? 'You’re discoverable' : 'Hidden — tap the gear',
-                        style: TextStyle(color: Colors.grey.shade400, fontSize: 11)),
+                        style: TextStyle(color: Cosmic.textMuted, fontSize: 11)),
                   ],
                 ),
               ],
@@ -333,7 +334,7 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
             color: Colors.white.withValues(alpha: 0.06),
             border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
           ),
-          child: Icon(icon, size: 20, color: Colors.grey.shade300),
+          child: Icon(icon, size: 20, color: Cosmic.textMuted),
         ),
       ),
     );
@@ -386,7 +387,7 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.zero,
+        borderRadius: Cosmic.chipRadius,
         color: panelColor,
         border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
         boxShadow: interactive
@@ -428,7 +429,7 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
                         color: ConferenceColors.gold,
-                        borderRadius: BorderRadius.zero,
+                        borderRadius: Cosmic.chipRadius,
                         boxShadow: [BoxShadow(color: ConferenceColors.goldAlpha(0.4), blurRadius: 12)],
                       ),
                       child: Row(
@@ -487,14 +488,14 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
                 if (p.subtitle.isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Text(p.subtitle,
-                      style: TextStyle(color: Colors.grey.shade400, fontSize: 14, fontWeight: FontWeight.w500)),
+                      style: TextStyle(color: Cosmic.textMuted, fontSize: 14, fontWeight: FontWeight.w500)),
                 ],
                 if (p.bio.isNotEmpty) ...[
                   const SizedBox(height: 10),
                   Text(p.bio,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: Colors.grey.shade300, fontSize: 13, height: 1.35)),
+                      style: TextStyle(color: Cosmic.textMuted, fontSize: 13, height: 1.35)),
                 ],
                 if (p.offers.isNotEmpty) ...[
                   const SizedBox(height: 14),
@@ -555,7 +556,7 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: tint.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.zero,
+                    borderRadius: Cosmic.chipRadius,
                     border: Border.all(color: tint.withValues(alpha: 0.3)),
                   ),
                   child: Text(it, style: TextStyle(color: tint == ConferenceColors.gold ? ConferenceColors.gold : Colors.white, fontSize: 11)),
@@ -573,7 +574,7 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.zero,
+          borderRadius: Cosmic.chipRadius,
           border: Border.all(color: color, width: 3),
           color: Colors.black.withValues(alpha: 0.3),
         ),
@@ -643,7 +644,7 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
                 style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
             const SizedBox(height: 8),
             Text('New people join throughout the event — check back soon.',
-                textAlign: TextAlign.center, style: TextStyle(color: Colors.grey.shade400, height: 1.4)),
+                textAlign: TextAlign.center, style: TextStyle(color: Cosmic.textMuted, height: 1.4)),
             const SizedBox(height: 20),
             OutlinedButton.icon(
               style: OutlinedButton.styleFrom(
@@ -676,21 +677,21 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
                 color: Colors.white.withValues(alpha: 0.05),
                 border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
               ),
-              child: Icon(Icons.visibility_off_rounded, size: 42, color: Colors.grey.shade400),
+              child: Icon(Icons.visibility_off_rounded, size: 42, color: Cosmic.textMuted),
             ),
             const SizedBox(height: 20),
             const Text('Networking paused',
                 style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
             const SizedBox(height: 8),
             Text("You're hidden from other attendees and won't see new people while this is off.",
-                textAlign: TextAlign.center, style: TextStyle(color: Colors.grey.shade400, height: 1.4)),
+                textAlign: TextAlign.center, style: TextStyle(color: Cosmic.textMuted, height: 1.4)),
             const SizedBox(height: 20),
             FilledButton(
               style: FilledButton.styleFrom(
                 backgroundColor: ConferenceColors.gold,
                 foregroundColor: Colors.black,
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                shape: RoundedRectangleBorder(borderRadius: Cosmic.chipRadius),
               ),
               onPressed: () => _setEnabled(true),
               child: const Text('TURN NETWORKING ON',
@@ -709,9 +710,9 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.wifi_off_rounded, size: 42, color: Colors.grey.shade500),
+            Icon(Icons.wifi_off_rounded, size: 42, color: Cosmic.textFaint),
             const SizedBox(height: 16),
-            Text(message, textAlign: TextAlign.center, style: TextStyle(color: Colors.grey.shade300, height: 1.4)),
+            Text(message, textAlign: TextAlign.center, style: TextStyle(color: Cosmic.textMuted, height: 1.4)),
             const SizedBox(height: 20),
             OutlinedButton.icon(
               style: OutlinedButton.styleFrom(
@@ -754,7 +755,7 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.04),
-                    borderRadius: BorderRadius.zero,
+                    borderRadius: Cosmic.chipRadius,
                     border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
                   ),
                   child: SwitchListTile(
@@ -768,7 +769,7 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
                       _enabled
                           ? 'Other attendees can find you and you can match.'
                           : "You're hidden and won't see others.",
-                      style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+                      style: TextStyle(color: Cosmic.textMuted, fontSize: 12),
                     ),
                     onChanged: (v) async {
                       await _setEnabled(v);
@@ -779,11 +780,11 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    Icon(Icons.lock_outline_rounded, size: 14, color: Colors.grey.shade500),
+                    Icon(Icons.lock_outline_rounded, size: 14, color: Cosmic.textFaint),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text('You control your visibility. A chat only opens when you both connect.',
-                          style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+                          style: TextStyle(color: Cosmic.textFaint, fontSize: 12)),
                     ),
                   ],
                 ),
@@ -817,7 +818,7 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
                 ),
                 const SizedBox(height: 6),
                 Text('You and $firstName both want to connect.',
-                    textAlign: TextAlign.center, style: TextStyle(color: Colors.grey.shade300)),
+                    textAlign: TextAlign.center, style: TextStyle(color: Cosmic.textMuted)),
                 const SizedBox(height: 28),
                 SizedBox(
                   height: 130,
@@ -842,7 +843,7 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
                       color: ConferenceColors.goldAlpha(0.14),
-                      borderRadius: BorderRadius.zero,
+                      borderRadius: Cosmic.chipRadius,
                       border: Border.all(color: ConferenceColors.goldAlpha(0.4)),
                     ),
                     child: Text(cand.reason!, style: const TextStyle(color: ConferenceColors.gold, fontWeight: FontWeight.w700)),
@@ -856,7 +857,7 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
                       backgroundColor: ConferenceColors.gold,
                       foregroundColor: Colors.black,
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                      shape: RoundedRectangleBorder(borderRadius: Cosmic.chipRadius),
                     ),
                     onPressed: () {
                       setState(() => _matchWith = null);
@@ -868,7 +869,7 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
                 const SizedBox(height: 8),
                 TextButton(
                   onPressed: () => setState(() => _matchWith = null),
-                  style: TextButton.styleFrom(foregroundColor: Colors.grey.shade400),
+                  style: TextButton.styleFrom(foregroundColor: Cosmic.textMuted),
                   child: const Text('Keep swiping'),
                 ),
               ],
@@ -926,14 +927,14 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
                     if (p.location.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Row(children: [
-                        Icon(Icons.place_rounded, size: 14, color: Colors.grey.shade400),
+                        Icon(Icons.place_rounded, size: 14, color: Cosmic.textMuted),
                         const SizedBox(width: 4),
-                        Text(p.location, style: TextStyle(color: Colors.grey.shade400, fontSize: 13)),
+                        Text(p.location, style: TextStyle(color: Cosmic.textMuted, fontSize: 13)),
                       ]),
                     ],
                     if (p.bio.isNotEmpty) ...[
                       const SizedBox(height: 12),
-                      Text(p.bio, style: TextStyle(color: Colors.grey.shade300, height: 1.5)),
+                      Text(p.bio, style: TextStyle(color: Cosmic.textMuted, height: 1.5)),
                     ],
                     if (p.offers.isNotEmpty) ...[
                       const SizedBox(height: 18),

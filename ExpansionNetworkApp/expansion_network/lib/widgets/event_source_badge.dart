@@ -2,19 +2,20 @@ import 'package:flutter/material.dart';
 
 import '../models/community_event.dart';
 import '../theme/app_theme.dart';
+import '../theme/cosmic_content.dart';
 
 /// Card chrome for list / feed tiles — matches “official” mock: red rim + glow.
 BoxDecoration mortarEventListCardDecoration(CommunityEvent event) {
   if (!event.isMortarHostedEvent) {
     return BoxDecoration(
       color: AppColors.glassFill,
-      borderRadius: BorderRadius.zero,
+      borderRadius: Cosmic.chipRadius,
       border: Border.all(color: AppColors.border),
     );
   }
   return BoxDecoration(
     color: AppColors.glassFill,
-    borderRadius: BorderRadius.zero,
+    borderRadius: Cosmic.chipRadius,
     border: Border.all(color: AppColors.primary, width: 1.5),
     boxShadow: [
       BoxShadow(
@@ -91,7 +92,7 @@ class _OfficialMortarEventPill extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: dense ? 12 : 14, vertical: dense ? 7 : 9),
       decoration: BoxDecoration(
         color: AppColors.glassFill,
-        borderRadius: BorderRadius.zero,
+        borderRadius: Cosmic.chipRadius,
         border: Border.all(color: AppColors.primary, width: 1.5),
       ),
       child: Row(

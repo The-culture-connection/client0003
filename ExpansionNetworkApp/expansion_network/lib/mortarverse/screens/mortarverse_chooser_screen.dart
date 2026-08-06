@@ -19,6 +19,7 @@ import '../mortarverse_signals.dart';
 import '../../theme/cosmic_widgets.dart';
 import '../widgets/mortarverse_focus_card.dart';
 import '../widgets/mortarverse_planet.dart';
+import '../../theme/cosmic_content.dart';
 
 /// Post-login landing screen: a live action widget answering "what needs me?",
 /// then the three shops as a horizontally scrollable street.
@@ -323,12 +324,9 @@ class _CardScanButton extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(15),
               border: Border.all(color: const Color(0x73FFFFFF)),
-              gradient: const RadialGradient(
-                center: Alignment(0, 1.4),
-                radius: 1.1,
-                colors: [Color(0xE6FF2837), Color(0x26FF2837)],
-                stops: [0, 0.72],
-              ),
+              // Same light source as every other lit control, in the zone
+              // accent rather than a hardcoded red.
+              gradient: GlowPill.bloom(Theme.of(context).colorScheme.primary),
             ),
             child: const Center(child: _QrGlyph()),
           ),
@@ -836,7 +834,7 @@ class _EventRow extends StatelessWidget {
                     Text(
                       date != null ? DateFormat('MMM').format(date).toUpperCase() : '',
                       style: TextStyle(
-                        color: Colors.grey.shade600,
+                        color: Cosmic.textFaint,
                         fontSize: 8,
                         fontWeight: FontWeight.w500,
                         letterSpacing: 0.8,
@@ -866,7 +864,7 @@ class _EventRow extends StatelessWidget {
                         meta,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: Colors.grey.shade600, fontSize: 11),
+                        style: TextStyle(color: Cosmic.textFaint, fontSize: 11),
                       ),
                     ],
                   ],

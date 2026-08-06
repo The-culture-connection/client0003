@@ -19,6 +19,7 @@ import '../theme/app_theme.dart';
 import '../utils/relative_time.dart';
 import 'profile_section_card.dart';
 import 'profile_user_blocks.dart';
+import '../theme/cosmic_content.dart';
 
 /// Pops the profile bottom sheet, then [GoRouter.go]s so we never stack a second
 /// `/explore` branch page (its [NoTransitionPage] uses `ValueKey('explore-${state.uri}')`,
@@ -317,7 +318,7 @@ class _UserProfileModalBody extends StatelessWidget {
                               Row(
                                 children: [
                                   ClipRRect(
-                                    borderRadius: BorderRadius.zero,
+                                    borderRadius: Cosmic.chipRadius,
                                     child: CachedNetworkImage(
                                       imageUrl: businessLogoUrl,
                                       width: 44,
@@ -612,7 +613,7 @@ class _ProfileModalListings extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.glassFill,
-        borderRadius: BorderRadius.zero,
+        borderRadius: Cosmic.chipRadius,
         border: Border.all(color: AppColors.border),
       ),
       child: Column(

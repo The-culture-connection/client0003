@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../theme/app_theme.dart';
+import '../theme/cosmic_content.dart';
 
 /// Full-screen celebration: badge art → 3D flip → checkmark, with haptics at the check.
 class BadgeFlipCelebrationDialog extends StatefulWidget {
@@ -125,7 +126,7 @@ class _BadgeFlipCelebrationDialogState extends State<BadgeFlipCelebrationDialog>
     return Container(
       decoration: BoxDecoration(
         color: AppColors.glassFill,
-        borderRadius: BorderRadius.zero,
+        borderRadius: Cosmic.chipRadius,
         border: Border.all(color: AppColors.border, width: 2),
         boxShadow: [
           BoxShadow(
@@ -151,7 +152,7 @@ class _BadgeFlipCelebrationDialogState extends State<BadgeFlipCelebrationDialog>
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.primary,
-          borderRadius: BorderRadius.zero,
+          borderRadius: Cosmic.chipRadius,
           border: Border.all(color: Colors.white24, width: 2),
           boxShadow: [
             BoxShadow(

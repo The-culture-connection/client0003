@@ -7,6 +7,7 @@ import '../profile/profile_utils.dart';
 import '../services/user_profile_repository.dart';
 import '../theme/app_theme.dart';
 import 'user_profile_modal.dart';
+import '../theme/cosmic_content.dart';
 
 /// One RSVP row: tappable for profile modal; optional **Message** for other users.
 class EventRsvpAttendeeTile extends StatelessWidget {
@@ -31,13 +32,13 @@ class EventRsvpAttendeeTile extends StatelessWidget {
       child: Material(
         color: AppColors.glassFill,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.zero,
+          borderRadius: Cosmic.chipRadius,
           side: const BorderSide(color: AppColors.border),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: () => showUserProfileModal(context, userId: userId),
-          borderRadius: BorderRadius.zero,
+          borderRadius: Cosmic.chipRadius,
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: dense ? 10 : 12, vertical: dense ? 8 : 12),
             child: FutureBuilder<Map<String, dynamic>?>(

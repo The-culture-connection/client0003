@@ -21,4 +21,7 @@ export const ADMIN_PANEL_TAB_SCOPE: Record<AdminPanelTabSlug, MortarPlatformScop
   messages: "digital_curriculum",
   courses: "digital_curriculum",
   shop: "digital_curriculum",
+  conferences: "both",
+  // Reports arrive from both the mobile app (shake) and this web app (widget).
+  "beta-testing": "both",
 };

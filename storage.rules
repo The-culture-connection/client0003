@@ -124,6 +124,16 @@ service firebase.storage {
         && request.resource.contentType.matches('image/.*');
     }
 
+    // Beta testing screenshots (shake-to-report on mobile, standing widget on
+    // Digital Curriculum). Path scoped by uid; only staff read the queue.
+    match /beta_feedback/{userId}/{fileName} {
+      allow read: if hasStaffClaim();
+      allow write: if isSignedIn()
+        && request.auth.uid == userId
+        && request.resource.size < 8 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }
