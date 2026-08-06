@@ -34,6 +34,7 @@ import { LessonPlayer } from "./pages/learn/LessonPlayer";
 import { CourseCreationWizard } from "./pages/admin/CourseCreationWizard";
 import { CourseBuilder } from "./pages/admin/CourseBuilder";
 import { AdminCommandCenter } from "./pages/admin/AdminCommandCenter";
+import { AdminDocs } from "./pages/admin/AdminDocs";
 import { AdminLayout } from "./layouts/AdminLayout";
 import { PublicCertificatePage } from "./pages/PublicCertificate";
 import { DeleteAccountPage } from "./pages/DeleteAccount";
@@ -145,6 +146,10 @@ export const router = createBrowserRouter([
         children: [
           { index: true, Component: AdminCommandCenter },
           { path: "panel/:tab", Component: AdminPage },
+          // Docs live on their own route rather than as a `panel/:tab` entry:
+          // the content is static Markdown and does not belong in Admin.tsx.
+          { path: "docs", Component: AdminDocs },
+          { path: "docs/:categoryId/:slug", Component: AdminDocs },
           { path: "courses/create", Component: CourseCreationWizard },
           { path: "courses/builder", Component: CourseBuilder },
           { path: "courses/:courseId", Component: CourseBuilder },

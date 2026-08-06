@@ -35,6 +35,7 @@ import {
   AlertCircle,
   RefreshCw,
   Bug,
+  BookText,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { HelpCircle } from "lucide-react";
@@ -261,6 +262,16 @@ export function AdminCommandCenter() {
       gradient: "from-red-500/20 to-red-500/5",
       iconColor: "text-red-500",
       stats: "Feedback",
+      scope: "both",
+    },
+    {
+      icon: BookText,
+      title: "Doc",
+      description: "Platform documentation and troubleshooting runbooks",
+      href: "/admin/docs",
+      gradient: "from-sky-500/20 to-sky-500/5",
+      iconColor: "text-sky-500",
+      stats: "Reference",
       scope: "both",
     },
   ];

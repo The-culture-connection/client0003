@@ -1,4 +1,5 @@
 @custom-variant dark (&:is(.dark *));
+@custom-variant light (&:is(.light *));
 
 :root {
   --font-size: 16px;
@@ -108,6 +109,56 @@
   --brand-font-stencil: "Eksell Display Stencil", "Eksell Display", serif;
   --brand-font-body: "Maison Neue", "Montserrat", ui-sans-serif, system-ui, sans-serif;
   --brand-font-mono: "Maison Neue Mono", ui-monospace, monospace;
+}
+
+/* ------------------------------------------------------------------ */
+/* Light mode — "blueprint on paper"                                   */
+/* Applied via the .light class on <html> (see ThemeContext.tsx).      */
+/* Same brand accents (brick red, verse colors), warm paper surfaces.  */
+/* Must sit AFTER the :root brand-token block so it wins the cascade.  */
+/* ------------------------------------------------------------------ */
+.light {
+  --background: #f4f1ea;
+  --foreground: #1d1d1d;
+  --card: #fbfaf6;
+  --card-foreground: #1d1d1d;
+  --popover: #fbfaf6;
+  --popover-foreground: #1d1d1d;
+  --primary: #1d1d1d;
+  --primary-foreground: #fafcfc;
+  --secondary: #871002;
+  --secondary-foreground: #fafcfc;
+  --muted: #e9e4d9;
+  --muted-foreground: #5f5b52;
+  --accent: #871002;
+  --accent-foreground: #fafcfc;
+  --destructive: #d4183d;
+  --destructive-foreground: #ffffff;
+  --border: rgba(29, 29, 29, 0.15);
+  --input: rgba(29, 29, 29, 0.2);
+  --input-background: #ffffff;
+  --switch-background: #d9d3c6;
+  --ring: #871002;
+  --chart-1: #871002;
+  --chart-2: #a82410;
+  --chart-3: #c93820;
+  --chart-4: #d94d35;
+  --chart-5: #e9614a;
+  --sidebar: #efebe1;
+  --sidebar-foreground: #1d1d1d;
+  --sidebar-primary: #871002;
+  --sidebar-primary-foreground: #fafcfc;
+  --sidebar-accent: #e4dfd2;
+  --sidebar-accent-foreground: #1d1d1d;
+  --sidebar-border: rgba(29, 29, 29, 0.15);
+  --sidebar-ring: #871002;
+
+  /* Card gradient flips to a soft paper sheet */
+  --card-grad-from: #fdfcf9;
+  --card-grad-to: #eee9dd;
+
+  /* Brick red darkened a touch for contrast on paper */
+  --mortar-brick: #a53820;
 }
 
 @theme inline {
@@ -300,6 +351,54 @@
 .verse-progress,
 .verse-progress [data-slot="progress-indicator"] {
   border-radius: 0;
+}
+
+/* ------------------------------------------------------------------ */
+/* Light mode surface overrides — blueprint on paper                   */
+/* ------------------------------------------------------------------ */
+
+/* Space surface becomes a warm paper sheet with a faint vignette. */
+.light .space-surface {
+  background: radial-gradient(ellipse at 50% -20%, #fdfcf9, #ece6d9 65%);
+}
+
+/* No stars in daylight. */
+.light .starfield {
+  background-image: none;
+}
+.light .starfield::after {
+  content: none;
+}
+
+/* Blueprint grid switches to fine drafting-blue lines on paper. */
+.light .blueprint-grid {
+  background-image:
+    linear-gradient(rgba(45, 70, 100, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(45, 70, 100, 0.07) 1px, transparent 1px);
+}
+
+/* Glass panels become translucent white cards with penciled borders. */
+.light .glass-card {
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid rgba(29, 29, 29, 0.13);
+}
+
+/* Auras soften to a light color wash. */
+.light .aura-glow {
+  background: radial-gradient(circle, color-mix(in srgb, var(--verse-theme) 22%, transparent), transparent 65%);
+}
+.light .glow-brick {
+  box-shadow: 0 0 22px rgba(165, 56, 32, 0.3);
+}
+
+/* Grunge texture: paint splatters flip from white to ink on paper. */
+.light .verse-texture-bottom::after {
+  background-color: rgba(29, 29, 29, 0.5);
+}
+
+/* Pure-white brand marks (e.g. the MORTAR text logo) flip to ink. */
+.light .brand-invert-on-light {
+  filter: invert(1);
 }
 
 @layer base {

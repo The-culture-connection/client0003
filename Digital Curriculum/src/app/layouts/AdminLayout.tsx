@@ -3,7 +3,7 @@ import { Link, Outlet, useLocation, useNavigate } from "react-router";
 import { ScrollArea } from "../components/ui/scroll-area";
 import { Button } from "../components/ui/button";
 import { Separator } from "../components/ui/separator";
-import { Crown, BookOpen, Sparkles } from "lucide-react";
+import { Crown, BookOpen, BookText, Sparkles } from "lucide-react";
 import { adminPanelPath, type AdminPanelTabSlug } from "../lib/adminHubNavigation";
 import { ADMIN_PANEL_TAB_SCOPE } from "../lib/mortarPlatformScope";
 import { PlatformScopeBadge, PlatformScopeKey } from "../components/admin/MortarPlatformScope";
@@ -48,7 +48,7 @@ export function AdminLayout() {
 
   return (
     <div className="flex w-full min-h-[calc(100vh-4rem)]">
-      <aside className="hidden md:flex w-[min(18rem,92vw)] shrink-0 flex-col border-r border-white/10 bg-black/30 backdrop-blur-sm sticky top-16 self-start max-h-[calc(100vh-4rem)]">
+      <aside className="hidden md:flex w-[min(18rem,92vw)] shrink-0 flex-col border-r border-border bg-black/30 light:bg-white/40 backdrop-blur-sm sticky top-16 self-start max-h-[calc(100vh-4rem)]">
         <div className="p-4 border-b border-border space-y-3">
           <Link
             to="/admin"
@@ -108,6 +108,12 @@ export function AdminLayout() {
               </Link>
             </Button>
             <Button variant="outline" size="sm" className="w-full justify-start font-normal" asChild>
+              <Link to="/admin/docs">
+                <BookText className="w-4 h-4 mr-2 shrink-0" />
+                Docs &amp; troubleshooting
+              </Link>
+            </Button>
+            <Button variant="outline" size="sm" className="w-full justify-start font-normal" asChild>
               <Link to="/admin/auth">Admin password gate</Link>
             </Button>
           </div>
@@ -115,7 +121,7 @@ export function AdminLayout() {
       </aside>
 
       <div className="flex-1 min-w-0">
-        <div className="md:hidden border-b border-white/10 bg-black/30 px-4 py-2 flex gap-2 overflow-x-auto">
+        <div className="md:hidden border-b border-border bg-black/30 light:bg-white/40 px-4 py-2 flex gap-2 overflow-x-auto">
           <Button variant="outline" size="sm" asChild>
             <Link to="/admin">Hub</Link>
           </Button>

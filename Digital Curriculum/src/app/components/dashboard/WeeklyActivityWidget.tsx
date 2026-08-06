@@ -181,7 +181,7 @@ export function WeeklyActivityWidget({
                     <div key={i} className="flex flex-col items-center gap-1 w-4">
                       <div
                         title={`${format(new Date(weekStartMs + i * DAY_MS), "EEE")}: ${count} ${count === 1 ? "activity" : "activities"}`}
-                        className={`w-3 rounded-none ${count === 0 ? "bg-white/15" : "bg-verse"}`}
+                        className={`w-3 rounded-none ${count === 0 ? "bg-foreground/15" : "bg-verse"}`}
                         style={{ height: `${h}px` }}
                       />
                       <span
@@ -212,7 +212,7 @@ export function WeeklyActivityWidget({
                 ).map(([key, count]) => (
                   <span
                     key={key}
-                    className="inline-flex items-center gap-1.5 rounded-none px-2.5 py-1 font-technical text-xs border border-white/10 bg-white/[0.04] text-foreground"
+                    className="inline-flex items-center gap-1.5 rounded-none px-2.5 py-1 font-technical text-xs border border-foreground/10 bg-foreground/[0.05] text-foreground"
                   >
                     <span className="font-bold text-verse">{count}</span> {key}
                   </span>
@@ -226,7 +226,7 @@ export function WeeklyActivityWidget({
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
-          className="rounded-none max-w-lg max-h-[85vh] flex flex-col lesson-card-surface border-white/10"
+          className="rounded-none max-w-lg max-h-[85vh] flex flex-col lesson-card-surface border-foreground/10"
           style={verseThemeStyle(CARD_THEME)}
         >
           <DialogHeader>
@@ -256,7 +256,7 @@ export function WeeklyActivityWidget({
                       {dayItems.map((item) => (
                         <li
                           key={item.id}
-                          className="flex gap-3 p-3 rounded-none border border-white/10 bg-white/[0.04]"
+                          className="flex gap-3 p-3 rounded-none border border-foreground/10 bg-foreground/[0.05]"
                         >
                           <div className="shrink-0 text-xs text-muted-foreground w-14 pt-0.5">
                             {format(new Date(item.atMs), "h:mm a")}

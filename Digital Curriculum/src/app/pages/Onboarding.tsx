@@ -311,7 +311,7 @@ export function OnboardingPage() {
         <SpaceBackdrop />
       {/* Progress header — glass bar, headline title, segmented brick
           progress with a glowing current segment (industrial system) */}
-      <div className="border-b border-white/10 bg-black/30 backdrop-blur-sm">
+      <div className="border-b border-border bg-black/30 light:bg-white/40 backdrop-blur-sm">
         <div className="max-w-4xl mx-auto px-8 py-4">
           <div className="flex items-center justify-between gap-4 mb-3">
             <div className="flex items-center gap-3 min-w-0">
@@ -319,7 +319,7 @@ export function OnboardingPage() {
                 src="/brand/white-trowell.png"
                 alt=""
                 aria-hidden
-                className="h-6 w-auto opacity-80 shrink-0"
+                className="h-6 w-auto opacity-80 shrink-0 brand-invert-on-light"
               />
               <span className="font-headline font-black uppercase tracking-wider text-sm text-foreground truncate">
                 Building your profile
@@ -329,7 +329,7 @@ export function OnboardingPage() {
               onClick={handleSkip}
               variant="ghost"
               size="sm"
-              className="rounded-none border-b-2 border-verse bg-transparent font-headline font-bold uppercase tracking-widest text-xs text-muted-foreground hover:text-foreground hover:bg-white/5 shrink-0"
+              className="rounded-none border-b-2 border-verse bg-transparent font-headline font-bold uppercase tracking-widest text-xs text-muted-foreground hover:text-foreground hover:bg-foreground/5 shrink-0"
             >
               Skip for now
             </Button>
@@ -340,7 +340,7 @@ export function OnboardingPage() {
                 <div
                   key={i}
                   className={`h-1.5 flex-1 transition-all duration-300 ${
-                    i < currentStep ? "bg-verse" : "bg-white/10"
+                    i < currentStep ? "bg-verse" : "bg-foreground/10"
                   } ${i === currentStep - 1 ? "glow-brick" : ""}`}
                 />
               ))}

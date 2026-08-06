@@ -351,7 +351,7 @@ export function WebDashboard() {
           </div>
         </div>
         {/* Spec line: hairline rule + technical metadata */}
-        <div className="mt-4 border-t border-white/15 pt-1.5 flex items-center gap-4 font-technical text-[11px] uppercase tracking-wider text-muted-foreground flex-wrap">
+        <div className="mt-4 border-t border-foreground/15 pt-1.5 flex items-center gap-4 font-technical text-[11px] uppercase tracking-wider text-muted-foreground flex-wrap">
           <span className="text-verse">Site: Dashboard</span>
           {profile?.cohort_id && <span>Cohort: {profile.cohort_id}</span>}
           {profile?.city && <span>City: {profile.city}</span>}
@@ -421,7 +421,7 @@ export function WebDashboard() {
           </div>
           <div className="relative w-20 h-20 rounded-full glow-brick">
             <svg className="w-20 h-20 transform -rotate-90">
-              <circle cx="40" cy="40" r="34" stroke="currentColor" strokeWidth="5" fill="none" className="text-white/10" />
+              <circle cx="40" cy="40" r="34" stroke="currentColor" strokeWidth="5" fill="none" className="text-foreground/10" />
               <circle
                 cx="40"
                 cy="40"
@@ -471,7 +471,7 @@ export function WebDashboard() {
                     <div
                       key={moduleIndex}
                       className={`p-3 rounded-none border transition-all ${
-                        locked ? "bg-white/[0.02] border-white/5" : "bg-white/[0.04] border-white/10 hover:border-verse hover:shadow-md"
+                        locked ? "bg-foreground/[0.03] border-foreground/5" : "bg-foreground/[0.05] border-foreground/10 hover:border-verse hover:shadow-md"
                       }`}
                     >
                       <div className="flex items-center gap-3">
@@ -581,7 +581,7 @@ export function WebDashboard() {
                 userGroups.slice(0, 5).map((group) => (
                   <div
                     key={group.id}
-                    className="p-3 rounded-none bg-white/[0.04] border border-white/10 hover:border-verse transition-colors cursor-pointer"
+                    className="p-3 rounded-none bg-foreground/[0.05] border border-foreground/10 hover:border-verse transition-colors cursor-pointer"
                     onClick={(e) => { e.stopPropagation(); navigate(`/groups/${group.id}`); }}
                   >
                     <div className="flex items-start gap-2 mb-1">
@@ -604,7 +604,7 @@ export function WebDashboard() {
             <Button
               variant="outline"
               size="sm"
-              className="w-full mt-4 rounded-none border-0 border-b-2 border-verse bg-transparent font-headline font-bold uppercase tracking-widest text-xs text-foreground hover:bg-white/5"
+              className="w-full mt-4 rounded-none border-0 border-b-2 border-verse bg-transparent font-headline font-bold uppercase tracking-widest text-xs text-foreground hover:bg-foreground/5"
               onClick={(e) => { e.stopPropagation(); navigate("/community"); }}
             >
               View Community Hub
@@ -704,7 +704,7 @@ export function WebDashboard() {
                 <p className="text-sm text-muted-foreground">Complete courses to earn skill certificates.</p>
               )}
               {certificates.length > 0 && (
-                <div className="border-t border-white/10 pt-3 mt-3">
+                <div className="border-t border-foreground/10 pt-3 mt-3">
                   <p className="text-xs font-medium text-muted-foreground mb-2">NEXT BADGE</p>
                   <div className="flex items-center gap-2.5">
                     <div className="p-2 rounded-none bg-verse/10">
@@ -738,7 +738,7 @@ export function WebDashboard() {
                 <p className="text-sm text-muted-foreground">No upcoming events. Check back later.</p>
               ) : (
                 upcomingEvents.map((event) => (
-                  <div key={event.id} className="p-3 rounded-none bg-white/[0.04] border border-white/10">
+                  <div key={event.id} className="p-3 rounded-none bg-foreground/[0.05] border border-foreground/10">
                     <p className="text-sm font-medium text-foreground mb-1">{event.title}</p>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
                       <span>
@@ -748,7 +748,7 @@ export function WebDashboard() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="w-full rounded-none border-0 border-b-2 border-verse bg-transparent font-headline font-bold uppercase tracking-widest text-xs text-foreground hover:bg-white/5"
+                      className="w-full rounded-none border-0 border-b-2 border-verse bg-transparent font-headline font-bold uppercase tracking-widest text-xs text-foreground hover:bg-foreground/5"
                       onClick={() => navigate(`/events/${event.id}`)}
                     >
                       View / RSVP

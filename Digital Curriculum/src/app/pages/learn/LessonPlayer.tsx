@@ -968,22 +968,22 @@ export function LessonPlayer() {
 
   return (
     <div
-      className="min-h-screen lesson-card-surface text-white relative"
+      className="min-h-screen lesson-card-surface text-foreground relative"
       style={verseThemeStyle(getVerseThemeColor({ verseIndex, chapterId }))}
     >
       {/* Header */}
-      <div className="sticky top-0 z-50 bg-black/80 backdrop-blur-sm border-b border-gray-800">
+      <div className="sticky top-0 z-50 bg-background/80 backdrop-blur-sm border-b border-border">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div>
               <h1 className="text-lg font-semibold">{lesson.title}</h1>
               {lesson.subtitle && (
-                <p className="text-xs text-gray-400">{lesson.subtitle}</p>
+                <p className="text-xs text-muted-foreground">{lesson.subtitle}</p>
               )}
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-400">
+            <span className="text-sm text-muted-foreground">
               {currentSlideIndex + 1} of {itemCount}
             </span>
             <Button
@@ -1004,7 +1004,7 @@ export function LessonPlayer() {
         </div>
         
         {/* Progress Bar */}
-        <div className="h-1 bg-gray-800">
+        <div className="h-1 bg-foreground/10">
           <div
             className="h-full bg-verse transition-all duration-300"
             style={{ width: `${progressPct}%` }}
@@ -1028,14 +1028,14 @@ export function LessonPlayer() {
             <h2 className="text-xl font-semibold mb-6">{activeSurvey.title?.trim() || "Survey"}</h2>
             {!activeSurveySubmitted && surveyInteractiveStep === "answer" ? (
               <>
-                <p className="text-gray-400 text-sm mb-6">
+                <p className="text-muted-foreground text-sm mb-6">
                   Please answer the following questions. Your responses are open-ended.
                 </p>
                 <div className="space-y-6">
                   {[...activeSurvey.questions]
                     .sort((a, b) => a.order - b.order)
                     .map((q, i) => (
-                      <div key={i} className="rounded-lg border border-gray-700 p-4 bg-gray-900/50">
+                      <div key={i} className="rounded-lg border border-border p-4 bg-foreground/[0.04]">
                         <p className="font-medium mb-3">{q.question}</p>
                         <textarea
                           value={surveyAnswers[i] ?? ""}
@@ -1045,7 +1045,7 @@ export function LessonPlayer() {
                             setSurveyAnswers(next);
                           }}
                           placeholder="Your answer..."
-                          className="w-full min-h-[80px] rounded-md border border-gray-600 bg-gray-800 text-white px-3 py-2 focus:ring-2 focus:ring-accent"
+                          className="w-full min-h-[80px] rounded-md border border-input bg-input-background text-foreground px-3 py-2 focus:ring-2 focus:ring-accent"
                           rows={3}
                         />
                       </div>
@@ -1064,7 +1064,7 @@ export function LessonPlayer() {
               </>
             ) : !activeSurveySubmitted && surveyInteractiveStep === "choose" ? (
               <div className="space-y-4">
-                <p className="text-gray-400 text-sm">
+                <p className="text-muted-foreground text-sm">
                   Optional: get AI feedback on your responses based on this lesson&apos;s facilitator instructions, or continue without analysis.
                 </p>
                 <div className="flex flex-wrap gap-3">
@@ -1081,23 +1081,23 @@ export function LessonPlayer() {
               </div>
             ) : !activeSurveySubmitted && surveyInteractiveStep === "feedback" ? (
               <div className="grid md:grid-cols-2 gap-6 items-start">
-                <div className="rounded-lg border border-gray-700 p-4 bg-gray-950/80 min-h-[200px] max-h-[60vh] overflow-y-auto">
+                <div className="rounded-lg border border-border p-4 bg-background/60 min-h-[200px] max-h-[60vh] overflow-y-auto">
                   <p className="text-xs font-semibold uppercase tracking-wide text-verse mb-2">AI feedback</p>
-                  <p className="text-sm whitespace-pre-wrap text-gray-200">
+                  <p className="text-sm whitespace-pre-wrap text-foreground/90">
                     {surveyAiFeedbackText?.trim()
                       ? surveyAiFeedbackText
                       : "No feedback loaded yet."}
                   </p>
                 </div>
                 <div className="space-y-4">
-                  <p className="text-gray-400 text-sm">
+                  <p className="text-muted-foreground text-sm">
                     Revise your answers with the feedback in mind; you can re-run analysis before finishing this lesson.
                   </p>
                   <div className="space-y-6">
                     {[...activeSurvey.questions]
                       .sort((a, b) => a.order - b.order)
                       .map((q, i) => (
-                        <div key={i} className="rounded-lg border border-gray-700 p-4 bg-gray-900/50">
+                        <div key={i} className="rounded-lg border border-border p-4 bg-foreground/[0.04]">
                           <p className="font-medium mb-3">{q.question}</p>
                           <textarea
                             value={surveyAnswers[i] ?? ""}
@@ -1107,7 +1107,7 @@ export function LessonPlayer() {
                               setSurveyAnswers(next);
                             }}
                             placeholder="Your answer..."
-                            className="w-full min-h-[80px] rounded-md border border-gray-600 bg-gray-800 text-white px-3 py-2 focus:ring-2 focus:ring-accent"
+                            className="w-full min-h-[80px] rounded-md border border-input bg-input-background text-foreground px-3 py-2 focus:ring-2 focus:ring-accent"
                             rows={3}
                           />
                         </div>
@@ -1138,21 +1138,21 @@ export function LessonPlayer() {
             <h2 className="text-xl font-semibold mb-6">Lesson Quiz</h2>
             {!quizSubmitted ? (
               <>
-                <p className="text-gray-400 text-sm mb-6">
+                <p className="text-muted-foreground text-sm mb-6">
                   Answer all questions. You need {passPct}% to pass. Attempts: {attemptsUsed} of {maxAttempts}.
                 </p>
                 <div className="space-y-6">
                   {[...quiz.questions]
                     .sort((a, b) => a.order - b.order)
                     .map((q, i) => (
-                      <div key={i} className="rounded-lg border border-gray-700 p-4 bg-gray-900/50">
+                      <div key={i} className="rounded-lg border border-border p-4 bg-foreground/[0.04]">
                         <p className="font-medium mb-1">{formatQuizQuestionPrompt(q.question)}</p>
-                        <p className="text-xs text-gray-500 mb-3">Select one answer.</p>
+                        <p className="text-xs text-muted-foreground mb-3">Select one answer.</p>
                         <div className="space-y-2">
                           {(["A", "B", "C", "D"] as const).map((opt) => (
                             <label
                               key={opt}
-                              className="flex items-center gap-3 cursor-pointer rounded p-2 hover:bg-gray-800"
+                              className="flex items-center gap-3 cursor-pointer rounded p-2 hover:bg-foreground/10"
                             >
                               <input
                                 type="radio"
@@ -1167,7 +1167,7 @@ export function LessonPlayer() {
                                     option_id: opt,
                                   });
                                 }}
-                                className="rounded-full border-gray-600"
+                                className="rounded-full border-input"
                               />
                               <span>{opt}. {q[`option${opt}` as keyof typeof q] as string}</span>
                             </label>
@@ -1256,7 +1256,7 @@ export function LessonPlayer() {
               <SlideRenderer slide={currentSlide} blocks={currentBlocks} />
             ) : (
               <div className="flex items-center justify-center h-full">
-                <p className="text-gray-400">No content</p>
+                <p className="text-muted-foreground">No content</p>
               </div>
             )}
           </>

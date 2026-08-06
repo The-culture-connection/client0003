@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router";
-import { LayoutDashboard, BookOpen, FolderOpen, Award, Users, LogOut, Shield, ShoppingBag, Bell, ShoppingCart, X, GraduationCap, Crown, HelpCircle } from "lucide-react";
+import { LayoutDashboard, BookOpen, FolderOpen, Award, Users, LogOut, Shield, ShoppingBag, Bell, ShoppingCart, X, GraduationCap, Crown, HelpCircle, Sun, Moon } from "lucide-react";
 import { StudentTour, startTour } from "../tour/StudentTour";
 import { Button } from "../ui/button";
 import { useAuth } from "../auth/AuthProvider";
@@ -20,6 +20,7 @@ import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalytics
 import { UserBadgeSuiteDialog } from "../badges/UserBadgeSuiteDialog";
 import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
 import { useAdminViewMode } from "../../contexts/AdminViewModeContext";
+import { useTheme } from "../../contexts/ThemeContext";
 import {
   isStaffAdminRole,
   pathExemptFromStaffAdminHubRedirect,
@@ -114,6 +115,7 @@ export function WebNavigation() {
   const hasStaffAdminAccess = isStaffAdminRole(userRoles);
 
   const { adminViewMode, setAdminViewMode } = useAdminViewMode();
+  const { theme, toggleTheme } = useTheme();
 
   const showStudentNavLinks = !hasStaffAdminAccess || adminViewMode === "student";
   const adminMinimalHeader = hasStaffAdminAccess && adminViewMode === "admin";
@@ -186,12 +188,12 @@ export function WebNavigation() {
   ) : null;
 
   return (
-    <nav className="bg-[#050505] border-b border-white/10">
-      <div className={adminMinimalHeader ? "max-w-[1600px] mx-auto px-8" : "max-w-7xl mx-auto px-8"}>
+    <nav className="bg-[#050505] light:bg-[#efebe1] border-b border-white/10 light:border-black/10">
+      <div className={adminMinimalHeader ? "max-w-[1600px] mx-auto px-6" : "max-w-[1600px] mx-auto px-6"}>
         <div className="flex items-center justify-between h-16 gap-4">
           <div className="flex items-center gap-6 min-w-0 flex-1">
             <Link to={logoTo} className="shrink-0" aria-label="MORTAR">
-              <img src="/brand/mortar-text-white.png" alt="MORTAR" className="h-6 w-auto" />
+              <img src="/brand/mortar-text-white.png" alt="MORTAR" className="h-6 w-auto brand-invert-on-light" />
             </Link>
             {adminMinimalHeader && <span data-tour="admin-view-toggle">{staffViewToggle}</span>}
             {showStudentNavLinks && (
@@ -218,11 +220,11 @@ export function WebNavigation() {
                       className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
                         isActive
                           ? "rounded-none bg-mortar-brick text-white font-bold shadow-[0_0_18px_rgba(193,68,42,0.45)]"
-                          : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                          : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
                       }`}
                     >
                       <Icon className="w-4 h-4" />
-                      <span>{item.label}</span>
+                      <span className="hidden lg:inline">{item.label}</span>
                     </Link>
                   );
                 })}
@@ -231,8 +233,19 @@ export function WebNavigation() {
           </div>
 
           {user && (
-            <div className="flex items-center gap-4 shrink-0">
+            <div className="flex items-center gap-3 shrink-0">
               {showStudentNavLinks && hasStaffAdminAccess && staffViewToggle}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleTheme}
+                title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+                aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+                className="text-muted-foreground hover:text-foreground"
+                data-tour="nav-theme-toggle"
+              >
+                {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              </Button>
               <DropdownMenu open={notificationsOpen} onOpenChange={setNotificationsOpen}>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="relative" data-tour="nav-notifications">
@@ -388,15 +401,15 @@ export function WebNavigation() {
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
-              <div className="text-right">
-                <p className="text-sm font-medium text-foreground">
+              <div className="text-right hidden xl:block max-w-[210px]">
+                <p className="text-sm font-medium text-foreground truncate">
                   {user.displayName || user.email || "User"}
                 </p>
                 {user.email ? (
                   <button
                     type="button"
                     onClick={() => setBadgeSuiteOpen(true)}
-                    className="text-xs text-muted-foreground hover:text-foreground hover:underline underline-offset-2 block w-full text-right mt-0.5"
+                    className="text-xs text-muted-foreground hover:text-foreground hover:underline underline-offset-2 block w-full text-right mt-0.5 truncate"
                     title="View badges"
                   >
                     {user.email}
