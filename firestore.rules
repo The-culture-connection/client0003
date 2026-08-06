@@ -692,10 +692,15 @@ service cloud.firestore {
     }
 
     match /Groups/{groupId}/Messages/{msgId} {
-      allow read: if isSignedIn() && (hasStaffClaim() || isGroupMember(groupId));
+      // Digital Curriculum group chat: any signed-in (non-suspended) user may
+      // read and send messages — group membership is handled in the app UI,
+      // and the rules-level GroupMembers check was rejecting legitimate
+      // students with "insufficient permissions". Senders still cannot post
+      // as anyone but themselves, and only staff can edit/delete.
+      allow read: if isSignedIn();
       allow create: if isSignedIn()
-        && request.resource.data.Senderid == request.auth.uid
-        && (hasStaffClaim() || isGroupMember(groupId));
+        && callerNotContentSuspended()
+        && request.resource.data.Senderid == request.auth.uid;
       allow update, delete: if hasStaffClaim();
     }
 

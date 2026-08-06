@@ -364,7 +364,9 @@ export function GroupDetailPage() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background">
+    // Fixed-height chat shell: viewport minus the 4rem top nav, so the header
+    // and composer are always on screen and only the message list scrolls.
+    <div className="flex flex-col h-[calc(100vh-4rem)] bg-background">
       {/* Header */}
       <div className="border-b border-border bg-card">
         <div className="max-w-4xl mx-auto px-6 py-4">
@@ -397,8 +399,8 @@ export function GroupDetailPage() {
         </div>
       </div>
 
-      {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto">
+      {/* Messages Area — the only scrollable region */}
+      <div className="flex-1 min-h-0 overflow-y-auto">
         <div className="max-w-4xl mx-auto px-6 py-4">
           {messages.length === 0 ? (
             <div className="text-center py-12">
