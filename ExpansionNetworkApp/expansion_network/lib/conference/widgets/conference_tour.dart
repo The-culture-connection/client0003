@@ -55,9 +55,12 @@ class ConferenceTourRunner {
   /// Begins the walkthrough for [conferenceId] unless it has already been seen.
   ///
   /// Safe to call on every lobby build — it no-ops when already seen or running.
+  /// The tour is marked as seen immediately so that navigating away mid-tour
+  /// (e.g. tapping a zone card) does not cause it to re-appear on return.
   Future<void> maybeStart(String conferenceId) async {
     if (isRunning) return;
     if (await hasSeenConferenceTour(conferenceId)) return;
+    await markConferenceTourSeen(conferenceId);
     _conferenceId = conferenceId;
     _pending = ConferenceTourChapter.lobby;
   }
