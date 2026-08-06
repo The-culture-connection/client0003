@@ -6,11 +6,10 @@ import { Card } from "../ui/card";
 import { Avatar } from "../ui/avatar";
 import { useAuth } from "../auth/AuthProvider";
 import {
-  doc,
   collection,
   addDoc,
-  getDocs,
   query,
+  where,
   orderBy,
   serverTimestamp,
   onSnapshot,
@@ -20,19 +19,33 @@ import { db } from "../../lib/firebase";
 import { trackEvent } from "../../analytics/trackEvent";
 import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalyticsContract";
 
-interface DMReply {
-  id: string;
+/**
+ * Student ↔ MORTAR direct messages, rendered as ONE open chat thread.
+ *
+ * Data model (unchanged, admin panel compatible):
+ * - Each message the student sends is a doc in `Digital Student DMs`
+ *   ({ uid, message, created_at, read }).
+ * - Admin replies live in each doc's `replies` subcollection
+ *   ({ message, sender: "mortar" | "user", created_at }).
+ *
+ * The widget merges the student's docs and every reply into a single
+ * time-ordered conversation. NOTE: the student query MUST filter
+ * `where("uid", "==", user.uid)` — security rules only allow reading your
+ * own DM docs, so an unfiltered collection query is rejected outright
+ * (which is why past conversations previously appeared empty).
+ */
+
+interface ChatMessage {
+  key: string;
   message: string;
   sender: "user" | "mortar";
-  created_at: Timestamp;
+  created_at: Timestamp | null;
 }
 
-interface DirectMessage {
+interface DMDoc {
   id: string;
-  uid: string;
   message: string;
-  created_at: Timestamp;
-  read: boolean;
+  created_at: Timestamp | null;
 }
 
 export function MortarDMWidget() {
@@ -40,84 +53,106 @@ export function MortarDMWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [conversations, setConversations] = useState<DirectMessage[]>([]);
-  const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
-  const [replies, setReplies] = useState<DMReply[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [dmDocs, setDmDocs] = useState<Record<string, DMDoc>>({});
+  const [repliesByDm, setRepliesByDm] = useState<Record<string, ChatMessage[]>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const replyUnsubsRef = useRef<Record<string, () => void>>({});
 
+  // Subscribe to this student's DM docs + each doc's replies while open.
   useEffect(() => {
-    if (isOpen && user?.uid) {
-      loadConversations();
-    }
-  }, [isOpen, user]);
+    if (!isOpen || !user?.uid) return;
 
-  useEffect(() => {
-    if (selectedConversation) {
-      loadReplies(selectedConversation);
-      setupRepliesListener(selectedConversation);
-    }
-  }, [selectedConversation]);
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [replies]);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  const loadConversations = async () => {
-    if (!user?.uid) return;
     setLoading(true);
-    try {
-      const dmsRef = collection(db, "Digital Student DMs");
-      const q = query(dmsRef, orderBy("created_at", "desc"));
-      const snapshot = await getDocs(q);
-      const userDMs = snapshot.docs
-        .map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }))
-        .filter((dm: any) => dm.uid === user.uid) as DirectMessage[];
-      setConversations(userDMs);
-      if (userDMs.length > 0 && !selectedConversation) {
-        setSelectedConversation(userDMs[0].id);
+    const dmsRef = collection(db, "Digital Student DMs");
+    // Only the caller's own docs are readable — the where clause is what
+    // makes this query pass security rules. Sorting happens client-side so
+    // no composite index is needed.
+    const q = query(dmsRef, where("uid", "==", user.uid));
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const next: Record<string, DMDoc> = {};
+        snapshot.docs.forEach((d) => {
+          const data = d.data() as { message?: string; created_at?: Timestamp };
+          next[d.id] = {
+            id: d.id,
+            message: data.message ?? "",
+            created_at: data.created_at ?? null,
+          };
+        });
+        setDmDocs(next);
+        setLoading(false);
+
+        // Attach a replies listener per DM doc (small N; collectionGroup
+        // queries are blocked by the current rules).
+        snapshot.docs.forEach((d) => {
+          if (replyUnsubsRef.current[d.id]) return;
+          const repliesRef = collection(db, "Digital Student DMs", d.id, "replies");
+          replyUnsubsRef.current[d.id] = onSnapshot(
+            query(repliesRef, orderBy("created_at", "asc")),
+            (replySnap) => {
+              const replies: ChatMessage[] = replySnap.docs.map((r) => {
+                const data = r.data() as {
+                  message?: string;
+                  sender?: string;
+                  created_at?: Timestamp;
+                };
+                return {
+                  key: `${d.id}/${r.id}`,
+                  message: data.message ?? "",
+                  sender: data.sender === "mortar" ? "mortar" : "user",
+                  created_at: data.created_at ?? null,
+                };
+              });
+              setRepliesByDm((prev) => ({ ...prev, [d.id]: replies }));
+            },
+            (error) => console.error("Error loading replies:", error)
+          );
+        });
+
+        // Drop listeners for docs that disappeared.
+        const liveIds = new Set(snapshot.docs.map((d) => d.id));
+        Object.keys(replyUnsubsRef.current).forEach((id) => {
+          if (!liveIds.has(id)) {
+            replyUnsubsRef.current[id]();
+            delete replyUnsubsRef.current[id];
+          }
+        });
+      },
+      (error) => {
+        console.error("Error loading conversation:", error);
+        setLoading(false);
       }
-    } catch (error) {
-      console.error("Error loading conversations:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    );
 
-  const loadReplies = async (dmId: string) => {
-    try {
-      const repliesRef = collection(db, "Digital Student DMs", dmId, "replies");
-      const q = query(repliesRef, orderBy("created_at", "asc"));
-      const snapshot = await getDocs(q);
-      const repliesData = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as DMReply[];
-      setReplies(repliesData);
-    } catch (error) {
-      console.error("Error loading replies:", error);
-    }
-  };
+    return () => {
+      unsubscribe();
+      Object.values(replyUnsubsRef.current).forEach((unsub) => unsub());
+      replyUnsubsRef.current = {};
+    };
+  }, [isOpen, user?.uid]);
 
-  const setupRepliesListener = (dmId: string) => {
-    const repliesRef = collection(db, "Digital Student DMs", dmId, "replies");
-    const q = query(repliesRef, orderBy("created_at", "asc"));
-    
-    return onSnapshot(q, (snapshot) => {
-      const repliesData = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as DMReply[];
-      setReplies(repliesData);
-    });
-  };
+  // One flat, time-ordered thread: the student's sent messages + all replies.
+  const thread: ChatMessage[] = [
+    ...Object.values(dmDocs).map((dm) => ({
+      key: dm.id,
+      message: dm.message,
+      sender: "user" as const,
+      created_at: dm.created_at,
+    })),
+    ...Object.values(repliesByDm).flat(),
+  ].sort((a, b) => {
+    // Pending local writes have a null server timestamp — sink them to the end.
+    const ta = a.created_at ? a.created_at.toMillis() : Number.MAX_SAFE_INTEGER;
+    const tb = b.created_at ? b.created_at.toMillis() : Number.MAX_SAFE_INTEGER;
+    return ta - tb;
+  });
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [thread.length, isOpen, loading]);
 
   const handleSend = async () => {
     if (!user?.uid || !message.trim()) return;
@@ -131,9 +166,7 @@ export function MortarDMWidget() {
         read: false,
       });
       trackEvent(WEB_ANALYTICS_EVENTS.MORTAR_DM_MESSAGE_SENT, {});
-
       setMessage("");
-      await loadConversations();
     } catch (error) {
       console.error("Error sending message:", error);
       alert("Failed to send message. Please try again.");
@@ -142,9 +175,9 @@ export function MortarDMWidget() {
     }
   };
 
-  const formatTime = (timestamp: any): string => {
-    if (!timestamp) return "";
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+  const formatTime = (timestamp: Timestamp | null): string => {
+    if (!timestamp) return "sending…";
+    const date = timestamp.toDate();
     const now = new Date();
     const diff = now.getTime() - date.getTime();
     const minutes = Math.floor(diff / 60000);
@@ -152,7 +185,11 @@ export function MortarDMWidget() {
     const days = Math.floor(hours / 24);
 
     if (days > 0) {
-      return date.toLocaleDateString() + " " + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return (
+        date.toLocaleDateString() +
+        " " +
+        date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      );
     }
     if (hours > 0) return `${hours}h ago`;
     if (minutes > 0) return `${minutes}m ago`;
@@ -160,8 +197,6 @@ export function MortarDMWidget() {
   };
 
   if (!user) return null;
-
-  const currentConversation = conversations.find((c) => c.id === selectedConversation);
 
   return (
     <>
@@ -178,7 +213,7 @@ export function MortarDMWidget() {
       {/* DM Dialog */}
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <Card className="w-full max-w-2xl h-[600px] flex flex-col relative">
+          <Card className="w-full max-w-2xl h-[600px] max-h-[85vh] flex flex-col relative">
             <button
               onClick={() => setIsOpen(false)}
               className="absolute top-4 right-4 z-10 text-muted-foreground hover:text-foreground"
@@ -188,198 +223,106 @@ export function MortarDMWidget() {
             </button>
 
             <div className="p-6 border-b border-border">
-              <h2 className="text-xl font-bold text-foreground mb-1">
-                Message MORTAR
-              </h2>
+              <h2 className="text-xl font-bold text-foreground mb-1">Message MORTAR</h2>
               <p className="text-sm text-muted-foreground">
-                Send a message to the MORTAR team or view your conversation history.
+                Chat with the MORTAR team — your full conversation lives here.
               </p>
             </div>
 
-            {loading ? (
-              <div className="flex-1 flex items-center justify-center">
-                <div className="text-center">
-                  <Loader2 className="w-8 h-8 animate-spin text-accent mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">Loading...</p>
+            {/* Messages Area — the only scrollable region */}
+            <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
+              {loading ? (
+                <div className="h-full flex items-center justify-center">
+                  <div className="text-center">
+                    <Loader2 className="w-8 h-8 animate-spin text-accent mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">Loading conversation…</p>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div className="flex-1 flex overflow-hidden">
-                {/* Conversations Sidebar */}
-                {conversations.length > 0 && (
-                  <div className="w-64 border-r border-border overflow-y-auto">
-                    <div className="p-4">
-                      <h3 className="text-sm font-semibold text-foreground mb-3">
-                        Your Messages
-                      </h3>
-                      <div className="space-y-2">
-                        {conversations.map((conv) => (
-                          <button
-                            key={conv.id}
-                            onClick={() => {
-                              if (conv.id !== selectedConversation) {
-                                trackEvent(WEB_ANALYTICS_EVENTS.MORTAR_DM_REPLY_THREAD_SELECTED, {
-                                  thread_id: conv.id,
-                                });
-                              }
-                              setSelectedConversation(conv.id);
-                            }}
-                            className={`w-full text-left p-3 rounded-lg transition-colors ${
-                              selectedConversation === conv.id
-                                ? "bg-accent/10 border border-accent"
-                                : "bg-muted/50 hover:bg-muted"
+              ) : thread.length === 0 ? (
+                <div className="h-full flex items-center justify-center">
+                  <div className="text-center">
+                    <MessageSquare className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
+                    <p className="text-foreground font-medium mb-1">Start the conversation</p>
+                    <p className="text-sm text-muted-foreground">
+                      Send your first message to MORTAR below.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {thread.map((msg) => {
+                    const isMortar = msg.sender === "mortar";
+                    return (
+                      <div
+                        key={msg.key}
+                        className={`flex gap-3 ${isMortar ? "" : "flex-row-reverse"}`}
+                      >
+                        <Avatar
+                          className={`w-8 h-8 flex items-center justify-center shrink-0 ${
+                            isMortar
+                              ? "bg-accent text-accent-foreground"
+                              : "bg-muted text-foreground"
+                          }`}
+                        >
+                          <span className="text-xs font-bold">{isMortar ? "M" : "You"}</span>
+                        </Avatar>
+                        <div
+                          className={`flex flex-col ${
+                            isMortar ? "items-start" : "items-end"
+                          } max-w-[75%]`}
+                        >
+                          <div
+                            className={`rounded-lg px-4 py-2 ${
+                              isMortar
+                                ? "bg-accent text-accent-foreground"
+                                : "bg-muted text-foreground"
                             }`}
                           >
-                            <p className="text-xs text-muted-foreground mb-1">
-                              {formatTime(conv.created_at)}
-                            </p>
-                            <p className="text-sm text-foreground line-clamp-2">
-                              {conv.message}
-                            </p>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Conversation View */}
-                <div className="flex-1 flex flex-col">
-                  {selectedConversation && currentConversation ? (
-                    <>
-                      {/* Messages Area */}
-                      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                        {/* Original Message */}
-                        <div className="flex gap-3">
-                          <Avatar className="w-8 h-8 bg-accent/10 text-accent flex items-center justify-center shrink-0">
-                            <span className="text-xs font-bold">You</span>
-                          </Avatar>
-                          <div className="flex-1">
-                            <div className="bg-muted rounded-lg px-4 py-2">
-                              <p className="text-sm text-foreground whitespace-pre-wrap">
-                                {currentConversation.message}
-                              </p>
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-1 px-1">
-                              {formatTime(currentConversation.created_at)}
+                            <p className="text-sm whitespace-pre-wrap break-words">
+                              {msg.message}
                             </p>
                           </div>
-                        </div>
-
-                        {/* Replies */}
-                        {replies.map((reply) => (
-                          <div
-                            key={reply.id}
-                            className={`flex gap-3 ${reply.sender === "mortar" ? "" : "flex-row-reverse"}`}
-                          >
-                            <Avatar
-                              className={`w-8 h-8 flex items-center justify-center shrink-0 ${
-                                reply.sender === "mortar"
-                                  ? "bg-accent text-accent-foreground"
-                                  : "bg-muted text-foreground"
-                              }`}
-                            >
-                              <span className="text-xs font-bold">
-                                {reply.sender === "mortar" ? "M" : "You"}
-                              </span>
-                            </Avatar>
-                            <div
-                              className={`flex-1 ${
-                                reply.sender === "mortar" ? "" : "flex flex-col items-end"
-                              }`}
-                            >
-                              <div
-                                className={`rounded-lg px-4 py-2 ${
-                                  reply.sender === "mortar"
-                                    ? "bg-accent text-accent-foreground"
-                                    : "bg-muted text-foreground"
-                                }`}
-                              >
-                                <p className="text-sm whitespace-pre-wrap">
-                                  {reply.message}
-                                </p>
-                              </div>
-                              <p className="text-xs text-muted-foreground mt-1 px-1">
-                                {formatTime(reply.created_at)}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
-                        <div ref={messagesEndRef} />
-                      </div>
-
-                      {/* Input Area */}
-                      <div className="border-t border-border p-4">
-                        <div className="flex gap-2">
-                          <Textarea
-                            placeholder="Type your message..."
-                            value={message}
-                            onChange={(e) => setMessage(e.target.value)}
-                            rows={2}
-                            className="resize-none"
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" && !e.shiftKey) {
-                                e.preventDefault();
-                                handleSend();
-                              }
-                            }}
-                          />
-                          <Button
-                            onClick={handleSend}
-                            disabled={!message.trim() || sending}
-                            className="bg-accent hover:bg-accent/90 text-accent-foreground shrink-0"
-                          >
-                            {sending ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Send className="w-4 h-4" />
-                            )}
-                          </Button>
+                          <p className="text-xs text-muted-foreground mt-1 px-1">
+                            {formatTime(msg.created_at)}
+                          </p>
                         </div>
                       </div>
-                    </>
+                    );
+                  })}
+                  <div ref={messagesEndRef} />
+                </>
+              )}
+            </div>
+
+            {/* Composer — always visible */}
+            <div className="border-t border-border p-4">
+              <div className="flex gap-2">
+                <Textarea
+                  placeholder="Type your message..."
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  rows={2}
+                  className="resize-none"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSend();
+                    }
+                  }}
+                />
+                <Button
+                  onClick={handleSend}
+                  disabled={!message.trim() || sending}
+                  className="bg-accent hover:bg-accent/90 text-accent-foreground shrink-0"
+                >
+                  {sending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
-                    <div className="flex-1 flex items-center justify-center p-6">
-                      <div className="text-center">
-                        <MessageSquare className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-                        <p className="text-foreground font-medium mb-2">
-                          Start a conversation
-                        </p>
-                        <p className="text-sm text-muted-foreground mb-4">
-                          Send your first message to MORTAR below
-                        </p>
-                        <div className="space-y-2">
-                          <Textarea
-                            placeholder="Type your message here..."
-                            value={message}
-                            onChange={(e) => setMessage(e.target.value)}
-                            rows={4}
-                            className="resize-none"
-                          />
-                          <Button
-                            onClick={handleSend}
-                            disabled={!message.trim() || sending}
-                            className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
-                          >
-                            {sending ? (
-                              <>
-                                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                                Sending...
-                              </>
-                            ) : (
-                              <>
-                                <Send className="w-4 h-4 mr-2" />
-                                Send Message
-                              </>
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
+                    <Send className="w-4 h-4" />
                   )}
-                </div>
+                </Button>
               </div>
-            )}
+            </div>
           </Card>
         </div>
       )}
