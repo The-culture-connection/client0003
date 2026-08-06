@@ -79,14 +79,19 @@ export function WebCurriculum() {
     setLoading(true);
     try {
       setProgressDataReady(false);
-      // Get user roles
-      const currentUser = await cached(`roles:${uid}`, () => getCurrentUserWithRoles(), TTL_SHORT);
+      // Get user roles. Never cache an empty roles list — brand-new accounts get
+      // their default role from a Cloud Function moments after signup, and caching
+      // the pre-role state made this page show no courses until a refresh.
+      const currentUser = await cached(`roles:${uid}`, () => getCurrentUserWithRoles(), TTL_SHORT, {
+        shouldCache: (u) => (u?.roles?.length ?? 0) > 0,
+      });
       const userRoles = currentUser?.roles || [];
 
       const uniqueCourses = await cached(
         `coursesForLearner:${uid}`,
         () => getCoursesForLearner(uid, userRoles),
-        TTL_SHORT
+        TTL_SHORT,
+        { shouldCache: (list) => list.length > 0 }
       );
 
       setCourses(uniqueCourses);
@@ -208,10 +213,23 @@ export function WebCurriculum() {
   useEffect(() => {
     // Load courses and progress
     loadCourses();
-    
+
     // Load user application status
     loadUserApplication();
   }, [loadCourses, loadUserApplication]);
+
+  // Brand-new accounts: the default role is assigned by a Cloud Function moments
+  // after signup, so the very first visit can race it and find no courses. If the
+  // load finished empty, retry once shortly after — by then the role has landed.
+  const retriedEmptyRef = React.useRef(false);
+  useEffect(() => {
+    if (loading || courses.length > 0 || retriedEmptyRef.current) return;
+    retriedEmptyRef.current = true;
+    const timer = setTimeout(() => {
+      loadCourses();
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, [loading, courses.length, loadCourses]);
 
   const getCourseProgressValue = (course: Course): number => {
     const progressData = courseProgress[course.id || ""];

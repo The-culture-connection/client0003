@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
 import { useAuth } from "../components/auth/AuthProvider";
 import { useScreenAnalytics } from "../analytics/useScreenAnalytics";
@@ -29,6 +29,18 @@ export function OnboardingPage() {
   const [currentStep, setCurrentStep] = useState(0);
   const [onboardingData, setOnboardingData] = useState<OnboardingData>({});
   const [emailOptIn, setEmailOptIn] = useState(true);
+
+  // Completion screen's auto-advance timer. Tracked so it can be cancelled when
+  // the user moves on manually — otherwise the stale timer fired AFTER they had
+  // already clicked through to the dashboard and dragged them back to /mortar-info.
+  const autoAdvanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelAutoAdvance = () => {
+    if (autoAdvanceTimerRef.current !== null) {
+      clearTimeout(autoAdvanceTimerRef.current);
+      autoAdvanceTimerRef.current = null;
+    }
+  };
+  useEffect(() => cancelAutoAdvance, []);
 
   useEffect(() => {
     if (loading) return;
@@ -160,9 +172,12 @@ export function OnboardingPage() {
       }
 
       if (!partial) {
-        // Show completion screen first, then navigate after a delay
+        // Show completion screen first, then navigate after a delay. The timer
+        // is cancelled if the user clicks Continue (or leaves) before it fires.
         setCurrentStep(8);
-        setTimeout(() => {
+        cancelAutoAdvance();
+        autoAdvanceTimerRef.current = setTimeout(() => {
+          autoAdvanceTimerRef.current = null;
           navigate("/mortar-info");
         }, 3000);
       }
@@ -291,7 +306,10 @@ export function OnboardingPage() {
             </p>
           </div>
           <Button
-            onClick={() => navigate("/mortar-info")}
+            onClick={() => {
+              cancelAutoAdvance();
+              navigate("/mortar-info");
+            }}
             className="bg-accent hover:bg-accent/90 text-accent-foreground"
           >
             Continue
