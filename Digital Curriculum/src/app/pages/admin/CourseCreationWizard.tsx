@@ -320,7 +320,7 @@ export function CourseCreationWizard() {
           order: index + 1,
           price: parseFloat(moduleData.price),
           durationMonths: parseFloat(moduleData.durationMonths),
-          description: moduleData.description || undefined,
+          description: moduleData.description || "",
           skills,
           completionBadgeIds: moduleData.completionBadgeIds ?? [],
           skillCertificates,
@@ -451,7 +451,7 @@ export function CourseCreationWizard() {
           created_by_uid: user.uid,
           created_at: serverTimestamp(),
           updated_at: serverTimestamp(),
-          image_url: imageUrl || undefined,
+          image_url: imageUrl || "",
         },
         { merge: true }
       );

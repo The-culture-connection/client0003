@@ -1351,7 +1351,7 @@ export function CourseBuilder() {
           updated_at: serverTimestamp(),
           created_at: serverTimestamp(),
           created_by_uid: user.uid,
-          image_url: imageUrl || undefined,
+          image_url: imageUrl || "",
         },
         { merge: true }
       );
