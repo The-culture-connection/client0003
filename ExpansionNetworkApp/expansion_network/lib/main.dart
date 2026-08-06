@@ -202,12 +202,23 @@ class _ExpansionNetworkAppState extends State<ExpansionNetworkApp> {
         // [BetaFeedbackOverlay] sits outside that stack on purpose: it captures
         // everything inside it as the report screenshot, so its own button and
         // sheet must not be part of what it captures.
+        // Universal keyboard dismissal: tapping anywhere outside a text
+        // field drops focus and closes the keyboard, on every screen.
+        // (Buttons and fields still receive their taps first — this only
+        // wins when nothing else claims the touch.)
         return BetaFeedbackOverlay(
-          child: Stack(
-            children: [
-              const MortarverseSky(),
-              ContentSuspensionGate(child: child),
-            ],
+          child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: () {
+              final focus = FocusManager.instance.primaryFocus;
+              if (focus != null && focus.context != null) focus.unfocus();
+            },
+            child: Stack(
+              children: [
+                const MortarverseSky(),
+                ContentSuspensionGate(child: child),
+              ],
+            ),
           ),
         );
       },

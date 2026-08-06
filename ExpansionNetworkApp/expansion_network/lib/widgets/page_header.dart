@@ -6,6 +6,7 @@ class PageHeader extends StatelessWidget {
   const PageHeader({
     required this.title,
     this.subtitle,
+    this.leading,
     this.trailing,
     this.bottom,
     super.key,
@@ -13,6 +14,9 @@ class PageHeader extends StatelessWidget {
 
   final String title;
   final String? subtitle;
+
+  /// Optional widget before the title (e.g. a back button on pushed screens).
+  final Widget? leading;
   final Widget? trailing;
   final Widget? bottom;
 
@@ -32,6 +36,10 @@ class PageHeader extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (leading != null) ...[
+                leading!,
+                const SizedBox(width: 4),
+              ],
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

@@ -13,6 +13,7 @@ import '../services/user_profile_repository.dart';
 import '../theme/app_theme.dart';
 import '../utils/content_action_guard.dart';
 import '../utils/relative_time.dart';
+import '../widgets/expansion_compose_fab.dart';
 import '../widgets/page_header.dart';
 import '../widgets/poster_profile_avatar.dart';
 import '../widgets/user_profile_modal.dart';
@@ -155,12 +156,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
     final filter = _filterFor(context);
 
     return Scaffold(
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 72),
-        child: FloatingActionButton(
-          onPressed: () => _openPostMenu(context),
-          child: const Icon(Icons.add),
-        ),
+      floatingActionButton: ExpansionComposeFab(
+        heroTag: 'compose-explore',
+        onPressed: () => _openPostMenu(context),
       ),
       body: CustomScrollView(
         slivers: [

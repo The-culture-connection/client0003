@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 
 import '../../services/expansion_session_service.dart'
     show userMessageForFirebaseCallableError;
+import '../../router/app_router.dart' show expansionRootNavigatorKey;
 import '../../services/stripe_checkout_service.dart';
 import '../conference_analytics.dart';
 import '../current_conference_holder.dart';
@@ -142,11 +143,14 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
               'This conference is no longer open.');
           return;
         }
-        if (conf.startDate != null) {
-          await showAddToCalendarSheet(context, conf);
-        }
-        if (!mounted) return;
+        // Enter first, calendar second — same reasoning as _redeemCode.
         context.go('/conference/lobby');
+        if (conf.startDate != null) {
+          final rootCtx = expansionRootNavigatorKey.currentContext;
+          if (rootCtx != null && rootCtx.mounted) {
+            await showAddToCalendarSheet(rootCtx, conf);
+          }
+        }
         return;
       }
 
@@ -397,13 +401,19 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
             conf?.entryBlockedReason ?? 'This conference is no longer open.');
         return;
       }
-      // Offer to add the conference to their calendar (with 1-week/2-day
-      // reminders) on first entry, before dropping into the lobby.
-      if (conf.startDate != null) {
-        await showAddToCalendarSheet(context, conf);
-      }
-      if (!mounted) return;
+      // Enter FIRST, then offer the calendar on top of the lobby. Entry used
+      // to wait on the calendar sheet resolving, and any hiccup in the native
+      // calendar UI left the user stranded on the gate with the code card
+      // stuck "loading" until they tapped Enter by hand.
       context.go('/conference/lobby');
+      if (conf.startDate != null) {
+        // This screen is unmounted by the navigation — anchor the sheet to
+        // the root navigator, floating above the lobby.
+        final rootCtx = expansionRootNavigatorKey.currentContext;
+        if (rootCtx != null && rootCtx.mounted) {
+          await showAddToCalendarSheet(rootCtx, conf);
+        }
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _error = userMessageForFirebaseCallableError(e));

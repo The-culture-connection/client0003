@@ -13,6 +13,7 @@ import '../theme/app_theme.dart';
 import '../utils/content_action_guard.dart';
 import '../utils/event_calendar_prompt.dart';
 import '../utils/relative_time.dart';
+import '../widgets/expansion_compose_fab.dart';
 import '../widgets/event_poster_byline.dart';
 import '../widgets/event_rsvp_attendee_tile.dart';
 import '../widgets/event_source_badge.dart';
@@ -37,26 +38,31 @@ class _EventsScreenState extends State<EventsScreen> {
     final uid = FirebaseAuth.instance.currentUser?.uid;
 
     return Scaffold(
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 72),
-        child: FloatingActionButton(
-          onPressed: () async {
-            if (await blockContentActionIfSuspended(context, blockedSurfaceEvent: 'events_feed_create_blocked_suspended')) {
-              return;
-            }
-            if (context.mounted) context.push('/events/create');
-          },
-          child: const Icon(Icons.add),
-        ),
+      floatingActionButton: ExpansionComposeFab(
+        heroTag: 'compose-events',
+        onPressed: () async {
+          if (await blockContentActionIfSuspended(context, blockedSurfaceEvent: 'events_feed_create_blocked_suspended')) {
+            return;
+          }
+          if (context.mounted) context.push('/events/create');
+        },
       ),
       body: SafeArea(
         bottom: false,
         child: CustomScrollView(
           slivers: [
-            const SliverToBoxAdapter(
+            SliverToBoxAdapter(
               child: PageHeader(
                 title: 'Events',
                 subtitle: 'Discover upcoming opportunities',
+                // Shown when this screen was pushed (e.g. from the
+                // Mortarverse); the events list previously had no way back.
+                leading: context.canPop()
+                    ? IconButton(
+                        icon: const Icon(Icons.arrow_back),
+                        onPressed: () => context.pop(),
+                      )
+                    : null,
               ),
             ),
             SliverPadding(

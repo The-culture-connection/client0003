@@ -96,8 +96,24 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
         if (c != null) CurrentConferenceHolder.instance.target(c.id);
       }));
     }
+    // Standalone screens (events, profile edit, the QR card) are PUSHED so
+    // their back buttons have somewhere to go — `go()` replaces the stack,
+    // which is why back used to be missing on Android and dead on iOS.
+    // Shell worlds (conference, commons, networking-hall tabs) keep `go`,
+    // since they have their own navigation back out.
+    if (_pushedRoutes.any((p) => item.route.startsWith(p))) {
+      context.push(item.route);
+      return;
+    }
     context.go(item.route);
   }
+
+  /// Route prefixes for standalone (non-shell) screens opened from this hub.
+  static const List<String> _pushedRoutes = [
+    '/events',
+    '/profile/edit',
+    '/card',
+  ];
 
   void _reportShown(MortarverseAction item) {
     unawaited(ExpansionAnalytics.log(
@@ -217,7 +233,7 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
               ),
               Positioned(
                 right: 0,
-                child: _CardScanButton(onTap: () => context.go('/card')),
+                child: _CardScanButton(onTap: () => context.push('/card')),
               ),
             ],
           ),
@@ -778,7 +794,7 @@ class _EventsStrip extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         GestureDetector(
-          onTap: () => context.go('/events'),
+          onTap: () => context.push('/events'),
           child: const _SectionHeader(title: 'MORTAR EVENTS', trailing: 'See all'),
         ),
         const SizedBox(height: 12),
@@ -808,7 +824,7 @@ class _EventRow extends StatelessWidget {
     return Material(
       color: Colors.white.withValues(alpha: 0.04),
       child: InkWell(
-        onTap: () => context.go('/events/${event.id}'),
+        onTap: () => context.push('/events/${event.id}'),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
           decoration: BoxDecoration(

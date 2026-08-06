@@ -18,6 +18,7 @@ import '../theme/app_theme.dart';
 import '../theme/cosmic_widgets.dart';
 import '../utils/content_action_guard.dart';
 import '../utils/safe_launch_url.dart';
+import '../widgets/expansion_compose_fab.dart';
 import '../widgets/feed_post_card.dart';
 import '../models/mortar_info_post.dart';
 import '../services/mortar_info_repository.dart';
@@ -47,7 +48,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: ExpansionComposeFab(
+        heroTag: 'compose-home',
         onPressed: () async {
           unawaited(
             ExpansionAnalytics.log('home_create_post_fab_clicked', sourceScreen: 'home'),
@@ -57,26 +59,6 @@ class _HomeScreenState extends State<HomeScreen> {
           }
           if (context.mounted) context.push('/feed/post/create');
         },
-        // 2d's compose button: a lit ring rather than a solid Material circle.
-        backgroundColor: Colors.transparent,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        highlightElevation: 0,
-        shape: const CircleBorder(
-          side: BorderSide(color: Color(0x80FFFFFF)),
-        ),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            // Same light source as every other lit control, zone-accented.
-            gradient: GlowPill.bloom(Theme.of(context).colorScheme.primary),
-          ),
-          child: const SizedBox(
-            width: 56,
-            height: 56,
-            child: Icon(Icons.add, size: 26, color: Colors.white),
-          ),
-        ),
       ),
       body: Stack(
         children: [

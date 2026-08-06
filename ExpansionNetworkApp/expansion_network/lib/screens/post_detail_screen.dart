@@ -216,7 +216,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                   children: [
                     IconButton(
                       icon: const Icon(Icons.arrow_back),
-                      onPressed: () => context.pop(),
+                      onPressed: () =>
+                          context.canPop() ? context.pop() : context.go('/feed'),
                     ),
                     Expanded(
                       child: Text(

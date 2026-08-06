@@ -287,7 +287,14 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Profile saved')),
       );
-      context.pop();
+      // Opened via a stack replacement (e.g. an old Mortarverse widget link)
+      // there is nothing to pop — popping anyway threw the on-screen
+      // "GoError: There is nothing to pop". Fall back to the Mortarverse.
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go('/mortarverse');
+      }
     } catch (e) {
       setState(() => _error = e.toString());
     } finally {
@@ -373,7 +380,9 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                   children: [
                     IconButton(
                       icon: const Icon(Icons.arrow_back),
-                      onPressed: () => context.pop(),
+                      onPressed: () => context.canPop()
+                          ? context.pop()
+                          : context.go('/mortarverse'),
                     ),
                     Expanded(
                       child: Text(

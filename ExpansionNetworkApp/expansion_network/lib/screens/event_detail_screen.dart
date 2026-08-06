@@ -234,7 +234,10 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                   children: [
                     IconButton(
                       icon: const Icon(Icons.arrow_back),
-                      onPressed: () => context.pop(),
+                      // Deep links / stack replacements can land here with
+                      // nothing to pop — fall back to the events list.
+                      onPressed: () =>
+                          context.canPop() ? context.pop() : context.go('/events'),
                     ),
                     Expanded(
                       child: Text(

@@ -12,6 +12,7 @@ import '../services/events_repository.dart';
 import '../theme/app_theme.dart';
 import '../utils/content_action_guard.dart';
 import '../utils/relative_time.dart';
+import '../widgets/expansion_compose_fab.dart';
 import '../widgets/event_poster_byline.dart';
 import '../widgets/event_rsvp_attendee_tile.dart';
 import '../widgets/event_source_badge.dart';
@@ -51,20 +52,17 @@ class _FeedScreenState extends State<FeedScreen> {
     final repo = EventsRepository();
 
     return Scaffold(
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 72),
-        child: FloatingActionButton(
-          onPressed: () async {
-            unawaited(
-              ExpansionAnalytics.log('events_feed_create_event_fab_clicked', sourceScreen: 'events_feed'),
-            );
-            if (await blockContentActionIfSuspended(context, blockedSurfaceEvent: 'events_feed_create_blocked_suspended')) {
-              return;
-            }
-            if (context.mounted) context.push('/events/create');
-          },
-          child: const Icon(Icons.add),
-        ),
+      floatingActionButton: ExpansionComposeFab(
+        heroTag: 'compose-events-feed',
+        onPressed: () async {
+          unawaited(
+            ExpansionAnalytics.log('events_feed_create_event_fab_clicked', sourceScreen: 'events_feed'),
+          );
+          if (await blockContentActionIfSuspended(context, blockedSurfaceEvent: 'events_feed_create_blocked_suspended')) {
+            return;
+          }
+          if (context.mounted) context.push('/events/create');
+        },
       ),
       body: CustomScrollView(
         slivers: [
