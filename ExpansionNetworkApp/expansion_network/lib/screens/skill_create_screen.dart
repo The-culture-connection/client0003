@@ -215,6 +215,10 @@ class _SkillCreateScreenState extends State<SkillCreateScreen> {
                   DropdownButtonFormField<String>(
                     key: ValueKey(_industry ?? ''),
                     initialValue: _industry,
+                    // Without this the field takes the widest industry's
+                    // intrinsic width, so a long one ("Childcare & Family
+                    // Services") cannot ellipsize and overflows the row.
+                    isExpanded: true,
                     decoration: const InputDecoration(labelText: 'Industry'),
                     items: [
                       for (final i in kExplorePostingIndustries)

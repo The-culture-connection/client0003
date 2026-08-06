@@ -110,7 +110,13 @@ class _GroupsScreenState extends State<GroupsScreen> {
                 child: PageHeader(
                   title: 'Groups',
                   subtitle: 'Communities like subreddits — posts inside each group are threads. Featured shows the two most active groups.',
-                  trailing: IconButton(
+                  // Shifted clear of the shell's "back to the MORTARVERSE"
+                  // button, which [ExpansionShell] floats at top:8/right:8 over
+                  // every tab — without this the two controls sit on top of
+                  // each other and only the exit button is tappable.
+                  trailing: Padding(
+                    padding: const EdgeInsets.only(right: 48),
+                    child: IconButton(
                     tooltip: 'Create community',
                     onPressed: () async {
                       unawaited(
@@ -122,6 +128,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
                       if (context.mounted) context.push('/groups/create');
                     },
                     icon: const Icon(Icons.add_circle_outline, color: AppColors.primary),
+                    ),
                   ),
                 ),
               ),

@@ -125,9 +125,15 @@ service firebase.storage {
     }
 
     // Beta testing screenshots (shake-to-report on mobile, standing widget on
-    // Digital Curriculum). Path scoped by uid; only staff read the queue.
+    // Digital Curriculum). Path scoped by uid, and not readable across testers —
+    // a screenshot can contain whatever was on that person's screen.
+    //
+    // The uploader must be able to read their own file: the client calls
+    // getDownloadURL() immediately after putData() to store the link on the
+    // report, and that call is itself a read.
     match /beta_feedback/{userId}/{fileName} {
-      allow read: if hasStaffClaim();
+      allow read: if hasStaffClaim()
+        || (isSignedIn() && request.auth.uid == userId);
       allow write: if isSignedIn()
         && request.auth.uid == userId
         && request.resource.size < 8 * 1024 * 1024

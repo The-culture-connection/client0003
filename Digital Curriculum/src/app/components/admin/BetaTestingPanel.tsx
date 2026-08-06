@@ -89,6 +89,7 @@ function toReport(id: string, data: Record<string, unknown>): BetaFeedbackReport
     user_agent: str(data.user_agent),
     viewport_width: num(data.viewport_width),
     viewport_height: num(data.viewport_height),
+    screenshot_captured: data.screenshot_captured === true,
     screenshot_url: str(data.screenshot_url) || null,
     screenshot_path: str(data.screenshot_path) || null,
     screenshot_error: str(data.screenshot_error) || null,
@@ -474,11 +475,19 @@ function ReportCard({
             </button>
           ) : (
             <div
-              className="w-full h-40 rounded-lg border border-dashed border-white/15 flex flex-col items-center justify-center gap-1 text-muted-foreground"
+              className="w-full h-40 rounded-lg border border-dashed border-white/15 flex flex-col items-center justify-center gap-1 px-2 text-center text-muted-foreground"
               title={report.screenshot_error ?? "No screenshot on this report"}
             >
               <ImageOff className="w-5 h-5" />
-              <span className="text-[11px]">No screenshot</span>
+              {/* Which half failed decides the fix — a rejected upload is a
+                  rules deploy, a failed capture is a client-side problem. */}
+              <span className="text-[11px] leading-tight">
+                {report.screenshot_error
+                  ? "Upload rejected"
+                  : report.screenshot_captured
+                    ? "Not uploaded"
+                    : "Capture failed on device"}
+              </span>
             </div>
           )}
         </div>

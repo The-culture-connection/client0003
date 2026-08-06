@@ -383,7 +383,12 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
     final p = cand.profile;
     final connectOp = (dragDx / 110).clamp(0.0, 1.0);
     final passOp = (-dragDx / 110).clamp(0.0, 1.0);
-    const panelColor = Color(0x0DFFFFFF);
+    // Opaque, and it has to stay that way: this is a *stacked* deck — the next
+    // candidate is drawn underneath at 0.94 scale — so any translucency here
+    // lets that card's photo, name and chips show through the front one.
+    // #0D0D0D is the old 5%-white tint composited over the conference black,
+    // so a card over the backdrop renders exactly as it did before.
+    const panelColor = Color(0xFF0D0D0D);
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(

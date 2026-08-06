@@ -170,14 +170,17 @@ service cloud.firestore {
     // Admin → Beta Testing. Testers file reports but never read the queue,
     // because it contains other testers' screenshots.
     match /beta_feedback/{feedbackId} {
+      // Kept to the two checks that are actually security properties: you must
+      // be signed in, and you cannot file a report as somebody else. The rest
+      // of the payload (screen, source, status) is descriptive metadata the
+      // client fills in — validating it here only means a tester's feedback is
+      // silently rejected when a field drifts, which is the opposite of what a
+      // beta channel is for.
       allow create: if isSignedIn()
         && request.resource.data.user_id == request.auth.uid
         && request.resource.data.comment is string
         && request.resource.data.comment.size() > 0
-        && request.resource.data.comment.size() <= 4000
-        && request.resource.data.screen is string
-        && request.resource.data.source in ['mobile', 'web']
-        && request.resource.data.status == 'new';
+        && request.resource.data.comment.size() <= 4000;
       allow read: if hasStaffClaim();
       // Staff triage only ever changes status / notes; the report itself is
       // the record of what the tester saw and stays as filed.

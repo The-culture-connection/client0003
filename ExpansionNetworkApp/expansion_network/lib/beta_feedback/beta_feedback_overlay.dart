@@ -73,8 +73,24 @@ class _BetaFeedbackOverlayState extends State<BetaFeedbackOverlay> {
       final next = user != null;
       if (next == _signedIn) return;
       setState(() => _signedIn = next);
+      _watchConfig();
       _syncDetector();
     });
+
+    _watchConfig();
+    _syncDetector();
+  }
+
+  /// (Re)subscribes to the kill switch, which is only readable once signed in.
+  ///
+  /// Re-subscribing on every auth change matters: a Firestore snapshot listener
+  /// that errors is *terminated*, not retried. Subscribing at cold start —
+  /// before sign-in — would get permission-denied, die, and never see the
+  /// switch again for the rest of the session.
+  void _watchConfig() {
+    _configSub?.cancel();
+    _configSub = null;
+    if (!_signedIn) return;
 
     _configSub = FirebaseFirestore.instance
         .collection(kBetaFeedbackConfigCollection)
@@ -82,6 +98,7 @@ class _BetaFeedbackOverlayState extends State<BetaFeedbackOverlay> {
         .snapshots()
         .listen(
           (snap) {
+            if (!mounted) return;
             final data = snap.data();
             final shake = data?['shake_enabled'];
             final button = data?['button_enabled'];
@@ -91,11 +108,9 @@ class _BetaFeedbackOverlayState extends State<BetaFeedbackOverlay> {
             });
             _syncDetector();
           },
-          // No config doc, or rules deny the read: leave the defaults on.
+          // No config doc, or rules not deployed yet: leave the defaults on.
           onError: (Object e) => debugPrint('[beta_feedback] config read failed: $e'),
         );
-
-    _syncDetector();
   }
 
   @override

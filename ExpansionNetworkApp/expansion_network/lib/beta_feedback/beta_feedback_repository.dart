@@ -3,6 +3,7 @@ import 'dart:ui' show Size;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -64,7 +65,11 @@ class BetaFeedbackRepository {
     String? screenshotPath;
     String? screenshotUrl;
     String? screenshotError;
-    if (screenshot != null && screenshot.isNotEmpty) {
+    // Recorded separately from `screenshot_url` so a missing image in the admin
+    // tab says *why*: the device could not rasterise the frame, or it did and
+    // the upload was rejected. Those need completely different fixes.
+    final captured = screenshot != null && screenshot.isNotEmpty;
+    if (captured) {
       final path = '$storageFolder/$uid/${docRef.id}.png';
       try {
         final ref = _storage.ref(path);
@@ -74,8 +79,14 @@ class BetaFeedbackRepository {
         );
         screenshotUrl = await ref.getDownloadURL();
         screenshotPath = path;
-      } catch (e) {
+      } on FirebaseException catch (e) {
         // Keep the report — an image-less report still tells us the screen.
+        debugPrint('[beta_feedback] screenshot upload failed: ${e.code} ${e.message}');
+        screenshotError = e.code == 'unauthorized'
+            ? 'Upload denied by Storage rules (deploy the beta_feedback rule to '
+                '${Firebase.app().options.projectId}).'
+            : '${e.code}: ${e.message ?? e.toString()}';
+      } catch (e) {
         debugPrint('[beta_feedback] screenshot upload failed: $e');
         screenshotError = e.toString();
       }
@@ -97,6 +108,7 @@ class BetaFeedbackRepository {
       'app_version': await _appVersion(),
       if (screenSize != null) 'viewport_width': screenSize.width.round(),
       if (screenSize != null) 'viewport_height': screenSize.height.round(),
+      'screenshot_captured': captured,
       'screenshot_path': screenshotPath,
       'screenshot_url': screenshotUrl,
       if (screenshotError != null) 'screenshot_error': screenshotError,

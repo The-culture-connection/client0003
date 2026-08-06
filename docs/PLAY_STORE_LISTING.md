@@ -113,45 +113,63 @@ category may clear this error on its own.
 
 ---
 
-## 5. "All developers requesting access to the photo and video permissions..."
+## 5. Photo and Video Permissions policy — "use alternative system pickers"
 
-This one is triggered by two lines in the manifest, and you have a choice.
+Rejected v3.0.0 (`versionCode` 14). **Fixed in 3.0.1+15** by removing the
+permissions and switching to the Android photo picker — the option Google
+recommends. Do *not* file the declaration form; see the end of this section.
 
-### Recommended: remove the permissions instead of declaring them
+### What was wrong
 
-`android/app/src/main/AndroidManifest.xml` lines 10–11 declare:
+`android/app/src/main/AndroidManifest.xml` declared, by hand:
 
 ```xml
 <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
 <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
 ```
 
-**The app does not need either.** Every image pick in the codebase is a one-off,
-user-initiated `pickImage(source: ImageSource.gallery)` — three call sites, in
-`onboarding_screen.dart`, `create_post_screen.dart`, and
-`event_create_screen.dart`. `image_picker_android` routes those through the
-Android Photo Picker (falling back to `ACTION_GET_CONTENT` on older devices),
-and neither requires a permission. The plugin does not declare these
-permissions itself; they were added by hand to the app manifest.
+They were needed only because `image_picker_android`'s
+`useAndroidPhotoPicker` **defaults to `false`**, which leaves picking on the
+legacy `ACTION_GET_CONTENT` path. Nothing else in the app touches media
+storage; the plugin declares no such permission itself.
 
-Google's photo and video permissions policy says that apps whose use case is
-one-off selection **must** use the photo picker rather than broad media
-permissions. Declaring "core functionality" for a use case that qualifies for
-the picker is itself a rejection risk. Deleting the two lines makes this
-requirement disappear entirely.
+### What changed
 
-Cost: a manifest edit, a `versionCode` bump, and a rebuild — so a new upload.
+1. **`lib/services/photo_picker_config.dart`** (new) sets
+   `ImagePickerAndroid.useAndroidPhotoPicker = true`; `main()` calls
+   `configureImagePicker()` before `runApp`. The photo picker needs no
+   permission — the user hands over one image and the app never sees the rest
+   of the library. Devices without it fall back to `ACTION_OPEN_DOCUMENT`,
+   also permission-free. Nothing changes for iOS or web.
+2. **`pubspec.yaml`** promotes `image_picker_android` and
+   `image_picker_platform_interface` to direct dependencies — the flag lives on
+   the Android implementation class, which can't be imported transitively.
+3. **The manifest** keeps the four media permissions declared with
+   `tools:node="remove"`, so a future dependency can't merge one back in
+   unnoticed and get the release rejected again. Verify with:
 
-### If you would rather ship the bundle already uploaded
+   ```powershell
+   Select-String uses-permission `
+     build\app\intermediates\merged_manifest\release\processReleaseMainManifest\AndroidManifest.xml
+   ```
 
-The build in Play *does* contain the permission, so you must complete the
-declaration. For the core-functionality description:
+All three pick sites — `onboarding_screen.dart`, `create_post_screen.dart`,
+`event_create_screen.dart` — are one-off `pickImage(source: ImageSource.gallery)`
+calls and needed no edit.
 
-> Members choose a photo from their device to set their profile picture, attach an image to a post in the community feed, or add a cover image when creating an event. Photos are selected one at a time by the member and uploaded only to that profile, post, or event. The app never browses, scans, or reads the device photo library in the background.
+### Why not the declaration form
 
-When asked whether a more privacy-protective alternative (the system photo
-picker) could be used, answer honestly — for this app it could. Expect Google
-to point that out, which is why removing the permissions is the cleaner path.
+The form asks whether a more privacy-protective alternative could be used, and
+for this app the honest answer is yes. Filing it invites the same rejection with
+a longer round trip.
+
+### Resubmitting
+
+Remove the permission from **every** track, not just production — Play scans
+closed/open/internal testing builds too. Any older release still live on a
+testing track with `READ_MEDIA_IMAGES` will keep the flag up. Push 3.0.1+15 to
+each active track, or halt the stale releases, then resubmit via **Publishing
+overview**.
 
 ---
 

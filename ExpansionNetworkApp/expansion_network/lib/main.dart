@@ -13,6 +13,7 @@ import 'beta_feedback/beta_feedback_overlay.dart';
 import 'expansion_release_trace.dart';
 import 'firebase_options.dart';
 import 'router/app_router.dart';
+import 'services/photo_picker_config.dart';
 import 'services/push_notifications_service.dart';
 import 'mortarverse/widgets/mortarverse_sky.dart';
 import 'theme/app_theme.dart';
@@ -21,6 +22,9 @@ import 'widgets/content_suspension_gate.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Gallery picks go through the Android Photo Picker — no media permission, per Play policy.
+  configureImagePicker();
 
   final firebaseOk = await _initFirebase();
   if (!firebaseOk) {

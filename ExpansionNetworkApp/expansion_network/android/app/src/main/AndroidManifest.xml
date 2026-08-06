@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Scanning a member's card QR (mobile_scanner / CameraX). -->
     <uses-permission android:name="android.permission.CAMERA" />
@@ -7,8 +8,15 @@
     <!-- The scanner is a convenience, not a requirement: keep the app installable
          on camera-less devices, where MobileScannerErrorCode.unsupported is shown. -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <!-- Photo and Video Permissions policy: every image pick is a one-off, user-initiated
+         `pickImage(source: ImageSource.gallery)` routed through the Android Photo Picker
+         (see configureImagePicker() in lib/main.dart), which needs no permission at all.
+         These stay declared with tools:node="remove" so a future dependency cannot merge
+         them back in unnoticed and get the release rejected again. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" tools:node="remove" />
     <application
         android:label="MORTAR Alumni Network"
         android:name="${applicationName}"

@@ -66,6 +66,8 @@ export type BetaFeedbackReport = {
   user_agent: string;
   viewport_width: number | null;
   viewport_height: number | null;
+  /** Whether the client produced an image at all, regardless of upload success. */
+  screenshot_captured: boolean;
   screenshot_url: string | null;
   screenshot_path: string | null;
   screenshot_error: string | null;
@@ -253,6 +255,7 @@ export async function submitBetaFeedback(input: SubmitBetaFeedbackInput): Promis
     user_agent: navigator.userAgent,
     viewport_width: window.innerWidth,
     viewport_height: window.innerHeight,
+    screenshot_captured: Boolean(input.screenshotDataUrl),
     screenshot_path: screenshotPath,
     screenshot_url: screenshotUrl,
     ...(screenshotError ? { screenshot_error: screenshotError } : {}),

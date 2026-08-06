@@ -15,6 +15,7 @@ import '../../theme/cosmic_content.dart';
 enum GroupThreadTileVariant {
   /// Rounded card; tap body/footer to open full thread. Author opens profile.
   listPreview,
+
   /// Full post body + comments (e.g. bottom sheet).
   fullDetail,
 }
@@ -39,9 +40,7 @@ Future<void> showGroupThreadDetailSheet(
     isScrollControlled: true,
     useSafeArea: true,
     backgroundColor: Colors.transparent,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-    ),
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
     builder: (ctx) {
       return DraggableScrollableSheet(
         expand: false,
@@ -49,44 +48,54 @@ Future<void> showGroupThreadDetailSheet(
         minChildSize: 0.45,
         maxChildSize: 0.95,
         builder: (context, scrollController) {
-          return Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
-                child: Row(
-                  children: [
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        thread.title?.trim().isNotEmpty == true ? thread.title! : 'Thread',
-                        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+          // The sheet itself is declared transparent so this surface can track
+          // the draggable sheet's bounds instead of the full modal height —
+          // which means the surface has to be supplied here, and has to be
+          // opaque. Without it the group's thread list reads straight through
+          // the open thread.
+          return Material(
+            color: AppColors.background,
+            clipBehavior: Clip.antiAlias,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+                  child: Row(
+                    children: [
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          thread.title?.trim().isNotEmpty == true ? thread.title! : 'Thread',
+                          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close, color: AppColors.foreground),
-                      onPressed: () => Navigator.pop(ctx),
-                    ),
-                  ],
+                      IconButton(
+                        icon: const Icon(Icons.close, color: AppColors.foreground),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const Divider(height: 1, color: AppColors.border),
-              Expanded(
-                child: ListView(
-                  controller: scrollController,
-                  padding: const EdgeInsets.only(bottom: 24),
-                  children: [
-                    FirestoreThreadTile(
-                      variant: GroupThreadTileVariant.fullDetail,
-                      groupId: groupId,
-                      thread: thread,
-                      repo: repo,
-                    ),
-                  ],
+                const Divider(height: 1, color: AppColors.border),
+                Expanded(
+                  child: ListView(
+                    controller: scrollController,
+                    padding: const EdgeInsets.only(bottom: 24),
+                    children: [
+                      FirestoreThreadTile(
+                        variant: GroupThreadTileVariant.fullDetail,
+                        groupId: groupId,
+                        thread: thread,
+                        repo: repo,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           );
         },
       );
@@ -136,12 +145,7 @@ class _FirestoreThreadTileState extends State<FirestoreThreadTile> {
   }
 
   void _openFullThread() {
-    showGroupThreadDetailSheet(
-      context,
-      groupId: widget.groupId,
-      thread: widget.thread,
-      repo: widget.repo,
-    );
+    showGroupThreadDetailSheet(context, groupId: widget.groupId, thread: widget.thread, repo: widget.repo);
   }
 
   Future<void> _vote(int direction) async {
@@ -225,13 +229,7 @@ class _FirestoreThreadTileState extends State<FirestoreThreadTile> {
             stream: widget.repo.watchMyThreadVote(widget.groupId, t.id),
             builder: (context, voteSnap) {
               final my = voteSnap.data;
-              return _VoteColumn(
-                score: score,
-                userVote: my,
-                onUp: () => _vote(1),
-                onDown: () => _vote(-1),
-                size: 20,
-              );
+              return _VoteColumn(score: score, userVote: my, onUp: () => _vote(1), onDown: () => _vote(-1), size: 20);
             },
           );
         },
@@ -247,10 +245,7 @@ class _FirestoreThreadTileState extends State<FirestoreThreadTile> {
             CircleAvatar(
               radius: 12,
               backgroundColor: AppColors.primary,
-              child: Text(
-                t.initials,
-                style: const TextStyle(fontSize: 9, color: AppColors.onPrimary),
-              ),
+              child: Text(t.initials, style: const TextStyle(fontSize: 9, color: AppColors.onPrimary)),
             ),
             const SizedBox(width: 8),
             Expanded(
@@ -295,8 +290,7 @@ class _FirestoreThreadTileState extends State<FirestoreThreadTile> {
             maxLines: previewClamp ? previewMaxLines : null,
             overflow: previewClamp ? TextOverflow.ellipsis : null,
           ),
-          if (previewClamp &&
-              (t.body.length > 120 || t.body.split('\n').length > previewMaxLines)) ...[
+          if (previewClamp && (t.body.length > 120 || t.body.split('\n').length > previewMaxLines)) ...[
             const SizedBox(height: 4),
             Text(
               'Tap card to read full thread',
@@ -419,10 +413,7 @@ class _FirestoreThreadTileState extends State<FirestoreThreadTile> {
     );
 
     if (_fullDetail) {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-        child: inner,
-      );
+      return Padding(padding: const EdgeInsets.fromLTRB(12, 12, 12, 8), child: inner);
     }
 
     return Padding(
@@ -437,10 +428,7 @@ class _FirestoreThreadTileState extends State<FirestoreThreadTile> {
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: _openFullThread,
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: inner,
-          ),
+          child: Padding(padding: const EdgeInsets.all(12), child: inner),
         ),
       ),
     );
@@ -508,7 +496,11 @@ class _VoteColumn extends StatelessWidget {
         IconButton(
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(minWidth: 32, minHeight: 28),
-          icon: Icon(Icons.keyboard_arrow_up, size: size, color: userVote == 1 ? AppColors.primary : AppColors.mutedForeground),
+          icon: Icon(
+            Icons.keyboard_arrow_up,
+            size: size,
+            color: userVote == 1 ? AppColors.primary : AppColors.mutedForeground,
+          ),
           onPressed: disabled ? null : onUp,
         ),
         Text(
@@ -516,13 +508,21 @@ class _VoteColumn extends StatelessWidget {
           style: TextStyle(
             fontSize: size > 16 ? 14 : 12,
             fontWeight: FontWeight.bold,
-            color: userVote == 1 ? AppColors.primary : userVote == -1 ? _destructive : AppColors.foreground,
+            color: userVote == 1
+                ? AppColors.primary
+                : userVote == -1
+                ? _destructive
+                : AppColors.foreground,
           ),
         ),
         IconButton(
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(minWidth: 32, minHeight: 28),
-          icon: Icon(Icons.keyboard_arrow_down, size: size, color: userVote == -1 ? _destructive : AppColors.mutedForeground),
+          icon: Icon(
+            Icons.keyboard_arrow_down,
+            size: size,
+            color: userVote == -1 ? _destructive : AppColors.mutedForeground,
+          ),
           onPressed: disabled ? null : onDown,
         ),
       ],
