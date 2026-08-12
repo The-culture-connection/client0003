@@ -21,7 +21,10 @@ class AdminEventsScreen extends StatelessWidget {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.arrow_back),
-                    onPressed: () => context.pop(),
+                    // Admin pushes deep-link here with no stack to pop.
+                    onPressed: () => context.canPop()
+                        ? context.pop()
+                        : context.go('/mortarverse'),
                   ),
                   Expanded(
                     child: Text(

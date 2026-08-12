@@ -159,7 +159,7 @@ export function SlideViewer({
           await markCourseCompleted(userId, course.id!);
           const { certificatesCreated } = await createSkillCertificatesForCompletedCourse(userId, course);
           if (certificatesCreated) {
-            alert("Congratulations! You've earned new certificate(s). View them in your Data Room.");
+            alert("Congratulations! You've earned new certificate(s). View them in your Data Room, and check your email for instructions on accessing your certificate.");
           }
           const finalProgress = await getCourseProgress(userId, course.id!);
           onProgressUpdate(finalProgress);
@@ -196,7 +196,7 @@ export function SlideViewer({
           await markCourseCompleted(userId, course.id!);
           const { certificatesCreated } = await createSkillCertificatesForCompletedCourse(userId, course);
           if (certificatesCreated) {
-            alert("Congratulations! You've earned new certificate(s). View them in your Data Room.");
+            alert("Congratulations! You've earned new certificate(s). View them in your Data Room, and check your email for instructions on accessing your certificate.");
           }
           const finalProgress = await getCourseProgress(userId, course.id!);
           onProgressUpdate(finalProgress);

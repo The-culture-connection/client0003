@@ -461,15 +461,17 @@ class _HeroBanner extends StatelessWidget {
                     Positioned.fill(
                       child: DecoratedBox(
                         decoration: BoxDecoration(
+                          // Heavier scrim than before: beta feedback flagged
+                          // the name/date as hard to read over bright key art.
                           gradient: LinearGradient(
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                             colors: [
-                              Colors.black.withValues(alpha: 0.15),
-                              Colors.black.withValues(alpha: 0.62),
-                              Colors.black.withValues(alpha: 0.88),
+                              Colors.black.withValues(alpha: 0.3),
+                              Colors.black.withValues(alpha: 0.78),
+                              Colors.black.withValues(alpha: 0.94),
                             ],
-                            stops: const [0, 0.55, 1],
+                            stops: const [0, 0.5, 1],
                           ),
                         ),
                       ),

@@ -5,7 +5,7 @@ import { Button } from "../ui/button";
 import { useAuth } from "../auth/AuthProvider";
 import { useState, useEffect } from "react";
 import { subscribeUserNotifications, markNotificationRead, type UserNotification } from "../../lib/dataroom";
-import { useCart } from "../../lib/cart";
+import { useCart, OPEN_CART_EVENT } from "../../lib/cart";
 import { checkoutShopCart } from "../../lib/stripeCheckout";
 import { releaseStock } from "../../lib/shop";
 import {
@@ -71,35 +71,39 @@ export function WebNavigation() {
     });
   }, [user?.uid]);
 
-  const handleNotificationClick = async (n: UserNotification) => {
+  // Open the cart dropdown when asked from elsewhere (e.g. the Shop's
+  // "Added to cart" toast action).
+  useEffect(() => {
+    const handler = () => setCartOpen(true);
+    window.addEventListener(OPEN_CART_EVENT, handler);
+    return () => window.removeEventListener(OPEN_CART_EVENT, handler);
+  }, []);
+
+  const handleNotificationClick = (n: UserNotification) => {
     if (!user?.uid) return;
-    if (n.type === "certificate_available") {
-      trackEvent(WEB_ANALYTICS_EVENTS.NOTIFICATION_ITEM_CLICKED, {
-        notification_id: n.id,
-        notification_type: n.type,
-        has_certificate_id: Boolean(n.certificateId),
-        has_badge_id: Boolean(n.badgeId),
-      });
-      await markNotificationRead(user.uid, n.id);
+    trackEvent(WEB_ANALYTICS_EVENTS.NOTIFICATION_ITEM_CLICKED, {
+      notification_id: n.id,
+      notification_type: n.type,
+      has_certificate_id: Boolean(n.certificateId),
+      has_badge_id: Boolean(n.badgeId),
+    });
+    // Mark read best-effort in the background — never block navigation on the
+    // backend callable (a slow/failed call made clicks look dead).
+    if (!n.read) {
+      markNotificationRead(user.uid, n.id).catch((err) =>
+        console.error("markNotificationRead failed", err)
+      );
       setUnreadCount((c) => Math.max(0, c - 1));
       setNotifications((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
-      setNotificationsOpen(false);
-      navigate("/data-room");
+    }
+    setNotificationsOpen(false);
+    // Route to the notification's target. Every known type gets a destination;
+    // unknown types land on the Data Room (where earned items live).
+    if (n.type === "badge_earned") {
+      setBadgeSuiteOpen(true);
       return;
     }
-    if (n.type === "badge_earned") {
-      trackEvent(WEB_ANALYTICS_EVENTS.NOTIFICATION_ITEM_CLICKED, {
-        notification_id: n.id,
-        notification_type: n.type,
-        has_certificate_id: false,
-        has_badge_id: Boolean(n.badgeId),
-      });
-      await markNotificationRead(user.uid, n.id);
-      setUnreadCount((c) => Math.max(0, c - 1));
-      setNotifications((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
-      setNotificationsOpen(false);
-      setBadgeSuiteOpen(true);
-    }
+    navigate("/data-room");
   };
 
   const handleSignOut = async () => {
@@ -265,7 +269,7 @@ export function WebNavigation() {
                       <DropdownMenuItem
                         key={n.id}
                         onClick={() => handleNotificationClick(n)}
-                        className={n.read ? "opacity-75" : ""}
+                        className={`cursor-pointer hover:bg-foreground/10 focus:bg-foreground/10 transition-colors ${n.read ? "opacity-75" : ""}`}
                       >
                         <div className="flex flex-col gap-0.5">
                           <span className="font-medium text-foreground">{n.title}</span>

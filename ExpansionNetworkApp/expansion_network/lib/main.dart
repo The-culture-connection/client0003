@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:app_links/app_links.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -39,7 +41,7 @@ Future<void> main() async {
   final pushNotificationsService = PushNotificationsService();
   await pushNotificationsService.initialize(
     onDeepLink: (deepLink) async {
-      router.go(deepLink);
+      _openDeepLink(router, deepLink);
     },
   );
 
@@ -47,7 +49,7 @@ Future<void> main() async {
   appLinks.uriLinkStream.listen((uri) {
     final path = uri.path;
     if (path.isNotEmpty) {
-      router.go(path);
+      _openDeepLink(router, path);
     }
   });
 
@@ -60,6 +62,23 @@ Future<void> main() async {
       ),
     ),
   );
+}
+
+/// Push-notification taps and app links land here.
+///
+/// `go()` REPLACES the navigation stack, which left users stranded on deep
+/// linked screens (a DM opened from a push had no back stack — "can't get out
+/// of this screen"). Prefer `push()` so back returns to wherever the user was;
+/// on a cold start (no navigator mounted yet, e.g. `getInitialMessage`) fall
+/// back to `go()`, and the target screens' own `canPop ? pop : go(<parent>)`
+/// back buttons cover that case.
+void _openDeepLink(GoRouter router, String deepLink) {
+  final navigatorMounted = expansionRootNavigatorKey.currentState != null;
+  if (navigatorMounted) {
+    unawaited(router.push(deepLink));
+  } else {
+    router.go(deepLink);
+  }
 }
 
 /// Returns `false` when the native Firebase bridge is unavailable (common after **Hot Restart**

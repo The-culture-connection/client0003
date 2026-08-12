@@ -21,7 +21,8 @@ type CheckoutResponse = {
 
 async function startCheckout(
   payload: Record<string, unknown>,
-  analyticsEvent: (typeof WEB_ANALYTICS_EVENTS)[keyof typeof WEB_ANALYTICS_EVENTS]
+  analyticsEvent: (typeof WEB_ANALYTICS_EVENTS)[keyof typeof WEB_ANALYTICS_EVENTS],
+  options?: { openInNewTab?: boolean }
 ): Promise<void> {
   const fn = httpsCallable<Record<string, unknown>, CheckoutResponse>(
     functions,
@@ -36,6 +37,12 @@ async function startCheckout(
     session_id: data.session_id,
     amount_cents: data.amount_cents,
   });
+  if (options?.openInNewTab) {
+    // Keep the app open so an abandoned checkout doesn't kick the user out.
+    // Fall back to same-tab navigation if a popup blocker intervenes.
+    const win = window.open(data.checkout_url, "_blank", "noopener,noreferrer");
+    if (win) return;
+  }
   window.location.assign(data.checkout_url);
 }
 
@@ -104,6 +111,7 @@ export async function checkoutShopCart(params: {
       }),
       client_platform: params.clientPlatform ?? "web",
     },
-    WEB_ANALYTICS_EVENTS.PAYMENT_SHOP_CHECKOUT_CLICKED
+    WEB_ANALYTICS_EVENTS.PAYMENT_SHOP_CHECKOUT_CLICKED,
+    { openInNewTab: true }
   );
 }

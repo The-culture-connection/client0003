@@ -627,7 +627,7 @@ service cloud.firestore {
         && request.resource.data.participant_ids == resource.data.participant_ids
         && request.resource.data.created_at == resource.data.created_at
         && request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['updated_at', 'last_preview', 'last_sender_id']);
+          .hasOnly(['updated_at', 'last_preview', 'last_sender_id', 'last_read']);
       allow delete: if false;
     }
 

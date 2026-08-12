@@ -142,6 +142,15 @@ class _ConferenceSessionDetailScreenState extends State<ConferenceSessionDetailS
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         foregroundColor: ConferenceColors.gold,
+        // Explicit: a session-reminder push deep-links here with no stack, and
+        // the automatic AppBar back button simply doesn't render then.
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          tooltip: 'Back',
+          onPressed: () => context.canPop()
+              ? context.pop()
+              : context.go('/conference/schedule'),
+        ),
         title: const Text('SESSION', style: TextStyle(letterSpacing: 1)),
       ),
       body: cid == null

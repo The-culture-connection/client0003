@@ -3,7 +3,7 @@ import {FieldValue} from "firebase-admin/firestore";
 import {onDocumentUpdated} from "firebase-functions/v2/firestore";
 import * as logger from "firebase-functions/logger";
 import {BREVO_API_KEY} from "../email/brevoClient";
-import {graduationAdmittedToAlumniParams} from "../email/buildEmailParams";
+import {displayNameFromUserDoc, graduationAdmittedToAlumniParams} from "../email/buildEmailParams";
 import {sendTransactionalEmail} from "../email/sendTransactionalEmail";
 
 if (getApps().length === 0) {
@@ -54,10 +54,8 @@ export const onUserAlumniAdmittedEmail = onDocumentUpdated(
       return;
     }
 
-    const displayName =
-      (typeof after.displayName === "string" && after.displayName) ||
-      (typeof after.name === "string" && after.name) ||
-      undefined;
+    // Prefer the onboarding profile name (first_name/last_name) over legacy fields.
+    const displayName = displayNameFromUserDoc(after);
 
     const params = graduationAdmittedToAlumniParams({
       userEmail: email,

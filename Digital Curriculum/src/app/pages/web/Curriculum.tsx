@@ -24,7 +24,8 @@ import {
   X,
 } from "lucide-react";
 import React, { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
+import { toast } from "sonner";
 import { GraduationApplicationDialog } from "../../components/graduation/GraduationApplicationDialog";
 import { getUserGraduationApplication, type GraduationApplication } from "../../lib/graduation";
 import {
@@ -70,6 +71,41 @@ export function WebCurriculum() {
   const [userApplication, setUserApplication] = useState<GraduationApplication | null>(null);
   const [loadingApplication, setLoadingApplication] = useState(false);
   const [isAlumni, setIsAlumni] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [highlightNextStep, setHighlightNextStep] = useState(false);
+  const alumniCardRef = React.useRef<HTMLDivElement | null>(null);
+
+  // Arriving right after finishing a course (?course_completed=1): pulse the
+  // Alumni Application card for a few seconds so the next step is obvious.
+  useEffect(() => {
+    if (searchParams.get("course_completed") !== "1") return;
+    setHighlightNextStep(true);
+    toast.success("Course complete — congratulations!", {
+      description:
+        "Your next step is the Alumni Application below. Check your email for instructions on accessing your certificate.",
+      duration: 10000,
+    });
+    setSearchParams({}, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Scroll to the application card once the page has actually rendered it
+  // (after completion redirect or an email deep link to #alumni-application).
+  useEffect(() => {
+    if (loading) return;
+    const wantsScroll = highlightNextStep || window.location.hash === "#alumni-application";
+    if (!wantsScroll) return;
+    const scrollTimer = window.setTimeout(() => {
+      alumniCardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 400);
+    const pulseTimer = highlightNextStep
+      ? window.setTimeout(() => setHighlightNextStep(false), 8000)
+      : undefined;
+    return () => {
+      window.clearTimeout(scrollTimer);
+      if (pulseTimer !== undefined) window.clearTimeout(pulseTimer);
+    };
+  }, [loading, highlightNextStep]);
 
   // Load assigned courses and progress
   const loadCourses = useCallback(async () => {
@@ -529,12 +565,13 @@ export function WebCurriculum() {
       )}
 
       {/* Alumni Application Widget */}
+      <div ref={alumniCardRef} id="alumni-application">
       <Card
         className={`p-6 border transition-all ${
           allCompleted
             ? "bg-gradient-to-br from-accent/10 via-card to-card border-accent/30 shadow-lg"
             : "bg-muted/50 border-border"
-        }`}
+        } ${highlightNextStep ? "animate-pulse ring-4 ring-mortar-brick" : ""}`}
       >
         <div className="flex items-start gap-4">
           <div
@@ -719,12 +756,17 @@ export function WebCurriculum() {
           </div>
         </div>
       </Card>
+      </div>
 
       <GraduationApplicationDialog
         open={applicationDialogOpen}
         onOpenChange={setApplicationDialogOpen}
         onSuccess={() => {
-          alert("Application submitted successfully! We'll review your application and get back to you.");
+          toast.success("Application received!", {
+            description:
+              "The Alumni Manager will respond within 3 business days. Check your email (including spam) for updates.",
+            duration: 12000,
+          });
           loadUserApplication(); // Reload application status
         }}
       />

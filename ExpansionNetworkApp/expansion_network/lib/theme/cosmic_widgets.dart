@@ -174,6 +174,7 @@ class GlowPill extends StatelessWidget {
     this.accent,
     this.expand = false,
     this.dense = false,
+    this.large = false,
   });
 
   final String label;
@@ -187,6 +188,10 @@ class GlowPill extends StatelessWidget {
 
   /// Tighter padding for a pill sitting inside a dense row.
   final bool dense;
+
+  /// Bigger tap target + type for a hero action (e.g. the Mortarverse focus
+  /// card's transition button). Wins over [dense].
+  final bool large;
 
   /// The lit bloom, shared with the other lit controls so a pill, a squircle
   /// button and a FAB are the same light source at different sizes.
@@ -214,9 +219,11 @@ class GlowPill extends StatelessWidget {
         onTap: onTap,
         customBorder: const StadiumBorder(),
         child: Container(
-          padding: dense
-              ? const EdgeInsets.symmetric(horizontal: 16, vertical: 9)
-              : const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
+          padding: large
+              ? const EdgeInsets.symmetric(horizontal: 28, vertical: 15)
+              : dense
+                  ? const EdgeInsets.symmetric(horizontal: 16, vertical: 9)
+                  : const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
           alignment: expand ? Alignment.center : null,
           decoration: BoxDecoration(
             borderRadius: Cosmic.pillRadius,
@@ -230,7 +237,7 @@ class GlowPill extends StatelessWidget {
             textAlign: TextAlign.center,
             style: TextStyle(
               color: enabled ? Colors.white : Cosmic.textFaint,
-              fontSize: 12,
+              fontSize: large ? 13.5 : 12,
               fontWeight: FontWeight.w500,
               letterSpacing: 0.96,
               height: 1,

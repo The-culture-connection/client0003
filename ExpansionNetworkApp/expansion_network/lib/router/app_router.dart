@@ -401,6 +401,17 @@ GoRouter createAppRouter(AuthController auth) {
           ),
         ],
       ),
+      // Push notifications deep-link to bare `/messages` (and `/admin` below)
+      // — without these aliases those taps landed on the router's error page
+      // with no way back. Redirect-only routes: they never build a page.
+      GoRoute(
+        path: '/messages',
+        redirect: (context, state) => '/commons/messages',
+      ),
+      GoRoute(
+        path: '/admin',
+        redirect: (context, state) => '/admin/events',
+      ),
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,
         path: '/messages/:id',

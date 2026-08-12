@@ -65,6 +65,19 @@ class _ConferenceAttendeeSurveyScreenState
   String? _gender;
   String? _income;
   String? _education;
+  String? _heardAboutChoice;
+
+  /// Both beta testers asked for a dropdown here instead of free text.
+  /// "Other" reveals a small free-text field; the submitted field is the same
+  /// `heardAboutUs` string either way.
+  static const List<String> _heardAboutOptions = [
+    'Social media',
+    'Email from MORTAR',
+    'Friend or colleague',
+    'MORTAR staff',
+    'At the event',
+    'Other',
+  ];
 
   bool _loading = true;
   bool _saving = false;
@@ -147,7 +160,9 @@ class _ConferenceAttendeeSurveyScreenState
           state: _state.text,
           zipCode: _zip.text,
           email: _email.text,
-          heardAboutUs: _heardAbout.text,
+          heardAboutUs: _heardAboutChoice == 'Other'
+              ? _heardAbout.text.trim()
+              : (_heardAboutChoice ?? ''),
           phoneNumber: _phone.text,
           raceEthnicity: _resolveChoice(_race, _raceSelfDescribe),
           gender: _resolveChoice(_gender, _genderSelfDescribe),
@@ -298,15 +313,22 @@ class _ConferenceAttendeeSurveyScreenState
                     ),
                     const SizedBox(height: 12),
                     _sectionLabel('A few more questions'),
-                    _field(
-                      controller: _heardAbout,
+                    _dropdown(
                       label: 'How did you hear about Our North Star',
-                      textCapitalization: TextCapitalization.sentences,
-                      maxLines: 2,
-                      validator: (v) => (v == null || v.trim().isEmpty)
-                          ? 'Let us know how you heard about us'
-                          : null,
+                      value: _heardAboutChoice,
+                      options: _heardAboutOptions,
+                      onChanged: (v) => setState(() => _heardAboutChoice = v),
                     ),
+                    if (_heardAboutChoice == 'Other')
+                      _field(
+                        controller: _heardAbout,
+                        label: 'Tell us how you heard about us',
+                        textCapitalization: TextCapitalization.sentences,
+                        maxLines: 2,
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Let us know how you heard about us'
+                            : null,
+                      ),
                     _dropdown(
                       label: 'Race/Ethnicity',
                       value: _race,

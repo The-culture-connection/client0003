@@ -136,13 +136,21 @@ export function Step1Identity({ identityData, onUpdate, onNext }: Step1IdentityP
             onValueChange={handleCohortChange}
           >
             <div className="flex items-center space-x-2">
-              <RadioGroupItem value="in_cohort" id="in_cohort" />
+              <RadioGroupItem
+                value="in_cohort"
+                id="in_cohort"
+                className="border-white/50 text-mortar-brick [&_svg]:fill-mortar-brick"
+              />
               <Label htmlFor="in_cohort" className="cursor-pointer text-foreground">
                 I am in a cohort
               </Label>
             </div>
             <div className="flex items-center space-x-2">
-              <RadioGroupItem value="not_in_cohort" id="not_in_cohort" />
+              <RadioGroupItem
+                value="not_in_cohort"
+                id="not_in_cohort"
+                className="border-white/50 text-mortar-brick [&_svg]:fill-mortar-brick"
+              />
               <Label htmlFor="not_in_cohort" className="cursor-pointer text-foreground">
                 Not in a cohort
               </Label>
@@ -174,7 +182,7 @@ export function Step1Identity({ identityData, onUpdate, onNext }: Step1IdentityP
             onNext();
           }}
           disabled={!canContinue}
-          className="bg-accent hover:bg-accent/90 text-accent-foreground"
+          className="bg-mortar-brick hover:bg-mortar-brick/90 text-white font-bold"
         >
           Continue
         </Button>

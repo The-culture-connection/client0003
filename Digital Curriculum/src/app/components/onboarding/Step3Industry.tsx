@@ -39,7 +39,11 @@ export function Step3Industry({
         <RadioGroup value={industry} onValueChange={handleChange} className="space-y-3">
           {INDUSTRIES.map((ind) => (
             <div key={ind} className="flex items-center space-x-2">
-              <RadioGroupItem value={ind} id={ind} />
+              <RadioGroupItem
+                value={ind}
+                id={ind}
+                className="border-white/50 text-mortar-brick [&_svg]:fill-mortar-brick"
+              />
               <Label htmlFor={ind} className="cursor-pointer text-foreground">
                 {ind}
               </Label>
@@ -55,7 +59,7 @@ export function Step3Industry({
         <Button
           onClick={onNext}
           disabled={!canContinue}
-          className="bg-accent hover:bg-accent/90 text-accent-foreground"
+          className="bg-mortar-brick hover:bg-mortar-brick/90 text-white font-bold"
         >
           Continue
         </Button>

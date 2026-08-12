@@ -1,7 +1,9 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../data/curriculum_onboarding_data.dart';
 import '../profile/profile_edit_sections.dart';
@@ -53,6 +55,10 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   bool _saving = false;
   String? _error;
   String? _photoUrl;
+  bool _uploadingPhoto = false;
+
+  final _picker = ImagePicker();
+  static const int _maxImageBytes = 10 * 1024 * 1024;
 
   final _keyIdentity = GlobalKey();
   final _keyGoals = GlobalKey();
@@ -250,6 +256,62 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     }
   }
 
+  /// Pick a new avatar, upload it, and save `photo_url` immediately.
+  ///
+  /// Uses the same Android-Photo-Picker gallery pick and the same
+  /// `users/{uid}/profile/` Storage path onboarding uploads to, so the
+  /// existing Storage rules cover it.
+  Future<void> _changePhoto() async {
+    if (_saving || _uploadingPhoto) return;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    try {
+      final x = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 2048,
+        maxHeight: 2048,
+        imageQuality: 88,
+      );
+      if (x == null) return;
+      setState(() => _uploadingPhoto = true);
+      final bytes = await x.readAsBytes();
+      if (bytes.length > _maxImageBytes) {
+        throw StateError('Image must be 10MB or smaller.');
+      }
+      final safeName = x.name.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+      final objectName = 'avatar_${DateTime.now().millisecondsSinceEpoch}_$safeName';
+      final ref = FirebaseStorage.instance.ref().child('users/$uid/profile/$objectName');
+      await ref.putData(bytes, SettableMetadata(contentType: _guessImageContentType(safeName)));
+      final url = await ref.getDownloadURL();
+      await _repo.updateProfilePhotoUrl(url);
+      // Best-effort mirror onto the Auth profile (matches onboarding).
+      try {
+        await FirebaseAuth.instance.currentUser?.updatePhotoURL(url);
+      } catch (_) {}
+      if (!mounted) return;
+      setState(() => _photoUrl = url);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile photo updated.')),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not update photo: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _uploadingPhoto = false);
+    }
+  }
+
+  static String _guessImageContentType(String name) {
+    final lower = name.toLowerCase();
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.webp')) return 'image/webp';
+    if (lower.endsWith('.gif')) return 'image/gif';
+    return 'image/jpeg';
+  }
+
   Future<void> _save() async {
     if (!_validateForSection(context)) {
       setState(() {});
@@ -420,35 +482,60 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
               children: [
                 if (show(ProfileEditSections.identity)) ...[
                   Center(
-                    child: Stack(
-                      children: [
-                        ClipOval(
-                          child: _photoUrl != null
-                              ? CachedNetworkImage(
-                                  imageUrl: _photoUrl!,
-                                  width: 96,
-                                  height: 96,
-                                  fit: BoxFit.cover,
-                                  errorWidget: (_, __, ___) => _avatarPlaceholder(),
-                                )
-                              : _avatarPlaceholder(),
+                    child: Semantics(
+                      button: true,
+                      label: 'Change profile photo',
+                      child: GestureDetector(
+                        onTap: (_saving || _uploadingPhoto) ? null : _changePhoto,
+                        child: Stack(
+                          children: [
+                            ClipOval(
+                              child: _photoUrl != null
+                                  ? CachedNetworkImage(
+                                      imageUrl: _photoUrl!,
+                                      width: 96,
+                                      height: 96,
+                                      fit: BoxFit.cover,
+                                      errorWidget: (_, __, ___) => _avatarPlaceholder(),
+                                    )
+                                  : _avatarPlaceholder(),
+                            ),
+                            if (_uploadingPhoto)
+                              Positioned.fill(
+                                child: ClipOval(
+                                  child: ColoredBox(
+                                    color: Colors.black54,
+                                    child: Center(
+                                      child: SizedBox(
+                                        width: 28,
+                                        height: 28,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2.5,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            Positioned(
+                              right: 0,
+                              bottom: 0,
+                              child: CircleAvatar(
+                                radius: 16,
+                                backgroundColor: AppColors.primary,
+                                child: const Icon(Icons.camera_alt, size: 16, color: AppColors.onPrimary),
+                              ),
+                            ),
+                          ],
                         ),
-                        Positioned(
-                          right: 0,
-                          bottom: 0,
-                          child: CircleAvatar(
-                            radius: 16,
-                            backgroundColor: AppColors.primary,
-                            child: const Icon(Icons.camera_alt, size: 16, color: AppColors.onPrimary),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 8),
                   Center(
                     child: Text(
-                      'Photo updates coming soon',
+                      _uploadingPhoto ? 'Uploading photo…' : 'Tap the photo to change it',
                       style: TextStyle(fontSize: 12, color: AppColors.mutedForeground.withValues(alpha: 0.8)),
                     ),
                   ),
@@ -495,6 +582,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                 ],
                 if (show(ProfileEditSections.goals)) ...[
                   _blockTitle(context, 'Business goals', _keyGoals),
+                  _whyWeAsk(),
                   MortarCard(
                     shape: RoundedRectangleBorder(
                       borderRadius: Cosmic.chipRadius,
@@ -527,6 +615,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                 ],
                 if (show(ProfileEditSections.skillsConfident)) ...[
                   _blockTitle(context, 'Skills you’re confident in', _keyConfident),
+                  _whyWeAsk(),
                   Text(
                     'Minimum $_minSkills skills. Expand a category to select.',
                     style: const TextStyle(fontSize: 12, color: AppColors.mutedForeground),
@@ -556,6 +645,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                 ],
                 if (show(ProfileEditSections.skillsDesired)) ...[
                   _blockTitle(context, 'Skills you want to acquire', _keyDesired),
+                  _whyWeAsk(),
                   Text(
                     'Minimum $_minSkills skills.',
                     style: const TextStyle(fontSize: 12, color: AppColors.mutedForeground),
@@ -585,6 +675,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                 ],
                 if (show(ProfileEditSections.industry)) ...[
                   _blockTitle(context, 'Tribe', _keyIndustry),
+                  _whyWeAsk(),
                   MortarCard(
                     shape: RoundedRectangleBorder(
                       borderRadius: Cosmic.chipRadius,
@@ -606,6 +697,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                 ],
                 if (show(ProfileEditSections.work)) ...[
                   _blockTitle(context, 'Ideal work structure', _keyWork),
+                  _whyWeAsk(),
                   MortarCard(
                     shape: RoundedRectangleBorder(
                       borderRadius: Cosmic.chipRadius,
@@ -723,9 +815,32 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     return Padding(
       key: key,
       padding: const EdgeInsets.only(bottom: 12),
+      // Uppercase + tracking, matching the app's section-header idiom. Also a
+      // deliberate fix for "the I in Identity looks like another character":
+      // Poppins' bar-like capital I reads fine inside an all-caps word, where
+      // in title case it looked like a stray lowercase L.
       child: Text(
-        title,
-        style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+        title.toUpperCase(),
+        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.4,
+            ),
+      ),
+    );
+  }
+
+  /// One reusable line telling members why survey-style sections exist.
+  Widget _whyWeAsk() {
+    return const Padding(
+      padding: EdgeInsets.only(bottom: 12),
+      child: Text(
+        'Why we ask: this helps us match you with relevant people, events, and resources.',
+        style: TextStyle(
+          fontSize: 12,
+          color: AppColors.mutedForeground,
+          fontStyle: FontStyle.italic,
+          height: 1.35,
+        ),
       ),
     );
   }

@@ -100,7 +100,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                   children: [
                     IconButton(
                       icon: const Icon(Icons.arrow_back, color: AppColors.foreground),
-                      onPressed: () => context.pop(),
+                      // Deep links land here with no stack — fall back to the inbox.
+                      onPressed: () => context.canPop()
+                          ? context.pop()
+                          : context.go('/commons/messages'),
                     ),
                     NetworkCircleAvatar(imageUrl: contact.userAvatar, radius: 20),
                     const SizedBox(width: 12),

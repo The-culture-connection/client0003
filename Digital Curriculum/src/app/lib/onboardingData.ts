@@ -115,6 +115,7 @@ export const INDUSTRIES = [
   "Retail",
   "Health, Wellness & Personal Care",
   "Professional Services",
+  "Technology",
   "Creative & Media Services",
   "Education & Training",
   "Childcare & Family Services",

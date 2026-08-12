@@ -1,5 +1,5 @@
 import { db, functions } from "./firebase";
-import { collection, addDoc, getDocs, query, where, updateDoc, doc, getDoc, Timestamp } from "firebase/firestore";
+import { collection, addDoc, getDocs, query, where, updateDoc, doc, getDoc, Timestamp, deleteField } from "firebase/firestore";
 import { updateProfile } from "firebase/auth";
 import { httpsCallable } from "firebase/functions";
 import { invalidateCache } from "./cache";
@@ -287,6 +287,33 @@ export async function rejectGraduationApplication(
     });
   } catch (error) {
     console.error("Error rejecting graduation application:", error);
+    throw error;
+  }
+}
+
+/**
+ * Reopen a rejected (or accepted) graduation application — moves it back to
+ * "pending" review so admins can change a decision without the student reapplying.
+ */
+export async function reopenGraduationApplication(
+  applicationId: string,
+  reviewerId: string
+): Promise<void> {
+  try {
+    const applicationRef = doc(db, "GraduationApplications", applicationId);
+
+    await updateDoc(applicationRef, {
+      status: "pending",
+      reviewedAt: Timestamp.now(),
+      reviewedBy: reviewerId,
+      notes: "",
+      selectedTime: deleteField(),
+      // Allow decision emails to send again if the application is re-reviewed.
+      brevo_email_rejected_sent_at: deleteField(),
+      brevo_email_meeting_sent_at: deleteField(),
+    });
+  } catch (error) {
+    console.error("Error reopening graduation application:", error);
     throw error;
   }
 }

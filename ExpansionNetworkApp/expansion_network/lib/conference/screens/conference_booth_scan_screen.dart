@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -37,12 +38,22 @@ class _ConferenceBoothScanScreenState extends State<ConferenceBoothScanScreen> {
   Future<ScanOutcome> _onCode(String raw) async {
     final sponsorId = parseBoothPayload(raw);
     if (sponsorId == null) {
-      // A member card shares the scheme but not the host — name it specifically
-      // so the "wrong code" case is not a dead end.
-      final isMemberCard = parseMemberCardPayload(raw) != null;
-      _toast(isMemberCard
-          ? 'That’s a member card, not a booth code.'
-          : 'That’s not a booth code.');
+      // A member card shares the scheme but not the host. Rather than a dead
+      // end, scanning another member here still opens the chat — and the
+      // camera resumes on return so more codes can be scanned.
+      final memberUid = parseMemberCardPayload(raw);
+      if (memberUid != null) {
+        if (memberUid == FirebaseAuth.instance.currentUser?.uid) {
+          _toast('That’s your own card 🙂');
+          return ScanOutcome.keepScanning;
+        }
+        _toast('That’s a member card — opening a chat.');
+        // Awaited so the camera restarts once the user backs out of the chat.
+        await context.push<void>('/messages/direct/$memberUid');
+        if (!mounted) return ScanOutcome.handled;
+        return ScanOutcome.keepScanning;
+      }
+      _toast('That’s not a booth code — point at a sponsor’s QR.');
       return ScanOutcome.keepScanning;
     }
 

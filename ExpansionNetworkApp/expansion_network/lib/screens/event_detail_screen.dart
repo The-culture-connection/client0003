@@ -153,16 +153,20 @@ class _EventDetailScreenState extends State<EventDetailScreen>
     if (uid == null) return;
     final wasRegistered = e.isRegistered(uid);
     if (!wasRegistered) {
-      await ExpansionAnalytics.log(
+      // Never awaited: an analytics write that can't reach the server must
+      // not block the RSVP ("RSVP just spinning").
+      unawaited(ExpansionAnalytics.log(
         'event_register_clicked',
         entityId: widget.eventId,
         sourceScreen: 'event_detail',
-      );
+      ));
     }
     setState(() => _busy = true);
     try {
       if (wasRegistered) {
-        await _events.unregister(widget.eventId);
+        // Registration runs in a Firestore transaction, which needs the
+        // server; cap the wait so a dead connection can't spin forever.
+        await _events.unregister(widget.eventId).timeout(const Duration(seconds: 15));
       } else if (e.resolvedTicketPriceCents > 0) {
         _awaitingCheckoutReturn = true;
         await _stripeCheckout.checkoutEventTicket(
@@ -172,25 +176,25 @@ class _EventDetailScreenState extends State<EventDetailScreen>
         if (mounted) setState(() => _busy = false);
         return;
       } else {
-        await _events.register(widget.eventId);
+        await _events.register(widget.eventId).timeout(const Duration(seconds: 15));
       }
       await _load();
       if (!mounted) return;
       final evAfter = _event;
       if (evAfter != null) {
         if (!wasRegistered && evAfter.isRegistered(uid)) {
-          await ExpansionAnalytics.log(
+          unawaited(ExpansionAnalytics.log(
             'event_registered',
             entityId: widget.eventId,
             sourceScreen: 'event_detail',
-          );
+          ));
         }
         if (wasRegistered && !evAfter.isRegistered(uid)) {
-          await ExpansionAnalytics.log(
+          unawaited(ExpansionAnalytics.log(
             'event_unregistered',
             entityId: widget.eventId,
             sourceScreen: 'event_detail',
-          );
+          ));
         }
       }
       if (!wasRegistered) {
@@ -198,6 +202,14 @@ class _EventDetailScreenState extends State<EventDetailScreen>
         if (ev != null && ev.date != null && ev.isRegistered(uid) && mounted) {
           await showPostRegisterCalendarSheet(context, ev);
         }
+      }
+    } on TimeoutException {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('That took too long — check your connection and try again.'),
+          ),
+        );
       }
     } catch (err) {
       unawaited(
@@ -390,14 +402,66 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                                         busy: _busy,
                                         onConfirmed: () => _toggleRegister(e),
                                       )
-                                    else
+                                    else if (u != null && e.isRegistered(u)) ...[
+                                      // Already registered: say so plainly
+                                      // instead of re-offering the RSVP
+                                      // button, with cancelling demoted to a
+                                      // secondary action.
+                                      Container(
+                                        width: double.infinity,
+                                        padding: const EdgeInsets.symmetric(vertical: 14),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primary.withValues(alpha: 0.12),
+                                          borderRadius: Cosmic.chipRadius,
+                                          border: Border.all(
+                                            color: AppColors.primary.withValues(alpha: 0.45),
+                                          ),
+                                        ),
+                                        child: const Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Icon(Icons.check_circle_rounded,
+                                                size: 20, color: AppColors.primary),
+                                            SizedBox(width: 8),
+                                            Text(
+                                              "You're registered",
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                                color: AppColors.foreground,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      SizedBox(
+                                        width: double.infinity,
+                                        child: OutlinedButton(
+                                          onPressed: _busy ? null : () => _toggleRegister(e),
+                                          style: OutlinedButton.styleFrom(
+                                            foregroundColor: AppColors.mutedForeground,
+                                            side: const BorderSide(color: AppColors.border),
+                                            padding: const EdgeInsets.symmetric(vertical: 12),
+                                          ),
+                                          child: _busy
+                                              ? const SizedBox(
+                                                  height: 20,
+                                                  width: 20,
+                                                  child: CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                      color: AppColors.mutedForeground),
+                                                )
+                                              : const Text('Cancel RSVP'),
+                                        ),
+                                      ),
+                                    ] else
                                       SizedBox(
                                         width: double.infinity,
                                         child: ElevatedButton(
                                           onPressed: (!e.isPublished ||
                                                   _busy ||
                                                   u == null ||
-                                                  (e.isFull && !e.isRegistered(u)))
+                                                  e.isFull)
                                               ? null
                                               : () => _toggleRegister(e),
                                           style: ElevatedButton.styleFrom(
@@ -415,13 +479,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                                                   width: 22,
                                                   child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.onPrimary),
                                                 )
-                                              : Text(
-                                                  u != null && e.isRegistered(u)
-                                                      ? 'Unregister'
-                                                      : e.isFull
-                                                          ? 'Event full'
-                                                          : 'Register',
-                                                ),
+                                              : Text(e.isFull ? 'Event full' : 'Register'),
                                         ),
                                       ),
                                   ],

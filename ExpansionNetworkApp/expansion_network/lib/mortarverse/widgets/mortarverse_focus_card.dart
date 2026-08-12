@@ -302,7 +302,9 @@ class _CardBody extends StatelessWidget {
           const SizedBox(height: 18),
           Align(
             alignment: Alignment.centerRight,
-            child: GlowPill(label: item.ctaLabel, onTap: onCta),
+            // `large`: beta feedback asked for a bigger, more visible
+            // transition button.
+            child: GlowPill(label: item.ctaLabel, onTap: onCta, large: true),
           ),
         ],
       ),

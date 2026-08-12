@@ -37,7 +37,7 @@ export function Step2Goals({ selectedGoals, onUpdate, onNext }: Step2GoalsProps)
               id={goal}
               checked={goals.includes(goal)}
               onCheckedChange={() => toggleGoal(goal)}
-              className="mt-1"
+              className="mt-1 border-white/50 data-[state=checked]:bg-mortar-brick data-[state=checked]:border-mortar-brick data-[state=checked]:text-white"
             />
             <label
               htmlFor={goal}
@@ -53,7 +53,7 @@ export function Step2Goals({ selectedGoals, onUpdate, onNext }: Step2GoalsProps)
         <Button
           onClick={onNext}
           disabled={!canContinue}
-          className="bg-accent hover:bg-accent/90 text-accent-foreground"
+          className="bg-mortar-brick hover:bg-mortar-brick/90 text-white font-bold"
         >
           Continue
         </Button>

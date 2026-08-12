@@ -16,7 +16,9 @@ type JsonObject = Record<string, unknown>;
 
 export function firstNameFrom(userName?: string | null, email?: string | null): string {
   const name = userName?.trim();
-  if (name) {
+  // A stored "name" that is actually an email address must not be greeted
+  // verbatim ("Hi jane.doe@example.com") — treat it as missing.
+  if (name && !name.includes("@")) {
     const part = name.split(/\s+/)[0];
     if (part) return part;
   }
@@ -26,6 +28,31 @@ export function firstNameFrom(userName?: string | null, email?: string | null): 
     if (local) return local;
   }
   return "there";
+}
+
+/**
+ * Resolve a user's display name from their Firestore `users/{uid}` doc.
+ * Onboarding stores `first_name`/`last_name`; `displayName`/`name` are legacy.
+ */
+export function displayNameFromUserDoc(
+  data: Record<string, unknown> | undefined | null
+): string | undefined {
+  if (!data) return undefined;
+  const first = typeof data.first_name === "string" ? data.first_name.trim() : "";
+  const last = typeof data.last_name === "string" ? data.last_name.trim() : "";
+  const full = [first, last].filter(Boolean).join(" ");
+  if (full) return full;
+  const dn = typeof data.displayName === "string" ? data.displayName.trim() : "";
+  if (dn && !dn.includes("@")) return dn;
+  const nm = typeof data.name === "string" ? data.name.trim() : "";
+  if (nm && !nm.includes("@")) return nm;
+  return undefined;
+}
+
+/** Deep link to the Curriculum page's Alumni Application section. */
+export function graduationApplicationUrl(): string {
+  const base = (sharedFooterParams().platform_url as string).replace(/\/$/, "");
+  return `${base}/curriculum#alumni-application`;
 }
 
 export function sharedFooterParams(overrides?: {
@@ -49,6 +76,7 @@ export function graduationMeetingTimeSelectedParams(input: {
     first_name: input.first_name ?? firstNameFrom(input.userName, input.userEmail),
     meeting_time: formatMeetingTimeLabel(input.meeting_time),
     notes: (input.notes?.trim() || "See you at your graduation meeting."),
+    application_url: graduationApplicationUrl(),
     ...sharedFooterParams(),
   };
 }
@@ -62,6 +90,7 @@ export function graduationAdmittedToAlumniParams(input: {
   return {
     first_name: input.first_name ?? firstNameFrom(input.userName, input.userEmail),
     next_steps: input.next_steps?.trim() || ADMITTED_ALUMNI_NEXT_STEPS,
+    application_url: graduationApplicationUrl(),
     ...sharedFooterParams(),
   };
 }
@@ -75,6 +104,7 @@ export function graduationNotAdmittedParams(input: {
   return {
     first_name: input.first_name ?? firstNameFrom(input.userName, input.userEmail),
     notes: (input.notes?.trim() || "Please contact us if you have questions about this decision."),
+    application_url: graduationApplicationUrl(),
     ...sharedFooterParams(),
   };
 }

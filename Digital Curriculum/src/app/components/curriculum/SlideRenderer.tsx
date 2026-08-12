@@ -29,13 +29,12 @@ export function SlideRenderer({ slide, blocks, className }: SlideRendererProps) 
   return (
     <div
       className={cn(
-        "relative w-full h-full min-h-screen p-8 flex flex-col",
+        "relative w-full h-full min-h-screen p-4 md:p-6 flex flex-col",
         !customBg && "lesson-card-surface",
         className
       )}
       style={{ ...(customBg ? { backgroundColor: customBg } : {}), color: textColor }}
     >
-      {!customBg && <div aria-hidden className="verse-texture-bottom" />}
       <div
         className={cn(
           "relative z-10 flex-1 flex flex-col justify-center space-y-6",

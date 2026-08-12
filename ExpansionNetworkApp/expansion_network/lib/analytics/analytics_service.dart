@@ -163,6 +163,16 @@ class FirestoreAnalyticsSink implements AnalyticsSink {
 
   @override
   Future<void> write(Map<String, dynamic> document) async {
-    await _db.collection(kExpansionAnalyticsCollection).add(document);
+    // Fire-and-forget. Firestore's `add()` only completes once the SERVER
+    // acknowledges the write, which never happens while offline — and several
+    // user flows `await` analytics logs, so a flaky connection froze their
+    // spinners (event RSVP, DM send). Analytics must never block UX: the
+    // write is queued locally and syncs when the connection recovers.
+    unawaited(
+      _db.collection(kExpansionAnalyticsCollection).add(document).then<void>(
+            (_) {},
+            onError: (Object e) => debugPrint('[analytics] write failed: $e'),
+          ),
+    );
   }
 }

@@ -401,6 +401,7 @@ export function WebDashboard() {
               </span>
             </div>
             <div className="flex items-center gap-3">
+              {/* Single CTA — beta feedback: two "View Course" buttons were confusing */}
               <Button
                 size="sm"
                 className="rounded-none glow-brick bg-verse hover:bg-verse/90 text-white font-bold"
@@ -413,15 +414,6 @@ export function WebDashboard() {
                     ? "View Course"
                     : "Browse Curriculum"}
               </Button>
-              {nextStepCourse?.id && (
-                <Button
-                  size="sm"
-                  className="rounded-none bg-black text-white hover:bg-black/80 font-headline font-bold uppercase tracking-widest text-xs"
-                  onClick={() => navigate(`/courses/${nextStepCourse.id}`)}
-                >
-                  View Course
-                </Button>
-              )}
             </div>
           </div>
           <div className="relative w-20 h-20 rounded-full glow-brick">

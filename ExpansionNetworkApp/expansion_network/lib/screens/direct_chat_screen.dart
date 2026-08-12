@@ -48,6 +48,9 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
     super.initState();
     _pendingAttachType = widget.initialAttachmentType;
     _pendingAttachId = widget.initialAttachmentId;
+    // Opening the thread counts as reading it — clears the Mortarverse
+    // "conversation waiting" badge for this thread.
+    unawaited(_dm.markThreadRead(partnerUid: widget.userId));
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid != null) {
       unawaited(
@@ -81,6 +84,8 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
 
   @override
   void dispose() {
+    // Anything that arrived while the screen was open has been seen too.
+    unawaited(_dm.markThreadRead(partnerUid: widget.userId));
     _controller.dispose();
     super.dispose();
   }
@@ -106,25 +111,47 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
     if (text.isEmpty) return;
     setState(() => _sending = true);
     try {
-      await _dm.sendMessage(
-        partnerUid: widget.userId,
-        text: text,
-        attachmentType: _pendingAttachType,
-        attachmentId: _pendingAttachId,
-      );
-      await ExpansionAnalytics.log(
+      // Firestore writes only complete on SERVER ack — on a flaky connection
+      // the commit future can hang indefinitely ("send msg just spinning").
+      // The message is queued locally either way, so cap the wait.
+      await _dm
+          .sendMessage(
+            partnerUid: widget.userId,
+            text: text,
+            attachmentType: _pendingAttachType,
+            attachmentId: _pendingAttachId,
+          )
+          .timeout(const Duration(seconds: 12));
+      unawaited(ExpansionAnalytics.log(
         'direct_chat_message_sent',
         entityId: widget.userId,
         sourceScreen: 'direct_chat',
         attachmentType: _pendingAttachType,
         extra: <String, Object?>{'attachment_id': _pendingAttachId ?? ''},
-      );
+      ));
       _controller.clear();
       if (mounted) {
         setState(() {
           _pendingAttachType = null;
           _pendingAttachId = null;
         });
+      }
+    } on TimeoutException {
+      // The write is queued and will sync when the connection recovers —
+      // don't leave the user stuck on a spinner.
+      _controller.clear();
+      if (mounted) {
+        setState(() {
+          _pendingAttachType = null;
+          _pendingAttachId = null;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Slow connection — your message will send as soon as you\'re back online.',
+            ),
+          ),
+        );
       }
     } catch (e) {
       unawaited(
@@ -164,7 +191,13 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
                   children: [
                     IconButton(
                       icon: const Icon(Icons.arrow_back, color: AppColors.mutedForeground),
-                      onPressed: () => context.pop(),
+                      tooltip: 'Back',
+                      // A push notification or match flow can land here with no
+                      // stack to pop ("stuck in the direct messenger") — fall
+                      // back to the messages inbox.
+                      onPressed: () => context.canPop()
+                          ? context.pop()
+                          : context.go('/commons/messages'),
                     ),
                     FutureBuilder<String>(
                       future: _users.getDisplayNameForUser(widget.userId),

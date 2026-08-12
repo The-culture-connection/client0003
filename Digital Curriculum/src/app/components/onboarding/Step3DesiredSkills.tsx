@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { Checkbox } from "../ui/checkbox";
+import { Rocket } from "lucide-react";
 import { SKILL_CATEGORIES, ALL_SKILLS, type SkillCategory } from "../../lib/onboardingData";
 
 interface Step3DesiredSkillsProps {
@@ -33,6 +34,18 @@ export function Step3DesiredSkills({
   return (
     <div className="max-w-4xl mx-auto p-8">
       <div className="mb-8">
+        <div className="mb-4 flex items-start gap-3 rounded-lg border-2 border-mortar-yellow/70 bg-mortar-yellow/10 p-4">
+          <Rocket className="w-6 h-6 text-mortar-yellow shrink-0 mt-0.5" aria-hidden />
+          <div>
+            <p className="font-bold text-foreground uppercase tracking-wide text-sm">
+              Skills you WANT TO LEARN — different from the last step!
+            </p>
+            <p className="text-sm text-foreground/80 mt-1">
+              The previous step was what you already know. This one is what you'd like to grow into —
+              it shapes what we teach you and powers the matching algorithm in the alumni app.
+            </p>
+          </div>
+        </div>
         <h1 className="text-3xl font-bold text-foreground mb-2">What skills do you want to acquire?</h1>
         <p className="text-muted-foreground">Select a minimum of 3 skills (required)</p>
         <p className="text-sm text-muted-foreground mt-1">
@@ -68,7 +81,7 @@ export function Step3DesiredSkills({
                         id={`desired-${skill}`}
                         checked={skills.includes(skill)}
                         onCheckedChange={() => toggleSkill(skill)}
-                        className="mt-1"
+                        className="mt-1 border-white/50 data-[state=checked]:bg-mortar-brick data-[state=checked]:border-mortar-brick data-[state=checked]:text-white"
                       />
                       <label
                         htmlFor={`desired-${skill}`}
@@ -92,7 +105,7 @@ export function Step3DesiredSkills({
         <Button
           onClick={onNext}
           disabled={!canContinue}
-          className="bg-accent hover:bg-accent/90 text-accent-foreground"
+          className="bg-mortar-brick hover:bg-mortar-brick/90 text-white font-bold"
         >
           Continue
         </Button>

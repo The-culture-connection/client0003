@@ -713,6 +713,23 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
                 validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter your code' : null,
                 onFieldSubmitted: (_) => _busy ? null : _submit(),
               ),
+              const SizedBox(height: 10),
+              // Testers asked where codes come from — say it right at the field.
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.mark_email_read_outlined,
+                      size: 15, color: Cosmic.textMuted),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Your registration code was emailed to you — check your '
+                      'inbox (and spam) for it.',
+                      style: TextStyle(color: Cosmic.textMuted, fontSize: 12, height: 1.35),
+                    ),
+                  ),
+                ],
+              ),
               if (_error != null) ...[
                 const SizedBox(height: 14),
                 Row(

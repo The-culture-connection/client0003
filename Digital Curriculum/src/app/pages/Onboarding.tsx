@@ -310,7 +310,7 @@ export function OnboardingPage() {
               cancelAutoAdvance();
               navigate("/mortar-info");
             }}
-            className="bg-accent hover:bg-accent/90 text-accent-foreground"
+            className="bg-mortar-brick hover:bg-mortar-brick/90 text-white font-bold"
           >
             Continue
           </Button>

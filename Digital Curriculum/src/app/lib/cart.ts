@@ -3,6 +3,16 @@ import type { ShopCategory, ShopSize } from "./shop";
 
 export type CartItemKey = string;
 
+/** Window event asking the top navigation to open the cart dropdown. */
+export const OPEN_CART_EVENT = "mortar:open-cart";
+
+/** Open the nav cart dropdown from anywhere (e.g. an "Added to cart" toast). */
+export function requestOpenCartDropdown(): void {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(OPEN_CART_EVENT));
+  }
+}
+
 export interface CartLine {
   itemId: string;
   name: string;

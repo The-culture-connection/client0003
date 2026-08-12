@@ -129,9 +129,18 @@ class _ProfileBody extends StatelessWidget {
           SafeArea(
             bottom: false,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
+              padding: const EdgeInsets.fromLTRB(4, 8, 8, 0),
               child: Row(
                 children: [
+                  // Obvious way back out of the Commons ("not intuitive to
+                  // navigate out of this page back to the general page").
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back),
+                    tooltip: 'Back to the MORTARVERSE',
+                    onPressed: () => context.canPop()
+                        ? context.pop()
+                        : context.go('/mortarverse'),
+                  ),
                   Text(
                     'Profile',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),

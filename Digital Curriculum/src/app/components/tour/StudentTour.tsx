@@ -60,6 +60,12 @@ const steps: Step[] = [
       "Browse MORTAR merchandise. Add items to your cart and check out securely.",
   },
   {
+    target: '[data-tour="nav-theme-toggle"]',
+    title: "Light or dark mode",
+    content:
+      "The app starts in dark mode. Prefer a lighter look? Click the sun/moon icon here anytime to switch between dark and light themes.",
+  },
+  {
     target: '[data-tour="nav-notifications"]',
     title: "Notifications",
     content:

@@ -162,13 +162,17 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         authorName: authorName,
         imageUrl: imageUrl,
       );
-      await ExpansionAnalytics.log(
+      unawaited(ExpansionAnalytics.log(
         'feed_post_create_succeeded',
         entityId: id,
         sourceScreen: 'feed_post_compose',
-      );
+      ));
       if (!mounted) return;
-      context.pop();
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go('/home');
+      }
       pushFeedPostDetail(context, id);
     } catch (e) {
       if (mounted) {
@@ -198,7 +202,10 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                   children: [
                     IconButton(
                       icon: const Icon(Icons.arrow_back),
-                      onPressed: _saving ? null : () => context.pop(),
+                      tooltip: 'Back',
+                      onPressed: _saving
+                          ? null
+                          : () => context.canPop() ? context.pop() : context.go('/home'),
                     ),
                     Expanded(
                       child: Text(

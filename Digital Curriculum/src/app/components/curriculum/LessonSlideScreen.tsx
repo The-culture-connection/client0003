@@ -29,14 +29,12 @@ export function LessonSlideScreen({
   const [openPopupId, setOpenPopupId] = useState<string | null>(null);
 
   return (
-    <div className="w-full h-full flex flex-col items-center justify-center gap-4 p-4 md:p-6">
+    <div className="w-full h-full flex flex-col items-center justify-center gap-3 p-2 md:p-3">
       {/* Viewer window — sized to the viewport height (not a fixed 16:9
           letterbox) so more of each tall slide is visible at once; vertical
-          scroll for the rest. New card style: dark gradient surface with the
-          verse-color grunge texture pinned to the card bottom (visible
-          wherever the slide render doesn't cover it). */}
-      <div className="relative w-full max-w-5xl h-[72vh] min-h-[420px] overflow-hidden rounded-xl lesson-card-surface shadow-2xl ring-1 ring-black/10">
-        <div aria-hidden className="verse-texture-bottom" />
+          scroll for the rest. Content fills nearly the whole page (beta
+          feedback: less scrolling, no decorative texture on the surface). */}
+      <div className="relative w-full max-w-[1400px] h-[calc(100vh-150px)] min-h-[420px] overflow-hidden rounded-xl lesson-card-surface shadow-2xl ring-1 ring-black/10">
         <div className="absolute inset-0 overflow-y-auto">
           <div className="relative w-full">
             <img src={src} alt={alt} className="w-full block" draggable={false} />

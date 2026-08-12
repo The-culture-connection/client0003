@@ -1,9 +1,10 @@
 import {getApps, initializeApp} from "firebase-admin/app";
-import {FieldValue} from "firebase-admin/firestore";
+import {FieldValue, getFirestore} from "firebase-admin/firestore";
 import {onDocumentUpdated} from "firebase-functions/v2/firestore";
 import * as logger from "firebase-functions/logger";
 import {BREVO_API_KEY} from "../email/brevoClient";
 import {
+  displayNameFromUserDoc,
   graduationMeetingTimeSelectedParams,
   graduationNotAdmittedParams,
 } from "../email/buildEmailParams";
@@ -15,6 +16,23 @@ if (getApps().length === 0) {
 
 function str(v: unknown): string {
   return typeof v === "string" ? v.trim() : "";
+}
+
+/**
+ * The application doc's `userName` is `displayName || email` from the client,
+ * so it is often just the email address. Prefer the real name from the user's
+ * profile doc (first_name/last_name saved during onboarding).
+ */
+async function resolveUserName(userId: string, fallback: string): Promise<string> {
+  if (!userId) return fallback;
+  try {
+    const snap = await getFirestore().collection("users").doc(userId).get();
+    const fromProfile = displayNameFromUserDoc(snap.data());
+    return fromProfile || fallback;
+  } catch (err) {
+    logger.warn("Could not resolve user profile name for graduation email", {userId, err});
+    return fallback;
+  }
 }
 
 export const onGraduationApplicationEmail = onDocumentUpdated(
@@ -52,7 +70,7 @@ export const onGraduationApplicationEmail = onDocumentUpdated(
 
     if (meetingTimeNewlySet && !meetingAlreadySent) {
       const params = graduationMeetingTimeSelectedParams({
-        userName,
+        userName: await resolveUserName(userId, userName),
         userEmail,
         meeting_time: nextTime,
         notes,
@@ -74,7 +92,7 @@ export const onGraduationApplicationEmail = onDocumentUpdated(
     const rejectedNow = nextStatus === "rejected" && prevStatus !== "rejected";
     if (rejectedNow && !rejectAlreadySent) {
       const params = graduationNotAdmittedParams({
-        userName,
+        userName: await resolveUserName(userId, userName),
         userEmail,
         notes,
       });

@@ -14,6 +14,7 @@ import '../../conference/services/conference_repository.dart';
 import '../../conference/theme/conference_colors.dart';
 import '../../models/community_event.dart';
 import '../../services/events_repository.dart';
+import '../../services/user_profile_repository.dart';
 import '../../theme/app_theme.dart';
 import '../mortarverse_signals.dart';
 import '../../theme/cosmic_widgets.dart';
@@ -90,6 +91,12 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
       sourceScreen: 'mortarverse',
       extra: {'action_type': item.type},
     ));
+    // "Anything waiting, show the user a pop up of what that is" — tapping the
+    // waiting-messages item explains exactly what is waiting before opening.
+    if (item.type == 'messages') {
+      _showWaitingExplainer();
+      return;
+    }
     if (item.type == 'conference') {
       // The gate needs to know which conference it is gating.
       unawaited(_activeConferenceFuture.then((c) {
@@ -115,6 +122,69 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
     '/card',
   ];
 
+  /// Partner uids of the threads currently waiting on the user (latest value
+  /// from [MortarverseSignalsService.watchWaitingConversationPartners]).
+  List<String> _waitingPartnerIds = const [];
+
+  /// Small explainer of what "waiting" means, listing who is waiting, with a
+  /// direct path to the inbox.
+  void _showWaitingExplainer() {
+    final partnerIds = _waitingPartnerIds.take(6).toList();
+    final users = UserProfileRepository();
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Waiting on you'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'These conversations have messages you haven\'t opened yet:',
+              style: TextStyle(fontSize: 13, color: AppColors.mutedForeground),
+            ),
+            const SizedBox(height: 12),
+            if (partnerIds.isEmpty)
+              const Text(
+                'Nothing waiting right now.',
+                style: TextStyle(fontSize: 13, color: AppColors.mutedForeground),
+              )
+            else
+              for (final id in partnerIds)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: FutureBuilder<String>(
+                    future: users.getDisplayNameForUser(id),
+                    builder: (context, snap) => Text(
+                      '• Unread message from ${snap.data ?? 'a member'}',
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  ),
+                ),
+            if (_waitingPartnerIds.length > partnerIds.length)
+              Text(
+                '…and ${_waitingPartnerIds.length - partnerIds.length} more.',
+                style: const TextStyle(fontSize: 13, color: AppColors.mutedForeground),
+              ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Close'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              context.go('/commons/messages');
+            },
+            child: const Text('Open messages'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _reportShown(MortarverseAction item) {
     unawaited(ExpansionAnalytics.log(
       'mortarverse_action_widget_shown',
@@ -132,10 +202,11 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
       body: Stack(
         children: [
           SafeArea(
-            child: StreamBuilder<int>(
-              stream: _signals.watchWaitingConversations(),
+            child: StreamBuilder<List<String>>(
+              stream: _signals.watchWaitingConversationPartners(),
               builder: (context, waitingSnap) {
-                final waiting = waitingSnap.data ?? 0;
+                _waitingPartnerIds = waitingSnap.data ?? const [];
+                final waiting = _waitingPartnerIds.length;
                 return StreamBuilder<MortarverseSignals>(
                   stream: _signals.watchProfileSignals(),
                   builder: (context, profileSnap) {

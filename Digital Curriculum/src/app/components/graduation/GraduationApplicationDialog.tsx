@@ -17,6 +17,15 @@ interface GraduationApplicationDialogProps {
   onSuccess?: () => void;
 }
 
+/** Business hours for pitch meetings: Mon–Fri, 9am–5pm ET. */
+const BUSINESS_START = "09:00";
+const BUSINESS_END = "17:00";
+
+function isWeekend(date: Date): boolean {
+  const day = date.getDay();
+  return day === 0 || day === 6;
+}
+
 export function GraduationApplicationDialog({
   open,
   onOpenChange,
@@ -29,13 +38,18 @@ export function GraduationApplicationDialog({
 
   const addAvailabilitySlot = () => {
     if (availabilitySlots.length >= 3) {
-      setError("You can add a maximum of 3 availability slots.");
+      setError("You can add a maximum of 3 meeting time options.");
       return;
+    }
+    // Default to the next business day so the pre-filled date is always valid.
+    const defaultDate = new Date();
+    while (isWeekend(defaultDate)) {
+      defaultDate.setDate(defaultDate.getDate() + 1);
     }
     setAvailabilitySlots([
       ...availabilitySlots,
       {
-        date: new Date(),
+        date: defaultDate,
         startTime: "",
         endTime: "",
       },
@@ -56,7 +70,7 @@ export function GraduationApplicationDialog({
 
   const handleSubmit = async () => {
     if (availabilitySlots.length === 0) {
-      setError("Please add at least one availability slot.");
+      setError("Please add at least one meeting time option.");
       return;
     }
 
@@ -64,25 +78,33 @@ export function GraduationApplicationDialog({
     for (let i = 0; i < availabilitySlots.length; i++) {
       const slot = availabilitySlots[i];
       if (!slot.date) {
-        setError(`Slot ${i + 1}: Please select a date.`);
+        setError(`Option ${i + 1}: Please select a date.`);
         return;
       }
       if (!slot.startTime || !slot.endTime) {
-        setError(`Slot ${i + 1}: Please provide both start and end times.`);
+        setError(`Option ${i + 1}: Please provide both start and end times.`);
         return;
       }
       if (slot.startTime >= slot.endTime) {
-        setError(`Slot ${i + 1}: End time must be after start time.`);
+        setError(`Option ${i + 1}: End time must be after start time.`);
         return;
       }
-      
+      if (slot.startTime < BUSINESS_START || slot.endTime > BUSINESS_END) {
+        setError(`Option ${i + 1}: Times must be within business hours (9:00 AM – 5:00 PM ET).`);
+        return;
+      }
+      if (isWeekend(slot.date)) {
+        setError(`Option ${i + 1}: Please choose a weekday (Mon–Fri).`);
+        return;
+      }
+
       // Check if date is in the past
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const slotDate = new Date(slot.date);
       slotDate.setHours(0, 0, 0, 0);
       if (slotDate < today) {
-        setError(`Slot ${i + 1}: Date cannot be in the past.`);
+        setError(`Option ${i + 1}: Date cannot be in the past.`);
         return;
       }
     }
@@ -122,7 +144,9 @@ export function GraduationApplicationDialog({
         <DialogHeader>
           <DialogTitle>Alumni Application — Add Your Availability</DialogTitle>
           <DialogDescription>
-            Add up to 3 separate days with time ranges when you're available for your pitch. The admin will select a time from your availability windows.
+            Choose up to three times that work for you for your pitch meeting, during business
+            hours (Mon–Fri, 9am–5pm ET). The Alumni Manager will confirm one of them — put the
+            confirmed meeting on your calendar.
           </DialogDescription>
         </DialogHeader>
 
@@ -132,7 +156,9 @@ export function GraduationApplicationDialog({
             {availabilitySlots.map((slot, index) => (
               <div key={index} className="border rounded-lg p-4 space-y-4">
                 <div className="flex items-center justify-between">
-                  <Label className="text-base font-semibold">Availability Slot {index + 1}</Label>
+                  <Label className="text-base font-semibold">
+                    Preferred meeting time — option {index + 1}
+                  </Label>
                   {availabilitySlots.length > 1 && (
                     <Button
                       type="button"
@@ -172,7 +198,8 @@ export function GraduationApplicationDialog({
                         disabled={(date) => {
                           const today = new Date();
                           today.setHours(0, 0, 0, 0);
-                          return date < today;
+                          // Business days only (Mon–Fri), no past dates.
+                          return date < today || isWeekend(date);
                         }}
                         initialFocus
                       />
@@ -183,23 +210,29 @@ export function GraduationApplicationDialog({
                 {/* Time Range */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Start Time *</Label>
+                    <Label>Available from *</Label>
                     <Input
                       type="time"
                       value={slot.startTime}
+                      min={BUSINESS_START}
+                      max={BUSINESS_END}
                       onChange={(e) => updateSlot(index, "startTime", e.target.value)}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>End Time *</Label>
+                    <Label>Available until *</Label>
                     <Input
                       type="time"
                       value={slot.endTime}
+                      min={slot.startTime || BUSINESS_START}
+                      max={BUSINESS_END}
                       onChange={(e) => updateSlot(index, "endTime", e.target.value)}
-                      min={slot.startTime || undefined}
                     />
                   </div>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  Business hours only: Mon–Fri, 9:00 AM – 5:00 PM ET.
+                </p>
               </div>
             ))}
 
@@ -211,7 +244,7 @@ export function GraduationApplicationDialog({
                 className="w-full"
               >
                 <Plus className="w-4 h-4 mr-2" />
-                Add Availability Slot ({availabilitySlots.length}/3)
+                Add a meeting time option ({availabilitySlots.length}/3)
               </Button>
             )}
           </div>

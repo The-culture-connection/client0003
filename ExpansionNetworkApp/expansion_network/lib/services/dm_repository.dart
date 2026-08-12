@@ -56,6 +56,25 @@ class DmRepository {
         .map((s) => s.docs);
   }
 
+  /// Records that the current user has seen this thread now.
+  ///
+  /// Written as `last_read.<uid>` on the thread doc; the Mortarverse
+  /// "conversations waiting" badge compares it against `updated_at` so an
+  /// opened-but-unanswered thread stops counting as waiting.
+  Future<void> markThreadRead({required String partnerUid}) async {
+    final me = _auth.currentUser?.uid;
+    if (me == null) return;
+    final threadId = dmThreadIdForUsers(me, partnerUid);
+    try {
+      await _threads.doc(threadId).update({
+        'last_read.$me': FieldValue.serverTimestamp(),
+      });
+    } catch (_) {
+      // Best-effort: the thread may not exist yet (brand-new conversation),
+      // and a read receipt is never worth surfacing an error for.
+    }
+  }
+
   Future<void> sendMessage({
     required String partnerUid,
     required String text,

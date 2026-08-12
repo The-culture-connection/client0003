@@ -67,7 +67,7 @@ export function MortarInfoPage() {
               variant="outline"
               size="lg"
               onClick={() => navigate("/dashboard")}
-              className="min-w-[160px] border-neutral-900 text-neutral-900 hover:bg-neutral-100"
+              className="min-w-[160px] bg-white border-2 border-neutral-900 text-neutral-900 font-semibold hover:bg-neutral-100"
             >
               Dashboard
             </Button>
@@ -171,7 +171,7 @@ export function MortarInfoPage() {
               variant="outline"
               size="lg"
               onClick={() => navigate("/dashboard")}
-              className="min-w-[160px] border-neutral-900 text-neutral-900 hover:bg-neutral-100"
+              className="min-w-[160px] bg-white border-2 border-neutral-900 text-neutral-900 font-semibold hover:bg-neutral-100"
             >
               Dashboard
             </Button>

@@ -3,7 +3,7 @@ import {FieldValue, getFirestore, Timestamp} from "firebase-admin/firestore";
 import {onSchedule} from "firebase-functions/v2/scheduler";
 import * as logger from "firebase-functions/logger";
 import {BREVO_API_KEY} from "../email/brevoClient";
-import {courseInactiveParams} from "../email/buildEmailParams";
+import {courseInactiveParams, displayNameFromUserDoc} from "../email/buildEmailParams";
 import {DEFAULT_COURSE_DISPLAY_NAME, DEFAULT_COURSE_ID} from "../email/emailConfig";
 import {resolveCourseEmailContext} from "../email/resolveCourseEmailContext";
 import {sendTransactionalEmail} from "../email/sendTransactionalEmail";
@@ -25,10 +25,8 @@ async function loadUserContact(uid: string): Promise<{
   const d = snap.data()!;
   const email = typeof d.email === "string" ? d.email.trim() : "";
   if (!email) return null;
-  const userName =
-    (typeof d.displayName === "string" && d.displayName) ||
-    (typeof d.name === "string" && d.name) ||
-    undefined;
+  // Prefer the onboarding profile name (first_name/last_name) over legacy fields.
+  const userName = displayNameFromUserDoc(d);
   return {email, userName};
 }
 

@@ -440,6 +440,10 @@ export function LessonPlayer() {
       return;
     }
     setIsSaving(true);
+    // When the course reaches 100% during this exit, route the learner to the
+    // Curriculum page's next-step (alumni application / certificate) section
+    // instead of dropping them back on the module list.
+    let justCompletedCourse = false;
     try {
       // Only save slide progress when we have a valid total (avoids writing 0/0 which breaks progress % on CourseDetail)
       if (itemCount > 0) {
@@ -484,6 +488,7 @@ export function LessonPlayer() {
           lessonSurveyCounts
         );
         if (pct >= 100) {
+          justCompletedCourse = progress?.completed !== true;
           await markCourseCompleted(user.uid, courseId);
           trackEvent(WEB_ANALYTICS_EVENTS.LESSON_COURSE_COMPLETED, {
             course_id: courseId,
@@ -499,7 +504,9 @@ export function LessonPlayer() {
             trackEvent(WEB_ANALYTICS_EVENTS.LESSON_CERTIFICATE_CREATED, {
               course_id: courseId,
             });
-            alert("Congratulations! You've earned new certificate(s). View them in your Data Room.");
+            alert(
+              "Congratulations! You've earned new certificate(s). View them in your Data Room, and check your email for instructions on accessing your certificate."
+            );
           }
         }
       }
@@ -507,7 +514,7 @@ export function LessonPlayer() {
       console.error("Error saving progress:", e);
     } finally {
       setIsSaving(false);
-      navigate(`/courses/${courseId}`);
+      navigate(justCompletedCourse ? "/curriculum?course_completed=1" : `/courses/${courseId}`);
     }
   };
 
@@ -625,6 +632,30 @@ export function LessonPlayer() {
       setShowQuizView(true);
     }
   };
+
+  /** True when the Next arrow/button has nowhere left to go. */
+  const nextDisabled =
+    currentSlideIndex === itemCount - 1 &&
+    pendingSurveysAfterCurrentSlide().length === 0 &&
+    !(atEnd && pendingEndSurveys().length > 0) &&
+    !(atEnd && hasQuiz && !userPassed);
+
+  // Arrow-key navigation (matches the on-screen side arrows).
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (showQuizView || showSurveyView || isLoading) return;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target?.isContentEditable) return;
+      if (e.key === "ArrowLeft") {
+        handlePrevious();
+      } else if (e.key === "ArrowRight") {
+        handleNext();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  });
 
   /** Submit one survey checkpoint; may complete lesson when all surveys + quiz are done. */
   const finalizeSurveyCheckpoint = async (answersTrimmed: string[]) => {
@@ -758,6 +789,7 @@ export function LessonPlayer() {
           lessonSurveyCounts
         );
         if (pct >= 100) {
+          const newlyCompleted = progress?.completed !== true;
           await markCourseCompleted(user.uid, courseId);
           trackEvent(WEB_ANALYTICS_EVENTS.LESSON_COURSE_COMPLETED, {
             course_id: courseId,
@@ -776,7 +808,14 @@ export function LessonPlayer() {
             trackEvent(WEB_ANALYTICS_EVENTS.LESSON_CERTIFICATE_CREATED, {
               course_id: courseId,
             });
-            alert("Congratulations! You've earned new certificate(s). View them in your Data Room.");
+            alert(
+              "Congratulations! You've earned new certificate(s). View them in your Data Room, and check your email for instructions on accessing your certificate."
+            );
+          }
+          // Course finished during this session — take the learner straight to
+          // the next step (alumni application) instead of leaving them here.
+          if (newlyCompleted) {
+            navigate("/curriculum?course_completed=1");
           }
         }
       }
@@ -1265,6 +1304,26 @@ export function LessonPlayer() {
 
       {/* Navigation */}
       {!showQuizView && !showSurveyView && (
+        <>
+      {/* Side arrows — advance/rewind slides from anywhere on the page */}
+      <button
+        type="button"
+        aria-label="Previous slide"
+        onClick={handlePrevious}
+        disabled={currentSlideIndex === 0}
+        className="fixed left-2 md:left-4 top-1/2 -translate-y-1/2 z-40 flex items-center justify-center w-11 h-11 rounded-full bg-background/80 backdrop-blur-sm border border-border text-foreground shadow-lg hover:bg-background hover:border-verse transition-colors disabled:opacity-25 disabled:pointer-events-none"
+      >
+        <ChevronLeft className="w-6 h-6" />
+      </button>
+      <button
+        type="button"
+        aria-label="Next slide"
+        onClick={handleNext}
+        disabled={nextDisabled}
+        className="fixed right-2 md:right-4 top-1/2 -translate-y-1/2 z-40 flex items-center justify-center w-11 h-11 rounded-full bg-background/80 backdrop-blur-sm border border-border text-foreground shadow-lg hover:bg-background hover:border-verse transition-colors disabled:opacity-25 disabled:pointer-events-none"
+      >
+        <ChevronRight className="w-6 h-6" />
+      </button>
       <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 flex gap-4">
         <Button
           variant="secondary"
@@ -1280,12 +1339,7 @@ export function LessonPlayer() {
           variant="secondary"
           size="lg"
           onClick={handleNext}
-          disabled={
-            currentSlideIndex === itemCount - 1 &&
-            pendingSurveysAfterCurrentSlide().length === 0 &&
-            !(atEnd && pendingEndSurveys().length > 0) &&
-            !(atEnd && hasQuiz && !userPassed)
-          }
+          disabled={nextDisabled}
           className="text-foreground"
         >
           {atEnd && hasQuiz && !userPassed
@@ -1301,6 +1355,7 @@ export function LessonPlayer() {
           <ChevronRight className="w-5 h-5 ml-2" />
         </Button>
       </div>
+        </>
       )}
 
       {/* Admin-only: slide-anchored review notes */}

@@ -49,6 +49,7 @@ import {
   Crown,
   FlaskConical,
   Bug,
+  Undo2,
 } from "lucide-react";
 import { useAuth } from "../components/auth/AuthProvider";
 import {
@@ -98,6 +99,7 @@ import {
   getGraduationApplications,
   acceptGraduationApplication,
   rejectGraduationApplication,
+  reopenGraduationApplication,
   admitUserToAlumni,
   setUserAdminRole,
   type GraduationApplication,
@@ -2093,9 +2095,13 @@ export function AdminPage() {
                               variant="destructive"
                               onClick={async () => {
                                 if (!user || !application.id) return;
-                                const notes = prompt("Enter rejection reason (optional):");
+                                const notes = prompt(
+                                  "Reject this application? Enter an optional reason, or press Cancel to keep it in review:"
+                                );
+                                // prompt() returns null when the admin hits Cancel — do NOT reject.
+                                if (notes === null) return;
                                 try {
-                                  await rejectGraduationApplication(application.id, user.uid, notes || undefined);
+                                  await rejectGraduationApplication(application.id, user.uid, notes.trim() || undefined);
                                   alert("Application rejected. The student will be notified by email.");
                                   // Reload applications
                                   const updated = await getGraduationApplications();
@@ -2159,9 +2165,13 @@ export function AdminPage() {
                             variant="destructive"
                             onClick={async () => {
                               if (!user || !application.id) return;
-                              const notes = prompt("Enter rejection reason (optional):");
+                              const notes = prompt(
+                                "Reject this application? Enter an optional reason, or press Cancel to keep it accepted:"
+                              );
+                              // prompt() returns null when the admin hits Cancel — do NOT reject.
+                              if (notes === null) return;
                               try {
-                                await rejectGraduationApplication(application.id, user.uid, notes || undefined);
+                                await rejectGraduationApplication(application.id, user.uid, notes.trim() || undefined);
                                 alert("Not admitted. The student will be notified by email.");
                                 // Reload applications
                                 const updated = await getGraduationApplications();
@@ -2176,6 +2186,28 @@ export function AdminPage() {
                             Reject
                           </Button>
                         </div>
+                      )}
+                      {!isAdmitted && application.status === "rejected" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={async () => {
+                            if (!user || !application.id) return;
+                            if (!confirm("Move this application back to review? Its status will return to Pending.")) return;
+                            try {
+                              await reopenGraduationApplication(application.id, user.uid);
+                              const updated = await getGraduationApplications();
+                              setGraduationApplications(updated);
+                            } catch (error) {
+                              console.error("Error reopening application:", error);
+                              alert("Failed to undo the rejection. Please try again.");
+                            }
+                          }}
+                          className="border-border text-foreground"
+                        >
+                          <Undo2 className="w-4 h-4 mr-2" />
+                          Undo Rejection
+                        </Button>
                       )}
                       </div>
                     </div>

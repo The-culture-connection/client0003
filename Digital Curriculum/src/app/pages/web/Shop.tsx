@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
@@ -16,7 +17,7 @@ import {
   type ShopItem,
 } from "../../lib/shop";
 import { useAuth } from "../../components/auth/AuthProvider";
-import { useCart } from "../../lib/cart";
+import { useCart, requestOpenCartDropdown } from "../../lib/cart";
 import { SHOP_SIZES, isApparelCategory, type ShopSize } from "../../lib/shop";
 import { useNavigate } from "react-router";
 import { Label } from "../../components/ui/label";
@@ -134,8 +135,8 @@ export function WebShop() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {visibleProducts.map((product) => (
-            <Card key={product.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-              <div className="aspect-square bg-muted relative">
+            <Card key={product.id} className="overflow-hidden hover:shadow-lg transition-shadow h-full gap-0">
+              <div className="aspect-square bg-muted relative shrink-0">
                 {product.picture ? (
                   <img
                     src={product.picture}
@@ -148,8 +149,10 @@ export function WebShop() {
                   </div>
                 )}
               </div>
-              <div className="p-4">
-                <Badge variant="outline" className="text-xs mb-2">
+              {/* flex column so the stock badge + Add to Cart button pin to the
+                  card bottom and all buttons line up across the grid row */}
+              <div className="p-4 flex flex-col flex-1">
+                <Badge variant="outline" className="text-xs mb-2 self-start">
                   {product.category}
                 </Badge>
                 <h3 className="font-semibold text-foreground mb-1">{product.name}</h3>
@@ -193,7 +196,7 @@ export function WebShop() {
                   const canAdd = !outOfStock && addingItemId !== product.id;
                   return (
                     <>
-                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <div className="mt-auto pt-3 flex flex-wrap items-center gap-2">
                         <Badge
                           variant={outOfStock ? "destructive" : lowStock ? "secondary" : "outline"}
                           className="text-xs"
@@ -243,6 +246,15 @@ export function WebShop() {
                             trackEvent(WEB_ANALYTICS_EVENTS.SHOP_ADD_TO_CART_CLICKED, {
                               item_id: product.id,
                               category: product.category,
+                            });
+                            toast.success("Added to cart", {
+                              description: sizeToUse
+                                ? `${product.name} — size ${sizeToUse}`
+                                : product.name,
+                              action: {
+                                label: "View cart",
+                                onClick: () => requestOpenCartDropdown(),
+                              },
                             });
                           } catch (e) {
                             trackEvent(WEB_ANALYTICS_EVENTS.SHOP_ADD_TO_CART_FAILED, {

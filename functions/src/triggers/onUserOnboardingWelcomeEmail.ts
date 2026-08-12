@@ -3,7 +3,7 @@ import {FieldValue} from "firebase-admin/firestore";
 import {onDocumentUpdated} from "firebase-functions/v2/firestore";
 import * as logger from "firebase-functions/logger";
 import {BREVO_API_KEY} from "../email/brevoClient";
-import {mastersOnboardingWelcomeParams} from "../email/buildEmailParams";
+import {displayNameFromUserDoc, mastersOnboardingWelcomeParams} from "../email/buildEmailParams";
 import {DEFAULT_COURSE_ID} from "../email/emailConfig";
 import {resolveCourseEmailContext} from "../email/resolveCourseEmailContext";
 import {sendTransactionalEmail} from "../email/sendTransactionalEmail";
@@ -45,10 +45,8 @@ export const onUserOnboardingWelcomeEmail = onDocumentUpdated(
       return;
     }
 
-    const displayName =
-      (typeof after.displayName === "string" && after.displayName) ||
-      (typeof after.name === "string" && after.name) ||
-      undefined;
+    // Prefer the onboarding profile name (first_name/last_name) over legacy fields.
+    const displayName = displayNameFromUserDoc(after);
 
     const courseContext = await resolveCourseEmailContext({
       courseId: DEFAULT_COURSE_ID,

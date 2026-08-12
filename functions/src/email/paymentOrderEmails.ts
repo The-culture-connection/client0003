@@ -11,6 +11,7 @@ import {
 } from "../stripe/paymentTypes";
 import type {CheckoutSnapshot} from "../stripe/extractCheckoutSnapshot";
 import {
+  displayNameFromUserDoc,
   paymentEventConfirmedParams,
   paymentModuleConfirmedParams,
   paymentShopConfirmedParams,
@@ -39,10 +40,8 @@ async function resolveUserEmail(
   const email =
     (typeof data?.email === "string" && data.email.includes("@") ? data.email : null) ??
     (typeof fallback === "string" && fallback.includes("@") ? fallback : null);
-  const userName =
-    typeof data?.displayName === "string" ? data.displayName :
-      typeof data?.name === "string" ? data.name :
-        null;
+  // Prefer the onboarding profile name (first_name/last_name) over legacy fields.
+  const userName = displayNameFromUserDoc(data) ?? null;
   return {email, userName};
 }
 

@@ -386,7 +386,9 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
               children: [
                 IconButton(
                   icon: const Icon(Icons.arrow_back, color: AppColors.foreground),
-                  onPressed: () => context.pop(),
+                  // Deep links land here with no stack — fall back to Groups.
+                  onPressed: () =>
+                      context.canPop() ? context.pop() : context.go('/groups'),
                 ),
                 Expanded(
                   child: Text(

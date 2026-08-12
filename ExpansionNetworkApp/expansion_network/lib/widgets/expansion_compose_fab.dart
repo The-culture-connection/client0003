@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../theme/cosmic_widgets.dart';
 
@@ -24,11 +25,39 @@ class ExpansionComposeFab extends StatelessWidget {
   /// so duplicate hero tags would collide during route transitions.
   final Object heroTag;
 
+  /// Full-screen compose flows this button must never float over — testers
+  /// saw "the big button overlapping the add post button" on the create-post
+  /// screen while the tab underneath was still showing its FAB.
+  static const List<String> _hiddenOnRoutePrefixes = [
+    '/feed/post/create',
+    '/events/create',
+    '/explore/jobs/create',
+    '/explore/skills/create',
+    '/groups/create',
+  ];
+
   @override
   Widget build(BuildContext context) {
     // Above the pill nav AND the beta-feedback bug button, whose edge-snapped
     // resting spot is the slot directly over the nav's right end.
     final lift = 152 + MediaQuery.viewPaddingOf(context).bottom;
+    // The delegate notifies on every navigation, so this rebuilds (and hides
+    // the button) the moment a compose route is pushed over the tab.
+    final delegate = GoRouter.of(context).routerDelegate;
+    return AnimatedBuilder(
+      animation: delegate,
+      builder: (context, child) {
+        final location = delegate.currentConfiguration.uri.path;
+        final composing =
+            _hiddenOnRoutePrefixes.any((p) => location.startsWith(p));
+        if (composing) return const SizedBox.shrink();
+        return child!;
+      },
+      child: _buildFab(context, lift),
+    );
+  }
+
+  Widget _buildFab(BuildContext context, double lift) {
     return Padding(
       padding: EdgeInsets.only(bottom: lift),
       child: FloatingActionButton(

@@ -95,9 +95,10 @@ export function LoginPage() {
 
           {resetEmailSent ? (
             <div className="text-center">
-              <div className="mb-4 p-4 rounded-lg bg-accent/10 border border-accent text-accent">
+              <div className="mb-4 p-4 rounded-lg bg-accent/10 border border-accent text-foreground">
                 <p className="text-sm">
-                  Password reset email sent! Check your inbox.
+                  Reset email sent — it can take a couple of minutes to arrive. Check your spam
+                  folder if you don&apos;t see it in your inbox.
                 </p>
               </div>
               <Button

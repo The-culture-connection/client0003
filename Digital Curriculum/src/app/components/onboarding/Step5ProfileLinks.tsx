@@ -42,6 +42,10 @@ export function Step5ProfileLinks({
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-foreground mb-2">Profile Links & Visibility</h1>
         <p className="text-muted-foreground">Add your social media and portfolio links (optional)</p>
+        <p className="text-sm text-foreground/80 mt-2">
+          Why we ask: these links appear on your profile and feed the alumni matching algorithm, so
+          other entrepreneurs can find and connect with you.
+        </p>
       </div>
 
       <Card className="p-6 space-y-6">
@@ -117,7 +121,7 @@ export function Step5ProfileLinks({
         </Button>
         <Button
           onClick={onNext}
-          className="bg-accent hover:bg-accent/90 text-accent-foreground"
+          className="bg-mortar-brick hover:bg-mortar-brick/90 text-white font-bold"
         >
           Complete Profile
         </Button>

@@ -138,7 +138,7 @@ export function Step4WorkStructure({
         </Button>
         <Button
           onClick={onNext}
-          className="bg-accent hover:bg-accent/90 text-accent-foreground"
+          className="bg-mortar-brick hover:bg-mortar-brick/90 text-white font-bold"
         >
           Continue
         </Button>

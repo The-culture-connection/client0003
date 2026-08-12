@@ -66,6 +66,16 @@ class _QrScanViewState extends State<QrScanView> with WidgetsBindingObserver {
   /// frames can still arrive after it is called.
   bool _handling = false;
 
+  /// Frozen "camera access needed" state. While true the camera is never
+  /// auto-started: on Android a denied permission made every lifecycle resume
+  /// retry `start()`, which re-fired the (auto-denied) permission request and
+  /// left the error screen blinking with an un-tappable "Try again". Only an
+  /// explicit tap on Try again leaves this state.
+  bool _permissionDenied = false;
+
+  /// Prevents overlapping `start()` calls (each one can prompt for permission).
+  bool _starting = false;
+
   @override
   void initState() {
     super.initState();
@@ -99,16 +109,44 @@ class _QrScanViewState extends State<QrScanView> with WidgetsBindingObserver {
 
   /// Starts the camera when this view is visible and idle; stops it otherwise.
   void _syncCamera() {
-    if (!widget.active || _handling) {
+    if (!widget.active || _handling || _permissionDenied) {
       unawaited(_controller.stop());
       return;
     }
     // Deferred a frame so MobileScanner is attached before start() is called,
     // which otherwise raises `controllerNotAttached`.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !widget.active || _handling) return;
-      unawaited(_controller.start());
+      if (!mounted || !widget.active || _handling || _permissionDenied) return;
+      unawaited(_start());
     });
+  }
+
+  /// Runs `start()` once and freezes into the stable denied pane when the
+  /// camera permission is (still) refused.
+  Future<void> _start() async {
+    if (_starting) return;
+    _starting = true;
+    try {
+      await _controller.start();
+    } on MobileScannerException {
+      // The failure also lands in the controller's state, checked below.
+    } catch (_) {
+      // Unknown failure — the errorBuilder shows the controller's state.
+    } finally {
+      _starting = false;
+    }
+    if (!mounted) return;
+    if (_controller.value.error?.errorCode ==
+        MobileScannerErrorCode.permissionDenied) {
+      setState(() => _permissionDenied = true);
+    }
+  }
+
+  /// "Try again" on the denied pane: re-attempt, which re-requests the
+  /// permission where the OS still allows a prompt.
+  void _retryAfterPermissionDenied() {
+    setState(() => _permissionDenied = false);
+    _syncCamera();
   }
 
   Future<void> _onDetect(BarcodeCapture capture) async {
@@ -136,6 +174,15 @@ class _QrScanViewState extends State<QrScanView> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    // The denied state gets its own stable pane INSTEAD of MobileScanner —
+    // rendering it through the scanner's errorBuilder meant every restart
+    // attempt flashed placeholder → error ("glitching/blinking").
+    if (_permissionDenied) {
+      return _PermissionDeniedPane(
+        accent: widget.accent,
+        onRetry: _retryAfterPermissionDenied,
+      );
+    }
     return ColoredBox(
       color: Colors.black,
       child: Stack(
@@ -144,11 +191,25 @@ class _QrScanViewState extends State<QrScanView> with WidgetsBindingObserver {
           MobileScanner(
             controller: _controller,
             onDetect: (c) => unawaited(_onDetect(c)),
-            errorBuilder: (context, error) => _ScannerError(
-              error: error,
-              accent: widget.accent,
-              onRetry: _syncCamera,
-            ),
+            errorBuilder: (context, error) {
+              if (error.errorCode == MobileScannerErrorCode.permissionDenied) {
+                // Freeze into the stable pane on the next frame.
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted && !_permissionDenied) {
+                    setState(() => _permissionDenied = true);
+                  }
+                });
+                return _PermissionDeniedPane(
+                  accent: widget.accent,
+                  onRetry: _retryAfterPermissionDenied,
+                );
+              }
+              return _ScannerError(
+                error: error,
+                accent: widget.accent,
+                onRetry: _syncCamera,
+              );
+            },
             placeholderBuilder: (context) => const ColoredBox(color: Colors.black),
           ),
           IgnorePointer(child: _ScanReticle(accent: widget.accent)),
@@ -213,6 +274,85 @@ class _ScanReticle extends StatelessWidget {
         decoration: BoxDecoration(
           border: Border.all(color: accent, width: 3),
           borderRadius: Cosmic.chipRadius,
+        ),
+      ),
+    );
+  }
+}
+
+/// Stable, non-blinking "camera access needed" pane with a working retry.
+///
+/// `permission_handler` is not a dependency, so there is no cross-platform
+/// `openAppSettings()`: iOS gets its settings deep link, Android gets written
+/// directions alongside the retry (which re-prompts when the OS allows it).
+class _PermissionDeniedPane extends StatelessWidget {
+  const _PermissionDeniedPane({required this.accent, required this.onRetry});
+
+  final Color accent;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: Colors.black,
+      child: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.no_photography_outlined,
+                size: 48,
+                color: AppColors.mutedForeground,
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Camera access needed',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'MORTAR needs your camera to scan a code. Tap "Try again" to '
+                'allow access.'
+                '${Platform.isIOS ? '' : '\n\nIf no prompt appears, enable it in '
+                    'Settings → Apps → MORTAR → Permissions → Camera, then come back.'}',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.mutedForeground,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                alignment: WrapAlignment.center,
+                children: [
+                  if (Platform.isIOS)
+                    FilledButton(
+                      onPressed: () =>
+                          unawaited(launchUrl(Uri.parse('app-settings:'))),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: accent,
+                        foregroundColor: Colors.black,
+                      ),
+                      child: const Text('Open Settings'),
+                    ),
+                  OutlinedButton(
+                    onPressed: onRetry,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.foreground,
+                      side: const BorderSide(color: AppColors.border),
+                    ),
+                    child: const Text('Try again'),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

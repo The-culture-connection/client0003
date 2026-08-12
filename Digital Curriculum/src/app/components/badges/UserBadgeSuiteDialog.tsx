@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { collection, doc, onSnapshot, query } from "firebase/firestore";
+import { useEffect, useMemo, useState, type KeyboardEvent, type ReactNode } from "react";
+import { collection, doc, onSnapshot, query, Timestamp } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { ANALYTICS_COLLECTIONS } from "@mortar/analytics-contract/mortarAnalyticsContract";
 import {
@@ -40,6 +40,8 @@ interface BadgeDefinitionDoc {
 interface AwardedDoc {
   times_awarded?: number;
   last_metric_value?: number;
+  first_awarded_at?: Timestamp;
+  last_awarded_at?: Timestamp;
 }
 
 interface ProgressEntry {
@@ -83,14 +85,33 @@ function BadgeTile({
   description,
   imageUrl,
   footer,
+  onClick,
 }: {
   title: string;
   description?: string;
   imageUrl?: string;
   footer?: ReactNode;
+  onClick?: () => void;
 }) {
   return (
-    <Card className="p-3 flex gap-3 border-border bg-card/80">
+    <Card
+      className={`p-3 flex gap-3 border-border bg-card/80 ${
+        onClick ? "cursor-pointer hover:border-accent hover:bg-card transition-colors" : ""
+      }`}
+      onClick={onClick}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={
+        onClick
+          ? (e: KeyboardEvent) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onClick();
+              }
+            }
+          : undefined
+      }
+    >
       <div className="w-14 h-14 shrink-0 rounded-md bg-muted overflow-hidden flex items-center justify-center border border-border">
         {imageUrl ? (
           <img src={imageUrl} alt="" className="w-full h-full object-cover" />
@@ -123,6 +144,8 @@ export function UserBadgeSuiteDialog({ open, onOpenChange, userId, accountLabel 
   const [awardedMap, setAwardedMap] = useState<Record<string, AwardedDoc>>({});
   const [earnedLegacyIds, setEarnedLegacyIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  /** Earned badge opened in the detail view (image, description, earned date). */
+  const [detailBadge, setDetailBadge] = useState<BadgeDefinitionDoc | null>(null);
 
   useEffect(() => {
     if (!open || !userId) {
@@ -288,6 +311,7 @@ export function UserBadgeSuiteDialog({ open, onOpenChange, userId, accountLabel 
                         description={def.description}
                         imageUrl={def.image_url}
                         footer={footer}
+                        onClick={() => setDetailBadge(def)}
                       />
                     );
                   })
@@ -362,6 +386,63 @@ export function UserBadgeSuiteDialog({ open, onOpenChange, userId, accountLabel 
           )}
         </div>
       </DialogContent>
+
+      {/* Earned badge detail */}
+      <Dialog open={detailBadge !== null} onOpenChange={(o) => !o && setDetailBadge(null)}>
+        <DialogContent className="sm:max-w-sm">
+          {detailBadge && (
+            <>
+              <DialogHeader>
+                <DialogTitle>{detailBadge.name || detailBadge.id}</DialogTitle>
+                <DialogDescription>Badge earned</DialogDescription>
+              </DialogHeader>
+              <div className="flex flex-col items-center gap-4 py-2">
+                <div className="w-32 h-32 rounded-xl bg-muted overflow-hidden flex items-center justify-center border border-border">
+                  {detailBadge.image_url ? (
+                    <img
+                      src={detailBadge.image_url}
+                      alt={detailBadge.name || detailBadge.id}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <Medal className="w-14 h-14 text-muted-foreground" aria-hidden />
+                  )}
+                </div>
+                {detailBadge.description ? (
+                  <p className="text-sm text-muted-foreground text-center">{detailBadge.description}</p>
+                ) : null}
+                {(() => {
+                  const aw = awardedMap[detailBadge.id];
+                  const earnedAt =
+                    aw?.first_awarded_at && typeof aw.first_awarded_at.toDate === "function"
+                      ? aw.first_awarded_at
+                      : undefined;
+                  const times = aw?.times_awarded ?? 0;
+                  return (
+                    <div className="text-xs text-muted-foreground text-center space-y-1">
+                      {earnedAt ? (
+                        <p>
+                          Earned on{" "}
+                          <span className="text-foreground font-medium">
+                            {earnedAt.toDate().toLocaleDateString(undefined, {
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            })}
+                          </span>
+                        </p>
+                      ) : null}
+                      {detailBadge.award_mode === "repeatable" && times > 1 ? (
+                        <p>Tiers earned: {times}</p>
+                      ) : null}
+                    </div>
+                  );
+                })()}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

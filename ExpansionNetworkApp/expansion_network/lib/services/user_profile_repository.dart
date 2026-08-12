@@ -260,6 +260,19 @@ class UserProfileRepository {
     }
   }
 
+  /// Updates only the profile photo (Edit Profile avatar upload).
+  Future<void> updateProfilePhotoUrl(String url) async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) throw StateError('Not signed in');
+    await _users.doc(uid).set(
+      <String, dynamic>{
+        'photo_url': url.trim(),
+        'updated_at': FieldValue.serverTimestamp(),
+      },
+      SetOptions(merge: true),
+    );
+  }
+
   /// Updates curriculum profile fields from Edit Profile (document must exist).
   /// Does not set `roles`, `created_at`, or `expansionOnboardingCompletedAt`.
   Future<void> updateProfile({
