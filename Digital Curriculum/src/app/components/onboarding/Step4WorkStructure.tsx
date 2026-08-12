@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Compass } from "lucide-react";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { Slider } from "../ui/slider";
@@ -66,6 +67,20 @@ export function Step4WorkStructure({
   return (
     <div className="max-w-2xl mx-auto p-8">
       <div className="mb-8">
+        <div className="mb-4 flex items-start gap-3 rounded-lg border-2 border-mortar-brick/70 bg-mortar-brick/10 p-4">
+          <Compass className="w-6 h-6 text-mortar-brick shrink-0 mt-0.5" aria-hidden />
+          <div>
+            <p className="font-bold text-foreground uppercase tracking-wide text-sm">
+              How you want to work
+            </p>
+            <p className="text-sm text-foreground/80 mt-1">
+              There are no wrong answers here — drag each slider to where you'd like your
+              work life to be, not where it is today. We use this to tailor your curriculum
+              and to match you with alumni, mentors, and opportunities that fit the way you
+              want to build.
+            </p>
+          </div>
+        </div>
         <h1 className="text-3xl font-bold text-foreground mb-2">What is your ideal work structure?</h1>
         <p className="text-muted-foreground">Adjust the sliders to match your preferences</p>
       </div>
@@ -77,6 +92,7 @@ export function Step4WorkStructure({
             <Label className="text-foreground font-semibold">Flexibility</Label>
             <span className="text-sm text-muted-foreground">{getFlexibilityLabel(flexibility)}</span>
           </div>
+          <p className="text-xs text-muted-foreground">How structured do you want your schedule to be?</p>
           <Slider
             value={[flexibility]}
             onValueChange={handleFlexibilityChange}
@@ -97,6 +113,7 @@ export function Step4WorkStructure({
             <Label className="text-foreground font-semibold">Weekly Hours</Label>
             <span className="text-sm text-muted-foreground">{weeklyHours} hours/week</span>
           </div>
+          <p className="text-xs text-muted-foreground">How many hours a week do you want to put into your work?</p>
           <Slider
             value={[weeklyHours]}
             onValueChange={handleHoursChange}
@@ -117,6 +134,7 @@ export function Step4WorkStructure({
             <Label className="text-foreground font-semibold">Ownership</Label>
             <span className="text-sm text-muted-foreground">{getOwnershipLabel(ownership)}</span>
           </div>
+          <p className="text-xs text-muted-foreground">How much of the business you work in do you want to own?</p>
           <Slider
             value={[ownership]}
             onValueChange={handleOwnershipChange}

@@ -1,0 +1,62 @@
+Digital Curriculum/src/app/components/badges/UserBadgeSuiteDialog.tsx
+Digital Curriculum/src/app/components/courses/SlideViewer.tsx
+Digital Curriculum/src/app/components/curriculum/LessonSlideScreen.tsx
+Digital Curriculum/src/app/components/curriculum/SlideRenderer.tsx
+Digital Curriculum/src/app/components/graduation/GraduationApplicationDialog.tsx
+Digital Curriculum/src/app/components/onboarding/Step1Identity.tsx
+Digital Curriculum/src/app/components/onboarding/Step2Goals.tsx
+Digital Curriculum/src/app/components/onboarding/Step3ConfidentSkills.tsx
+Digital Curriculum/src/app/components/onboarding/Step3DesiredSkills.tsx
+Digital Curriculum/src/app/components/onboarding/Step3Industry.tsx
+Digital Curriculum/src/app/components/onboarding/Step4WorkStructure.tsx
+Digital Curriculum/src/app/components/onboarding/Step5ProfileLinks.tsx
+Digital Curriculum/src/app/components/tour/StudentTour.tsx
+Digital Curriculum/src/app/components/web/WebNavigation.tsx
+Digital Curriculum/src/app/lib/cart.ts
+Digital Curriculum/src/app/lib/graduation.ts
+Digital Curriculum/src/app/lib/onboardingData.ts
+Digital Curriculum/src/app/lib/stripeCheckout.ts
+Digital Curriculum/src/app/pages/Admin.tsx
+Digital Curriculum/src/app/pages/Login.tsx
+Digital Curriculum/src/app/pages/MortarInfo.tsx
+Digital Curriculum/src/app/pages/Onboarding.tsx
+Digital Curriculum/src/app/pages/learn/LessonPlayer.tsx
+Digital Curriculum/src/app/pages/web/Curriculum.tsx
+Digital Curriculum/src/app/pages/web/Dashboard.tsx
+Digital Curriculum/src/app/pages/web/Shop.tsx
+ExpansionNetworkApp/expansion_network/lib/analytics/analytics_service.dart
+ExpansionNetworkApp/expansion_network/lib/commons/widgets/commons_shell.dart
+ExpansionNetworkApp/expansion_network/lib/conference/screens/conference_attendee_survey_screen.dart
+ExpansionNetworkApp/expansion_network/lib/conference/screens/conference_booth_scan_screen.dart
+ExpansionNetworkApp/expansion_network/lib/conference/screens/conference_gate_screen.dart
+ExpansionNetworkApp/expansion_network/lib/conference/screens/conference_lobby_screen.dart
+ExpansionNetworkApp/expansion_network/lib/conference/screens/conference_session_detail_screen.dart
+ExpansionNetworkApp/expansion_network/lib/main.dart
+ExpansionNetworkApp/expansion_network/lib/mortarverse/mortarverse_signals.dart
+ExpansionNetworkApp/expansion_network/lib/mortarverse/screens/mortarverse_chooser_screen.dart
+ExpansionNetworkApp/expansion_network/lib/mortarverse/widgets/mortarverse_focus_card.dart
+ExpansionNetworkApp/expansion_network/lib/router/app_router.dart
+ExpansionNetworkApp/expansion_network/lib/screens/achievements_screen.dart
+ExpansionNetworkApp/expansion_network/lib/screens/admin_events_screen.dart
+ExpansionNetworkApp/expansion_network/lib/screens/admin_reports_screen.dart
+ExpansionNetworkApp/expansion_network/lib/screens/chat_room_screen.dart
+ExpansionNetworkApp/expansion_network/lib/screens/create_post_screen.dart
+ExpansionNetworkApp/expansion_network/lib/screens/direct_chat_screen.dart
+ExpansionNetworkApp/expansion_network/lib/screens/event_detail_screen.dart
+ExpansionNetworkApp/expansion_network/lib/screens/group_detail_screen.dart
+ExpansionNetworkApp/expansion_network/lib/screens/profile_edit_screen.dart
+ExpansionNetworkApp/expansion_network/lib/screens/profile_screen.dart
+ExpansionNetworkApp/expansion_network/lib/services/dm_repository.dart
+ExpansionNetworkApp/expansion_network/lib/services/user_profile_repository.dart
+ExpansionNetworkApp/expansion_network/lib/theme/cosmic_widgets.dart
+ExpansionNetworkApp/expansion_network/lib/widgets/expansion_compose_fab.dart
+ExpansionNetworkApp/expansion_network/lib/widgets/qr_scan_view.dart
+firestore.rules
+functions/src/email/buildEmailParams.ts
+functions/src/email/paymentOrderEmails.ts
+functions/src/triggers/onGraduationApplicationEmail.ts
+functions/src/triggers/onUserAlumniAdmittedEmail.ts
+functions/src/triggers/onUserOnboardingWelcomeEmail.ts
+functions/src/triggers/scheduledCourseInactiveEmailNudges.ts
+Beta Testing Info/beta-fix-checklist.md
+ExpansionNetworkApp/expansion_network/lib/screens/onboarding_screen.dart

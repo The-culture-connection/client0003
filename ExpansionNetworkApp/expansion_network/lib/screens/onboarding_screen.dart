@@ -385,17 +385,20 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   String _stepSubtitle() {
-    const titles = [
-      'Terms & Agreements',
-      'About you',
-      'How can we help your business grow?',
-      'Skills you\'re confident in',
-      'Skills you want to acquire',
-      'Tribe',
-      'Ideal work structure',
-      'Profile links',
+    // Beta feedback: the old subtitle just repeated the page heading and never
+    // said WHY we collect the info. Each line now explains the purpose —
+    // serving alumni better and powering the matching algorithm.
+    const purposes = [
+      'Review and accept to start building your profile',
+      'Helps us serve you and fellow alumni better',
+      'Helps us serve alumni better and tailor your support',
+      'Powers the matching algorithm: what you can offer others',
+      'Powers the matching algorithm: what others can teach you',
+      'Helps us place you in the right community',
+      'Powers the matching algorithm: matches that fit how you work',
+      'Helps matched alumni get to know you',
     ];
-    return 'Step ${_stepIndex + 1} of $_pageCount -- ${titles[_stepIndex]}';
+    return 'Step ${_stepIndex + 1} of $_pageCount -- ${purposes[_stepIndex]}';
   }
 
   Future<String> _uploadProfileImage(String uid, XFile x, {String subfolder = 'avatar'}) async {
