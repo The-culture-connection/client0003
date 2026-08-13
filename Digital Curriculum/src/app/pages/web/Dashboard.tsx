@@ -4,6 +4,7 @@ import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import { Progress } from "../../components/ui/progress";
+import { Skeleton } from "../../components/ui/skeleton";
 import {
   Calendar,
   Award,
@@ -114,51 +115,68 @@ export function WebDashboard() {
   const loadData = useCallback(async () => {
     if (!user?.uid) return;
     setLoading(true);
+    const uid = user.uid;
+
+    // Non-critical sections (certificates, surveys, events, groups) load in
+    // the background and fill in after first paint — they never block the
+    // course/progress content the user came here for.
+    const backgroundLoads: Array<Promise<unknown>> = [
+      cached(`certs:${uid}`, () => listCertificates(uid), TTL_MEDIUM).then(setCertificates),
+      cached(`surveys:${uid}`, () => listSurveyResponses(uid), TTL_MEDIUM).then(setSurveyDocs),
+      cached("events:upcoming", () => getUpcomingEvents(), TTL_MEDIUM).then((events) =>
+        setUpcomingEvents(events.slice(0, 3))
+      ),
+      (async () => {
+        const userGroupsList = await cached(`groups:${uid}`, () => getGroupsForUser(uid), TTL_MEDIUM);
+        const groupsWithDetails = await Promise.all(
+          userGroupsList.map(async (group) => {
+            const lastMessage = await cached(`groupMsg:${group.id}`, () => getLastGroupMessage(group.id), TTL_MEDIUM);
+            const members = getMemberCount(group);
+            return {
+              ...group,
+              lastMessage: lastMessage?.Content || "No messages yet",
+              lastMessageTime: lastMessage?.Sendtime || null,
+              members,
+            };
+          })
+        );
+        groupsWithDetails.sort((a, b) => {
+          if (!a.lastMessageTime && !b.lastMessageTime) return 0;
+          if (!a.lastMessageTime) return 1;
+          if (!b.lastMessageTime) return -1;
+          return (b.lastMessageTime as { toMillis: () => number }).toMillis() - (a.lastMessageTime as { toMillis: () => number }).toMillis();
+        });
+        setUserGroups(groupsWithDetails);
+      })(),
+    ];
+    void Promise.allSettled(backgroundLoads).then((results) => {
+      for (const r of results) {
+        if (r.status === "rejected") console.error("Dashboard background load error:", r.reason);
+      }
+    });
+
     try {
-      const uid = user.uid;
-      const [userWithRoles, progress, certs, surveys, events] = await Promise.all([
+      // Critical path: roles, progress and profile are independent — fetch in
+      // parallel. The course list needs roles, then per-course detail fans out
+      // in parallel across courses.
+      const [userWithRoles, progress, profileData] = await Promise.all([
         // Don't cache empty roles: new signups get their role from a Cloud
         // Function moments after account creation (see cache.ts).
         cached(`roles:${uid}`, () => getCurrentUserWithRoles(), TTL_SHORT, {
           shouldCache: (u) => (u?.roles?.length ?? 0) > 0,
         }),
         cached(`progress:${uid}`, () => getAllCourseProgress(uid), TTL_SHORT),
-        cached(`certs:${uid}`, () => listCertificates(uid), TTL_MEDIUM),
-        cached(`surveys:${uid}`, () => listSurveyResponses(uid), TTL_MEDIUM),
-        cached("events:upcoming", () => getUpcomingEvents(), TTL_MEDIUM),
+        cached(
+          `profile:${uid}`,
+          async () => {
+            const userSnap = await getDoc(doc(db, "users", uid));
+            return userSnap.exists() ? (userSnap.data() as UserProfile) : null;
+          },
+          TTL_MEDIUM
+        ),
       ]);
 
       setProgressMap(progress);
-      setCertificates(certs);
-      setSurveyDocs(surveys);
-      setUpcomingEvents(events.slice(0, 3));
-
-      const userGroupsList = await cached(`groups:${uid}`, () => getGroupsForUser(uid), TTL_MEDIUM);
-      const groupsWithDetails = await Promise.all(
-        userGroupsList.map(async (group) => {
-          const lastMessage = await cached(`groupMsg:${group.id}`, () => getLastGroupMessage(group.id), TTL_MEDIUM);
-          const members = getMemberCount(group);
-          return {
-            ...group,
-            lastMessage: lastMessage?.Content || "No messages yet",
-            lastMessageTime: lastMessage?.Sendtime || null,
-            members,
-          };
-        })
-      );
-      groupsWithDetails.sort((a, b) => {
-        if (!a.lastMessageTime && !b.lastMessageTime) return 0;
-        if (!a.lastMessageTime) return 1;
-        if (!b.lastMessageTime) return -1;
-        return (b.lastMessageTime as { toMillis: () => number }).toMillis() - (a.lastMessageTime as { toMillis: () => number }).toMillis();
-      });
-      setUserGroups(groupsWithDetails);
-
-      const userRef = doc(db, "users", user.uid);
-      const profileData = await cached(`profile:${uid}`, async () => {
-        const userSnap = await getDoc(userRef);
-        return userSnap.exists() ? (userSnap.data() as UserProfile) : null;
-      }, TTL_MEDIUM);
       setProfile(profileData);
 
       const roles = userWithRoles?.roles ?? [];
@@ -180,12 +198,13 @@ export function WebDashboard() {
             counts[c.id] = await cached(`slideCounts:${c.id}`, () => getCourseSlideCounts(c), TTL_MEDIUM);
             const lessonIds = Object.keys(counts[c.id]);
             if (lessonIds.length > 0) {
-              quizMap[c.id] = await cached(`quiz:${c.id}`, () => getLessonsWithQuiz(c.id, lessonIds), TTL_MEDIUM);
-              surveyCountMap[c.id] = await cached(
-                `survey:${c.id}`,
-                () => getLessonSurveyCounts(c.id, lessonIds),
-                TTL_MEDIUM
-              );
+              // Quiz and survey lookups are independent — run them together.
+              const [quiz, survey] = await Promise.all([
+                cached(`quiz:${c.id}`, () => getLessonsWithQuiz(c.id, lessonIds), TTL_MEDIUM),
+                cached(`survey:${c.id}`, () => getLessonSurveyCounts(c.id, lessonIds), TTL_MEDIUM),
+              ]);
+              quizMap[c.id] = quiz;
+              surveyCountMap[c.id] = survey;
             }
           } catch {
             counts[c.id] = {};
@@ -329,9 +348,25 @@ export function WebDashboard() {
   }
 
   if (loading) {
+    // Lightweight skeleton mirroring the dashboard layout — no blank page or
+    // full-page spinner while data loads.
     return (
-      <div className="p-4 sm:p-6 max-w-7xl mx-auto">
-        <p className="text-muted-foreground">Loading dashboard...</p>
+      <div className="p-4 sm:p-6 max-w-7xl mx-auto" aria-busy="true" aria-label="Loading dashboard">
+        <div className="mb-6 pt-2 space-y-3">
+          <Skeleton className="h-4 w-40 opacity-30" />
+          <Skeleton className="h-9 w-64 max-w-full opacity-30" />
+        </div>
+        <Skeleton className="h-44 w-full mb-5 opacity-20" />
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+          <div className="lg:col-span-8 space-y-5">
+            <Skeleton className="h-56 w-full opacity-20" />
+            <Skeleton className="h-40 w-full opacity-20" />
+          </div>
+          <div className="lg:col-span-4 space-y-5">
+            <Skeleton className="h-40 w-full opacity-20" />
+            <Skeleton className="h-40 w-full opacity-20" />
+          </div>
+        </div>
       </div>
     );
   }
@@ -344,13 +379,13 @@ export function WebDashboard() {
       {/* Welcome Header — wearemortar.com hero pattern: yellow uppercase
           kicker over a giant Montserrat Black uppercase headline */}
       <div className="mb-6 pt-2">
-        <div className="flex items-center gap-4">
-          <img src="/brand/white-trowell.png" alt="" aria-hidden className="h-12 w-auto opacity-90" />
-          <div>
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+          <img src="/brand/white-trowell.png" alt="" aria-hidden className="h-10 sm:h-12 w-auto opacity-90 shrink-0" />
+          <div className="min-w-0">
             <p className="font-technical uppercase tracking-[0.3em] text-verse text-xs mb-1.5">
               Welcome back //
             </p>
-            <h1 className="font-headline font-black uppercase tracking-tight text-4xl leading-none text-foreground">
+            <h1 className="font-headline font-black uppercase tracking-tight text-2xl sm:text-4xl leading-none text-foreground break-words">
               {displayName}
             </h1>
           </div>
@@ -377,8 +412,8 @@ export function WebDashboard() {
           aria-hidden
           className="pointer-events-none absolute -right-4 -top-6 h-40 w-auto opacity-[0.07] rotate-12"
         />
-        <div className="relative z-10 flex items-start justify-between">
-          <div className="flex-1">
+        <div className="relative z-10 flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
             <Badge className="mb-2 rounded-none bg-verse text-white font-technical font-bold text-xs tracking-wider -rotate-1 origin-left">
               NEXT STEP
             </Badge>
@@ -404,7 +439,7 @@ export function WebDashboard() {
               {/* Single CTA — beta feedback: two "View Course" buttons were confusing */}
               <Button
                 size="sm"
-                className="rounded-none glow-brick bg-verse hover:bg-verse/90 text-white font-bold"
+                className="w-full sm:w-auto rounded-none glow-brick bg-verse hover:bg-verse/90 text-white font-bold"
                 onClick={handleContinueLearningClick}
               >
                 <PlayCircle className="w-4 h-4 mr-2" />
@@ -416,7 +451,7 @@ export function WebDashboard() {
               </Button>
             </div>
           </div>
-          <div className="relative w-20 h-20 rounded-full glow-brick">
+          <div className="relative w-20 h-20 rounded-full glow-brick shrink-0">
             <svg className="w-20 h-20 transform -rotate-90">
               <circle cx="40" cy="40" r="34" stroke="currentColor" strokeWidth="5" fill="none" className="text-white/10" />
               <circle
@@ -448,7 +483,7 @@ export function WebDashboard() {
             tabIndex={0}
             onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate("/curriculum"); } }}
           >
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
               <h2 className="font-headline text-base font-black uppercase tracking-wider text-foreground"><span className="font-technical text-xs text-verse mr-2 align-middle">01 /</span>Module Journey</h2>
               {primaryCourse && moduleJourneyRows.length > 0 && (
                 <Badge variant="outline" className="rounded-none border-verse text-verse font-technical text-xs">
@@ -483,10 +518,10 @@ export function WebDashboard() {
                             }`}
                           />
                         </div>
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between mb-1">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 mb-1">
                             <h3
-                              className={`text-sm font-medium ${
+                              className={`text-sm font-medium min-w-0 break-words ${
                                 locked ? "text-muted-foreground" : "text-foreground"
                               }`}
                             >

@@ -30,6 +30,7 @@ import '../screens/expansion_enter_code_screen.dart';
 import '../screens/chat_room_screen.dart';
 import '../screens/direct_chat_screen.dart';
 import '../screens/create_post_screen.dart';
+import '../screens/delete_account_screen.dart';
 import '../screens/event_create_screen.dart';
 import '../screens/explore_skills_screen.dart';
 import '../screens/job_create_screen.dart';
@@ -551,6 +552,13 @@ GoRouter createAppRouter(AuthController auth) {
         parentNavigatorKey: _rootNavigatorKey,
         path: '/profile/edit',
         builder: (context, state) => const ProfileEditScreen(),
+      ),
+      // App Store Guideline 5.1.1(v) — account deletion must be reachable from
+      // inside the app, not only from the website.
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/profile/delete-account',
+        builder: (context, state) => const DeleteAccountScreen(),
       ),
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,

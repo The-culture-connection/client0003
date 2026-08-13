@@ -118,6 +118,7 @@ export {
 export {adminSendEventRegistrantEmail} from "./callables/adminSendEventRegistrantEmail";
 export {adminSendConferenceEmail} from "./callables/adminSendConferenceEmail";
 export {submitAccountDeletionRequest} from "./callables/submitAccountDeletionRequest";
+export {deleteMyAccount} from "./callables/deleteMyAccount";
 export {adminSendCustomAnnouncementEmail} from "./callables/adminSendCustomAnnouncementEmail";
 export {createStripeCheckoutSession} from "./callables/createStripeCheckoutSession";
 export {adminUpdateShopOrderFulfillment} from "./callables/adminUpdateShopOrderFulfillment";

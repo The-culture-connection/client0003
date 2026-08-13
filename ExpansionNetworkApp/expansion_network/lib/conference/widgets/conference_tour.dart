@@ -111,7 +111,10 @@ class ConferenceTourRunner {
             targetKey: s.key,
             title: s.title,
             body: s.body,
-            shape: s.shape == ShapeLightFocus.Circle
+            // `TourStep.shape` is this repo's own enum (widgets/expansion_tour.dart);
+            // the old `ShapeLightFocus` came from the tutorial_coach_mark package,
+            // which was dropped when the tour moved to the moving-highlight overlay.
+            shape: s.shape == TourShape.circle
                 ? SpotlightShape.circle
                 : SpotlightShape.rrect,
           ),

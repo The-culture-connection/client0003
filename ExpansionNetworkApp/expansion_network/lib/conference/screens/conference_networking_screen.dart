@@ -505,13 +505,18 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: Cosmic.textMuted, fontSize: 13, height: 1.35)),
                 ],
+                // Capped on the card: the deck card is a fixed-height tile, and
+                // a member with a dozen long skills ("Investor communication
+                // and financial reporting") grew this panel past the card and
+                // overflowed the photo out of existence. The full lists are one
+                // tap away in the profile sheet, which scrolls.
                 if (p.offers.isNotEmpty) ...[
                   const SizedBox(height: 14),
-                  _chipRow('CAN OFFER', p.offers, ConferenceColors.gold),
+                  _chipRow('CAN OFFER', p.offers, ConferenceColors.gold, maxItems: 3),
                 ],
                 if (p.seeks.isNotEmpty) ...[
                   const SizedBox(height: 8),
-                  _chipRow('LOOKING FOR', p.seeks, Colors.white),
+                  _chipRow('LOOKING FOR', p.seeks, Colors.white, maxItems: 3),
                 ],
               ],
             ),
@@ -545,7 +550,35 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
     );
   }
 
-  Widget _chipRow(String label, List<String> items, Color tint) {
+  /// [maxItems] bounds how many chips render, with a `+N more` chip standing in
+  /// for the rest. Null shows everything — used by the scrollable profile sheet.
+  Widget _chipRow(String label, List<String> items, Color tint, {int? maxItems}) {
+    final shown = maxItems == null || items.length <= maxItems
+        ? items
+        : items.take(maxItems).toList();
+    final hidden = items.length - shown.length;
+    final chipColor = tint == ConferenceColors.gold ? ConferenceColors.gold : Colors.white;
+
+    Widget chip(String text) => Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: tint.withValues(alpha: 0.14),
+            borderRadius: Cosmic.chipRadius,
+            border: Border.all(color: tint.withValues(alpha: 0.3)),
+          ),
+          // A long skill would otherwise force its own full-width Wrap line;
+          // capped and ellipsized it stays one predictable row height.
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 150),
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: chipColor, fontSize: 11),
+            ),
+          ),
+        );
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -559,16 +592,8 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
             spacing: 6,
             runSpacing: 6,
             children: [
-              for (final it in items)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: tint.withValues(alpha: 0.14),
-                    borderRadius: Cosmic.chipRadius,
-                    border: Border.all(color: tint.withValues(alpha: 0.3)),
-                  ),
-                  child: Text(it, style: TextStyle(color: tint == ConferenceColors.gold ? ConferenceColors.gold : Colors.white, fontSize: 11)),
-                ),
+              for (final it in shown) chip(it),
+              if (hidden > 0) chip('+$hidden more'),
             ],
           ),
         ),

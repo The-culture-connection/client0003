@@ -5,6 +5,14 @@
 
 const store = new Map<string, { value: unknown; expiresAt: number }>();
 
+/**
+ * In-flight request dedupe: if two callers ask for the same key while the
+ * first fetch is still running (e.g. Dashboard and a widget both requesting
+ * roles on mount), they share one promise instead of issuing duplicate
+ * Firestore reads.
+ */
+const pending = new Map<string, Promise<unknown>>();
+
 const DEFAULT_TTL_MS = 90 * 1000; // 90 seconds for frequently changing data (progress, courses)
 const LONG_TTL_MS = 3 * 60 * 1000; // 3 minutes for events, groups, certificates
 
@@ -27,11 +35,23 @@ export async function cached<T>(
   if (entry && entry.expiresAt > Date.now()) {
     return entry.value as T;
   }
-  const value = await fn();
-  if (!opts?.shouldCache || opts.shouldCache(value)) {
-    store.set(key, { value, expiresAt: Date.now() + ttlMs });
+  const inFlight = pending.get(key);
+  if (inFlight) {
+    return inFlight as Promise<T>;
   }
-  return value;
+  const promise = (async () => {
+    try {
+      const value = await fn();
+      if (!opts?.shouldCache || opts.shouldCache(value)) {
+        store.set(key, { value, expiresAt: Date.now() + ttlMs });
+      }
+      return value;
+    } finally {
+      pending.delete(key);
+    }
+  })();
+  pending.set(key, promise);
+  return promise;
 }
 
 /**

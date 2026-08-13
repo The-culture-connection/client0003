@@ -1,4 +1,3 @@
-Beta Testing Info/beta-fix-checklist.md
 Digital Curriculum/src/app/components/admin/AdminUserActivitySection.tsx
 Digital Curriculum/src/app/components/badges/UserBadgeSuiteDialog.tsx
 Digital Curriculum/src/app/components/courses/SlideViewer.tsx
@@ -25,49 +24,7 @@ Digital Curriculum/src/app/pages/Onboarding.tsx
 Digital Curriculum/src/app/pages/learn/LessonPlayer.tsx
 Digital Curriculum/src/app/pages/web/Curriculum.tsx
 Digital Curriculum/src/app/pages/web/Dashboard.tsx
+Digital Curriculum/src/app/pages/web/DataRoom.tsx
 Digital Curriculum/src/app/pages/web/Shop.tsx
-ExpansionNetworkApp/expansion_network/lib/analytics/analytics_service.dart
-ExpansionNetworkApp/expansion_network/lib/commons/widgets/commons_shell.dart
-ExpansionNetworkApp/expansion_network/lib/conference/screens/conference_attendee_survey_screen.dart
-ExpansionNetworkApp/expansion_network/lib/conference/screens/conference_booth_scan_screen.dart
-ExpansionNetworkApp/expansion_network/lib/conference/screens/conference_gate_screen.dart
-ExpansionNetworkApp/expansion_network/lib/conference/screens/conference_lobby_screen.dart
-ExpansionNetworkApp/expansion_network/lib/conference/screens/conference_session_detail_screen.dart
-ExpansionNetworkApp/expansion_network/lib/conference/widgets/conference_tour.dart
-ExpansionNetworkApp/expansion_network/lib/constants/digital_curriculum_constants.dart
-ExpansionNetworkApp/expansion_network/lib/main.dart
-ExpansionNetworkApp/expansion_network/lib/models/dm_message.dart
-ExpansionNetworkApp/expansion_network/lib/mortarverse/mortarverse_signals.dart
-ExpansionNetworkApp/expansion_network/lib/mortarverse/screens/mortarverse_chooser_screen.dart
-ExpansionNetworkApp/expansion_network/lib/mortarverse/widgets/mortarverse_focus_card.dart
-ExpansionNetworkApp/expansion_network/lib/mortarverse/widgets/mortarverse_planet.dart
-ExpansionNetworkApp/expansion_network/lib/router/app_router.dart
-ExpansionNetworkApp/expansion_network/lib/screens/achievements_screen.dart
-ExpansionNetworkApp/expansion_network/lib/screens/admin_events_screen.dart
-ExpansionNetworkApp/expansion_network/lib/screens/admin_reports_screen.dart
-ExpansionNetworkApp/expansion_network/lib/screens/chat_room_screen.dart
-ExpansionNetworkApp/expansion_network/lib/screens/create_post_screen.dart
-ExpansionNetworkApp/expansion_network/lib/screens/direct_chat_screen.dart
-ExpansionNetworkApp/expansion_network/lib/screens/event_detail_screen.dart
-ExpansionNetworkApp/expansion_network/lib/screens/group_detail_screen.dart
-ExpansionNetworkApp/expansion_network/lib/screens/matches_screen.dart
-ExpansionNetworkApp/expansion_network/lib/screens/onboarding_screen.dart
-ExpansionNetworkApp/expansion_network/lib/screens/profile_edit_screen.dart
-ExpansionNetworkApp/expansion_network/lib/screens/profile_screen.dart
-ExpansionNetworkApp/expansion_network/lib/services/conference_matches_repository.dart
-ExpansionNetworkApp/expansion_network/lib/services/dm_repository.dart
-ExpansionNetworkApp/expansion_network/lib/services/user_profile_repository.dart
-ExpansionNetworkApp/expansion_network/lib/theme/cosmic_widgets.dart
-ExpansionNetworkApp/expansion_network/lib/widgets/expansion_compose_fab.dart
-ExpansionNetworkApp/expansion_network/lib/widgets/new_message_sheet.dart
-ExpansionNetworkApp/expansion_network/lib/widgets/qr_scan_view.dart
-ExpansionNetworkApp/expansion_network/lib/widgets/spotlight_tutorial.dart
-firestore.rules
-functions/src/email/buildEmailParams.ts
-functions/src/email/graduationMeetingIcs.ts
-functions/src/email/paymentOrderEmails.ts
-functions/src/triggers/onEventSubmittedEmail.ts
-functions/src/triggers/onGraduationApplicationEmail.ts
-functions/src/triggers/onUserAlumniAdmittedEmail.ts
-functions/src/triggers/onUserOnboardingWelcomeEmail.ts
-functions/src/triggers/scheduledCourseInactiveEmailNudges.ts
+Digital Curriculum/src/app/routes.tsx
+Digital Curriculum/vite.config.ts

@@ -232,27 +232,35 @@ class _SpotlightOverlayState extends State<_SpotlightOverlay>
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedOpacity(
-      opacity: _visible ? 1 : 0,
-      duration: const Duration(milliseconds: 180),
-      child: Stack(
-        children: [
-          // Dim everything but the cutout; a tap anywhere advances, which is
-          // also what keeps the page underneath from receiving taps mid-tour.
-          Positioned.fill(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: _next,
-              child: CustomPaint(
-                painter: _SpotlightScrimPainter(
-                  cutout: _animatedCutout,
-                  accent: widget.accent,
+    // An OverlayEntry sits outside the app's Material tree, and `Text` with no
+    // Material ancestor falls back to Flutter's debug style — yellow glyphs
+    // with a double underline, which is exactly how the tutorial was rendering.
+    // A transparent Material restores normal text inheritance without painting
+    // anything of its own.
+    return Material(
+      type: MaterialType.transparency,
+      child: AnimatedOpacity(
+        opacity: _visible ? 1 : 0,
+        duration: const Duration(milliseconds: 180),
+        child: Stack(
+          children: [
+            // Dim everything but the cutout; a tap anywhere advances, which is
+            // also what keeps the page underneath from receiving taps mid-tour.
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: _next,
+                child: CustomPaint(
+                  painter: _SpotlightScrimPainter(
+                    cutout: _animatedCutout,
+                    accent: widget.accent,
+                  ),
                 ),
               ),
             ),
-          ),
-          if (_to != null) _buildCard(context),
-        ],
+            if (_to != null) _buildCard(context),
+          ],
+        ),
       ),
     );
   }
@@ -272,11 +280,17 @@ class _SpotlightOverlayState extends State<_SpotlightOverlay>
     final below = (size.height - target.bottom) >= target.top;
 
     final card = Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
       decoration: BoxDecoration(
-        color: const Color(0xF00A0508),
-        borderRadius: Cosmic.chipRadius,
+        color: const Color(0xF50A0508),
+        borderRadius: Cosmic.panelRadius,
         border: Border.all(color: Cosmic.panelBorder),
+        // Lifts the caption off the dimmed page behind it, and picks up the
+        // step's accent so the card reads as part of the highlight.
+        boxShadow: [
+          const BoxShadow(color: Color(0x99000000), blurRadius: 28, offset: Offset(0, 10)),
+          BoxShadow(color: widget.accent.withValues(alpha: 0.13), blurRadius: 26, spreadRadius: -4),
+        ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -285,8 +299,10 @@ class _SpotlightOverlayState extends State<_SpotlightOverlay>
           Text(
             step.title,
             style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              fontSize: 17,
+              height: 1.25,
+              letterSpacing: 0.1,
               color: Cosmic.textPrimary,
             ),
           ),
@@ -294,38 +310,52 @@ class _SpotlightOverlayState extends State<_SpotlightOverlay>
           Text(
             step.body,
             style: const TextStyle(
-              fontSize: 14,
+              fontSize: 13.5,
               color: Cosmic.textBody,
-              height: 1.4,
+              height: 1.5,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                '${_index + 1} of ${widget.steps.length}',
-                style: const TextStyle(fontSize: 12, color: Cosmic.textMuted),
+              // Dots rather than "1 of 4" — the chooser's focus card uses the
+              // same language, and progress is easier to read at a glance.
+              for (var i = 0; i < widget.steps.length; i++)
+                Padding(
+                  padding: const EdgeInsets.only(right: 5),
+                  child: Container(
+                    width: i == _index ? 16 : 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: i == _index
+                          ? widget.accent
+                          : Colors.white.withValues(alpha: 0.22),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                ),
+              const Spacer(),
+              TextButton(
+                onPressed: () => _finish(skipped: true),
+                style: TextButton.styleFrom(
+                  foregroundColor: Cosmic.textMuted,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  minimumSize: const Size(0, 40),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text('Skip'),
               ),
-              Row(
-                children: [
-                  TextButton(
-                    onPressed: () => _finish(skipped: true),
-                    child: const Text(
-                      'Skip',
-                      style: TextStyle(color: Cosmic.textMuted),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton(
-                    onPressed: _next,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: widget.accent,
-                      foregroundColor: widget.onAccent,
-                    ),
-                    child: Text(isLast ? 'Got it' : 'Next'),
-                  ),
-                ],
+              const SizedBox(width: 6),
+              FilledButton(
+                onPressed: _next,
+                style: FilledButton.styleFrom(
+                  backgroundColor: widget.accent,
+                  foregroundColor: widget.onAccent,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: Cosmic.pillRadius),
+                  textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                ),
+                child: Text(isLast ? 'Got it' : 'Next'),
               ),
             ],
           ),

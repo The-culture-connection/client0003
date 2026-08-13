@@ -2,6 +2,7 @@ import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import { Progress } from "../../components/ui/progress";
+import { Skeleton } from "../../components/ui/skeleton";
 import {
   BookOpen,
   Play,
@@ -22,7 +23,6 @@ import {
   GraduationCap,
   Users,
   X,
-  Info,
 } from "lucide-react";
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router";
@@ -119,9 +119,13 @@ export function WebCurriculum() {
       // Get user roles. Never cache an empty roles list — brand-new accounts get
       // their default role from a Cloud Function moments after signup, and caching
       // the pre-role state made this page show no courses until a refresh.
-      const currentUser = await cached(`roles:${uid}`, () => getCurrentUserWithRoles(), TTL_SHORT, {
-        shouldCache: (u) => (u?.roles?.length ?? 0) > 0,
-      });
+      // Roles and progress are independent — fetch them in parallel.
+      const [currentUser, progress] = await Promise.all([
+        cached(`roles:${uid}`, () => getCurrentUserWithRoles(), TTL_SHORT, {
+          shouldCache: (u) => (u?.roles?.length ?? 0) > 0,
+        }),
+        cached(`progress:${uid}`, () => getAllCourseProgress(uid), TTL_SHORT),
+      ]);
       const userRoles = currentUser?.roles || [];
 
       const uniqueCourses = await cached(
@@ -133,9 +137,6 @@ export function WebCurriculum() {
 
       setCourses(uniqueCourses);
       setTotalCourses(uniqueCourses.length);
-
-      // Load progress for all courses
-      const progress = await cached(`progress:${uid}`, () => getAllCourseProgress(uid), TTL_SHORT);
       setCourseProgress(progress);
 
       // Load slide counts per course for accurate progress (all slides in course)
@@ -150,12 +151,13 @@ export function WebCurriculum() {
               countsMap[courseId] = await cached(`slideCounts:${courseId}`, () => getCourseSlideCounts(c), TTL_MEDIUM);
               const lessonIds = Object.keys(countsMap[courseId]);
               if (lessonIds.length > 0) {
-                quizMap[courseId] = await cached(`quiz:${courseId}`, () => getLessonsWithQuiz(courseId, lessonIds), TTL_MEDIUM);
-                surveyMap[courseId] = await cached(
-                  `survey:${courseId}`,
-                  () => getLessonSurveyCounts(courseId, lessonIds),
-                  TTL_MEDIUM
-                );
+                // Quiz and survey lookups are independent — run them together.
+                const [quiz, survey] = await Promise.all([
+                  cached(`quiz:${courseId}`, () => getLessonsWithQuiz(courseId, lessonIds), TTL_MEDIUM),
+                  cached(`survey:${courseId}`, () => getLessonSurveyCounts(courseId, lessonIds), TTL_MEDIUM),
+                ]);
+                quizMap[courseId] = quiz;
+                surveyMap[courseId] = survey;
               } else {
                 quizMap[courseId] = {};
                 surveyMap[courseId] = {};
@@ -218,9 +220,12 @@ export function WebCurriculum() {
     
     setLoadingApplication(true);
     try {
-      // Check if user is already an alumni FIRST by fetching fresh user data
-      const { getCurrentUserWithRoles } = await import("../../lib/auth");
-      const currentUser = await getCurrentUserWithRoles();
+      // Check if user is already an alumni FIRST. Uses the same cached roles
+      // read as loadCourses (cache.ts dedupes the in-flight request), so the
+      // page issues one roles query instead of two on mount.
+      const currentUser = await cached(`roles:${user.uid}`, () => getCurrentUserWithRoles(), TTL_SHORT, {
+        shouldCache: (u) => (u?.roles?.length ?? 0) > 0,
+      });
       if (currentUser) {
         const userRoles = currentUser.roles || [];
         const userIsAlumni = userRoles.includes("Digital Curriculum Alumni");
@@ -310,10 +315,13 @@ export function WebCurriculum() {
   })();
 
   if (loading) {
+    // Skeleton mirroring the hero + course card layout instead of a blank page.
     return (
-      <div className="p-4 sm:p-6 max-w-7xl mx-auto">
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">Loading courses...</p>
+      <div className="p-4 sm:p-6 max-w-7xl mx-auto" aria-busy="true" aria-label="Loading courses">
+        <Skeleton className="h-56 w-full mb-6 opacity-20" />
+        <div className="space-y-4">
+          <Skeleton className="h-40 w-full opacity-20" />
+          <Skeleton className="h-40 w-full opacity-20" />
         </div>
       </div>
     );
@@ -325,13 +333,13 @@ export function WebCurriculum() {
       <div className="mb-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           {/* Overall Progress Card */}
-          <Card className="lg:col-span-2 p-6 bg-gradient-to-br from-accent/20 via-card to-card border-accent/30 shadow-lg">
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex-1">
+          <Card className="lg:col-span-2 p-4 sm:p-6 bg-gradient-to-br from-accent/20 via-card to-card border-accent/30 shadow-lg">
+            <div className="flex flex-col-reverse sm:flex-row items-start justify-between gap-4 sm:gap-0 mb-4">
+              <div className="flex-1 min-w-0 w-full">
                 <Badge className="mb-2 bg-accent text-accent-foreground">
                   MY CURRICULUM
                 </Badge>
-                <h1 className="font-headline font-black uppercase tracking-tight text-3xl text-foreground mb-2">
+                <h1 className="font-headline font-black uppercase tracking-tight text-2xl sm:text-3xl text-foreground mb-2">
                   Assigned Courses
                 </h1>
                 <p className="text-sm text-muted-foreground mb-4">
@@ -340,8 +348,8 @@ export function WebCurriculum() {
                 {mostRecentCourse ? (
                   <div className="mb-4 p-3 rounded-lg bg-muted/50 border border-border">
                     <p className="text-xs text-muted-foreground mb-1">Most recent progress</p>
-                    <p className="font-medium text-foreground">{mostRecentCourse.course.title}</p>
-                    <div className="flex items-center gap-2 mt-2">
+                    <p className="font-medium text-foreground break-words">{mostRecentCourse.course.title}</p>
+                    <div className="flex flex-wrap items-center gap-2 mt-2">
                       <Progress
                         value={calculateCourseProgress(
                           mostRecentCourse.course,
@@ -391,7 +399,7 @@ export function WebCurriculum() {
                     </div>
                   </div>
                 ) : null}
-                <div className="flex items-center gap-4 mb-4">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <FileText className="w-4 h-4" />
                     <span>{totalCourses} course{totalCourses !== 1 ? "s" : ""}</span>
@@ -408,7 +416,7 @@ export function WebCurriculum() {
                 <Progress value={overallProgress} className="h-3 mb-4" />
               </div>
               {/* Progress Ring */}
-              <div className="relative w-24 h-24 ml-4">
+              <div className="relative w-24 h-24 sm:ml-4 shrink-0 self-center sm:self-start">
                 <svg className="w-24 h-24 transform -rotate-90">
                   <circle
                     cx="48"
@@ -466,18 +474,18 @@ export function WebCurriculum() {
                   navigate(`/courses/${course.id}`);
                 }}
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-4 flex-1">
-                    <div className={`p-3 rounded-lg ${completed ? "bg-green-500/10" : "bg-accent/10"}`}>
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-start justify-between">
+                  <div className="flex items-start gap-3 sm:gap-4 flex-1 min-w-0">
+                    <div className={`p-3 rounded-lg shrink-0 ${completed ? "bg-green-500/10" : "bg-accent/10"}`}>
                       {completed ? (
                         <CheckCircle2 className="w-6 h-6 text-green-500" />
                       ) : (
                         <BookOpen className="w-6 h-6 text-accent" />
                       )}
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h2 className="text-xl font-bold text-foreground">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <h2 className="text-lg sm:text-xl font-bold text-foreground min-w-0 break-words">
                           {course.title}
                         </h2>
                         {completed && (
@@ -492,7 +500,7 @@ export function WebCurriculum() {
                           {course.description}
                         </p>
                       )}
-                      <div className="flex items-center gap-4 mb-3 text-sm text-muted-foreground">
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-3 text-sm text-muted-foreground">
                         <div className="flex items-center gap-1.5">
                           <FileText className="w-4 h-4" />
                           <span>{course.modules.length} module{course.modules.length !== 1 ? "s" : ""}</span>
@@ -515,7 +523,7 @@ export function WebCurriculum() {
                       </div>
                     </div>
                   </div>
-                  <div className="ml-4 flex gap-2">
+                  <div className="mt-3 sm:mt-0 sm:ml-4 flex gap-2 w-full sm:w-auto [&>button]:flex-1 sm:[&>button]:flex-none">
                     <Button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -568,15 +576,15 @@ export function WebCurriculum() {
       {/* Alumni Application Widget */}
       <div ref={alumniCardRef} id="alumni-application">
       <Card
-        className={`p-6 border transition-all ${
+        className={`p-4 sm:p-6 border transition-all ${
           allCompleted
             ? "bg-gradient-to-br from-accent/10 via-card to-card border-accent/30 shadow-lg"
             : "bg-muted/50 border-border"
         } ${highlightNextStep ? "animate-pulse ring-4 ring-mortar-brick" : ""}`}
       >
-        <div className="flex items-start gap-4">
+        <div className="flex flex-col sm:flex-row items-start gap-4">
           <div
-            className={`p-4 rounded-lg ${
+            className={`p-4 rounded-lg shrink-0 ${
               allCompleted ? "bg-accent/10" : "bg-muted"
             }`}
           >
@@ -586,9 +594,9 @@ export function WebCurriculum() {
               }`}
             />
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0 w-full">
             <h3
-              className={`text-xl font-bold mb-1 ${
+              className={`text-lg sm:text-xl font-bold mb-1 ${
                 allCompleted ? "text-foreground" : "text-muted-foreground"
               }`}
             >
@@ -666,7 +674,7 @@ export function WebCurriculum() {
                 {userApplication.status === "pending" && (
                   <div className="text-sm text-muted-foreground">
                     <p className="mb-2">
-                      <strong className="text-foreground">The times you told us you're free:</strong>
+                      <strong className="text-foreground">Your Availability Windows:</strong>
                     </p>
                     <div className="space-y-1 pl-4">
                       {userApplication.availabilitySlots && userApplication.availabilitySlots.length > 0 ? (
@@ -690,11 +698,7 @@ export function WebCurriculum() {
                       </p>
                     )}
                     <p className="mt-2 text-xs">
-                      Your application is under review. The Alumni Manager will book{" "}
-                      <strong className="text-foreground">one meeting inside one of these
-                      windows</strong> and email you the confirmed time within 3 business days,
-                      with a calendar invite attached. Check your spam folder if you don&apos;t see
-                      it.
+                      Your application is under review. We&apos;ll get back to you soon!
                     </p>
                   </div>
                 )}
@@ -717,13 +721,10 @@ export function WebCurriculum() {
                     happens here, so the shape of the whole process belongs here
                     too: what it is, what you'll be asked, what happens after. */}
                 <div className="rounded-lg border border-accent/30 bg-accent/5 p-4">
-                  <div className="flex items-start gap-2 mb-3">
-                    <Info className="w-4 h-4 text-accent mt-0.5 shrink-0" />
-                    <p className="text-sm font-semibold text-foreground">
-                      Before you apply — here's how it works
-                    </p>
-                  </div>
-                  <ol className="space-y-2.5 text-sm text-muted-foreground list-decimal pl-8">
+                  <p className="text-sm font-semibold text-foreground mb-3">
+                    Before you apply — here's how it works
+                  </p>
+                  <ol className="space-y-2.5 text-sm text-muted-foreground list-decimal pl-5">
                     <li>
                       <strong className="text-foreground">You pick times you're free.</strong> The
                       application asks for up to three availability windows — for example, Monday

@@ -23,9 +23,12 @@ import {
 import { httpsCallable } from "firebase/functions";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, functions, storage } from "./firebase";
-import { jsPDF } from "jspdf";
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { DEFAULT_DATAROOM_FOLDER_ID } from "./dataroomFolders";
+
+// jspdf and pdf-lib are only needed when actually generating a certificate or
+// survey PDF. Loading them eagerly put ~1 MB of PDF tooling in the entry
+// bundle (this module is imported by the navigation for notifications), so
+// they are dynamically imported at the call sites instead.
 
 export interface SkillCertificate {
   id: string;
@@ -102,7 +105,8 @@ async function generateTemplateCertificatePdfUpload(
 ): Promise<{ pdfUrl: string; storagePath: string }> {
   const cleanName = (recipientName || "Learner").trim();
   const cleanSkill = (skill || "Skill").trim();
-  const makeFallbackCertificateBlob = (): Blob => {
+  const makeFallbackCertificateBlob = async (): Promise<Blob> => {
+    const { jsPDF } = await import("jspdf");
     const doc = new jsPDF({
       orientation: "landscape",
       unit: "pt",
@@ -154,6 +158,7 @@ async function generateTemplateCertificatePdfUpload(
   let pdfBlob: Blob;
   if (templateBytes) {
     try {
+      const { PDFDocument, StandardFonts, rgb } = await import("pdf-lib");
       const pdfDoc = await PDFDocument.load(templateBytes);
       const pages = pdfDoc.getPages();
       const page = pages[0];
@@ -196,10 +201,10 @@ async function generateTemplateCertificatePdfUpload(
       pdfBlob = new Blob([bytes], { type: "application/pdf" });
     } catch {
       // Template path resolved to non-PDF in some deploy contexts; use generated fallback.
-      pdfBlob = makeFallbackCertificateBlob();
+      pdfBlob = await makeFallbackCertificateBlob();
     }
   } else {
-    pdfBlob = makeFallbackCertificateBlob();
+    pdfBlob = await makeFallbackCertificateBlob();
   }
   const safe = (value: string) =>
     value
@@ -519,6 +524,7 @@ export async function uploadSurveyResponsePdf(
 ): Promise<boolean> {
   try {
     const displayTitle = String(documentName || lessonTitle || "Survey").trim();
+    const { jsPDF } = await import("jspdf");
     const doc = new jsPDF();
     doc.setFontSize(18);
     doc.text("Survey Responses", 20, 20);

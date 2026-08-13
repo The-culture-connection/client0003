@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import JSZip from "jszip";
 import { toast } from "sonner";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
@@ -118,6 +117,8 @@ export function WebDataRoom() {
     setZipBusy(true);
     try {
       toast.message("Building ZIP…", { description: "Fetching PDFs through the app proxy." });
+      // Loaded on demand: jszip is only needed for this bulk download.
+      const { default: JSZip } = await import("jszip");
       const zip = new JSZip();
       let added = 0;
       for (const sr of withStoragePath) {

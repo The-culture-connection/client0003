@@ -96,3 +96,8 @@ out/
 *.tsbuildinfo
 
 preview/
+
+# Local holding pen for files parked during a revert/restore. Backups only —
+# never part of a release, and large enough to bloat the history if swept in
+# by `git add -A`.
+_to_delete/

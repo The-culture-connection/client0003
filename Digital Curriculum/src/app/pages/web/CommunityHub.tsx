@@ -31,6 +31,9 @@ import {
   type Discussion,
   getReplyCount as getReplyCountUtil,
 } from "../../lib/discussions";
+import { getEvents } from "../../lib/events";
+import { getGroups, getLastGroupMessage, getMemberCount } from "../../lib/groups";
+import { cached, invalidateCache, TTL_SHORT, TTL_MEDIUM } from "../../lib/cache";
 import { useScreenAnalytics } from "../../analytics/useScreenAnalytics";
 import { trackEvent } from "../../analytics/trackEvent";
 import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalyticsContract";
@@ -46,7 +49,8 @@ export function WebCommunityHub() {
   const loadDiscussions = async () => {
     setDiscussionsLoading(true);
     try {
-      const raw = await getDiscussions();
+      // Cached so back-navigation to this page is instant (see lib/cache.ts).
+      const raw = await cached("discussions:all", () => getDiscussions(), TTL_SHORT);
       const sorted = [...raw].sort((a, b) => {
         if (a.isPinned && !b.isPinned) return -1;
         if (!a.isPinned && b.isPinned) return 1;
@@ -174,8 +178,7 @@ export function WebCommunityHub() {
   const loadEvents = async () => {
     setLoadingEvents(true);
     try {
-      const { getEvents } = await import("../../lib/events");
-      const allEvents = await getEvents();
+      const allEvents = await cached("events:all", () => getEvents(), TTL_MEDIUM);
       // Filter for upcoming events (date >= today) and get first 4
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -201,13 +204,13 @@ export function WebCommunityHub() {
   const loadGroups = async () => {
     setLoadingGroups(true);
     try {
-      const { getGroups, getLastGroupMessage, getMemberCount } = await import("../../lib/groups");
-      const allGroups = await getGroups();
-      
-      // Fetch last message and member count for each group
+      const allGroups = await cached("groups:all", () => getGroups(), TTL_MEDIUM);
+
+      // Fetch last message and member count for each group (cached per group,
+      // shared with the Dashboard's Community Activity section)
       const groupsWithDetails = await Promise.all(
         allGroups.map(async (group) => {
-          const lastMessage = await getLastGroupMessage(group.id);
+          const lastMessage = await cached(`groupMsg:${group.id}`, () => getLastGroupMessage(group.id), TTL_MEDIUM);
           const memberCount = getMemberCount(group);
           return {
             ...group,
@@ -241,7 +244,7 @@ export function WebCommunityHub() {
       <div className="p-4 sm:p-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="font-headline font-black uppercase tracking-tight text-3xl text-foreground mb-1">
+        <h1 className="font-headline font-black uppercase tracking-tight text-2xl sm:text-3xl text-foreground mb-1">
           Community Hub
         </h1>
         <p className="text-sm text-muted-foreground">
@@ -281,11 +284,11 @@ export function WebCommunityHub() {
                 className="w-full h-40 object-cover rounded-lg mb-4"
               />
             )}
-            <div className="flex items-center gap-2 mb-2">
-              <Badge variant="secondary">
+            <div className="flex flex-wrap items-center gap-2 mb-2 min-w-0">
+              <Badge variant="secondary" className="shrink-0">
                 {realEvents[0].event_type || "In-person"}
               </Badge>
-              <h2 className="text-2xl font-bold text-foreground">
+              <h2 className="text-xl sm:text-2xl font-bold text-foreground min-w-0 break-words">
                 {realEvents[0].title}
               </h2>
             </div>
@@ -329,7 +332,7 @@ export function WebCommunityHub() {
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <Button
                 className="bg-accent hover:bg-accent/90 text-accent-foreground"
                 onClick={() => {
@@ -579,7 +582,11 @@ export function WebCommunityHub() {
       <StartDiscussionDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        onSuccess={loadDiscussions}
+        onSuccess={() => {
+          // A new discussion was just created — bypass the cached list.
+          invalidateCache("discussions:all");
+          void loadDiscussions();
+        }}
       />
       </div>
       <MortarDMWidget />

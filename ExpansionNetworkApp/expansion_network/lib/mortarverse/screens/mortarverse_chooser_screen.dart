@@ -123,10 +123,10 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
         ),
         SpotlightStep(
           targetKey: _tutNetworkingTile,
-          title: 'Waiting on you',
-          body: 'When someone messages you, a WAITING count appears on the '
-              'Networking Hall — and at the top of the card above — until '
-              'you reply.',
+          title: 'The Networking Hall',
+          body: 'Where you meet other members: communities, events, jobs and '
+              'skills. Anything actually waiting on you shows at the top of '
+              'the card above.',
         ),
         SpotlightStep(
           targetKey: _tutCardScan,
@@ -834,15 +834,14 @@ class _ShopStreet extends StatelessWidget {
           _ShopTile(
             key: networkingTileKey,
             title: 'NETWORKING\nHALL',
-            // No presence system exists, so this never claims who is online.
-            subtitle: waiting > 0
-                ? '$waiting waiting on you'
-                : 'Connect • Grow • Collaborate',
-            pill: hasExpansionAccess
-                ? (waiting > 0 ? '$waiting WAITING' : 'OPEN')
-                : 'LOCKED',
+            // Deliberately steady copy. This used to swap to "N waiting on you"
+            // / "N WAITING", which duplicated the focus card directly above it
+            // and made the street read as an alert rather than a destination.
+            // (No presence system exists either, so it never claims who's online.)
+            subtitle: 'Connect • Grow • Collaborate',
+            pill: hasExpansionAccess ? 'OPEN' : 'LOCKED',
             shopColor: AppColors.primary,
-            planetStyle: MortarversePlanets.networkingHall,
+            planetAsset: MortarversePlanets.networkingHall,
             enabled: true,
             onTap: () => context.go(
               hasExpansionAccess ? '/home' : '/expansion/enter-code',
@@ -860,7 +859,7 @@ class _ShopStreet extends StatelessWidget {
                     ? 'OPEN NOW'
                     : 'CLOSED',
             shopColor: ConferenceColors.gold,
-            planetStyle: MortarversePlanets.conferenceCenter,
+            planetAsset: MortarversePlanets.conferenceCenter,
             enabled: conferenceOpen,
             onTap: conferenceOpen
                 ? () {
@@ -881,7 +880,7 @@ class _ShopStreet extends StatelessWidget {
                 ? 'PROFILE ${signals.profileCompletion}%'
                 : 'COMPLETE',
             shopColor: CommonsColors.accent,
-            planetStyle: MortarversePlanets.commons,
+            planetAsset: MortarversePlanets.commons,
             enabled: true,
             outlinedPill: true,
             onTap: () => context.go('/commons/profile'),
@@ -894,7 +893,7 @@ class _ShopStreet extends StatelessWidget {
             subtitle: 'Courses & lessons in your browser',
             pill: 'WEB',
             shopColor: _ShopTile.curriculumBlue,
-            planetStyle: MortarversePlanets.digitalCurriculum,
+            planetAsset: MortarversePlanets.digitalCurriculum,
             enabled: true,
             outlinedPill: true,
             onTap: onOpenCurriculum,
@@ -912,7 +911,7 @@ class _ShopTile extends StatefulWidget {
     required this.subtitle,
     required this.pill,
     required this.shopColor,
-    required this.planetStyle,
+    required this.planetAsset,
     required this.enabled,
     required this.onTap,
     this.outlinedPill = false,
@@ -927,8 +926,8 @@ class _ShopTile extends StatefulWidget {
   final String pill;
   final Color shopColor;
 
-  /// The destination's painted planet.
-  final MortarversePlanetStyle planetStyle;
+  /// The destination's planet illustration (a path under assets/planets/).
+  final String planetAsset;
 
   final bool enabled;
   final VoidCallback? onTap;
@@ -982,9 +981,13 @@ class _ShopTileState extends State<_ShopTile> {
                               ),
                             ),
                             MortarversePlanet(
-                              style: widget.planetStyle,
+                              asset: widget.planetAsset,
                               size: 114,
                               enabled: widget.enabled,
+                              // If a planet's artwork is ever missing, fall back
+                              // to a sphere in its own accent so the street
+                              // keeps its rhythm instead of showing a gap.
+                              fallbackTint: widget.shopColor,
                             ),
                           ],
                         ),

@@ -766,6 +766,11 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                   _field('Facebook', _facebook),
                   _field('TikTok', _tiktok),
                 ],
+                // Account deletion, required in-app by App Store Guideline
+                // 5.1.1(v). Shown on the full profile edit only — a deep link
+                // to one section ("?section=industry") is a focused task and
+                // has no business offering to delete the account.
+                if (showAll) _dangerZone(context),
                 const SizedBox(height: 32),
               ],
             ),
@@ -797,6 +802,59 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Bottom-of-page destructive section. Deliberately understated — it opens a
+  /// screen that explains the consequences and takes a typed confirmation, so
+  /// this button itself does nothing irreversible.
+  Widget _dangerZone(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 40),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          border: Border.all(color: const Color(0xFFB3261E).withValues(alpha: 0.35)),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Delete account',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Permanently delete your MORTAR account and your data. This '
+              'cannot be undone.',
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.4,
+                color: AppColors.mutedForeground,
+              ),
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFFFF8B95),
+                  side: BorderSide(
+                      color: const Color(0xFFB3261E).withValues(alpha: 0.6)),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                onPressed: _saving
+                    ? null
+                    : () => context.push('/profile/delete-account'),
+                icon: const Icon(Icons.delete_forever_rounded, size: 18),
+                label: const Text('Delete my account',
+                    style: TextStyle(fontWeight: FontWeight.w600)),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

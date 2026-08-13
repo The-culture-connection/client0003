@@ -128,19 +128,46 @@ class _ExpansionShellState extends State<ExpansionShell> {
             Positioned(
               top: 8,
               right: 8,
-              child: Material(
-                color: Colors.black.withValues(alpha: 0.55),
-                shape: const CircleBorder(),
-                child: IconButton(
-                  onPressed: () {
-                    unawaited(
-                      ExpansionAnalytics.log('expansion_exit_to_mortarverse_clicked', sourceScreen: 'main_shell'),
-                    );
-                    context.go('/mortarverse');
-                  },
-                  icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 20),
-                  tooltip: 'Back to the MORTARVERSE',
-                ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Standing replay of the hall walkthrough. The tour otherwise
+                  // auto-runs once per install, which leaves no way to see it
+                  // again — for testing, or for anyone who skipped it.
+                  Material(
+                    color: Colors.black.withValues(alpha: 0.55),
+                    shape: const CircleBorder(),
+                    child: IconButton(
+                      onPressed: () {
+                        unawaited(
+                          ExpansionAnalytics.log(
+                            'expansion_tour_replayed',
+                            sourceScreen: 'main_shell',
+                          ),
+                        );
+                        _startTour();
+                      },
+                      icon: const Icon(Icons.help_outline_rounded,
+                          color: Colors.white, size: 20),
+                      tooltip: 'How the Networking Hall works',
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Material(
+                    color: Colors.black.withValues(alpha: 0.55),
+                    shape: const CircleBorder(),
+                    child: IconButton(
+                      onPressed: () {
+                        unawaited(
+                          ExpansionAnalytics.log('expansion_exit_to_mortarverse_clicked', sourceScreen: 'main_shell'),
+                        );
+                        context.go('/mortarverse');
+                      },
+                      icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 20),
+                      tooltip: 'Back to the MORTARVERSE',
+                    ),
+                  ),
+                ],
               ),
             ),
           ],

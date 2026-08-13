@@ -1,10 +1,18 @@
 import { Link, useLocation, useNavigate } from "react-router";
-import { LayoutDashboard, BookOpen, FolderOpen, Award, Users, LogOut, Shield, ShoppingBag, Bell, ShoppingCart, X, GraduationCap, Crown, HelpCircle, Sun, Moon, Menu } from "lucide-react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "../ui/sheet";
-import { StudentTour, startTour } from "../tour/StudentTour";
+import { LayoutDashboard, BookOpen, FolderOpen, Award, Users, LogOut, Shield, ShoppingBag, Bell, ShoppingCart, X, GraduationCap, Crown, HelpCircle, Sun, Moon } from "lucide-react";
 import { Button } from "../ui/button";
 import { useAuth } from "../auth/AuthProvider";
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
+
+// Loaded lazily so react-joyride stays out of the entry bundle. The chunk
+// starts downloading as soon as the nav mounts; startTour() below reuses the
+// same module promise, so the "?" button still works.
+const StudentTour = lazy(() =>
+  import("../tour/StudentTour").then((m) => ({ default: m.StudentTour }))
+);
+const startTour = () => {
+  void import("../tour/StudentTour").then((m) => m.startTour());
+};
 import { subscribeUserNotifications, markNotificationRead, type UserNotification } from "../../lib/dataroom";
 import { useCart, OPEN_CART_EVENT } from "../../lib/cart";
 import { checkoutShopCart } from "../../lib/stripeCheckout";
@@ -61,7 +69,6 @@ export function WebNavigation() {
   const [cartOpen, setCartOpen] = useState(false);
   const [badgeSuiteOpen, setBadgeSuiteOpen] = useState(false);
   const [checkoutBusy, setCheckoutBusy] = useState(false);
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const { cart, itemCount, api } = useCart(user?.uid ?? null);
 
@@ -195,130 +202,56 @@ export function WebNavigation() {
 
   return (
     <nav className="bg-[#050505] light:bg-[#efebe1] border-b border-white/10 light:border-black/10">
-      <div className={adminMinimalHeader ? "max-w-[1600px] mx-auto px-4 md:px-6" : "max-w-[1600px] mx-auto px-4 md:px-6"}>
-        <div className="flex items-center justify-between h-16 gap-2 md:gap-4">
-          <div className="flex items-center gap-3 md:gap-6 min-w-0 flex-1">
-            {/* Below md the six destinations do not fit beside the account
-                controls, so they move into a drawer. Testers on phones had a
-                header that wrapped out of its own 64px band. */}
-            {showStudentNavLinks && (
-              <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-                <SheetTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="md:hidden shrink-0 text-muted-foreground hover:text-foreground"
-                    aria-label="Open navigation menu"
-                  >
-                    <Menu className="w-5 h-5" />
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="left" className="w-[280px] p-0">
-                  <SheetHeader className="px-4 pt-4 pb-2">
-                    <SheetTitle className="text-left">Menu</SheetTitle>
-                  </SheetHeader>
-                  <div className="flex flex-col gap-1 px-3 pb-4">
-                    {navItems.map((item) => {
-                      const Icon = item.icon;
-                      const isAdminNavItem = item.path === "/admin/auth";
-                      const isActive =
-                        location.pathname === item.path ||
-                        (item.path === "/dashboard" && location.pathname === "/") ||
-                        (isAdminNavItem && location.pathname.startsWith("/admin"));
-                      return (
-                        <Link
-                          key={item.path}
-                          to={item.path}
-                          onClick={() => {
-                            setMobileNavOpen(false);
-                            trackEvent(WEB_ANALYTICS_EVENTS.NAV_LINK_CLICKED, {
-                              path: item.path,
-                              label: item.label,
-                            });
-                          }}
-                          className={`flex items-center gap-3 px-3 py-3 rounded-lg text-sm transition-colors ${
-                            isActive
-                              ? "bg-mortar-brick text-white font-bold"
-                              : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
-                          }`}
-                        >
-                          <Icon className="w-5 h-5 shrink-0" />
-                          <span>{item.label}</span>
-                        </Link>
-                      );
-                    })}
-                    {hasStaffAdminAccess && (
-                      <div className="mt-3 pt-3 border-t border-border px-1">
-                        <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-2">
-                          View as
-                        </p>
-                        {staffViewToggle}
-                      </div>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMobileNavOpen(false);
-                        startTour();
-                      }}
-                      className="mt-3 flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-foreground/5"
-                    >
-                      <HelpCircle className="w-5 h-5 shrink-0" />
-                      <span>Take a tour of the app</span>
-                    </button>
-                  </div>
-                </SheetContent>
-              </Sheet>
-            )}
+      <div className={adminMinimalHeader ? "max-w-[1600px] mx-auto px-3 md:px-6" : "max-w-[1600px] mx-auto px-3 md:px-6"}>
+        {/* Phones: the header wraps into two rows — logo + actions on top, the
+            nav links on a horizontally scrollable row underneath. The nav links
+            are a single element at every breakpoint so the tour's data-tour
+            anchors stay unique. Desktop (md+) is unchanged: one 64px row. */}
+        <div className="flex flex-wrap md:flex-nowrap items-center justify-between md:h-16 gap-x-2 md:gap-x-4">
+          <div className="flex items-center gap-3 md:gap-6 min-w-0 py-2.5 md:py-0 md:order-1">
             <Link to={logoTo} className="shrink-0" aria-label="MORTAR">
               <img src="/brand/mortar-text-white.png" alt="MORTAR" className="h-6 w-auto brand-invert-on-light" />
             </Link>
-            {adminMinimalHeader && (
-              <span data-tour="admin-view-toggle" className="hidden sm:inline">
-                {staffViewToggle}
-              </span>
-            )}
-            {showStudentNavLinks && (
-              <div className="hidden md:flex items-center gap-1 flex-wrap min-w-0">
-                {navItems.map((item) => {
-                  const Icon = item.icon;
-                  const isAdminNavItem = item.path === "/admin/auth";
-                  const isActive =
-                    location.pathname === item.path ||
-                    (item.path === "/dashboard" && location.pathname === "/") ||
-                    (isAdminNavItem && location.pathname.startsWith("/admin"));
-
-                  return (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      data-tour={item.tour ? `nav-${item.tour}` : undefined}
-                      onClick={() =>
-                        trackEvent(WEB_ANALYTICS_EVENTS.NAV_LINK_CLICKED, {
-                          path: item.path,
-                          label: item.label,
-                        })
-                      }
-                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
-                        isActive
-                          ? "rounded-none bg-mortar-brick text-white font-bold shadow-[0_0_18px_rgba(193,68,42,0.45)]"
-                          : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
-                      }`}
-                    >
-                      <Icon className="w-4 h-4" />
-                      <span className="hidden lg:inline">{item.label}</span>
-                    </Link>
-                  );
-                })}
-              </div>
-            )}
+            {adminMinimalHeader && <span data-tour="admin-view-toggle">{staffViewToggle}</span>}
           </div>
+          {showStudentNavLinks && (
+            <div className="order-last w-full pb-2 flex flex-nowrap overflow-x-auto md:order-2 md:w-auto md:flex-1 md:ml-2 md:pb-0 md:flex-wrap md:overflow-visible items-center gap-1 min-w-0">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isAdminNavItem = item.path === "/admin/auth";
+                const isActive =
+                  location.pathname === item.path ||
+                  (item.path === "/dashboard" && location.pathname === "/") ||
+                  (isAdminNavItem && location.pathname.startsWith("/admin"));
+
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    data-tour={item.tour ? `nav-${item.tour}` : undefined}
+                    onClick={() =>
+                      trackEvent(WEB_ANALYTICS_EVENTS.NAV_LINK_CLICKED, {
+                        path: item.path,
+                        label: item.label,
+                      })
+                    }
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors shrink-0 whitespace-nowrap ${
+                      isActive
+                        ? "rounded-none bg-mortar-brick text-white font-bold shadow-[0_0_18px_rgba(193,68,42,0.45)]"
+                        : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    <span className="max-md:inline max-md:text-xs hidden lg:inline">{item.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
 
           {user && (
-            <div className="flex items-center gap-1 sm:gap-3 shrink-0">
-              {showStudentNavLinks && hasStaffAdminAccess && (
-                <span className="hidden sm:inline">{staffViewToggle}</span>
-              )}
+            <div className="flex items-center gap-1 md:gap-3 shrink-0 py-2 md:py-0 md:order-3">
+              {showStudentNavLinks && hasStaffAdminAccess && staffViewToggle}
               <Button
                 variant="ghost"
                 size="icon"
@@ -514,9 +447,7 @@ export function WebNavigation() {
                   data-tour="help"
                   title="Take a tour of the app"
                   aria-label="Take a tour of the app"
-                  // On phones the tour lives in the drawer instead, so the
-                  // header keeps room for the account controls.
-                  className="hidden md:inline-flex text-muted-foreground hover:text-foreground"
+                  className="text-muted-foreground hover:text-foreground"
                 >
                   <HelpCircle className="w-5 h-5" />
                 </Button>
@@ -525,17 +456,22 @@ export function WebNavigation() {
                 variant="outline"
                 size="sm"
                 onClick={handleSignOut}
+                className="flex items-center gap-2 border-border text-foreground hover:bg-muted max-md:px-2"
+                title="Sign out"
                 aria-label="Sign out"
-                className="flex items-center gap-2 border-border text-foreground hover:bg-muted px-2 sm:px-3"
               >
                 <LogOut className="w-4 h-4" />
-                <span className="hidden sm:inline">Sign Out</span>
+                <span className="hidden md:inline">Sign Out</span>
               </Button>
             </div>
           )}
         </div>
       </div>
-      {showStudentNavLinks && <StudentTour />}
+      {showStudentNavLinks && (
+        <Suspense fallback={null}>
+          <StudentTour />
+        </Suspense>
+      )}
     </nav>
   );
 }
