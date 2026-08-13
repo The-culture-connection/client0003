@@ -19,6 +19,7 @@ export {
   setNetworkingEnabled,
   recordConferenceSwipe,
   undoConferenceSwipe,
+  listConferenceInboundLikes,
 } from "./conferenceNetworking";
 
 export { onUserCreated } from "./triggers/onUserCreated";
@@ -27,6 +28,7 @@ export { onUserReportCreated } from "./triggers/onUserReportCreated";
 export { onMatchProfileWrite } from "./triggers/onMatchProfileWrite";
 export { scheduledNudgeIncompleteProfiles } from "./triggers/scheduledNudgeIncompleteProfiles";
 export { onGraduationApplicationEmail } from "./triggers/onGraduationApplicationEmail";
+export { onEventSubmittedEmail } from "./triggers/onEventSubmittedEmail";
 export { onUserAlumniAdmittedEmail } from "./triggers/onUserAlumniAdmittedEmail";
 export { onUserOnboardingWelcomeEmail } from "./triggers/onUserOnboardingWelcomeEmail";
 export { scheduledCourseInactiveEmailNudges } from "./triggers/scheduledCourseInactiveEmailNudges";

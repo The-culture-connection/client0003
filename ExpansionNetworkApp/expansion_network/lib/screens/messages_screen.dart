@@ -10,6 +10,7 @@ import '../services/dm_repository.dart';
 import '../services/user_profile_repository.dart';
 import '../theme/app_theme.dart';
 import '../theme/cosmic_content.dart';
+import '../widgets/expansion_compose_fab.dart';
 import '../widgets/user_profile_modal.dart';
 
 String? _dmOtherParticipant(List<dynamic>? ids, String me) {
@@ -46,6 +47,14 @@ class _MessagesScreenState extends State<MessagesScreen> {
     final users = UserProfileRepository();
 
     return Scaffold(
+      // Testers could only ever start a chat from somebody's card elsewhere in
+      // the app — from the inbox itself there was no way to begin one.
+      floatingActionButton: me == null
+          ? null
+          : ExpansionComposeFab(
+              heroTag: 'compose-messages',
+              onPressed: () => context.push('/messages/new'),
+            ),
       body: SafeArea(
         bottom: false,
         child: CustomScrollView(
@@ -62,7 +71,8 @@ class _MessagesScreenState extends State<MessagesScreen> {
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      'Direct conversations. Message someone from their card anywhere in the app.',
+                      'Direct conversations. Start a new one with the + button, '
+                      'or message someone from their card anywhere in the app.',
                       style: TextStyle(fontSize: 12, color: AppColors.mutedForeground),
                     ),
                   ],
@@ -89,14 +99,34 @@ class _MessagesScreenState extends State<MessagesScreen> {
                     );
                   }
                   if (docs.isEmpty) {
-                    return const SliverFillRemaining(
+                    return SliverFillRemaining(
+                      hasScrollBody: false,
                       child: Center(
                         child: Padding(
-                          padding: EdgeInsets.all(24),
-                          child: Text(
-                            'No conversations yet.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(color: AppColors.mutedForeground),
+                          padding: const EdgeInsets.all(32),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.forum_outlined,
+                                  size: 40, color: AppColors.mutedForeground),
+                              const SizedBox(height: 14),
+                              const Text(
+                                'No conversations yet',
+                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                              ),
+                              const SizedBox(height: 6),
+                              const Text(
+                                'Search for someone in the network and say hello.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: AppColors.mutedForeground, height: 1.4),
+                              ),
+                              const SizedBox(height: 18),
+                              FilledButton.icon(
+                                onPressed: () => context.push('/messages/new'),
+                                icon: const Icon(Icons.edit_outlined, size: 18),
+                                label: const Text('New message'),
+                              ),
+                            ],
                           ),
                         ),
                       ),

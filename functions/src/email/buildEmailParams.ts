@@ -81,6 +81,27 @@ export function graduationMeetingTimeSelectedParams(input: {
   };
 }
 
+/**
+ * Receipt for a member-submitted event awaiting approval. Sets expectations
+ * about review — testers submitted an event and had no idea whether it landed.
+ */
+export function eventSubmittedConfirmationParams(input: {
+  first_name?: string;
+  userName?: string;
+  userEmail?: string;
+  event_title: string;
+  event_when: string;
+  event_location?: string | null;
+}): JsonObject {
+  return {
+    first_name: input.first_name ?? firstNameFrom(input.userName, input.userEmail),
+    event_title: input.event_title.trim(),
+    event_when: input.event_when.trim() || "Date to be confirmed",
+    event_location: input.event_location?.trim() || "Not specified",
+    ...sharedFooterParams(),
+  };
+}
+
 export function graduationAdmittedToAlumniParams(input: {
   first_name?: string;
   userName?: string;

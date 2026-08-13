@@ -93,7 +93,7 @@ export function ModuleDetail() {
   const progress = (completedCount / totalCourses) * 100;
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-6">
         <Button

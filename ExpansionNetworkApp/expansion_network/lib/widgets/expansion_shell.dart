@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
 import '../analytics/expansion_analytics.dart';
 import '../theme/cosmic_content.dart';
@@ -32,7 +31,7 @@ class _ExpansionShellState extends State<ExpansionShell> {
   // NavigationBar, which builds a separate selected and unselected icon,
   // CosmicBottomNav renders each destination as a single widget.
   final List<GlobalKey> _iconKeys = List.generate(4, (_) => GlobalKey());
-  TutorialCoachMark? _activeTour;
+  ExpansionTour? _activeTour;
 
   static const _destinations = [
     _NavSpec(

@@ -5,6 +5,12 @@ abstract final class MortarversePlanets {
   static const String networkingHall = 'assets/planets/networking_hall.png';
   static const String conferenceCenter = 'assets/planets/conference_center.png';
   static const String commons = 'assets/planets/commons.png';
+
+  /// Digital Curriculum. **No artwork yet** — drop a 1920×1080 PNG matching the
+  /// other three (sphere 858px tall, centred, transparent background) at this
+  /// path and it appears automatically; until then [MortarversePlanet] draws
+  /// the [fallbackTint] sphere below.
+  static const String digitalCurriculum = 'assets/planets/digital_curriculum.png';
 }
 
 /// A destination rendered as its planet illustration.
@@ -27,9 +33,15 @@ class MortarversePlanet extends StatelessWidget {
     required this.asset,
     this.size = 104,
     this.enabled = true,
+    this.fallbackTint,
   });
 
   final String asset;
+
+  /// Drawn as a plain lit sphere when [asset] is missing. Only destinations
+  /// still waiting on their illustration pass this; without it a missing asset
+  /// renders nothing, as before.
+  final Color? fallbackTint;
 
   /// Diameter of the sphere, and the side of the square this occupies in
   /// layout. Anything wider than the sphere overhangs without taking space.
@@ -79,7 +91,39 @@ class MortarversePlanet extends StatelessWidget {
             fit: BoxFit.fill,
             filterQuality: FilterQuality.medium,
             // Flat vector art: a missing asset should not take out the screen.
-            errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+            errorBuilder: (_, __, ___) => _fallback(),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// A sphere in the destination's accent, sized and centred like the real art
+  /// so the street's alignment holds while an illustration is outstanding.
+  Widget _fallback() {
+    final tint = fallbackTint;
+    if (tint == null) return const SizedBox.shrink();
+    return Center(
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: RadialGradient(
+              // Light from the upper left, matching the illustrated planets.
+              center: const Alignment(-0.35, -0.4),
+              radius: 0.95,
+              colors: [
+                Color.lerp(tint, Colors.white, 0.35)!,
+                tint,
+                Color.lerp(tint, Colors.black, 0.72)!,
+              ],
+              stops: const [0, 0.45, 1],
+            ),
+            boxShadow: [
+              BoxShadow(color: tint.withValues(alpha: 0.35), blurRadius: 26, spreadRadius: 1),
+            ],
           ),
         ),
       ),

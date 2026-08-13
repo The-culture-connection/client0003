@@ -151,7 +151,7 @@ export function CourseDetail() {
 
   if (loading) {
     return (
-      <div className="p-6 max-w-7xl mx-auto">
+      <div className="p-4 sm:p-6 max-w-7xl mx-auto">
         <div className="text-center py-12">
           <p className="text-muted-foreground">Loading course...</p>
         </div>
@@ -161,7 +161,7 @@ export function CourseDetail() {
 
   if (!course) {
     return (
-      <div className="p-6 max-w-7xl mx-auto">
+      <div className="p-4 sm:p-6 max-w-7xl mx-auto">
         <div className="text-center py-12">
           <p className="text-muted-foreground mb-4">Course not found</p>
           <Button onClick={() => navigate("/curriculum")} variant="outline">
@@ -207,7 +207,7 @@ export function CourseDetail() {
   const daysLeft = endDate ? Math.max(0, Math.ceil((endDate.getTime() - Date.now()) / (24 * 60 * 60 * 1000))) : null;
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-6">
         <Button

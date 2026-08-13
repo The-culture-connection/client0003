@@ -131,21 +131,21 @@ class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen>
       () => [
         TourStep(
           key: _tourCheckIn,
-          shape: ShapeLightFocus.RRect,
+          shape: TourShape.rrect,
           title: 'Check in each day',
           body: 'Tap here every day of the conference. Check-ins count toward '
               'your missions and let organisers see who is here.',
         ),
         TourStep(
           key: _tourZones,
-          shape: ShapeLightFocus.RRect,
+          shape: TourShape.rrect,
           title: 'Four places to go',
           body: 'Meet people in the Networking Zone, plan your day in the '
               'Schedule, talk in the Community Hub, and visit sponsor booths.',
         ),
         TourStep(
           key: _tourMissionsTab,
-          shape: ShapeLightFocus.RRect,
+          shape: TourShape.rrect,
           title: 'Track your missions',
           body: 'Missions are challenges set by the organisers. Complete one '
               'and the badge lands on your profile.',

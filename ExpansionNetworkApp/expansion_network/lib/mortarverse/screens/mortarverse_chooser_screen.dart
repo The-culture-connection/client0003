@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../analytics/expansion_analytics.dart';
 import '../../auth/auth_controller.dart';
 import '../../commons/theme/commons_colors.dart';
+import '../../constants/app_links.dart';
 import '../../conference/current_conference_holder.dart';
 import '../../conference/models/conference.dart';
 import '../../conference/services/conference_repository.dart';
@@ -16,6 +18,8 @@ import '../../models/community_event.dart';
 import '../../services/events_repository.dart';
 import '../../services/user_profile_repository.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/safe_launch_url.dart';
+import '../../widgets/expansion_tour.dart';
 import '../mortarverse_signals.dart';
 import '../../theme/cosmic_widgets.dart';
 import '../widgets/mortarverse_focus_card.dart';
@@ -42,6 +46,13 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
 
   late final Future<Conference?> _activeConferenceFuture;
 
+  // Spotlight targets for the first-visit walkthrough of this screen.
+  final GlobalKey _tourFocusCard = GlobalKey();
+  final GlobalKey _tourStreet = GlobalKey();
+  final GlobalKey _tourEvents = GlobalKey();
+  final GlobalKey _tourCardScan = GlobalKey();
+  ExpansionTour? _activeTour;
+
   @override
   void initState() {
     super.initState();
@@ -52,6 +63,82 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
     // logged after the user left.
     CurrentConferenceHolder.instance.clear();
     _activeConferenceFuture = _conferenceRepository.fetchActiveConference();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeRunTour());
+  }
+
+  @override
+  void dispose() {
+    _activeTour?.finish();
+    super.dispose();
+  }
+
+  /// First-visit walkthrough of this screen — "can we get a short tutorial to
+  /// learn how to navigate the home screen?" Testers landed on the Mortarverse
+  /// after sign-in with no explanation of the focus card, the street of
+  /// destinations, or where their QR card lived.
+  ///
+  /// Seen-state is separate from the networking hall's tour ([ExpansionShell]),
+  /// because reaching one screen never implies having seen the other.
+  static const String _seenKey = 'mortarverse_tour_seen';
+
+  Future<void> _maybeRunTour() async {
+    if (!mounted) return;
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool(_seenKey) ?? false) return;
+    // Let the street and events strip lay out before pointing at them.
+    await Future<void>.delayed(const Duration(milliseconds: 800));
+    if (!mounted) return;
+    await prefs.setBool(_seenKey, true);
+    _startTour();
+  }
+
+  void _startTour() {
+    if (!mounted) return;
+    _activeTour?.finish();
+    // A step whose target never laid out would spotlight nothing, so drop it.
+    final steps = <TourStep>[
+      TourStep(
+        key: _tourFocusCard,
+        shape: TourShape.rrect,
+        title: 'What needs you',
+        body: 'The top card always shows the one thing worth doing next — an '
+            'unread message, an open conference, your next event. Tap it to go there.',
+      ),
+      TourStep(
+        key: _tourStreet,
+        shape: TourShape.rrect,
+        title: 'Pick a destination',
+        body: 'Swipe this street sideways. Each planet is a place: the '
+            'Networking Hall, a live Conference, the Commons, and Digital '
+            'Curriculum on the web.',
+      ),
+      TourStep(
+        key: _tourEvents,
+        shape: TourShape.rrect,
+        title: 'Upcoming events',
+        body: 'The next MORTAR events sit down here. Tap one to see the '
+            'details and register.',
+      ),
+      TourStep(
+        key: _tourCardScan,
+        shape: TourShape.rrect,
+        title: 'Your member card',
+        body: 'This opens your QR card — show it to another member to swap '
+            'details, or scan theirs.',
+      ),
+    ].where((s) => s.key.currentContext != null).toList();
+    if (steps.isEmpty) return;
+
+    unawaited(ExpansionAnalytics.log(
+      'mortarverse_tour_started',
+      sourceScreen: 'mortarverse',
+    ));
+    final tour = buildExpansionTour(
+      steps: steps,
+      onDone: () => _activeTour = null,
+    );
+    _activeTour = tour;
+    tour.show(context: context);
   }
 
   /// Priority order: conversations waiting → a conference to enter → the next
@@ -304,7 +391,21 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
               ),
               Positioned(
                 right: 0,
-                child: _CardScanButton(onTap: () => context.push('/card')),
+                child: _CardScanButton(
+                  key: _tourCardScan,
+                  onTap: () => context.push('/card'),
+                ),
+              ),
+              // Replays the walkthrough for anyone who skipped it or is
+              // returning after a while.
+              Positioned(
+                left: 0,
+                child: IconButton(
+                  onPressed: _startTour,
+                  icon: const Icon(Icons.help_outline_rounded,
+                      color: Cosmic.textFaint, size: 20),
+                  tooltip: 'How this screen works',
+                ),
               ),
             ],
           ),
@@ -316,6 +417,7 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
           child: MortarverseFocusCard(
+            key: _tourFocusCard,
             queue: queue,
             onOpen: _openAction,
             onShown: _reportShown,
@@ -372,6 +474,7 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
           ),
         ),
         _ShopStreet(
+          key: _tourStreet,
           hasExpansionAccess: hasExpansionAccess,
           waiting: waiting,
           conference: conference,
@@ -380,7 +483,7 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 30, 20, 40),
-          child: _EventsStrip(events: upcoming),
+          child: _EventsStrip(key: _tourEvents, events: upcoming),
         ),
       ],
     );
@@ -390,7 +493,7 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
 /// The card/scan control: a lit squircle beside the wordmark, with the
 /// design's 3×3 QR glyph rather than a Material icon.
 class _CardScanButton extends StatelessWidget {
-  const _CardScanButton({required this.onTap});
+  const _CardScanButton({super.key, required this.onTap});
 
   final VoidCallback onTap;
 
@@ -600,6 +703,7 @@ class _SecondaryChip extends StatelessWidget {
 /// The three shops as a horizontally scrollable street.
 class _ShopStreet extends StatelessWidget {
   const _ShopStreet({
+    super.key,
     required this.hasExpansionAccess,
     required this.waiting,
     required this.conference,
@@ -678,8 +782,39 @@ class _ShopStreet extends StatelessWidget {
             outlinedPill: true,
             onTap: () => context.go('/commons/profile'),
           ),
+          const SizedBox(width: 12),
+          // Digital Curriculum is a separate web app, so this leaves the app
+          // rather than routing — the street is where people look for "where
+          // can I go", and the curriculum was missing from it entirely.
+          _ShopTile(
+            title: 'DIGITAL\nCURRICULUM',
+            subtitle: 'Courses • Alumni application',
+            pill: 'ON THE WEB',
+            shopColor: _curriculumAccent,
+            planetAsset: MortarversePlanets.digitalCurriculum,
+            planetFallbackTint: _curriculumAccent,
+            enabled: true,
+            outlinedPill: true,
+            onTap: () => _openCurriculum(context),
+          ),
         ],
       ),
+    );
+  }
+
+  /// Curriculum's own blue — distinct from Expansion red, Conference gold and
+  /// the Commons accent, so the street stays readable at a glance.
+  static const Color _curriculumAccent = Color(0xFF5B9DFF);
+
+  Future<void> _openCurriculum(BuildContext context) async {
+    unawaited(ExpansionAnalytics.log(
+      'mortarverse_digital_curriculum_opened',
+      sourceScreen: 'mortarverse',
+    ));
+    await safeLaunchExternalUrl(
+      Uri.parse(AppLinks.digitalCurriculum),
+      messengerContext: context,
+      userFailureMessage: 'Could not open Digital Curriculum.',
     );
   }
 }
@@ -694,6 +829,7 @@ class _ShopTile extends StatefulWidget {
     required this.enabled,
     required this.onTap,
     this.outlinedPill = false,
+    this.planetFallbackTint,
   });
 
   final String title;
@@ -703,6 +839,9 @@ class _ShopTile extends StatefulWidget {
 
   /// The destination's planet illustration.
   final String planetAsset;
+
+  /// Colour for the plain sphere drawn while [planetAsset] has no artwork yet.
+  final Color? planetFallbackTint;
 
   final bool enabled;
   final VoidCallback? onTap;
@@ -759,6 +898,7 @@ class _ShopTileState extends State<_ShopTile> {
                               asset: widget.planetAsset,
                               size: 114,
                               enabled: widget.enabled,
+                              fallbackTint: widget.planetFallbackTint,
                             ),
                           ],
                         ),
@@ -852,7 +992,7 @@ class _StatusPill extends StatelessWidget {
 /// Upcoming MORTAR events. Hidden entirely when there are none — an empty
 /// strip would just be a heading over nothing.
 class _EventsStrip extends StatelessWidget {
-  const _EventsStrip({required this.events});
+  const _EventsStrip({super.key, required this.events});
 
   final List<CommunityEvent> events;
 

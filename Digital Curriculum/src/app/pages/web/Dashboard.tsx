@@ -330,7 +330,7 @@ export function WebDashboard() {
 
   if (loading) {
     return (
-      <div className="p-6 max-w-7xl mx-auto">
+      <div className="p-4 sm:p-6 max-w-7xl mx-auto">
         <p className="text-muted-foreground">Loading dashboard...</p>
       </div>
     );
@@ -340,7 +340,7 @@ export function WebDashboard() {
     // One unified accent across the dashboard: MORTAR yellow. Set once here;
     // every bg-verse/text-verse/.verse-* below inherits it.
     <div className="relative" style={verseThemeStyle(VERSE.brick)}>
-      <div className="relative z-10 p-6 max-w-7xl mx-auto">
+      <div className="relative z-10 p-4 sm:p-6 max-w-7xl mx-auto">
       {/* Welcome Header — wearemortar.com hero pattern: yellow uppercase
           kicker over a giant Montserrat Black uppercase headline */}
       <div className="mb-6 pt-2">

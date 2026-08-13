@@ -58,6 +58,22 @@ class ConferenceNetworkingService {
     return Map<String, dynamic>.from(result.data as Map);
   }
 
+  /// People who swiped right on me that I haven't answered yet. Server-only:
+  /// swipes are owner-read-only, so there is no client query for this.
+  Future<List<InboundLike>> listInboundLikes({required String conferenceId}) async {
+    final result = await _functions
+        .httpsCallable('listConferenceInboundLikes')
+        .call(<String, dynamic>{'conferenceId': conferenceId});
+    final data = Map<String, dynamic>.from(result.data as Map);
+    final raw = data['likes'];
+    if (raw is! List) return const [];
+    return raw
+        .whereType<Map>()
+        .map((m) => InboundLike.fromMap(Map<String, dynamic>.from(m)))
+        .whereType<InboundLike>()
+        .toList();
+  }
+
   /// Undo the last swipe on a target (fails if it already produced a match).
   Future<Map<String, dynamic>> undoSwipe({
     required String conferenceId,
@@ -94,6 +110,62 @@ class ConferenceNetworkingService {
         .collection('swipes')
         .snapshots()
         .map((s) => s.docs.map((d) => d.id).toSet());
+  }
+
+  /// My mutual matches, newest first.
+  ///
+  /// Sorted in Dart rather than with `orderBy`: pairing `arrayContains` with an
+  /// ordered field needs a composite index, and a single attendee's match list
+  /// is small enough that it buys nothing.
+  Stream<List<ConferenceMatch>> watchMyMatches(String conferenceId, String uid) {
+    return _db
+        .collection('conferences')
+        .doc(conferenceId)
+        .collection('matches')
+        .where('users', arrayContains: uid)
+        .snapshots()
+        .map((s) {
+      final list = s.docs
+          .map((d) => ConferenceMatch.fromDoc(d, uid))
+          .whereType<ConferenceMatch>()
+          .toList();
+      list.sort((a, b) {
+        final at = a.createdAt, bt = b.createdAt;
+        if (at == null && bt == null) return 0;
+        if (at == null) return 1;
+        if (bt == null) return -1;
+        return bt.compareTo(at);
+      });
+      return list;
+    });
+  }
+
+  /// Who has actually spoken in a match's DM thread.
+  ///
+  /// Reads the first few messages rather than the thread's `last_sender_id`,
+  /// which only names the most recent speaker and so can't tell a one-sided
+  /// opener from a real back-and-forth.
+  Future<MatchTalkState> talkStateFor(String threadId, String me) async {
+    try {
+      final snap = await _db
+          .collection('dm_threads')
+          .doc(threadId)
+          .collection('messages')
+          .orderBy('created_at')
+          .limit(8)
+          .get();
+      final senders = snap.docs
+          .map((d) => d.data()['sender_id'])
+          .whereType<String>()
+          .toSet();
+      if (senders.isEmpty) return MatchTalkState.silent;
+      if (senders.length > 1) return MatchTalkState.talking;
+      return senders.first == me ? MatchTalkState.awaitingThem : MatchTalkState.awaitingMe;
+    } catch (_) {
+      // A thread we can't read yet shouldn't blank the row — treat it as
+      // "nothing said" so the card still renders with a Say hello action.
+      return MatchTalkState.silent;
+    }
   }
 
   // ---- Ranking (pure) ----

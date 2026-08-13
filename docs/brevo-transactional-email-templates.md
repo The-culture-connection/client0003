@@ -42,6 +42,7 @@ Use these **exact template names** in Brevo (Transactional → Templates) so the
 | `payment_module_purchase_confirmed` | Your course module purchase is confirmed | Your Mortar course module is unlocked — start learning. |
 | `shop_order_fulfillment_update` | Your Mortar shop order update — {{ params.fulfillment_status }} | Status update on your Mortar shop order. |
 | `conference_announcement_to_attendees` | {{ params.conference_name }}: {{ params.headline }} | An update for {{ params.conference_name }} attendees from the Mortar team. |
+| `event_submitted_confirmation` | We received your event — {{ params.event_title }} | We received your event — the MORTAR team is reviewing it now. |
 
 > **Preheader in Brevo:** If the editor has a separate “Preview text” field, use the third column. The HTML files also include a hidden preheader `<span>` for clients that read it from the body.
 
@@ -308,6 +309,35 @@ Audience is `conferences/{id}/attendees`, never the whole user base.
 > `admin_custom_announcement`. `conference_dates` and `conference_location` fall
 > back to "Dates to be announced" / "Location to be announced" when the
 > conference doc has not set them.
+
+---
+
+## 11. `event_submitted_confirmation`
+
+Receipt to a member who submitted an event from the Expansion mobile app, so
+they know it arrived and is queued for approval. Sent by the
+`onEventSubmittedEmail` trigger on `events_mobile/{eventId}` create, and only
+when `approval_status` is `pending` — staff-published events skip it, because
+there is nothing pending to confirm.
+
+**Params:** `first_name`, `event_title`, `event_when`, `event_location`, `platform_url`, `support_email`
+
+**Subject:**  
+`We received your event — {{ params.event_title }}`
+
+**Preview text:**  
+`We received your event — the MORTAR team is reviewing it now.`
+
+**HTML:** [`event_submitted_confirmation.html`](brevo-templates/html/event_submitted_confirmation.html)
+
+> **Brevo template ID 19** (override with env `BREVO_TPL_EVENT_SUBMITTED`).
+> **This template does not exist in Brevo yet** — create it before the trigger
+> is expected to deliver. Until it does, sends fail and are recorded in
+> `email_activity` with `status: failed`; nothing else breaks.
+
+> `event_when` is `"Aug 20, 2026 · 6:00 PM"` when the event carries a date, or
+> the free-text `time` field alone when it does not. `event_location` falls back
+> to "Not specified".
 
 ---
 

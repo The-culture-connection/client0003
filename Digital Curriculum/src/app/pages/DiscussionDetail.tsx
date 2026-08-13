@@ -344,7 +344,7 @@ export function DiscussionDetailPage() {
 
   if (discussionLoading) {
     return (
-      <div className="p-6 max-w-4xl mx-auto">
+      <div className="p-4 sm:p-6 max-w-4xl mx-auto">
         <Button variant="ghost" onClick={() => navigate("/discussions")} className="mb-4">
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Discussions
@@ -358,7 +358,7 @@ export function DiscussionDetailPage() {
 
   if (!discussion) {
     return (
-      <div className="p-6 max-w-4xl mx-auto">
+      <div className="p-4 sm:p-6 max-w-4xl mx-auto">
         <Button variant="ghost" onClick={() => navigate("/discussions")} className="mb-4">
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Discussions
@@ -377,7 +377,7 @@ export function DiscussionDetailPage() {
   const discussionInitials = discussionAuthorLabel.trim().slice(0, 2).toUpperCase();
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-4xl mx-auto">
       <Button
         variant="ghost"
         onClick={() => navigate("/discussions")}

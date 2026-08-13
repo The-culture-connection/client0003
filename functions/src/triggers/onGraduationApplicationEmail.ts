@@ -8,6 +8,8 @@ import {
   graduationMeetingTimeSelectedParams,
   graduationNotAdmittedParams,
 } from "../email/buildEmailParams";
+import {buildGraduationMeetingIcs} from "../email/calendarInvite";
+import {DEFAULT_SUPPORT_EMAIL} from "../email/emailConfig";
 import {sendTransactionalEmail} from "../email/sendTransactionalEmail";
 
 if (getApps().length === 0) {
@@ -69,17 +71,37 @@ export const onGraduationApplicationEmail = onDocumentUpdated(
       nextTime.length > 0 && prevTime !== nextTime;
 
     if (meetingTimeNewlySet && !meetingAlreadySent) {
+      const resolvedName = await resolveUserName(userId, userName);
       const params = graduationMeetingTimeSelectedParams({
-        userName: await resolveUserName(userId, userName),
+        userName: resolvedName,
         userEmail,
         meeting_time: nextTime,
         notes,
       });
+      // The email tells people to put the meeting on their calendar; attaching
+      // the invite lets them do it in one tap. Null when the stored time can't
+      // be parsed — the email still goes, just without the attachment.
+      const invite = buildGraduationMeetingIcs({
+        meetingTime: nextTime,
+        applicationId,
+        attendeeEmail: userEmail,
+        attendeeName: resolvedName,
+        organizerEmail: DEFAULT_SUPPORT_EMAIL,
+        organizerName: "MORTAR",
+        notes,
+      });
+      if (!invite) {
+        logger.warn("Graduation meeting time not parseable — sending without .ics", {
+          applicationId,
+          meetingTime: nextTime,
+        });
+      }
       const result = await sendTransactionalEmail("graduation_meeting_time_selected", {
         to: userEmail,
         recipientUid: userId || undefined,
         params,
         preferenceCategory: "graduation_updates",
+        attachments: invite ? [invite] : undefined,
       });
       if (result.sent) {
         await event.data!.after.ref.update({

@@ -34,6 +34,7 @@ class ExpansionComposeFab extends StatelessWidget {
     '/explore/jobs/create',
     '/explore/skills/create',
     '/groups/create',
+    '/messages/new',
   ];
 
   @override

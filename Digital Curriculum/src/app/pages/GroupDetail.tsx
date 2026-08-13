@@ -269,7 +269,7 @@ export function GroupDetailPage() {
 
   if (!group) {
     return (
-      <div className="p-6 max-w-4xl mx-auto">
+      <div className="p-4 sm:p-6 max-w-4xl mx-auto">
         <Button variant="ghost" onClick={() => navigate("/community")} className="mb-4">
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Community Hub

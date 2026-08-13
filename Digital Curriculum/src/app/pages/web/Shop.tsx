@@ -89,7 +89,7 @@ export function WebShop() {
     shopFilter === "All" ? products : products.filter((p) => p.category === shopFilter);
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-6">
         <h1 className="font-headline font-black uppercase tracking-tight text-3xl text-foreground mb-2">Shop MORTAR</h1>

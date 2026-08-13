@@ -75,6 +75,29 @@ class DmRepository {
     }
   }
 
+  /// Emoji a message can be reacted with — the picker's row, in order.
+  static const List<String> reactionChoices = ['👍', '❤️', '😂', '🎉', '🙌', '😮', '😢'];
+
+  /// Sets, replaces, or clears the current user's reaction on a message.
+  ///
+  /// Passing null (or the emoji already selected — the caller toggles) removes
+  /// it. Written with dotted-path field updates so only this user's key is
+  /// touched, matching what the security rules will accept: a whole-map `set`
+  /// would look like an edit of the other participant's reaction and be denied.
+  Future<void> setReaction({
+    required String partnerUid,
+    required String messageId,
+    required String? emoji,
+  }) async {
+    final me = _auth.currentUser?.uid;
+    if (me == null) throw StateError('Not signed in');
+    final threadId = dmThreadIdForUsers(me, partnerUid);
+    final ref = _threads.doc(threadId).collection('messages').doc(messageId);
+    await ref.update({
+      'reactions.$me': emoji ?? FieldValue.delete(),
+    });
+  }
+
   Future<void> sendMessage({
     required String partnerUid,
     required String text,

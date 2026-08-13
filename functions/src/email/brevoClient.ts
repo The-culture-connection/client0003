@@ -25,6 +25,12 @@ export type SendEmailInput = {
   preferenceCategory?: "course_nudges" | "graduation_updates" | "events" | "admin_messages";
   /** Admin test sends only — bypasses user email preference checks. */
   skipPreferenceCheck?: boolean;
+  /**
+   * Files to attach, base64-encoded (Brevo's `attachment[]`). Used for the
+   * graduation meeting's .ics invite; keep these small, as the whole payload
+   * goes through the API in one request.
+   */
+  attachments?: {name: string; base64: string}[];
 };
 
 export type SendBulkEmailInput = {
@@ -147,6 +153,23 @@ async function canSendByPreferences(
   return true;
 }
 
+/**
+ * The audit copy of the request, with attachment bytes replaced by their size.
+ * `email_activity` is for answering "did this go out and to whom" — storing a
+ * base64 file in every row would bloat the collection for no diagnostic gain.
+ */
+function loggablePayload(payload: JsonObject): JsonObject {
+  const attachment = payload["attachment"];
+  if (!Array.isArray(attachment)) return payload;
+  return {
+    ...payload,
+    attachment: attachment.map((a) => {
+      const entry = a as {name?: string; content?: string};
+      return {name: entry.name ?? null, content_bytes: entry.content?.length ?? 0};
+    }),
+  };
+}
+
 async function postBrevoEmail(
   payload: JsonObject,
   apiKey: string,
@@ -233,6 +256,9 @@ export async function sendEmail(
     params: input.params ?? {},
     tags: input.tags ?? [],
     ...(options?.sender ? {sender: options.sender} : {}),
+    ...(input.attachments?.length ?
+      {attachment: input.attachments.map((a) => ({name: a.name, content: a.base64}))} :
+      {}),
   };
 
   try {
@@ -246,7 +272,7 @@ export async function sendEmail(
       tags: input.tags,
       status: "sent",
       providerMessageId: messageId || undefined,
-      requestBody: payload,
+      requestBody: loggablePayload(payload),
       responseBody: body,
     });
     logger.info("Brevo sendEmail success", {
@@ -262,7 +288,7 @@ export async function sendEmail(
       templateId: input.templateId,
       tags: input.tags,
       status: "failed",
-      requestBody: payload,
+      requestBody: loggablePayload(payload),
       errorMessage: err,
     });
     logger.error("Brevo sendEmail failed", {

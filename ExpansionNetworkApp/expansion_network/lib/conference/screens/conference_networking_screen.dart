@@ -314,6 +314,10 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
               ],
             ),
           ),
+          // Beta testers matched and then had no way back to the person. This
+          // is the standing list of everyone they've connected with.
+          _circleBtn(Icons.people_alt_rounded, () => context.push('/conference/connections')),
+          const SizedBox(width: 8),
           _circleBtn(Icons.settings_rounded, _openSettings),
         ],
       ),
@@ -660,6 +664,13 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
               onPressed: () => setState(() {}),
               icon: const Icon(Icons.refresh_rounded, size: 18),
               label: const Text('Refresh'),
+            ),
+            const SizedBox(height: 8),
+            TextButton.icon(
+              style: TextButton.styleFrom(foregroundColor: ConferenceColors.gold),
+              onPressed: () => context.push('/conference/connections'),
+              icon: const Icon(Icons.people_alt_rounded, size: 18),
+              label: const Text('See my connections'),
             ),
           ],
         ),

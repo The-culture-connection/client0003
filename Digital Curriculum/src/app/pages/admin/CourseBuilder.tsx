@@ -1417,7 +1417,7 @@ export function CourseBuilder() {
 
   if (isLoadingEdit) {
     return (
-      <div className="p-6 max-w-7xl mx-auto flex items-center justify-center min-h-[60vh]">
+      <div className="p-4 sm:p-6 max-w-7xl mx-auto flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
           <Loader2 className="w-10 h-10 animate-spin text-accent mx-auto mb-4" />
           <p className="text-muted-foreground">Loading course...</p>
@@ -1427,7 +1427,7 @@ export function CourseBuilder() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
       <div className="mb-6">
         <h1 className="text-3xl font-bold mb-2">
           {editingCourseId ? "Edit course" : "Course Builder"}

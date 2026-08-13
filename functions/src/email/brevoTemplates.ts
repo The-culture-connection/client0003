@@ -38,6 +38,15 @@ export const BREVO_TEMPLATE_IDS = {
   conference_ticket_confirmed: tpl("BREVO_TPL_CONFERENCE_TICKET", 17),
   /** Admin-composed announcement to one conference's attendees */
   conference_announcement_to_attendees: tpl("BREVO_TPL_CONFERENCE_ANNOUNCEMENT", 18),
+  /**
+   * Receipt to a member who submitted an event from the mobile app, so they
+   * know it arrived and is waiting on review rather than lost.
+   *
+   * NOTE: template 19 must be created in Brevo before this sends — until then
+   * the API rejects it and the failure is recorded in `email_activity`. See
+   * docs/brevo-transactional-email-templates.md for the copy.
+   */
+  event_submitted_confirmation: tpl("BREVO_TPL_EVENT_SUBMITTED", 19),
 } as const;
 
 export type BrevoTemplateKey = keyof typeof BREVO_TEMPLATE_IDS;

@@ -66,17 +66,84 @@
 - [ ] Verify Storage rules allow `users/{uid}/profile/**` owner writes (profile-photo upload reuses the onboarding path)
 - [ ] Forgot-password sender address (so it skips spam) — Firebase console SMTP settings, not code
 
-## Deferred — decided to skip this round
+## Round 2 — previously-deferred items, shipped to source Aug 13, 2026
 
-- [ ] Matched-people page (who I matched, who matched me, not yet talked) — Tim, Jazmine
-- [ ] Person search / start-new-chat in Commons messages — Tianna
-- [ ] Calendar invite (.ics) attached to graduation meeting email — Jazmine
-- [ ] Email confirmation when an event is submitted — Sean
-- [ ] Mobile-optimized Digital Curriculum / mobile viewing button — Grace
-- [ ] Curriculum link as a planet in the app — Grace
-- [ ] Admin view-profile: analytics info + data room zip download — Grace
-- [ ] Tutorial: moving highlight instead of zooming — Naimah
-- [ ] Message reactions in DMs — Sean
-- [ ] Short home-screen navigation tutorial — Jazmine
-- [ ] Industries → tribes (marked tbd) — Shannon
-- [ ] Planet artwork style (more realistic) — Shannon/triage
+- [x] **Matched-people page** (Tim, Jazmine) — new My Connections screen at
+  `/conference/connections`, reachable from the networking deck's top bar and
+  its caught-up state. Three groups: *Waiting on you* (people who liked you,
+  which you can answer straight from the list), *No reply yet*, and *Talking*.
+  Inbound likes need the new `listConferenceInboundLikes` callable, because
+  swipes are owner-read-only and no client query can see them.
+- [x] **Person search / start-new-chat in messages** (Tianna) — `+` button and
+  empty-state CTA on the Messages tab open `/messages/new`, a name search reusing
+  Explore's member lookup; tapping a result opens the chat.
+- [x] **Message reactions in DMs** (Sean) — long-press a bubble to react, tap a
+  reaction chip to toggle. Rules let each participant write only their own key
+  in the `reactions` map; covered by `tools/rules-tests/dm-reactions.test.mjs`
+  (14 cases, all passing).
+- [x] **Curriculum link as a planet** (Grace) — fourth planet on the Mortarverse
+  street, opening Digital Curriculum in the browser. ⚠️ **Needs artwork** — see
+  the deploy list below.
+- [x] **Tutorial: moving highlight instead of zooming** (Naimah) — the coach-mark
+  package could only collapse and re-expand the spotlight between steps, so the
+  tour now runs on our own overlay that slides one highlight from target to
+  target. `tutorial_coach_mark` dropped from `pubspec.yaml`.
+- [x] **Short home-screen navigation tutorial** (Jazmine) — first-visit
+  walkthrough of the Mortarverse chooser (focus card → street → events → member
+  card), replayable from the `?` button beside the wordmark.
+- [x] **Email confirmation when an event is submitted** (Sean) — new
+  `onEventSubmittedEmail` trigger on `events_mobile` create, for member
+  submissions only. ⚠️ **Needs the Brevo template created** — see below.
+- [x] **Calendar invite for the graduation meeting** (Jazmine) — the meeting
+  email now carries an `.ics` attachment (America/New_York, 30 min, 30-min
+  reminder), so it's one tap onto the recipient's calendar. Sends without the
+  attachment, and logs a warning, if the stored time can't be parsed.
+- [x] **Admin view-profile: analytics + data room zip** (Grace) — the view-profile
+  dialog now shows the full profile (profession, business, location, tribe,
+  cohort, goals/skills, joined) plus an Activity & analytics card from
+  `user_analytics_summary`, and a "Download data room (.zip)" button bundling
+  profile, analytics, certificates and every survey PDF. ⚠️ **Needs a CORS
+  update** — see below.
+- [x] **Mobile-optimized Digital Curriculum** (Grace) — the curriculum's web
+  header was unusable on a phone: six nav links, the staff toggle and the account
+  controls all in one 64px row. Below `md` the destinations now collapse into a
+  drawer, the header controls shrink, and page padding steps down on small
+  screens. *Scope note:* this makes the app navigable and readable on a phone; a
+  page-by-page responsive pass (tables, the lesson player, admin panels) is
+  still outstanding and is a much larger piece of work.
+
+### Still needs a decision from you
+
+- [ ] **Industries → tribes** (Shannon, marked tbd) — blocked on the actual tribe
+  list. Send it over and it's a small change: `lib/constants/` on mobile plus the
+  onboarding options in `Digital Curriculum/src/app/lib/onboardingData.ts`.
+- [ ] **Planet artwork style, more realistic** (Shannon/triage) — art direction,
+  not code. The renderer takes whatever PNGs are in `assets/planets/`.
+
+## Deploy Steps — round 2
+
+- [ ] `firebase deploy --only firestore:rules` — required for DM reactions
+- [ ] Deploy Cloud Functions — `listConferenceInboundLikes`, `onEventSubmittedEmail`,
+      and the `.ics` attachment on the graduation email
+- [ ] **Create Brevo template 19** `event_submitted_confirmation` — copy and HTML
+      in `docs/brevo-transactional-email-templates.md` §11. Until it exists the
+      trigger's sends fail and are logged in `email_activity`; nothing else breaks.
+- [ ] **Storage CORS** for the data-room zip — `cors.json` now lists the Railway
+      origin; apply it with
+      `gsutil cors set cors.json gs://<bucket>`. Without it the zip still exports
+      the metadata but every PDF lands in `DOWNLOAD-ERRORS.txt`.
+- [ ] **Digital Curriculum planet artwork** — drop a 1920×1080 PNG (sphere 858px
+      tall, centred, transparent) at
+      `ExpansionNetworkApp/expansion_network/assets/planets/digital_curriculum.png`
+      and add it to `pubspec.yaml` assets. Until then the tile renders a plain
+      blue sphere so the street still lines up.
+- [ ] **Confirm the curriculum URL** — `lib/constants/app_links.dart` defaults to
+      the staging host, matching `functions/src/email/emailConfig.ts`. If
+      production has its own domain, set both (or build with
+      `--dart-define=DIGITAL_CURRICULUM_URL=…`).
+- [ ] `flutter pub get` then rebuild the mobile app (a dependency was removed)
+- [ ] Rebuild + redeploy the web app
+- [ ] Mark the 16 open reports in Admin → Beta Testing as Fixed. Three of them
+      (Ikella's camera glitch, Sean's "can't back out of this screen", Naimah's
+      grad time slots) were already fixed in the Aug 12 round and only needed
+      deploying.

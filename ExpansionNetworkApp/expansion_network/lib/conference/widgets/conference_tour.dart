@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
 import '../../widgets/expansion_tour.dart';
 import '../theme/conference_colors.dart';
@@ -48,7 +47,7 @@ class ConferenceTourRunner {
 
   ConferenceTourChapter? _pending;
   String? _conferenceId;
-  TutorialCoachMark? _active;
+  ExpansionTour? _active;
 
   bool get isRunning => _pending != null;
 

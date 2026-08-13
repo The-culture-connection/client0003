@@ -310,7 +310,7 @@ export function WebCurriculum() {
 
   if (loading) {
     return (
-      <div className="p-6 max-w-7xl mx-auto">
+      <div className="p-4 sm:p-6 max-w-7xl mx-auto">
         <div className="text-center py-12">
           <p className="text-muted-foreground">Loading courses...</p>
         </div>
@@ -319,7 +319,7 @@ export function WebCurriculum() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
       {/* Hero Section */}
       <div className="mb-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">

@@ -51,7 +51,9 @@ import {
   Bug,
   Undo2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { useAuth } from "../components/auth/AuthProvider";
+import { buildUserDataRoomZip, downloadBlob } from "../lib/adminDataRoom";
 import {
   getGroups,
   getGroup,
@@ -169,6 +171,72 @@ interface DMReply {
   created_at: Timestamp;
 }
 
+// --- View-profile helpers ---------------------------------------------------
+// The `users` doc is written by two apps across several schema generations, so
+// every read here is defensive: a missing or wrong-typed field renders as an
+// em dash rather than "undefined".
+
+function profileText(doc: Record<string, unknown> | null, key: string): string {
+  const v = doc?.[key];
+  return typeof v === "string" && v.trim().length > 0 ? v.trim() : "—";
+}
+
+function profileList(doc: Record<string, unknown> | null, key: string): string[] {
+  const v = doc?.[key];
+  if (!Array.isArray(v)) return [];
+  return v.filter((x): x is string => typeof x === "string" && x.trim().length > 0);
+}
+
+function profileLocation(doc: Record<string, unknown> | null): string {
+  const city = typeof doc?.city === "string" ? doc.city.trim() : "";
+  const state = typeof doc?.state === "string" ? doc.state.trim() : "";
+  const joined = [city, state].filter(Boolean).join(", ");
+  return joined.length > 0 ? joined : "—";
+}
+
+/** Firestore Timestamp, `{seconds}` shape, ISO string or Date → "MMM d, yyyy". */
+function profileDate(doc: Record<string, unknown> | null, key: string): string {
+  const v = doc?.[key];
+  if (!v) return "—";
+  let d: Date | null = null;
+  if (v instanceof Date) d = v;
+  else if (typeof (v as { toDate?: () => Date }).toDate === "function") {
+    d = (v as { toDate: () => Date }).toDate();
+  } else if (typeof (v as { seconds?: number }).seconds === "number") {
+    d = new Date((v as { seconds: number }).seconds * 1000);
+  } else if (typeof v === "string") {
+    const parsed = new Date(v);
+    if (!Number.isNaN(parsed.getTime())) d = parsed;
+  }
+  if (!d || Number.isNaN(d.getTime())) return "—";
+  return format(d, "MMM d, yyyy");
+}
+
+function ProfileField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</dt>
+      <dd className="text-sm text-foreground break-words">{value}</dd>
+    </div>
+  );
+}
+
+function ProfileChips({ label, values }: { label: string; values: string[] }) {
+  if (values.length === 0) return null;
+  return (
+    <div className="mt-3 pt-3 border-t border-border">
+      <p className="text-xs font-medium text-foreground mb-2">{label}</p>
+      <div className="flex flex-wrap gap-1.5">
+        {values.map((v) => (
+          <Badge key={v} variant="secondary" className="text-[11px]">
+            {v}
+          </Badge>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function AdminPage() {
   const navigate = useNavigate();
   const { tab: tabFromRoute } = useParams<{ tab: string }>();
@@ -237,6 +305,11 @@ export function AdminPage() {
   const [viewProfileCerts, setViewProfileCerts] = useState<SkillCertificate[]>([]);
   const [viewProfileSurveys, setViewProfileSurveys] = useState<SurveyResponseDocument[]>([]);
   const [viewProfileLoading, setViewProfileLoading] = useState(false);
+  // Raw `users/{uid}` doc, kept whole so the detail grid and the zip export both
+  // read from the same source rather than a lossy projection of it.
+  const [viewProfileDoc, setViewProfileDoc] = useState<Record<string, unknown> | null>(null);
+  const [viewProfileAnalytics, setViewProfileAnalytics] = useState<Record<string, unknown> | null>(null);
+  const [dataRoomBusy, setDataRoomBusy] = useState(false);
 
   // Group creation state
   const [newGroupName, setNewGroupName] = useState("");
@@ -293,16 +366,21 @@ export function AdminPage() {
       setViewProfileUser(null);
       setViewProfileCerts([]);
       setViewProfileSurveys([]);
+      setViewProfileDoc(null);
+      setViewProfileAnalytics(null);
       return;
     }
     let cancelled = false;
     setViewProfileLoading(true);
     (async () => {
       try {
-        const [userSnap, certs, surveys] = await Promise.all([
+        const [userSnap, certs, surveys, analyticsSnap] = await Promise.all([
           getDoc(doc(db, "users", viewProfileUserId)),
           listCertificates(viewProfileUserId),
           listSurveyResponses(viewProfileUserId),
+          // Staff-readable per the `user_analytics_summary` rule. Absent for a
+          // member who has not generated any events yet, which is not an error.
+          getDoc(doc(db, "user_analytics_summary", viewProfileUserId)).catch(() => null),
         ]);
         if (cancelled) return;
         const userData = userSnap.exists() ? userSnap.data() : {};
@@ -311,6 +389,12 @@ export function AdminPage() {
           email: userData.email || "No email",
           roles: Array.isArray(userData.roles) ? userData.roles : [],
         });
+        setViewProfileDoc(userData as Record<string, unknown>);
+        setViewProfileAnalytics(
+          analyticsSnap && analyticsSnap.exists()
+            ? (analyticsSnap.data() as Record<string, unknown>)
+            : null
+        );
         setViewProfileCerts(certs);
         setViewProfileSurveys(surveys);
       } catch (e) {
@@ -318,6 +402,8 @@ export function AdminPage() {
           setViewProfileUser(null);
           setViewProfileCerts([]);
           setViewProfileSurveys([]);
+          setViewProfileDoc(null);
+          setViewProfileAnalytics(null);
         }
       } finally {
         if (!cancelled) setViewProfileLoading(false);
@@ -325,6 +411,39 @@ export function AdminPage() {
     })();
     return () => { cancelled = true; };
   }, [viewProfileUserId]);
+
+  const handleDownloadDataRoom = async () => {
+    if (!viewProfileUserId || !viewProfileUser || dataRoomBusy) return;
+    setDataRoomBusy(true);
+    try {
+      const { blob, filename, failed } = await buildUserDataRoomZip({
+        userId: viewProfileUserId,
+        displayName: viewProfileUser.name,
+        email: viewProfileUser.email,
+        profile: viewProfileDoc,
+        analytics: viewProfileAnalytics,
+        certificates: viewProfileCerts,
+        surveys: viewProfileSurveys.map((sr) => ({
+          id: sr.id,
+          name: (sr.surveyTitle || sr.lessonTitle || "Survey").trim(),
+          downloadUrl: sr.downloadUrl,
+        })),
+        exportedBy: user?.email || "unknown admin",
+      });
+      downloadBlob(blob, filename);
+      if (failed.length > 0) {
+        toast.warning(
+          `Exported with ${failed.length} file(s) missing — see DOWNLOAD-ERRORS.txt in the zip.`
+        );
+      } else {
+        toast.success("Data room downloaded.");
+      }
+    } catch (e) {
+      toast.error(`Could not build the data room: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setDataRoomBusy(false);
+    }
+  };
 
   const loadCourses = async () => {
     setLoadingCourses(true);
@@ -1072,7 +1191,7 @@ export function AdminPage() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto w-full">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto w-full">
       <div className="mb-6 space-y-3">
         <Button variant="outline" size="sm" className="gap-2" onClick={() => navigate("/admin")}>
           <ChevronLeft className="w-4 h-4" />
@@ -3128,14 +3247,99 @@ export function AdminPage() {
             </div>
           ) : viewProfileUser ? (
             <div className="space-y-6">
-              <div className="rounded-lg border border-border p-4 bg-muted/30">
-                <h4 className="font-semibold text-foreground mb-2">Profile</h4>
-                <p className="text-sm text-muted-foreground"><strong className="text-foreground">Name:</strong> {viewProfileUser.name}</p>
-                <p className="text-sm text-muted-foreground"><strong className="text-foreground">Email:</strong> {viewProfileUser.email}</p>
-                <p className="text-sm text-muted-foreground">
-                  <strong className="text-foreground">Roles:</strong>{" "}
-                  {viewProfileUser.roles.length > 0 ? viewProfileUser.roles.join(", ") : "None"}
+              {/* One-click export of everything below, for reviewing an
+                  applicant away from the panel. */}
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border p-3 bg-background">
+                <p className="text-xs text-muted-foreground">
+                  Bundles the profile, analytics, certificates and every survey PDF into one zip.
                 </p>
+                <Button size="sm" onClick={handleDownloadDataRoom} disabled={dataRoomBusy}>
+                  {dataRoomBusy ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4 mr-2" />
+                  )}
+                  {dataRoomBusy ? "Building zip…" : "Download data room (.zip)"}
+                </Button>
+              </div>
+
+              <div className="rounded-lg border border-border p-4 bg-muted/30">
+                <h4 className="font-semibold text-foreground mb-3">Profile</h4>
+                <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
+                  <ProfileField label="Name" value={viewProfileUser.name} />
+                  <ProfileField label="Email" value={viewProfileUser.email} />
+                  <ProfileField
+                    label="Roles"
+                    value={viewProfileUser.roles.length > 0 ? viewProfileUser.roles.join(", ") : "None"}
+                  />
+                  <ProfileField label="Profession" value={profileText(viewProfileDoc, "profession")} />
+                  <ProfileField label="Business" value={profileText(viewProfileDoc, "company_name")} />
+                  <ProfileField label="Location" value={profileLocation(viewProfileDoc)} />
+                  <ProfileField label="Tribe / industry" value={profileText(viewProfileDoc, "tribe") || profileText(viewProfileDoc, "industry")} />
+                  <ProfileField label="Cohort" value={profileText(viewProfileDoc, "cohort_id")} />
+                  <ProfileField label="City program" value={profileText(viewProfileDoc, "graduated_city_program")} />
+                  <ProfileField label="Onboarding" value={profileText(viewProfileDoc, "onboarding_status")} />
+                  <ProfileField label="Joined" value={profileDate(viewProfileDoc, "created_at")} />
+                  <ProfileField label="Last updated" value={profileDate(viewProfileDoc, "updated_at")} />
+                </dl>
+                {profileText(viewProfileDoc, "bio") !== "—" && (
+                  <div className="mt-3 pt-3 border-t border-border">
+                    <p className="text-xs font-medium text-foreground mb-1">Bio</p>
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                      {profileText(viewProfileDoc, "bio")}
+                    </p>
+                  </div>
+                )}
+                <ProfileChips label="Business goals" values={profileList(viewProfileDoc, "business_goals")} />
+                <ProfileChips label="Confident skills" values={profileList(viewProfileDoc, "confident_skills")} />
+                <ProfileChips label="Wants to learn" values={profileList(viewProfileDoc, "desired_skills")} />
+              </div>
+
+              <div className="rounded-lg border border-border p-4 bg-muted/30">
+                <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <LineChart className="w-4 h-4 text-accent" />
+                  Activity & analytics
+                </h4>
+                {viewProfileAnalytics ? (
+                  <>
+                    <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 mb-3">
+                      <ProfileField label="Last active" value={profileDate(viewProfileAnalytics, "last_active_at")} />
+                      <ProfileField label="First seen" value={profileDate(viewProfileAnalytics, "first_seen_at")} />
+                    </dl>
+                    {(() => {
+                      // `counts` grows as new events are instrumented, so render
+                      // whatever keys are there rather than a fixed list that
+                      // would silently drop the newest counters.
+                      const counts = viewProfileAnalytics.counts;
+                      const entries =
+                        counts && typeof counts === "object" && !Array.isArray(counts)
+                          ? Object.entries(counts as Record<string, unknown>)
+                              .filter(([, v]) => typeof v === "number")
+                              .sort(([a], [b]) => a.localeCompare(b))
+                          : [];
+                      if (entries.length === 0) {
+                        return <p className="text-sm text-muted-foreground">No activity counters recorded yet.</p>;
+                      }
+                      return (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          {entries.map(([key, value]) => (
+                            <div key={key} className="rounded border border-border bg-background p-2">
+                              <p className="text-lg font-semibold text-foreground leading-tight">{String(value)}</p>
+                              <p className="text-[11px] text-muted-foreground capitalize">
+                                {key.replace(/_/g, " ")}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No analytics summary for this member yet. Counters appear once they generate
+                    activity in the curriculum or the mobile app.
+                  </p>
+                )}
               </div>
 
               <div className="rounded-lg border border-border p-4 bg-muted/30">

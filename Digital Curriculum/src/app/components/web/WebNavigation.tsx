@@ -1,5 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router";
-import { LayoutDashboard, BookOpen, FolderOpen, Award, Users, LogOut, Shield, ShoppingBag, Bell, ShoppingCart, X, GraduationCap, Crown, HelpCircle, Sun, Moon } from "lucide-react";
+import { LayoutDashboard, BookOpen, FolderOpen, Award, Users, LogOut, Shield, ShoppingBag, Bell, ShoppingCart, X, GraduationCap, Crown, HelpCircle, Sun, Moon, Menu } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "../ui/sheet";
 import { StudentTour, startTour } from "../tour/StudentTour";
 import { Button } from "../ui/button";
 import { useAuth } from "../auth/AuthProvider";
@@ -60,6 +61,7 @@ export function WebNavigation() {
   const [cartOpen, setCartOpen] = useState(false);
   const [badgeSuiteOpen, setBadgeSuiteOpen] = useState(false);
   const [checkoutBusy, setCheckoutBusy] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const { cart, itemCount, api } = useCart(user?.uid ?? null);
 
@@ -193,15 +195,91 @@ export function WebNavigation() {
 
   return (
     <nav className="bg-[#050505] light:bg-[#efebe1] border-b border-white/10 light:border-black/10">
-      <div className={adminMinimalHeader ? "max-w-[1600px] mx-auto px-6" : "max-w-[1600px] mx-auto px-6"}>
-        <div className="flex items-center justify-between h-16 gap-4">
-          <div className="flex items-center gap-6 min-w-0 flex-1">
+      <div className={adminMinimalHeader ? "max-w-[1600px] mx-auto px-4 md:px-6" : "max-w-[1600px] mx-auto px-4 md:px-6"}>
+        <div className="flex items-center justify-between h-16 gap-2 md:gap-4">
+          <div className="flex items-center gap-3 md:gap-6 min-w-0 flex-1">
+            {/* Below md the six destinations do not fit beside the account
+                controls, so they move into a drawer. Testers on phones had a
+                header that wrapped out of its own 64px band. */}
+            {showStudentNavLinks && (
+              <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+                <SheetTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="md:hidden shrink-0 text-muted-foreground hover:text-foreground"
+                    aria-label="Open navigation menu"
+                  >
+                    <Menu className="w-5 h-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-[280px] p-0">
+                  <SheetHeader className="px-4 pt-4 pb-2">
+                    <SheetTitle className="text-left">Menu</SheetTitle>
+                  </SheetHeader>
+                  <div className="flex flex-col gap-1 px-3 pb-4">
+                    {navItems.map((item) => {
+                      const Icon = item.icon;
+                      const isAdminNavItem = item.path === "/admin/auth";
+                      const isActive =
+                        location.pathname === item.path ||
+                        (item.path === "/dashboard" && location.pathname === "/") ||
+                        (isAdminNavItem && location.pathname.startsWith("/admin"));
+                      return (
+                        <Link
+                          key={item.path}
+                          to={item.path}
+                          onClick={() => {
+                            setMobileNavOpen(false);
+                            trackEvent(WEB_ANALYTICS_EVENTS.NAV_LINK_CLICKED, {
+                              path: item.path,
+                              label: item.label,
+                            });
+                          }}
+                          className={`flex items-center gap-3 px-3 py-3 rounded-lg text-sm transition-colors ${
+                            isActive
+                              ? "bg-mortar-brick text-white font-bold"
+                              : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
+                          }`}
+                        >
+                          <Icon className="w-5 h-5 shrink-0" />
+                          <span>{item.label}</span>
+                        </Link>
+                      );
+                    })}
+                    {hasStaffAdminAccess && (
+                      <div className="mt-3 pt-3 border-t border-border px-1">
+                        <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-2">
+                          View as
+                        </p>
+                        {staffViewToggle}
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMobileNavOpen(false);
+                        startTour();
+                      }}
+                      className="mt-3 flex items-center gap-3 px-3 py-3 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-foreground/5"
+                    >
+                      <HelpCircle className="w-5 h-5 shrink-0" />
+                      <span>Take a tour of the app</span>
+                    </button>
+                  </div>
+                </SheetContent>
+              </Sheet>
+            )}
             <Link to={logoTo} className="shrink-0" aria-label="MORTAR">
               <img src="/brand/mortar-text-white.png" alt="MORTAR" className="h-6 w-auto brand-invert-on-light" />
             </Link>
-            {adminMinimalHeader && <span data-tour="admin-view-toggle">{staffViewToggle}</span>}
+            {adminMinimalHeader && (
+              <span data-tour="admin-view-toggle" className="hidden sm:inline">
+                {staffViewToggle}
+              </span>
+            )}
             {showStudentNavLinks && (
-              <div className="flex items-center gap-1 flex-wrap min-w-0">
+              <div className="hidden md:flex items-center gap-1 flex-wrap min-w-0">
                 {navItems.map((item) => {
                   const Icon = item.icon;
                   const isAdminNavItem = item.path === "/admin/auth";
@@ -237,8 +315,10 @@ export function WebNavigation() {
           </div>
 
           {user && (
-            <div className="flex items-center gap-3 shrink-0">
-              {showStudentNavLinks && hasStaffAdminAccess && staffViewToggle}
+            <div className="flex items-center gap-1 sm:gap-3 shrink-0">
+              {showStudentNavLinks && hasStaffAdminAccess && (
+                <span className="hidden sm:inline">{staffViewToggle}</span>
+              )}
               <Button
                 variant="ghost"
                 size="icon"
@@ -434,7 +514,9 @@ export function WebNavigation() {
                   data-tour="help"
                   title="Take a tour of the app"
                   aria-label="Take a tour of the app"
-                  className="text-muted-foreground hover:text-foreground"
+                  // On phones the tour lives in the drawer instead, so the
+                  // header keeps room for the account controls.
+                  className="hidden md:inline-flex text-muted-foreground hover:text-foreground"
                 >
                   <HelpCircle className="w-5 h-5" />
                 </Button>
@@ -443,10 +525,11 @@ export function WebNavigation() {
                 variant="outline"
                 size="sm"
                 onClick={handleSignOut}
-                className="flex items-center gap-2 border-border text-foreground hover:bg-muted"
+                aria-label="Sign out"
+                className="flex items-center gap-2 border-border text-foreground hover:bg-muted px-2 sm:px-3"
               >
                 <LogOut className="w-4 h-4" />
-                <span>Sign Out</span>
+                <span className="hidden sm:inline">Sign Out</span>
               </Button>
             </div>
           )}

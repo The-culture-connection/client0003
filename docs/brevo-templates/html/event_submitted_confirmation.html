@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Your event was submitted</title>
+</head>
+<body style="margin:0;padding:0;background-color:#ececec;font-family:Arial,Helvetica,sans-serif;">
+  <span style="display:none!important;visibility:hidden;mso-hide:all;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">
+    We received your event — the MORTAR team is reviewing it now.
+  </span>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#ececec;">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+        <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;width:100%;">
+          <tr>
+            <td style="background-color:#871002;padding:24px 32px;border-radius:8px 8px 0 0;">
+              <p style="margin:0;font-size:22px;font-weight:bold;color:#fafcfc;">MORTAR</p>
+              <p style="margin:8px 0 0;font-size:13px;color:#f0d4d0;">Expansion Network</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color:#ffffff;padding:32px;border-left:1px solid #e0e0e0;border-right:1px solid #e0e0e0;">
+              <p style="margin:0 0 16px;font-size:16px;color:#2d2d2d;">Hi {{ params.first_name }},</p>
+              <p style="margin:0 0 20px;font-size:16px;line-height:1.6;color:#2d2d2d;">
+                Thanks for submitting an event to the MORTAR community. We've got it, and it's now
+                <strong>waiting for review</strong> by the MORTAR team.
+              </p>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 24px;background-color:#f8f6f5;border-radius:6px;border:1px solid #e8e0de;">
+                <tr>
+                  <td style="padding:20px 24px;">
+                    <p style="margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#871002;font-weight:bold;">What you submitted</p>
+                    <p style="margin:0 0 12px;font-size:20px;line-height:1.4;color:#2d2d2d;font-weight:bold;">{{ params.event_title }}</p>
+                    <p style="margin:0 0 4px;font-size:15px;line-height:1.5;color:#2d2d2d;">
+                      <strong style="color:#6b6b6b;">When:</strong> {{ params.event_when }}
+                    </p>
+                    <p style="margin:0;font-size:15px;line-height:1.5;color:#2d2d2d;">
+                      <strong style="color:#6b6b6b;">Where:</strong> {{ params.event_location }}
+                    </p>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:0 0 12px;font-size:14px;color:#6b6b6b;font-weight:bold;">What happens next</p>
+              <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#2d2d2d;">
+                A member of the MORTAR team reviews every submitted event before it goes live. Once
+                it's approved it appears in the Events list in the app, and members can register for
+                it. If we need anything clarified first, we'll reply to this address.
+              </p>
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td style="border-radius:6px;background-color:#871002;">
+                    <a href="{{ params.platform_url }}" target="_blank" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:bold;color:#fafcfc;text-decoration:none;">Go to MORTAR</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color:#f5f5f5;padding:24px 32px;border-radius:0 0 8px 8px;border:1px solid #e0e0e0;border-top:none;">
+              <p style="margin:0 0 8px;font-size:13px;color:#6b6b6b;">
+                Need help? <a href="mailto:{{ params.support_email }}" style="color:#871002;">{{ params.support_email }}</a>
+              </p>
+              <p style="margin:0;font-size:12px;color:#9a9a9a;">© MORTAR · Expansion Network</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
