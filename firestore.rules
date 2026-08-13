@@ -113,16 +113,24 @@ service cloud.firestore {
       allow delete: if hasStaffClaim();
     }
 
+    // Staff read is what powers Admin → alumni applications → "View profile"
+    // (and its data-room zip export): reviewing an application means reading the
+    // applicant's certificates. Writes stay owner-only — staff review this
+    // record, they don't author it.
     match /users/{userId}/certificates/{certId} {
-      allow read, write: if isOwner(userId);
+      allow read: if isOwner(userId) || hasStaffClaim();
+      allow write: if isOwner(userId);
     }
 
     match /users/{userId}/notifications/{notifId} {
       allow read, write: if isOwner(userId);
     }
 
+    // Same as certificates above: the survey PDFs are the substance of an
+    // alumni application, so staff must be able to read them to review one.
     match /users/{userId}/surveyResponses/{docId} {
-      allow read, write: if isOwner(userId);
+      allow read: if isOwner(userId) || hasStaffClaim();
+      allow write: if isOwner(userId);
     }
 
     match /users/{userId}/saved_group_threads/{docId} {

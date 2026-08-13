@@ -120,11 +120,64 @@
 - [ ] **Planet artwork style, more realistic** (Shannon/triage) — art direction,
   not code. The renderer takes whatever PNGs are in `assets/planets/`.
 
+## Round 3 — fixes from Grace's Aug 13 pass
+
+- [x] **Networking card overflowed by 67px** — the deck card rendered every skill
+  chip, so a member with a dozen long skills grew the info panel past the card
+  and squeezed the photo out. Chips are now capped at 3 with a `+N more` chip and
+  ellipsized; the full lists are still in the profile sheet, which scrolls.
+- [x] **"Waiting on you" was invisible on My Connections** — the section was only
+  drawn when it had rows, so a failed fetch looked identical to "nobody is
+  waiting" (which is how the un-deployed callable went unnoticed). It now always
+  renders, with a distinct empty state and a real error + retry. Section renamed
+  to **MATCHED — NO REPLY YET** so it can't be mistaken for the inbound list.
+- [x] **"1 waiting on you" removed from the Networking Hall planet** — the street
+  is destinations; the focus card above it already owns "what needs you".
+- [x] **"Could not load user data" on alumni applications** — ⚠️ *pre-existing,
+  not from round 2.* `users/{uid}/certificates` and `users/{uid}/surveyResponses`
+  were owner-read-only, so the admin view-profile dialog could never load anyone
+  but yourself. Staff read added (writes stay owner-only). The dialog now also
+  loads each source independently and names what failed instead of collapsing to
+  one dead-end message.
+- [x] **Digital Curriculum taking ~a minute to load** — `getCourseSlideCounts`
+  walked modules → chapters → lessons awaiting one lesson at a time, at two
+  Firestore round-trips per lesson. A course with 60 lessons meant 120 strictly
+  serialized requests. Now flattened and fetched 12-at-a-time, which is what
+  Dashboard *and* Curriculum were both blocked on.
+- [x] **Grad application: what are the 3 slots for** (Naimah) — the dialog now
+  opens with a numbered "How this works" panel (three *alternative* windows, only
+  one becomes a meeting, nothing is booked until we email you), slots are
+  relabelled "Availability window N of 3", and each finished window is read back
+  in words — "You're free on Monday, August 17 between 9:00 AM and 11:00 AM ET".
+  Every time is echoed in 12-hour with ET attached, because `<input type="time">`
+  renders 24-hour on some machines and 12-hour on others, which is what made the
+  format confusing.
+
 ## Deploy Steps — round 2
 
-- [ ] `firebase deploy --only firestore:rules` — required for DM reactions
-- [ ] Deploy Cloud Functions — `listConferenceInboundLikes`, `onEventSubmittedEmail`,
-      and the `.ics` attachment on the graduation email
+All commands are run from the repo root. Pick the environment first — the alias
+comes from `.firebaserc` (`staging` = mortar-stage, `prod` = mortar-9d29d):
+
+```powershell
+firebase use staging
+```
+
+- [ ] **Firestore rules** — required for DM reactions *and* for the admin
+      view-profile dialog (staff read on certificates / surveyResponses):
+      ```powershell
+      firebase deploy --only firestore:rules
+      ```
+- [ ] **Cloud Functions.** All three at once:
+      ```powershell
+      firebase deploy --only functions:onEventSubmittedEmail,functions:listConferenceInboundLikes,functions:onGraduationApplicationEmail
+      ```
+      Just the event-submitted email on its own:
+      ```powershell
+      firebase deploy --only functions:onEventSubmittedEmail
+      ```
+      `onGraduationApplicationEmail` is in the list because the `.ics` invite is
+      attached inside it — the calendar invite does not go out until that one
+      redeploys. `listConferenceInboundLikes` is what fills "Waiting on you".
 - [ ] **Create Brevo template 19** `event_submitted_confirmation` — copy and HTML
       in `docs/brevo-transactional-email-templates.md` §11. Until it exists the
       trigger's sends fail and are logged in `email_activity`; nothing else breaks.

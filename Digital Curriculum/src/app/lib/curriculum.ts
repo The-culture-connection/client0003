@@ -754,30 +754,63 @@ export interface CourseCurriculumMapping {
 /**
  * Get total slide count per lesson for a course. Used for accurate overall progress.
  */
+/**
+ * Runs [fn] over [items] with at most [limit] in flight at once.
+ *
+ * Firestore reads here are latency-bound, not CPU-bound, so the serial version
+ * of this spent essentially all its time waiting. A bound is still worth having:
+ * a large curriculum would otherwise open hundreds of requests at once.
+ */
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<R>
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let next = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    for (;;) {
+      const i = next++;
+      if (i >= items.length) return;
+      results[i] = await fn(items[i]);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
 export async function getCourseSlideCounts(course: {
   curriculumMapping?: CourseCurriculumMapping | null;
 }): Promise<Record<string, number>> {
   const mapping = course.curriculumMapping;
   if (!mapping?.curriculumId) return {};
-  const counts: Record<string, number> = {};
+
+  // Flattened first, then fetched in parallel. This used to be three nested
+  // loops each awaiting one lesson at a time — two Firestore round-trips per
+  // lesson, strictly serialized — which is why the dashboard and curriculum
+  // pages sat on "Loading…" for up to a minute on a course with many lessons.
+  const lessons: Array<{ moduleId: string; chapterId: string; lessonId: string }> = [];
   for (const mod of mapping.modules ?? []) {
     for (const ch of mod.chapters ?? []) {
       for (const l of ch.lessons ?? []) {
         if (l.lessonId) {
-          try {
-            counts[l.lessonId] = await getLessonSlideCount(
-              mapping.curriculumId,
-              mod.moduleId,
-              ch.chapterId,
-              l.lessonId
-            );
-          } catch {
-            counts[l.lessonId] = 0;
-          }
+          lessons.push({ moduleId: mod.moduleId, chapterId: ch.chapterId, lessonId: l.lessonId });
         }
       }
     }
   }
+
+  const counts: Record<string, number> = {};
+  const resolved = await mapWithConcurrency(lessons, 12, async (l) => {
+    try {
+      return await getLessonSlideCount(mapping.curriculumId, l.moduleId, l.chapterId, l.lessonId);
+    } catch {
+      return 0;
+    }
+  });
+  lessons.forEach((l, i) => {
+    counts[l.lessonId] = resolved[i];
+  });
   return counts;
 }
 

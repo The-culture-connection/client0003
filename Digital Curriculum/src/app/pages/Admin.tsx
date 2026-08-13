@@ -310,6 +310,8 @@ export function AdminPage() {
   const [viewProfileDoc, setViewProfileDoc] = useState<Record<string, unknown> | null>(null);
   const [viewProfileAnalytics, setViewProfileAnalytics] = useState<Record<string, unknown> | null>(null);
   const [dataRoomBusy, setDataRoomBusy] = useState(false);
+  /** Per-source load failures, so a partial dialog says what is missing. */
+  const [viewProfileErrors, setViewProfileErrors] = useState<string[]>([]);
 
   // Group creation state
   const [newGroupName, setNewGroupName] = useState("");
@@ -372,42 +374,60 @@ export function AdminPage() {
     }
     let cancelled = false;
     setViewProfileLoading(true);
+    setViewProfileErrors([]);
     (async () => {
-      try {
-        const [userSnap, certs, surveys, analyticsSnap] = await Promise.all([
-          getDoc(doc(db, "users", viewProfileUserId)),
-          listCertificates(viewProfileUserId),
-          listSurveyResponses(viewProfileUserId),
-          // Staff-readable per the `user_analytics_summary` rule. Absent for a
-          // member who has not generated any events yet, which is not an error.
-          getDoc(doc(db, "user_analytics_summary", viewProfileUserId)).catch(() => null),
-        ]);
-        if (cancelled) return;
-        const userData = userSnap.exists() ? userSnap.data() : {};
+      // Each source is settled independently. Previously one rejection — a
+      // permission-denied on certificates, say — collapsed the whole dialog to
+      // "Could not load user data", hiding the parts that had loaded fine and
+      // saying nothing about which read failed.
+      const [userRes, certsRes, surveysRes, analyticsRes] = await Promise.allSettled([
+        getDoc(doc(db, "users", viewProfileUserId)),
+        listCertificates(viewProfileUserId),
+        listSurveyResponses(viewProfileUserId),
+        getDoc(doc(db, "user_analytics_summary", viewProfileUserId)),
+      ]);
+      if (cancelled) return;
+
+      const problems: string[] = [];
+      const note = (label: string, reason: unknown) => {
+        const msg = reason instanceof Error ? reason.message : String(reason);
+        problems.push(
+          /permission|insufficient/i.test(msg)
+            ? `${label}: permission denied — deploy the latest firestore.rules.`
+            : `${label}: ${msg}`
+        );
+      };
+
+      if (userRes.status === "fulfilled") {
+        const userData = userRes.value.exists() ? userRes.value.data() : {};
         setViewProfileUser({
           name: `${userData.first_name || ""} ${userData.last_name || ""}`.trim() || userData.display_name || userData.email || "Unknown",
           email: userData.email || "No email",
           roles: Array.isArray(userData.roles) ? userData.roles : [],
         });
         setViewProfileDoc(userData as Record<string, unknown>);
-        setViewProfileAnalytics(
-          analyticsSnap && analyticsSnap.exists()
-            ? (analyticsSnap.data() as Record<string, unknown>)
-            : null
-        );
-        setViewProfileCerts(certs);
-        setViewProfileSurveys(surveys);
-      } catch (e) {
-        if (!cancelled) {
-          setViewProfileUser(null);
-          setViewProfileCerts([]);
-          setViewProfileSurveys([]);
-          setViewProfileDoc(null);
-          setViewProfileAnalytics(null);
-        }
-      } finally {
-        if (!cancelled) setViewProfileLoading(false);
+      } else {
+        setViewProfileUser(null);
+        setViewProfileDoc(null);
+        note("Profile", userRes.reason);
       }
+
+      setViewProfileCerts(certsRes.status === "fulfilled" ? certsRes.value : []);
+      if (certsRes.status === "rejected") note("Certificates", certsRes.reason);
+
+      setViewProfileSurveys(surveysRes.status === "fulfilled" ? surveysRes.value : []);
+      if (surveysRes.status === "rejected") note("Survey documents", surveysRes.reason);
+
+      // A member with no events yet simply has no summary doc — not an error.
+      setViewProfileAnalytics(
+        analyticsRes.status === "fulfilled" && analyticsRes.value.exists()
+          ? (analyticsRes.value.data() as Record<string, unknown>)
+          : null
+      );
+      if (analyticsRes.status === "rejected") note("Analytics", analyticsRes.reason);
+
+      setViewProfileErrors(problems);
+      setViewProfileLoading(false);
     })();
     return () => { cancelled = true; };
   }, [viewProfileUserId]);
@@ -3247,6 +3267,18 @@ export function AdminPage() {
             </div>
           ) : viewProfileUser ? (
             <div className="space-y-6">
+              {viewProfileErrors.length > 0 && (
+                <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
+                  <p className="text-sm font-medium text-foreground mb-1">
+                    Some of this member's record could not be loaded
+                  </p>
+                  <ul className="text-xs text-muted-foreground list-disc pl-4 space-y-0.5">
+                    {viewProfileErrors.map((e) => (
+                      <li key={e}>{e}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               {/* One-click export of everything below, for reviewing an
                   applicant away from the panel. */}
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border p-3 bg-background">

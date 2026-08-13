@@ -42,6 +42,7 @@ class _ConferenceMatchesScreenState extends State<ConferenceMatchesScreen> {
   List<ConferenceMatch> _matches = const [];
   List<InboundLike> _inbound = const [];
   bool _inboundLoading = true;
+  String? _inboundError;
 
   /// uid → profile, so a matched person who has since gone hidden still renders
   /// (the deck stream only carries `enabled` profiles).
@@ -132,7 +133,12 @@ class _ConferenceMatchesScreenState extends State<ConferenceMatchesScreen> {
   Future<void> _loadInbound() async {
     final cid = _conferenceId;
     if (cid == null) return;
-    if (mounted) setState(() => _inboundLoading = true);
+    if (mounted) {
+      setState(() {
+        _inboundLoading = true;
+        _inboundError = null;
+      });
+    }
     try {
       final likes = await _service.listInboundLikes(conferenceId: cid);
       if (!mounted) return;
@@ -140,13 +146,16 @@ class _ConferenceMatchesScreenState extends State<ConferenceMatchesScreen> {
         _inbound = likes;
         _inboundLoading = false;
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       // A failed inbound fetch shouldn't take the whole screen down — the
-      // matches list below it is the more important half.
+      // matches list below it is the more important half. But it must not fail
+      // *silently* either: an empty section is indistinguishable from "nobody
+      // is waiting", which is exactly how a missing deploy went unnoticed.
       setState(() {
         _inbound = const [];
         _inboundLoading = false;
+        _inboundError = userMessageForFirebaseCallableError(e);
       });
     }
   }
@@ -238,7 +247,11 @@ class _ConferenceMatchesScreenState extends State<ConferenceMatchesScreen> {
     if (_error != null) {
       return _errorState(_error!);
     }
-    final nothingAtAll = _inbound.isEmpty && talking.isEmpty && quiet.isEmpty && !_inboundLoading;
+    final nothingAtAll = _inbound.isEmpty &&
+        talking.isEmpty &&
+        quiet.isEmpty &&
+        !_inboundLoading &&
+        _inboundError == null;
     if (nothingAtAll) return _emptyState();
 
     return RefreshIndicator(
@@ -248,9 +261,18 @@ class _ConferenceMatchesScreenState extends State<ConferenceMatchesScreen> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(Cosmic.gutter, 4, Cosmic.gutter, 32),
         children: [
+          // Always rendered, even when empty: this is the section testers went
+          // looking for ("someone has tried to match with them and they have
+          // not matched"), and hiding it made the feature look absent.
+          _sectionHeader(
+            'WAITING ON YOU',
+            _inboundLoading ? '…' : '${_inbound.length}',
+            'People who connected with you from the Networking Zone. '
+                'Connect back and a chat opens for both of you.',
+          ),
           if (_inboundLoading && _inbound.isEmpty)
             const Padding(
-              padding: EdgeInsets.symmetric(vertical: 12),
+              padding: EdgeInsets.symmetric(vertical: 16),
               child: Center(
                 child: SizedBox(
                   width: 18,
@@ -258,27 +280,31 @@ class _ConferenceMatchesScreenState extends State<ConferenceMatchesScreen> {
                   child: CircularProgressIndicator(strokeWidth: 2, color: ConferenceColors.gold),
                 ),
               ),
-            ),
-          if (_inbound.isNotEmpty) ...[
-            _sectionHeader(
-              'WAITING ON YOU',
-              '${_inbound.length}',
-              'They connected with you. Connect back to open a chat.',
-            ),
+            )
+          else if (_inboundError != null)
+            _inboundErrorCard(_inboundError!)
+          else if (_inbound.isEmpty)
+            _quietNote("Nobody is waiting on you right now. When someone connects "
+                "with you in the Networking Zone, they'll appear here first.")
+          else
             for (final like in _inbound) _inboundCard(like),
-            const SizedBox(height: 26),
-          ],
+          const SizedBox(height: 26),
           if (quiet.isNotEmpty) ...[
             _sectionHeader(
-              'NO REPLY YET',
+              'MATCHED — NO REPLY YET',
               '${quiet.length}',
-              "You matched, but the conversation hasn't gone both ways.",
+              "You both connected, so a chat is already open. Nobody has "
+                  'answered in it yet.',
             ),
             for (final m in quiet) _matchCard(m),
             const SizedBox(height: 26),
           ],
           if (talking.isNotEmpty) ...[
-            _sectionHeader('TALKING', '${talking.length}', null),
+            _sectionHeader(
+              'TALKING',
+              '${talking.length}',
+              'Conversations that are going both ways.',
+            ),
             for (final m in talking) _matchCard(m),
           ],
         ],
@@ -377,6 +403,54 @@ class _ConferenceMatchesScreenState extends State<ConferenceMatchesScreen> {
         border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
       child: child,
+    );
+  }
+
+  Widget _quietNote(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.03),
+          borderRadius: Cosmic.chipRadius,
+          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        ),
+        child: Text(text, style: TextStyle(color: Cosmic.textFaint, fontSize: 12.5, height: 1.4)),
+      ),
+    );
+  }
+
+  Widget _inboundErrorCard(String message) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.redAccent.withValues(alpha: 0.08),
+        borderRadius: Cosmic.chipRadius,
+        border: Border.all(color: Colors.redAccent.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("We couldn't load who's waiting on you.",
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontWeight: FontWeight.w600, fontSize: 13)),
+          const SizedBox(height: 4),
+          Text(message, style: TextStyle(color: Cosmic.textMuted, fontSize: 12, height: 1.35)),
+          const SizedBox(height: 8),
+          TextButton.icon(
+            style: TextButton.styleFrom(
+              foregroundColor: ConferenceColors.gold,
+              padding: EdgeInsets.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            onPressed: _loadInbound,
+            icon: const Icon(Icons.refresh_rounded, size: 16),
+            label: const Text('Try again'),
+          ),
+        ],
+      ),
     );
   }
 

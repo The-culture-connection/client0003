@@ -26,6 +26,35 @@ function isWeekend(date: Date): boolean {
   return day === 0 || day === 6;
 }
 
+/**
+ * "09:00" → "9:00 AM".
+ *
+ * `<input type="time">` renders in the browser's locale, so the same field
+ * shows 24-hour on some machines and 12-hour on others — which is what testers
+ * meant by "the time format was a little confusing". Everything we echo back is
+ * spelled out in 12-hour with the timezone attached, so what you picked is
+ * never ambiguous regardless of what the picker itself displays.
+ */
+function to12Hour(hhmm: string): string {
+  const m = hhmm.match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) return "";
+  let hours = parseInt(m[1], 10);
+  if (Number.isNaN(hours)) return "";
+  const suffix = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12;
+  if (hours === 0) hours = 12;
+  return `${hours}:${m[2]} ${suffix}`;
+}
+
+/** Plain-English readback of a slot, or null until it is complete. */
+function slotSummary(slot: AvailabilitySlot): string | null {
+  if (!slot.date || !slot.startTime || !slot.endTime) return null;
+  const from = to12Hour(slot.startTime);
+  const until = to12Hour(slot.endTime);
+  if (!from || !until) return null;
+  return `You're free on ${format(slot.date, "EEEE, MMMM d")} between ${from} and ${until} ET.`;
+}
+
 export function GraduationApplicationDialog({
   open,
   onOpenChange,
@@ -142,22 +171,47 @@ export function GraduationApplicationDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Alumni Application — Add Your Availability</DialogTitle>
+          <DialogTitle>Alumni Application — When are you free?</DialogTitle>
           <DialogDescription>
-            Choose up to three times that work for you for your pitch meeting, during business
-            hours (Mon–Fri, 9am–5pm ET). The Alumni Manager will confirm one of them — put the
-            confirmed meeting on your calendar.
+            You're telling us when you're available. You are not booking a meeting yet.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
+          {/* Testers submitted this without understanding what they were filling
+              in: "I was confused about what the 3 slots were for". The three
+              boxes are alternative windows, only one of which becomes a
+              meeting — so say that before they start, in order. */}
+          <div className="rounded-lg border border-border bg-muted/40 p-4">
+            <p className="text-sm font-semibold text-foreground mb-2">How this works</p>
+            <ol className="space-y-2 text-sm text-muted-foreground list-decimal pl-5">
+              <li>
+                Give us up to <strong className="text-foreground">three separate windows</strong>{" "}
+                when you could meet. They're alternatives, not three meetings — more options just
+                makes it easier to find one that suits you both.
+              </li>
+              <li>
+                Each window is a stretch of time you're free, like 9:00 AM to 11:00 AM. The Alumni
+                Manager books a meeting <strong className="text-foreground">inside</strong> one of
+                them, so give a wider window if you can.
+              </li>
+              <li>
+                We email you the one confirmed date and time, with a calendar invite you can add in
+                a tap. Nothing is booked until then.
+              </li>
+            </ol>
+            <p className="text-xs text-muted-foreground mt-3">
+              All times are Eastern Time (ET), weekdays only, between 9:00 AM and 5:00 PM.
+            </p>
+          </div>
+
           {/* Availability Slots */}
           <div className="space-y-4">
             {availabilitySlots.map((slot, index) => (
               <div key={index} className="border rounded-lg p-4 space-y-4">
                 <div className="flex items-center justify-between">
                   <Label className="text-base font-semibold">
-                    Preferred meeting time — option {index + 1}
+                    Availability window {index + 1} of 3
                   </Label>
                   {availabilitySlots.length > 1 && (
                     <Button
@@ -210,7 +264,7 @@ export function GraduationApplicationDialog({
                 {/* Time Range */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Available from *</Label>
+                    <Label>I'm free from *</Label>
                     <Input
                       type="time"
                       value={slot.startTime}
@@ -218,9 +272,12 @@ export function GraduationApplicationDialog({
                       max={BUSINESS_END}
                       onChange={(e) => updateSlot(index, "startTime", e.target.value)}
                     />
+                    {slot.startTime && (
+                      <p className="text-xs text-muted-foreground">{to12Hour(slot.startTime)} ET</p>
+                    )}
                   </div>
                   <div className="space-y-2">
-                    <Label>Available until *</Label>
+                    <Label>…until *</Label>
                     <Input
                       type="time"
                       value={slot.endTime}
@@ -228,11 +285,22 @@ export function GraduationApplicationDialog({
                       max={BUSINESS_END}
                       onChange={(e) => updateSlot(index, "endTime", e.target.value)}
                     />
+                    {slot.endTime && (
+                      <p className="text-xs text-muted-foreground">{to12Hour(slot.endTime)} ET</p>
+                    )}
                   </div>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Business hours only: Mon–Fri, 9:00 AM – 5:00 PM ET.
-                </p>
+                {/* Reads the finished window back in words, so nobody submits a
+                    24-hour value they read as something else. */}
+                {slotSummary(slot) ? (
+                  <p className="text-sm text-foreground bg-accent/10 border border-accent/20 rounded-md px-3 py-2">
+                    ✓ {slotSummary(slot)}
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Pick a date and a start and end time. Weekdays only, 9:00 AM – 5:00 PM ET.
+                  </p>
+                )}
               </div>
             ))}
 
@@ -244,8 +312,15 @@ export function GraduationApplicationDialog({
                 className="w-full"
               >
                 <Plus className="w-4 h-4 mr-2" />
-                Add a meeting time option ({availabilitySlots.length}/3)
+                {availabilitySlots.length === 0
+                  ? "Add your first availability window"
+                  : `Add another option (${availabilitySlots.length} of 3 added)`}
               </Button>
+            )}
+            {availabilitySlots.length === 1 && (
+              <p className="text-xs text-muted-foreground text-center">
+                One window is enough, but two or three alternatives get you booked sooner.
+              </p>
             )}
           </div>
 

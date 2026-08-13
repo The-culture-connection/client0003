@@ -476,7 +476,6 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
         _ShopStreet(
           key: _tourStreet,
           hasExpansionAccess: hasExpansionAccess,
-          waiting: waiting,
           conference: conference,
           conferenceLoading: conferenceLoading,
           signals: signals,
@@ -705,14 +704,12 @@ class _ShopStreet extends StatelessWidget {
   const _ShopStreet({
     super.key,
     required this.hasExpansionAccess,
-    required this.waiting,
     required this.conference,
     required this.conferenceLoading,
     required this.signals,
   });
 
   final bool hasExpansionAccess;
-  final int waiting;
   final Conference? conference;
   final bool conferenceLoading;
   final MortarverseSignals signals;
@@ -730,13 +727,12 @@ class _ShopStreet extends StatelessWidget {
         children: [
           _ShopTile(
             title: 'NETWORKING\nHALL',
-            // No presence system exists, so this never claims who is online.
-            subtitle: waiting > 0
-                ? '$waiting waiting on you'
-                : 'Connect • Grow • Collaborate',
-            pill: hasExpansionAccess
-                ? (waiting > 0 ? '$waiting WAITING' : 'OPEN')
-                : 'LOCKED',
+            // Deliberately steady copy. This used to swap to "N waiting on you"
+            // / "N WAITING", which duplicated the focus card directly above it
+            // and made the street read as an alert rather than a destination.
+            // (No presence system exists either, so it never claims who's online.)
+            subtitle: 'Connect • Grow • Collaborate',
+            pill: hasExpansionAccess ? 'OPEN' : 'LOCKED',
             shopColor: AppColors.primary,
             planetAsset: MortarversePlanets.networkingHall,
             enabled: true,
@@ -792,7 +788,6 @@ class _ShopStreet extends StatelessWidget {
             pill: 'ON THE WEB',
             shopColor: _curriculumAccent,
             planetAsset: MortarversePlanets.digitalCurriculum,
-            planetFallbackTint: _curriculumAccent,
             enabled: true,
             outlinedPill: true,
             onTap: () => _openCurriculum(context),
@@ -829,7 +824,6 @@ class _ShopTile extends StatefulWidget {
     required this.enabled,
     required this.onTap,
     this.outlinedPill = false,
-    this.planetFallbackTint,
   });
 
   final String title;
@@ -840,8 +834,6 @@ class _ShopTile extends StatefulWidget {
   /// The destination's planet illustration.
   final String planetAsset;
 
-  /// Colour for the plain sphere drawn while [planetAsset] has no artwork yet.
-  final Color? planetFallbackTint;
 
   final bool enabled;
   final VoidCallback? onTap;
@@ -856,8 +848,6 @@ class _ShopTileState extends State<_ShopTile> {
 
   @override
   Widget build(BuildContext context) {
-    final color = widget.shopColor;
-
     return Opacity(
       opacity: widget.enabled ? 1 : 0.45,
       child: GestureDetector(
@@ -898,7 +888,11 @@ class _ShopTileState extends State<_ShopTile> {
                               asset: widget.planetAsset,
                               size: 114,
                               enabled: widget.enabled,
-                              fallbackTint: widget.planetFallbackTint,
+                              // Any destination whose artwork is missing falls
+                              // back to a sphere in its own accent, so the
+                              // street keeps its rhythm instead of showing a
+                              // gap where a planet should be.
+                              fallbackTint: widget.shopColor,
                             ),
                           ],
                         ),
@@ -934,10 +928,9 @@ class _ShopTileState extends State<_ShopTile> {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      // Urgency reads in the accent; everything else recedes.
-                      color: color == AppColors.primary && widget.subtitle.contains('waiting')
-                          ? Cosmic.textAccent
-                          : Cosmic.textFaint,
+                      // No tile carries urgency any more — the focus card above
+                      // owns "what needs you", the street is just destinations.
+                      color: Cosmic.textFaint,
                       fontSize: 10.5,
                       height: 1.25,
                       fontWeight: FontWeight.w300,
