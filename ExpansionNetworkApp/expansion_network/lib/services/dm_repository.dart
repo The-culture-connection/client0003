@@ -75,29 +75,6 @@ class DmRepository {
     }
   }
 
-  /// Emoji a message can be reacted with — the picker's row, in order.
-  static const List<String> reactionChoices = ['👍', '❤️', '😂', '🎉', '🙌', '😮', '😢'];
-
-  /// Sets, replaces, or clears the current user's reaction on a message.
-  ///
-  /// Passing null (or the emoji already selected — the caller toggles) removes
-  /// it. Written with dotted-path field updates so only this user's key is
-  /// touched, matching what the security rules will accept: a whole-map `set`
-  /// would look like an edit of the other participant's reaction and be denied.
-  Future<void> setReaction({
-    required String partnerUid,
-    required String messageId,
-    required String? emoji,
-  }) async {
-    final me = _auth.currentUser?.uid;
-    if (me == null) throw StateError('Not signed in');
-    final threadId = dmThreadIdForUsers(me, partnerUid);
-    final ref = _threads.doc(threadId).collection('messages').doc(messageId);
-    await ref.update({
-      'reactions.$me': emoji ?? FieldValue.delete(),
-    });
-  }
-
   Future<void> sendMessage({
     required String partnerUid,
     required String text,
@@ -138,5 +115,30 @@ class DmRepository {
       if (attachmentId != null && attachmentId.isNotEmpty) 'attachment_id': attachmentId,
     });
     await batch.commit();
+  }
+
+  /// Adds, switches, or removes the caller's emoji reaction on a message.
+  ///
+  /// Reactions live on the message doc as `reactions: {uid: emoji}`. Tapping
+  /// the emoji you already reacted with removes it; any other emoji replaces
+  /// it. Written with set-merge so only the caller's own key is touched —
+  /// which is exactly what the security rules allow participants to update.
+  Future<void> toggleReaction({
+    required String threadId,
+    required String messageId,
+    required String emoji,
+  }) async {
+    final me = _auth.currentUser?.uid;
+    if (me == null) throw StateError('Not signed in');
+    final ref = _threads.doc(threadId).collection('messages').doc(messageId);
+    final snap = await ref.get();
+    final reactions = snap.data()?['reactions'];
+    final current = reactions is Map ? reactions[me] : null;
+    await ref.set(
+      {
+        'reactions': {me: current == emoji ? FieldValue.delete() : emoji},
+      },
+      SetOptions(merge: true),
+    );
   }
 }

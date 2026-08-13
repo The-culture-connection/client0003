@@ -148,6 +148,18 @@ sequenceDiagram
 
 **Trigger:** `acceptGraduationApplication(..., selectedTime)` — `pending` → `accepted` with `selectedTime`.
 
+> **Calendar invite:** this send carries a `mortar-graduation-meeting.ics`
+> attachment built in `functions/src/email/calendarInvite.ts`, so the recipient
+> can add the meeting in one tap. Nothing is configured in Brevo for it — the
+> attachment goes through the API alongside the template. If the stored
+> `selectedTime` can't be parsed, the email still sends without it and logs a
+> warning.
+
+> **No "View my application" button.** It was removed from the HTML — the email
+> is a confirmation, and the CTA sent people back into the application they had
+> already finished. `application_url` is still passed in `params` and is
+> harmless, but nothing renders it; re-add the button in Brevo if that changes.
+
 ---
 
 ## 2. `graduation_admitted_to_alumni`

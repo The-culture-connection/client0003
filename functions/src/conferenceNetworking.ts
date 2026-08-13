@@ -102,14 +102,6 @@ function buildSnapshot(uid: string, u: DocumentData | undefined): Record<string,
 }
 
 /** Throws `failed-precondition` unless the caller holds a ticket for the conference. */
-async function assertAttendee(conferenceId: string, uid: string): Promise<void> {
-  const attSnap = await conferenceRef(conferenceId).collection(ATTENDEES).doc(uid).get();
-  if (!attSnap.exists) {
-    throw new HttpsError("failed-precondition", "You need a ticket to network at this conference.");
-  }
-}
-
-/** Throws `failed-precondition` unless the caller holds a ticket for the conference. */
 async function assertAttendeeTx(
   tx: FirebaseFirestore.Transaction,
   conferenceId: string,
@@ -290,75 +282,6 @@ export const recordConferenceSwipe = onCall(defaultCallableOptions, async (reque
   });
 
   return { ok: true, targetUid, ...outcome };
-});
-
-/**
- * People who liked the caller but whom the caller has not swiped on yet — the
- * "waiting on you" list behind the My Connections screen.
- *
- * Swipes live under the *swiper's* profile and are owner-read-only, so a client
- * has no way to learn about an inbound like on its own; this callable is the
- * only door. Revealing the like does not reveal a conversation — the caller
- * still has to like back before `recordConferenceSwipe` opens the DM, so the
- * "a chat only opens when you both connect" rule is untouched.
- *
- * Reads the caller's swipe doc under every discoverable profile in one batched
- * `getAll` rather than a collection-group query: the swipe docs written so far
- * carry no `targetUid` field to index on, and a conference-sized fan-out does
- * not need one.
- */
-const INBOUND_LIKE_SCAN_LIMIT = 1000;
-const GET_ALL_CHUNK = 250;
-
-export const listConferenceInboundLikes = onCall(defaultCallableOptions, async (request) => {
-  if (!request.auth?.uid) throw new HttpsError("unauthenticated", "Sign in required.");
-  const uid = request.auth.uid;
-  const conferenceId = (request.data?.conferenceId as string | undefined)?.trim();
-  if (!conferenceId) throw new HttpsError("invalid-argument", "conferenceId is required.");
-  await assertConferenceExists(conferenceId);
-  await assertAttendee(conferenceId, uid);
-
-  const profilesCol = conferenceRef(conferenceId).collection(NETWORKING_PROFILES);
-
-  // Only people who are still discoverable: someone who liked you and then
-  // switched networking off has withdrawn from the zone, and surfacing them
-  // would hand out a contact they just took back.
-  const [profilesSnap, mySwipesSnap] = await Promise.all([
-    profilesCol.where("enabled", "==", true).limit(INBOUND_LIKE_SCAN_LIMIT).get(),
-    profilesCol.doc(uid).collection(SWIPES).get(),
-  ]);
-
-  const alreadySwiped = new Set(mySwipesSnap.docs.map((d) => d.id));
-  const others = profilesSnap.docs.filter((d) => d.id !== uid && !alreadySwiped.has(d.id));
-  if (others.length === 0) return { ok: true, likes: [] };
-
-  const byUid = new Map(others.map((d) => [d.id, d]));
-  const refs = others.map((d) => d.ref.collection(SWIPES).doc(uid));
-
-  const swipeDocs: FirebaseFirestore.DocumentSnapshot[] = [];
-  for (let i = 0; i < refs.length; i += GET_ALL_CHUNK) {
-    swipeDocs.push(...(await db.getAll(...refs.slice(i, i + GET_ALL_CHUNK))));
-  }
-
-  const likes = swipeDocs
-    .filter((s) => s.exists && s.data()?.direction === "like")
-    .map((s) => {
-      // `.../networkingProfiles/{fromUid}/swipes/{uid}` — the liker is the
-      // grandparent doc id.
-      const fromUid = s.ref.parent.parent!.id;
-      const profile = byUid.get(fromUid);
-      const at = s.data()?.at;
-      return {
-        uid: fromUid,
-        reason: strField(s.data()?.reason) || null,
-        at: at?.toMillis?.() ?? null,
-        profile: { ...(profile?.data() ?? {}), uid: fromUid },
-      };
-    })
-    // Newest interest first; undated (pre-timestamp) rows sink to the bottom.
-    .sort((a, b) => (b.at ?? 0) - (a.at ?? 0));
-
-  return { ok: true, likes };
 });
 
 /** Undo the last swipe on a target — only if it hasn't already produced a match. */

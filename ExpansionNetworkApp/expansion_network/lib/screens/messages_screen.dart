@@ -10,7 +10,7 @@ import '../services/dm_repository.dart';
 import '../services/user_profile_repository.dart';
 import '../theme/app_theme.dart';
 import '../theme/cosmic_content.dart';
-import '../widgets/expansion_compose_fab.dart';
+import '../widgets/new_message_sheet.dart';
 import '../widgets/user_profile_modal.dart';
 
 String? _dmOtherParticipant(List<dynamic>? ids, String me) {
@@ -47,33 +47,53 @@ class _MessagesScreenState extends State<MessagesScreen> {
     final users = UserProfileRepository();
 
     return Scaffold(
-      // Testers could only ever start a chat from somebody's card elsewhere in
-      // the app — from the inbox itself there was no way to begin one.
-      floatingActionButton: me == null
-          ? null
-          : ExpansionComposeFab(
-              heroTag: 'compose-messages',
-              onPressed: () => context.push('/messages/new'),
-            ),
       body: SafeArea(
         bottom: false,
         child: CustomScrollView(
           slivers: [
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(8, 8, 24, 12),
-                child: Column(
+                padding: const EdgeInsets.fromLTRB(8, 8, 16, 12),
+                child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Messages',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w500),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Messages',
+                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w500),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Direct conversations. Message someone from their card anywhere in the app.',
+                            style: TextStyle(fontSize: 12, color: AppColors.mutedForeground),
+                          ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Direct conversations. Start a new one with the + button, '
-                      'or message someone from their card anywhere in the app.',
-                      style: TextStyle(fontSize: 12, color: AppColors.mutedForeground),
+                    // Matched-but-not-yet-talked people live here (beta ask:
+                    // "where do I go to see the people I have matched with?").
+                    IconButton(
+                      icon: const Icon(Icons.favorite_outline_rounded, color: AppColors.mutedForeground),
+                      tooltip: 'Matches',
+                      onPressed: () {
+                        unawaited(
+                          ExpansionAnalytics.log(
+                            'messages_matches_opened',
+                            sourceScreen: 'messages_inbox',
+                          ),
+                        );
+                        context.push('/matches');
+                      },
+                    ),
+                    // Start a conversation with anyone by name (beta ask:
+                    // "there should be a way to start new messages").
+                    IconButton(
+                      icon: const Icon(Icons.add_comment_outlined, color: AppColors.mutedForeground),
+                      tooltip: 'New message',
+                      onPressed: () => showNewMessageSheet(context),
                     ),
                   ],
                 ),
@@ -99,34 +119,14 @@ class _MessagesScreenState extends State<MessagesScreen> {
                     );
                   }
                   if (docs.isEmpty) {
-                    return SliverFillRemaining(
-                      hasScrollBody: false,
+                    return const SliverFillRemaining(
                       child: Center(
                         child: Padding(
-                          padding: const EdgeInsets.all(32),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.forum_outlined,
-                                  size: 40, color: AppColors.mutedForeground),
-                              const SizedBox(height: 14),
-                              const Text(
-                                'No conversations yet',
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                              ),
-                              const SizedBox(height: 6),
-                              const Text(
-                                'Search for someone in the network and say hello.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(color: AppColors.mutedForeground, height: 1.4),
-                              ),
-                              const SizedBox(height: 18),
-                              FilledButton.icon(
-                                onPressed: () => context.push('/messages/new'),
-                                icon: const Icon(Icons.edit_outlined, size: 18),
-                                label: const Text('New message'),
-                              ),
-                            ],
+                          padding: EdgeInsets.all(24),
+                          child: Text(
+                            'No conversations yet.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: AppColors.mutedForeground),
                           ),
                         ),
                       ),

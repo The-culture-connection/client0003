@@ -314,9 +314,8 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
               ],
             ),
           ),
-          // Beta testers matched and then had no way back to the person. This
-          // is the standing list of everyone they've connected with.
-          _circleBtn(Icons.people_alt_rounded, () => context.push('/conference/connections')),
+          // Your existing matches ("where do I go to see who I matched with?").
+          _circleBtn(Icons.favorite_outline_rounded, () => context.push('/matches')),
           const SizedBox(width: 8),
           _circleBtn(Icons.settings_rounded, _openSettings),
         ],
@@ -493,15 +492,10 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(p.displayName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800)),
+                Text(p.displayName, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800)),
                 if (p.subtitle.isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Text(p.subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: Cosmic.textMuted, fontSize: 14, fontWeight: FontWeight.w500)),
                 ],
                 if (p.bio.isNotEmpty) ...[
@@ -511,18 +505,13 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: Cosmic.textMuted, fontSize: 13, height: 1.35)),
                 ],
-                // Capped on the card: the deck card is a fixed-height tile, and
-                // a member with a dozen long skills ("Investor communication
-                // and financial reporting") grew this panel past the card and
-                // overflowed the photo out of existence. The full lists are one
-                // tap away in the profile sheet, which scrolls.
                 if (p.offers.isNotEmpty) ...[
                   const SizedBox(height: 14),
-                  _chipRow('CAN OFFER', p.offers, ConferenceColors.gold, maxItems: 3),
+                  _chipRow('CAN OFFER', p.offers, ConferenceColors.gold),
                 ],
                 if (p.seeks.isNotEmpty) ...[
                   const SizedBox(height: 8),
-                  _chipRow('LOOKING FOR', p.seeks, Colors.white, maxItems: 3),
+                  _chipRow('LOOKING FOR', p.seeks, Colors.white),
                 ],
               ],
             ),
@@ -556,35 +545,7 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
     );
   }
 
-  /// [maxItems] bounds how many chips render, with a `+N` chip standing in for
-  /// the rest. Null shows everything — used by the scrollable profile sheet.
-  Widget _chipRow(String label, List<String> items, Color tint, {int? maxItems}) {
-    final shown = maxItems == null || items.length <= maxItems
-        ? items
-        : items.take(maxItems).toList();
-    final hidden = items.length - shown.length;
-    final chipColor = tint == ConferenceColors.gold ? ConferenceColors.gold : Colors.white;
-
-    Widget chip(String text) => Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: tint.withValues(alpha: 0.14),
-            borderRadius: Cosmic.chipRadius,
-            border: Border.all(color: tint.withValues(alpha: 0.3)),
-          ),
-          // A long skill would otherwise force its own full-width Wrap line;
-          // capped and ellipsized it stays one predictable row height.
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 150),
-            child: Text(
-              text,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: chipColor, fontSize: 11),
-            ),
-          ),
-        );
-
+  Widget _chipRow(String label, List<String> items, Color tint) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -598,8 +559,16 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
             spacing: 6,
             runSpacing: 6,
             children: [
-              for (final it in shown) chip(it),
-              if (hidden > 0) chip('+$hidden more'),
+              for (final it in items)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: tint.withValues(alpha: 0.14),
+                    borderRadius: Cosmic.chipRadius,
+                    border: Border.all(color: tint.withValues(alpha: 0.3)),
+                  ),
+                  child: Text(it, style: TextStyle(color: tint == ConferenceColors.gold ? ConferenceColors.gold : Colors.white, fontSize: 11)),
+                ),
             ],
           ),
         ),
@@ -694,13 +663,6 @@ class _ConferenceNetworkingScreenState extends State<ConferenceNetworkingScreen>
               onPressed: () => setState(() {}),
               icon: const Icon(Icons.refresh_rounded, size: 18),
               label: const Text('Refresh'),
-            ),
-            const SizedBox(height: 8),
-            TextButton.icon(
-              style: TextButton.styleFrom(foregroundColor: ConferenceColors.gold),
-              onPressed: () => context.push('/conference/connections'),
-              icon: const Icon(Icons.people_alt_rounded, size: 18),
-              label: const Text('See my connections'),
             ),
           ],
         ),

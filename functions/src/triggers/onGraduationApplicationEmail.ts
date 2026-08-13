@@ -2,14 +2,17 @@ import {getApps, initializeApp} from "firebase-admin/app";
 import {FieldValue, getFirestore} from "firebase-admin/firestore";
 import {onDocumentUpdated} from "firebase-functions/v2/firestore";
 import * as logger from "firebase-functions/logger";
-import {BREVO_API_KEY} from "../email/brevoClient";
+import {BREVO_API_KEY, type EmailAttachment} from "../email/brevoClient";
 import {
   displayNameFromUserDoc,
+  graduationApplicationUrl,
   graduationMeetingTimeSelectedParams,
   graduationNotAdmittedParams,
 } from "../email/buildEmailParams";
-import {buildGraduationMeetingIcs} from "../email/calendarInvite";
-import {DEFAULT_SUPPORT_EMAIL} from "../email/emailConfig";
+import {
+  buildGraduationMeetingIcs,
+  parseEasternMeetingTime,
+} from "../email/graduationMeetingIcs";
 import {sendTransactionalEmail} from "../email/sendTransactionalEmail";
 
 if (getApps().length === 0) {
@@ -34,6 +37,40 @@ async function resolveUserName(userId: string, fallback: string): Promise<string
   } catch (err) {
     logger.warn("Could not resolve user profile name for graduation email", {userId, err});
     return fallback;
+  }
+}
+
+/**
+ * Calendar invite for the confirmed meeting time. The stored `selectedTime` is
+ * an Eastern wall-clock string ("3/16/2026 at 9:00 AM"); when it can't be
+ * parsed (legacy/free-form values) the email simply goes out without an
+ * attachment — never throw over the .ics.
+ */
+function meetingIcsAttachment(
+  applicationId: string,
+  selectedTime: string
+): EmailAttachment[] | undefined {
+  try {
+    const startUtc = parseEasternMeetingTime(selectedTime);
+    if (!startUtc) {
+      logger.warn("Graduation meeting .ics skipped: unparseable selectedTime", {
+        applicationId,
+        selectedTime,
+      });
+      return undefined;
+    }
+    const ics = buildGraduationMeetingIcs({
+      applicationId,
+      startUtc,
+      applicationUrl: graduationApplicationUrl(),
+    });
+    return [{
+      name: "mortar-pitch-meeting.ics",
+      content: Buffer.from(ics, "utf8").toString("base64"),
+    }];
+  } catch (err) {
+    logger.warn("Graduation meeting .ics skipped: build failed", {applicationId, err});
+    return undefined;
   }
 }
 
@@ -71,37 +108,19 @@ export const onGraduationApplicationEmail = onDocumentUpdated(
       nextTime.length > 0 && prevTime !== nextTime;
 
     if (meetingTimeNewlySet && !meetingAlreadySent) {
-      const resolvedName = await resolveUserName(userId, userName);
       const params = graduationMeetingTimeSelectedParams({
-        userName: resolvedName,
+        userName: await resolveUserName(userId, userName),
         userEmail,
         meeting_time: nextTime,
         notes,
       });
-      // The email tells people to put the meeting on their calendar; attaching
-      // the invite lets them do it in one tap. Null when the stored time can't
-      // be parsed — the email still goes, just without the attachment.
-      const invite = buildGraduationMeetingIcs({
-        meetingTime: nextTime,
-        applicationId,
-        attendeeEmail: userEmail,
-        attendeeName: resolvedName,
-        organizerEmail: DEFAULT_SUPPORT_EMAIL,
-        organizerName: "MORTAR",
-        notes,
-      });
-      if (!invite) {
-        logger.warn("Graduation meeting time not parseable — sending without .ics", {
-          applicationId,
-          meetingTime: nextTime,
-        });
-      }
       const result = await sendTransactionalEmail("graduation_meeting_time_selected", {
         to: userEmail,
         recipientUid: userId || undefined,
         params,
+        // Only the meeting-confirmation email carries the calendar invite.
+        attachments: meetingIcsAttachment(applicationId, nextTime),
         preferenceCategory: "graduation_updates",
-        attachments: invite ? [invite] : undefined,
       });
       if (result.sent) {
         await event.data!.after.ref.update({

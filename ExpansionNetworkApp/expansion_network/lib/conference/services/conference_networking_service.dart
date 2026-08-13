@@ -58,22 +58,6 @@ class ConferenceNetworkingService {
     return Map<String, dynamic>.from(result.data as Map);
   }
 
-  /// People who swiped right on me that I haven't answered yet. Server-only:
-  /// swipes are owner-read-only, so there is no client query for this.
-  Future<List<InboundLike>> listInboundLikes({required String conferenceId}) async {
-    final result = await _functions
-        .httpsCallable('listConferenceInboundLikes')
-        .call(<String, dynamic>{'conferenceId': conferenceId});
-    final data = Map<String, dynamic>.from(result.data as Map);
-    final raw = data['likes'];
-    if (raw is! List) return const [];
-    return raw
-        .whereType<Map>()
-        .map((m) => InboundLike.fromMap(Map<String, dynamic>.from(m)))
-        .whereType<InboundLike>()
-        .toList();
-  }
-
   /// Undo the last swipe on a target (fails if it already produced a match).
   Future<Map<String, dynamic>> undoSwipe({
     required String conferenceId,

@@ -159,11 +159,6 @@ abstract final class ConferenceAnalytics {
   static Future<void> connectionsViewed() =>
       _log('conference_connections_viewed', screen: 'conference_connections');
 
-  /// A right-swipe made from the "waiting on you" list rather than the deck.
-  static Future<void> connectionsLikedBack({required String targetUid}) =>
-      _log('conference_connections_liked_back',
-          entityId: targetUid, screen: 'conference_connections');
-
   static Future<void> networkingToggled({required bool enabled}) =>
       _log('conference_networking_toggled',
           screen: 'conference_networking', extra: {'enabled': enabled});

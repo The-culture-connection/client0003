@@ -22,6 +22,7 @@ import {
   GraduationCap,
   Users,
   X,
+  Info,
 } from "lucide-react";
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router";
@@ -665,7 +666,7 @@ export function WebCurriculum() {
                 {userApplication.status === "pending" && (
                   <div className="text-sm text-muted-foreground">
                     <p className="mb-2">
-                      <strong className="text-foreground">Your Availability Windows:</strong>
+                      <strong className="text-foreground">The times you told us you're free:</strong>
                     </p>
                     <div className="space-y-1 pl-4">
                       {userApplication.availabilitySlots && userApplication.availabilitySlots.length > 0 ? (
@@ -689,7 +690,11 @@ export function WebCurriculum() {
                       </p>
                     )}
                     <p className="mt-2 text-xs">
-                      Your application is under review. We&apos;ll get back to you soon!
+                      Your application is under review. The Alumni Manager will book{" "}
+                      <strong className="text-foreground">one meeting inside one of these
+                      windows</strong> and email you the confirmed time within 3 business days,
+                      with a calendar invite attached. Check your spam folder if you don&apos;t see
+                      it.
                     </p>
                   </div>
                 )}
@@ -705,18 +710,59 @@ export function WebCurriculum() {
                 )}
               </div>
             ) : allCompleted ? (
-              <div className="flex items-center gap-3">
-                <Button
-                  onClick={() => setApplicationDialogOpen(true)}
-                  className="bg-accent hover:bg-accent/90 text-accent-foreground"
-                >
-                  <Users className="w-4 h-4 mr-2" />
-                  Apply Now
-                </Button>
-                <Badge className="bg-green-500/10 text-green-500 border-green-500/20">
-                  <CheckCircle2 className="w-3 h-3 mr-1" />
-                  Eligible
-                </Badge>
+              <div className="space-y-4">
+                {/* Testers went into the application cold and came out confused
+                    — "I was confused about what the 3 slots were for". The
+                    dialog explains itself now, but the decision to click Apply
+                    happens here, so the shape of the whole process belongs here
+                    too: what it is, what you'll be asked, what happens after. */}
+                <div className="rounded-lg border border-accent/30 bg-accent/5 p-4">
+                  <div className="flex items-start gap-2 mb-3">
+                    <Info className="w-4 h-4 text-accent mt-0.5 shrink-0" />
+                    <p className="text-sm font-semibold text-foreground">
+                      Before you apply — here's how it works
+                    </p>
+                  </div>
+                  <ol className="space-y-2.5 text-sm text-muted-foreground list-decimal pl-8">
+                    <li>
+                      <strong className="text-foreground">You pick times you're free.</strong> The
+                      application asks for up to three availability windows — for example, Monday
+                      9:00–11:00 AM. They're <em>alternatives</em>, not three separate meetings.
+                    </li>
+                    <li>
+                      <strong className="text-foreground">We book one meeting inside one of
+                      them.</strong> The Alumni Manager picks a time that works and confirms it.
+                      Giving wider windows, or more than one, gets you booked sooner.
+                    </li>
+                    <li>
+                      <strong className="text-foreground">You'll pitch your business.</strong> It's
+                      a short conversation with the Alumni Manager about what you've built and where
+                      you're taking it.
+                    </li>
+                    <li>
+                      <strong className="text-foreground">You get an email within 3 business
+                      days</strong> with the confirmed date and time, plus a calendar invite you can
+                      add in one tap. Nothing is booked until then.
+                    </li>
+                  </ol>
+                  <p className="text-xs text-muted-foreground mt-3 pt-3 border-t border-accent/20">
+                    Meetings run weekdays, 9:00 AM – 5:00 PM Eastern Time. Applying takes about a
+                    minute and you can only submit once, so pick times you're confident about.
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Button
+                    onClick={() => setApplicationDialogOpen(true)}
+                    className="bg-accent hover:bg-accent/90 text-accent-foreground"
+                  >
+                    <Users className="w-4 h-4 mr-2" />
+                    Apply Now
+                  </Button>
+                  <Badge className="bg-green-500/10 text-green-500 border-green-500/20">
+                    <CheckCircle2 className="w-3 h-3 mr-1" />
+                    Eligible
+                  </Badge>
+                </div>
               </div>
             ) : (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">

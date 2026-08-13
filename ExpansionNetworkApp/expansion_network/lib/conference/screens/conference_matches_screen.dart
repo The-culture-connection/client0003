@@ -5,7 +5,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../services/expansion_session_service.dart' show userMessageForFirebaseCallableError;
 import '../../theme/cosmic_content.dart';
 import '../conference_analytics.dart';
 import '../current_conference_holder.dart';
@@ -14,16 +13,17 @@ import '../services/conference_networking_service.dart';
 import '../theme/conference_colors.dart';
 import '../widgets/conference_background.dart';
 
-/// My Connections — the answer to "how do we find the people we matched with?"
+/// My Connections — everyone the user has matched with in the Networking Zone,
+/// in one list, with a way straight into each conversation.
 ///
-/// Beta testers could match in the networking deck and then had nowhere to go:
-/// the match overlay was the only place a match ever appeared, and dismissing it
-/// lost the person. This screen is the standing list, split into the three
-/// states Tim described:
+/// This exists because a match used to appear exactly once, in the celebration
+/// overlay, and dismissing it lost the person: "how do we find the people we
+/// matched with?" Every match is listed here whether or not anyone has spoken
+/// yet — the badge and the button label say which.
 ///
-///   1. Waiting on you   — they connected first; you haven't answered
-///   2. No reply yet     — matched, but the conversation hasn't gone both ways
-///   3. Talking          — a real back-and-forth
+/// Deliberately does *not* show inbound likes (people who swiped right on you
+/// before you answered). Those stay hidden until the match is mutual, which is
+/// the rule the whole networking zone is built on.
 class ConferenceMatchesScreen extends StatefulWidget {
   const ConferenceMatchesScreen({super.key});
 
@@ -40,17 +40,11 @@ class _ConferenceMatchesScreenState extends State<ConferenceMatchesScreen> {
   String? _error;
 
   List<ConferenceMatch> _matches = const [];
-  List<InboundLike> _inbound = const [];
-  bool _inboundLoading = true;
-  String? _inboundError;
 
-  /// uid → profile, so a matched person who has since gone hidden still renders
-  /// (the deck stream only carries `enabled` profiles).
+  /// uid → profile, so a matched person who has since turned discoverability
+  /// off still renders (the deck stream only carries `enabled` profiles).
   final Map<String, NetworkingProfile> _profiles = {};
   final Map<String, MatchTalkState> _talk = {};
-
-  /// Right-swipes in flight from the "waiting on you" list.
-  final Set<String> _connecting = {};
 
   StreamSubscription<List<ConferenceMatch>>? _matchSub;
 
@@ -93,17 +87,14 @@ class _ConferenceMatchesScreenState extends State<ConferenceMatchesScreen> {
         if (!mounted) return;
         setState(() {
           _loading = false;
-          _error = 'We couldn\'t load your connections. $e';
+          _error = "We couldn't load your connections. $e";
         });
       },
     );
-
-    await _loadInbound();
   }
 
-  /// Fills in profile snapshots and talk state for any match we haven't
-  /// resolved yet. Runs after every stream emission but only does work for
-  /// newly-arrived matches.
+  /// Fills in profile snapshots and talk state for any match not resolved yet.
+  /// Runs after every stream emission but only works on new arrivals.
   Future<void> _hydrate(List<ConferenceMatch> matches) async {
     final cid = _conferenceId;
     final me = _uid;
@@ -130,76 +121,10 @@ class _ConferenceMatchesScreenState extends State<ConferenceMatchesScreen> {
     if (mounted) setState(() {});
   }
 
-  Future<void> _loadInbound() async {
-    final cid = _conferenceId;
-    if (cid == null) return;
-    if (mounted) {
-      setState(() {
-        _inboundLoading = true;
-        _inboundError = null;
-      });
-    }
-    try {
-      final likes = await _service.listInboundLikes(conferenceId: cid);
-      if (!mounted) return;
-      setState(() {
-        _inbound = likes;
-        _inboundLoading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      // A failed inbound fetch shouldn't take the whole screen down — the
-      // matches list below it is the more important half. But it must not fail
-      // *silently* either: an empty section is indistinguishable from "nobody
-      // is waiting", which is exactly how a missing deploy went unnoticed.
-      setState(() {
-        _inbound = const [];
-        _inboundLoading = false;
-        _inboundError = userMessageForFirebaseCallableError(e);
-      });
-    }
-  }
-
   Future<void> _refresh() async {
     // Talk state is a point-in-time read, so drop it and let _hydrate redo it.
     _talk.clear();
-    await Future.wait([_loadInbound(), _hydrate(_matches)]);
-  }
-
-  /// Connect back from the "waiting on you" list — the same right-swipe the deck
-  /// records, which means the server opens the match and seeds the DM.
-  Future<void> _connectBack(InboundLike like) async {
-    final cid = _conferenceId;
-    if (cid == null || _connecting.contains(like.profile.uid)) return;
-    setState(() => _connecting.add(like.profile.uid));
-    try {
-      await _service.recordSwipe(
-        conferenceId: cid,
-        targetUid: like.profile.uid,
-        like: true,
-        reason: like.reason,
-      );
-      logConferenceEvent(() => ConferenceAnalytics.connectionsLikedBack(targetUid: like.profile.uid));
-      if (!mounted) return;
-      setState(() {
-        _connecting.remove(like.profile.uid);
-        _inbound = _inbound.where((l) => l.profile.uid != like.profile.uid).toList();
-        _profiles[like.profile.uid] = like.profile;
-      });
-      // The match doc arrives on the stream; the talk state has to be re-read.
-      _talk.remove(like.profile.uid);
-      _snack('You connected with ${like.profile.displayName.split(' ').first} — say hello!');
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _connecting.remove(like.profile.uid));
-      _snack(userMessageForFirebaseCallableError(e));
-    }
-  }
-
-  void _snack(String msg) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(msg)));
+    await _hydrate(_matches);
   }
 
   void _back() {
@@ -210,8 +135,6 @@ class _ConferenceMatchesScreenState extends State<ConferenceMatchesScreen> {
     }
   }
 
-  // ---- Grouping ----
-
   List<ConferenceMatch> get _hydrated => _matches
       .map((m) => m.copyWith(
             profile: _profiles[m.otherUid],
@@ -221,10 +144,6 @@ class _ConferenceMatchesScreenState extends State<ConferenceMatchesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final hydrated = _hydrated;
-    final talking = hydrated.where((m) => m.hasTalked).toList();
-    final quiet = hydrated.where((m) => !m.hasTalked).toList();
-
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: ConferenceGridBackground(
@@ -232,7 +151,7 @@ class _ConferenceMatchesScreenState extends State<ConferenceMatchesScreen> {
           child: Column(
             children: [
               _topBar(),
-              Expanded(child: _body(talking: talking, quiet: quiet)),
+              Expanded(child: _body()),
             ],
           ),
         ),
@@ -240,19 +159,14 @@ class _ConferenceMatchesScreenState extends State<ConferenceMatchesScreen> {
     );
   }
 
-  Widget _body({required List<ConferenceMatch> talking, required List<ConferenceMatch> quiet}) {
+  Widget _body() {
     if (_loading) {
       return const Center(child: CircularProgressIndicator(color: ConferenceColors.gold));
     }
-    if (_error != null) {
-      return _errorState(_error!);
-    }
-    final nothingAtAll = _inbound.isEmpty &&
-        talking.isEmpty &&
-        quiet.isEmpty &&
-        !_inboundLoading &&
-        _inboundError == null;
-    if (nothingAtAll) return _emptyState();
+    if (_error != null) return _errorState(_error!);
+
+    final matches = _hydrated;
+    if (matches.isEmpty) return _emptyState();
 
     return RefreshIndicator(
       onRefresh: _refresh,
@@ -261,52 +175,17 @@ class _ConferenceMatchesScreenState extends State<ConferenceMatchesScreen> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(Cosmic.gutter, 4, Cosmic.gutter, 32),
         children: [
-          // Always rendered, even when empty: this is the section testers went
-          // looking for ("someone has tried to match with them and they have
-          // not matched"), and hiding it made the feature look absent.
-          _sectionHeader(
-            'WAITING ON YOU',
-            _inboundLoading ? '…' : '${_inbound.length}',
-            'People who connected with you from the Networking Zone. '
-                'Connect back and a chat opens for both of you.',
+          Padding(
+            padding: const EdgeInsets.only(top: 4, bottom: 14),
+            child: Text(
+              matches.length == 1
+                  ? 'You have 1 connection. You both swiped right, so a chat is already open.'
+                  : 'You have ${matches.length} connections. You both swiped right, so a chat is '
+                      'already open with each of them.',
+              style: TextStyle(color: Cosmic.textFaint, fontSize: 12.5, height: 1.4),
+            ),
           ),
-          if (_inboundLoading && _inbound.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 16),
-              child: Center(
-                child: SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: ConferenceColors.gold),
-                ),
-              ),
-            )
-          else if (_inboundError != null)
-            _inboundErrorCard(_inboundError!)
-          else if (_inbound.isEmpty)
-            _quietNote("Nobody is waiting on you right now. When someone connects "
-                "with you in the Networking Zone, they'll appear here first.")
-          else
-            for (final like in _inbound) _inboundCard(like),
-          const SizedBox(height: 26),
-          if (quiet.isNotEmpty) ...[
-            _sectionHeader(
-              'MATCHED — NO REPLY YET',
-              '${quiet.length}',
-              "You both connected, so a chat is already open. Nobody has "
-                  'answered in it yet.',
-            ),
-            for (final m in quiet) _matchCard(m),
-            const SizedBox(height: 26),
-          ],
-          if (talking.isNotEmpty) ...[
-            _sectionHeader(
-              'TALKING',
-              '${talking.length}',
-              'Conversations that are going both ways.',
-            ),
-            for (final m in talking) _matchCard(m),
-          ],
+          for (final m in matches) _matchCard(m),
         ],
       ),
     );
@@ -321,15 +200,14 @@ class _ConferenceMatchesScreenState extends State<ConferenceMatchesScreen> {
         children: [
           _circleBtn(Icons.arrow_back_rounded, _back),
           const Expanded(
-            child: Column(
-              children: [
-                Text('MY CONNECTIONS',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1)),
-              ],
+            child: Text(
+              'MY CONNECTIONS',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1),
             ),
           ),
           _circleBtn(Icons.style_rounded, () => context.go('/conference/network')),
@@ -355,45 +233,10 @@ class _ConferenceMatchesScreenState extends State<ConferenceMatchesScreen> {
     );
   }
 
-  Widget _sectionHeader(String label, String count, String? blurb) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 8, bottom: 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(label,
-                  style: const TextStyle(
-                      color: ConferenceColors.gold,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.1)),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                decoration: BoxDecoration(
-                  color: ConferenceColors.goldAlpha(0.16),
-                  borderRadius: Cosmic.pillRadius,
-                ),
-                child: Text(count,
-                    style: const TextStyle(
-                        color: ConferenceColors.gold, fontSize: 11, fontWeight: FontWeight.w800)),
-              ),
-            ],
-          ),
-          if (blurb != null) ...[
-            const SizedBox(height: 4),
-            Text(blurb, style: TextStyle(color: Cosmic.textFaint, fontSize: 12, height: 1.35)),
-          ],
-        ],
-      ),
-    );
-  }
-
   // ---- Cards ----
 
-  Widget _shell({required Widget child}) {
+  Widget _matchCard(ConferenceMatch m) {
+    final p = m.profile;
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
@@ -402,115 +245,6 @@ class _ConferenceMatchesScreenState extends State<ConferenceMatchesScreen> {
         borderRadius: Cosmic.chipRadius,
         border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
-      child: child,
-    );
-  }
-
-  Widget _quietNote(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.03),
-          borderRadius: Cosmic.chipRadius,
-          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-        ),
-        child: Text(text, style: TextStyle(color: Cosmic.textFaint, fontSize: 12.5, height: 1.4)),
-      ),
-    );
-  }
-
-  Widget _inboundErrorCard(String message) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.redAccent.withValues(alpha: 0.08),
-        borderRadius: Cosmic.chipRadius,
-        border: Border.all(color: Colors.redAccent.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text("We couldn't load who's waiting on you.",
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontWeight: FontWeight.w600, fontSize: 13)),
-          const SizedBox(height: 4),
-          Text(message, style: TextStyle(color: Cosmic.textMuted, fontSize: 12, height: 1.35)),
-          const SizedBox(height: 8),
-          TextButton.icon(
-            style: TextButton.styleFrom(
-              foregroundColor: ConferenceColors.gold,
-              padding: EdgeInsets.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            onPressed: _loadInbound,
-            icon: const Icon(Icons.refresh_rounded, size: 16),
-            label: const Text('Try again'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _inboundCard(InboundLike like) {
-    final p = like.profile;
-    final busy = _connecting.contains(p.uid);
-    return _shell(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              _avatar(p, 46),
-              const SizedBox(width: 12),
-              Expanded(child: _nameBlock(p)),
-            ],
-          ),
-          if (like.reason != null) ...[
-            const SizedBox(height: 10),
-            _reasonPill(like.reason!),
-          ],
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: ConferenceColors.gold,
-                    foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: Cosmic.chipRadius),
-                  ),
-                  onPressed: busy ? null : () => _connectBack(like),
-                  icon: busy
-                      ? const SizedBox(
-                          width: 15,
-                          height: 15,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
-                        )
-                      : const Icon(Icons.favorite_rounded, size: 17),
-                  label: Text(busy ? 'CONNECTING…' : 'CONNECT',
-                      style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: 0.6)),
-                ),
-              ),
-              const SizedBox(width: 10),
-              _ghostButton(
-                icon: Icons.person_outline_rounded,
-                label: 'Profile',
-                onTap: () => _showProfile(p),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _matchCard(ConferenceMatch m) {
-    final p = m.profile;
-    return _shell(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -538,18 +272,15 @@ class _ConferenceMatchesScreenState extends State<ConferenceMatchesScreen> {
               Expanded(
                 child: FilledButton.icon(
                   style: FilledButton.styleFrom(
-                    backgroundColor: m.hasTalked
-                        ? Colors.white.withValues(alpha: 0.1)
-                        : ConferenceColors.gold,
+                    backgroundColor:
+                        m.hasTalked ? Colors.white.withValues(alpha: 0.1) : ConferenceColors.gold,
                     foregroundColor: m.hasTalked ? Colors.white : Colors.black,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(borderRadius: Cosmic.chipRadius),
                   ),
                   onPressed: () => context.push('/messages/direct/${m.otherUid}'),
                   icon: Icon(
-                      m.hasTalked
-                          ? Icons.forum_rounded
-                          : Icons.waving_hand_rounded,
+                      m.hasTalked ? Icons.forum_rounded : Icons.waving_hand_rounded,
                       size: 17),
                   label: Text(_ctaFor(m.talkState),
                       style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: 0.6)),
@@ -557,10 +288,16 @@ class _ConferenceMatchesScreenState extends State<ConferenceMatchesScreen> {
               ),
               if (p != null) ...[
                 const SizedBox(width: 10),
-                _ghostButton(
-                  icon: Icons.person_outline_rounded,
-                  label: 'Profile',
-                  onTap: () => _showProfile(p),
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Cosmic.textMuted,
+                    side: BorderSide(color: Colors.white.withValues(alpha: 0.16)),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: Cosmic.chipRadius),
+                  ),
+                  onPressed: () => _showProfile(p),
+                  icon: const Icon(Icons.person_outline_rounded, size: 16),
+                  label: const Text('Profile', style: TextStyle(fontSize: 12)),
                 ),
               ],
             ],
@@ -607,8 +344,7 @@ class _ConferenceMatchesScreenState extends State<ConferenceMatchesScreen> {
         borderRadius: Cosmic.pillRadius,
         border: Border.all(color: tint.withValues(alpha: 0.35)),
       ),
-      child: Text(label,
-          style: TextStyle(color: tint, fontSize: 10, fontWeight: FontWeight.w700)),
+      child: Text(label, style: TextStyle(color: tint, fontSize: 10, fontWeight: FontWeight.w700)),
     );
   }
 
@@ -651,24 +387,6 @@ class _ConferenceMatchesScreenState extends State<ConferenceMatchesScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _ghostButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return OutlinedButton.icon(
-      style: OutlinedButton.styleFrom(
-        foregroundColor: Cosmic.textMuted,
-        side: BorderSide(color: Colors.white.withValues(alpha: 0.16)),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: Cosmic.chipRadius),
-      ),
-      onPressed: onTap,
-      icon: Icon(icon, size: 16),
-      label: Text(label, style: const TextStyle(fontSize: 12)),
     );
   }
 
@@ -736,8 +454,8 @@ class _ConferenceMatchesScreenState extends State<ConferenceMatchesScreen> {
                 style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
             const SizedBox(height: 8),
             Text(
-              'Everyone you connect with in the networking deck shows up here — '
-              'including the people still waiting on your answer.',
+              'When you and someone else both swipe right in the Networking Zone, '
+              'they show up here with your chat.',
               textAlign: TextAlign.center,
               style: TextStyle(color: Cosmic.textMuted, height: 1.4),
             ),
@@ -769,7 +487,9 @@ class _ConferenceMatchesScreenState extends State<ConferenceMatchesScreen> {
           children: [
             Icon(Icons.wifi_off_rounded, size: 42, color: Cosmic.textFaint),
             const SizedBox(height: 16),
-            Text(message, textAlign: TextAlign.center, style: TextStyle(color: Cosmic.textMuted, height: 1.4)),
+            Text(message,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Cosmic.textMuted, height: 1.4)),
             const SizedBox(height: 20),
             OutlinedButton.icon(
               style: OutlinedButton.styleFrom(

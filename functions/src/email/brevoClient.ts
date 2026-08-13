@@ -2,6 +2,7 @@ import {getApps, initializeApp} from "firebase-admin/app";
 import {FieldValue, getFirestore} from "firebase-admin/firestore";
 import * as logger from "firebase-functions/logger";
 import {defineSecret} from "firebase-functions/params";
+import {DEFAULT_SUPPORT_EMAIL} from "./emailConfig";
 
 if (getApps().length === 0) {
   initializeApp();
@@ -16,21 +17,28 @@ export const BREVO_API_KEY = defineSecret("BREVO_API_KEY");
 
 type JsonObject = Record<string, unknown>;
 
+/** Brevo `attachment` array entry: file `name` + base64-encoded `content`. */
+export type EmailAttachment = {
+  name: string;
+  content: string;
+};
+
 export type SendEmailInput = {
   to: string;
   recipientUid?: string;
-  templateId: number;
+  /** Brevo transactional template ID. Omit to send raw content via `subject` + `htmlContent`. */
+  templateId?: number;
+  /** Raw-content send: required together with `htmlContent` when `templateId` is omitted. */
+  subject?: string;
+  /** Raw-content send: full inline HTML body (no Brevo template needed). */
+  htmlContent?: string;
   params?: JsonObject;
   tags?: string[];
+  /** Optional attachments (e.g. an invite.ics calendar file). */
+  attachments?: EmailAttachment[];
   preferenceCategory?: "course_nudges" | "graduation_updates" | "events" | "admin_messages";
   /** Admin test sends only — bypasses user email preference checks. */
   skipPreferenceCheck?: boolean;
-  /**
-   * Files to attach, base64-encoded (Brevo's `attachment[]`). Used for the
-   * graduation meeting's .ics invite; keep these small, as the whole payload
-   * goes through the API in one request.
-   */
-  attachments?: {name: string; base64: string}[];
 };
 
 export type SendBulkEmailInput = {
@@ -153,23 +161,6 @@ async function canSendByPreferences(
   return true;
 }
 
-/**
- * The audit copy of the request, with attachment bytes replaced by their size.
- * `email_activity` is for answering "did this go out and to whom" — storing a
- * base64 file in every row would bloat the collection for no diagnostic gain.
- */
-function loggablePayload(payload: JsonObject): JsonObject {
-  const attachment = payload["attachment"];
-  if (!Array.isArray(attachment)) return payload;
-  return {
-    ...payload,
-    attachment: attachment.map((a) => {
-      const entry = a as {name?: string; content?: string};
-      return {name: entry.name ?? null, content_bytes: entry.content?.length ?? 0};
-    }),
-  };
-}
-
 async function postBrevoEmail(
   payload: JsonObject,
   apiKey: string,
@@ -228,13 +219,18 @@ export async function sendEmail(
   options?: {apiKey?: string; sender?: {name?: string; email: string}}
 ): Promise<{success: boolean; messageId?: string; statusCode: number}> {
   const to = normalizeEmail(input.to);
+  // template_id 0 in email_activity marks a raw-content send (no Brevo template).
+  const templateIdForLog = input.templateId ?? 0;
+  if (!input.templateId && !(input.subject?.trim() && input.htmlContent?.trim())) {
+    throw new Error("sendEmail requires templateId, or subject + htmlContent for a raw-content send.");
+  }
   const canSend =
     input.skipPreferenceCheck === true ||
     (await canSendByPreferences(input.recipientUid, to, input.preferenceCategory));
   if (!canSend) {
     await logEmailAttempt({
       recipient: to,
-      templateId: input.templateId,
+      templateId: templateIdForLog,
       tags: input.tags,
       status: "skipped_preferences",
       requestBody: {
@@ -244,22 +240,29 @@ export async function sendEmail(
     });
     logger.info("Brevo sendEmail skipped by preferences", {
       recipient: maskEmail(to),
-      templateId: input.templateId,
+      templateId: templateIdForLog,
       category: input.preferenceCategory ?? "none",
     });
     return {success: false, statusCode: 0};
   }
   const apiKey = resolveBrevoApiKey(options?.apiKey);
   const payload: JsonObject = {
-    templateId: input.templateId,
     to: [{email: to}],
     params: input.params ?? {},
     tags: input.tags ?? [],
-    ...(options?.sender ? {sender: options.sender} : {}),
-    ...(input.attachments?.length ?
-      {attachment: input.attachments.map((a) => ({name: a.name, content: a.base64}))} :
-      {}),
   };
+  if (input.templateId) {
+    payload.templateId = input.templateId;
+    if (options?.sender) payload.sender = options.sender;
+  } else {
+    payload.subject = input.subject;
+    payload.htmlContent = input.htmlContent;
+    // Raw-content sends require an explicit sender (template sends inherit the template's).
+    payload.sender = options?.sender ?? {name: "MORTAR", email: DEFAULT_SUPPORT_EMAIL};
+  }
+  if (input.attachments && input.attachments.length > 0) {
+    payload.attachment = input.attachments;
+  }
 
   try {
     const {statusCode, body} = await postBrevoEmail(payload, apiKey);
@@ -268,16 +271,16 @@ export async function sendEmail(
       "";
     await logEmailAttempt({
       recipient: to,
-      templateId: input.templateId,
+      templateId: templateIdForLog,
       tags: input.tags,
       status: "sent",
       providerMessageId: messageId || undefined,
-      requestBody: loggablePayload(payload),
+      requestBody: payload,
       responseBody: body,
     });
     logger.info("Brevo sendEmail success", {
       recipient: maskEmail(to),
-      templateId: input.templateId,
+      templateId: templateIdForLog,
       statusCode,
     });
     return {success: true, messageId: messageId || undefined, statusCode};
@@ -285,15 +288,15 @@ export async function sendEmail(
     const err = e instanceof Error ? e.message : String(e);
     await logEmailAttempt({
       recipient: to,
-      templateId: input.templateId,
+      templateId: templateIdForLog,
       tags: input.tags,
       status: "failed",
-      requestBody: loggablePayload(payload),
+      requestBody: payload,
       errorMessage: err,
     });
     logger.error("Brevo sendEmail failed", {
       recipient: maskEmail(to),
-      templateId: input.templateId,
+      templateId: templateIdForLog,
       error: err,
     });
     return {success: false, statusCode: 0};

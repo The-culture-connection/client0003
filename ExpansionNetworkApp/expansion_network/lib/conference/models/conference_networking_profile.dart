@@ -149,27 +149,6 @@ class ConferenceMatch {
   static String _str(dynamic v) => v is String ? v.trim() : '';
 }
 
-/// Someone who swiped right on the current user before the current user has
-/// swiped on them — surfaced by the `listConferenceInboundLikes` callable.
-class InboundLike {
-  const InboundLike({required this.profile, required this.reason});
-
-  final NetworkingProfile profile;
-  final String? reason;
-
-  static InboundLike? fromMap(Map<String, dynamic> m) {
-    final uid = m['uid'];
-    if (uid is! String || uid.isEmpty) return null;
-    final raw = m['profile'];
-    final profileMap = raw is Map ? Map<String, dynamic>.from(raw) : <String, dynamic>{};
-    final reason = m['reason'];
-    return InboundLike(
-      profile: NetworkingProfile.fromMap(uid, profileMap),
-      reason: reason is String && reason.trim().isNotEmpty ? reason.trim() : null,
-    );
-  }
-}
-
 /// A ranked deck card: a [NetworkingProfile] plus the locally-computed match
 /// score and the strongest "why you should meet" reason (may be null).
 class NetworkingCandidate {

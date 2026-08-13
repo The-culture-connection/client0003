@@ -16,7 +16,6 @@ import '../conference/screens/conference_session_chat_screen.dart';
 import '../conference/screens/conference_session_detail_screen.dart';
 import '../conference/screens/conference_sponsor_detail_screen.dart';
 import '../conference/screens/conference_sponsors_screen.dart';
-import '../conference/screens/conference_matches_screen.dart';
 import '../conference/screens/conference_networking_screen.dart';
 import '../conference/current_conference_holder.dart';
 import '../conference/theme/conference_buttons.dart';
@@ -51,10 +50,10 @@ import '../screens/session_gate_screen.dart';
 import '../screens/welcome_mortarverse_intro_screen.dart';
 import '../screens/mortar_feed_screen.dart';
 import '../screens/mortar_info_detail_screen.dart';
+import '../screens/matches_screen.dart';
 import '../screens/matching_screen.dart';
 import '../screens/member_card_screen.dart';
 import '../screens/messages_screen.dart';
-import '../screens/new_message_screen.dart';
 import '../screens/onboarding_screen.dart';
 import '../screens/achievements_screen.dart';
 import '../screens/profile_edit_screen.dart';
@@ -239,12 +238,6 @@ GoRouter createAppRouter(AuthController auth) {
         builder: (context, state) =>
             const ConferenceTheme(child: ConferenceNetworkingScreen()),
       ),
-      GoRoute(
-        parentNavigatorKey: _rootNavigatorKey,
-        path: '/conference/connections',
-        builder: (context, state) =>
-            const ConferenceTheme(child: ConferenceMatchesScreen()),
-      ),
       // Declared before `/conference/sponsor/:sponsorId` so "scan" is not
       // swallowed as a sponsor id.
       GoRoute(
@@ -378,6 +371,14 @@ GoRouter createAppRouter(AuthController auth) {
         path: '/matching',
         builder: (context, state) => const MatchingScreen(),
       ),
+      // Conference networking matches (mutual likes) — reachable from the
+      // Messages header and the Networking Zone, so it lives on the root
+      // navigator outside both shells.
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/matches',
+        builder: (context, state) => const MatchesScreen(),
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
           return CommonsShell(navigationShell: navigationShell);
@@ -419,12 +420,6 @@ GoRouter createAppRouter(AuthController auth) {
       GoRoute(
         path: '/admin',
         redirect: (context, state) => '/admin/events',
-      ),
-      // Declared before `/messages/:id` so "new" is not swallowed as a chat-room id.
-      GoRoute(
-        parentNavigatorKey: _rootNavigatorKey,
-        path: '/messages/new',
-        builder: (context, state) => const NewMessageScreen(),
       ),
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,

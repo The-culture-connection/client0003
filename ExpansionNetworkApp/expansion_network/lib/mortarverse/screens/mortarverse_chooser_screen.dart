@@ -5,23 +5,23 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../analytics/expansion_analytics.dart';
 import '../../auth/auth_controller.dart';
 import '../../commons/theme/commons_colors.dart';
-import '../../constants/app_links.dart';
 import '../../conference/current_conference_holder.dart';
 import '../../conference/models/conference.dart';
 import '../../conference/services/conference_repository.dart';
 import '../../conference/theme/conference_colors.dart';
+import '../../constants/digital_curriculum_constants.dart';
 import '../../models/community_event.dart';
 import '../../services/events_repository.dart';
 import '../../services/user_profile_repository.dart';
 import '../../theme/app_theme.dart';
-import '../../utils/safe_launch_url.dart';
-import '../../widgets/expansion_tour.dart';
 import '../mortarverse_signals.dart';
 import '../../theme/cosmic_widgets.dart';
+import '../../widgets/spotlight_tutorial.dart';
 import '../widgets/mortarverse_focus_card.dart';
 import '../widgets/mortarverse_planet.dart';
 import '../../theme/cosmic_content.dart';
@@ -46,12 +46,17 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
 
   late final Future<Conference?> _activeConferenceFuture;
 
-  // Spotlight targets for the first-visit walkthrough of this screen.
-  final GlobalKey _tourFocusCard = GlobalKey();
-  final GlobalKey _tourStreet = GlobalKey();
-  final GlobalKey _tourEvents = GlobalKey();
-  final GlobalKey _tourCardScan = GlobalKey();
-  ExpansionTour? _activeTour;
+  // Spotlight targets for the home-screen tutorial (Jazmine: "Can we get a
+  // short tutorial to learn how to navigate the home screen?").
+  final GlobalKey _tutFocusCard = GlobalKey();
+  final GlobalKey _tutStreet = GlobalKey();
+  final GlobalKey _tutNetworkingTile = GlobalKey();
+  final GlobalKey _tutCardScan = GlobalKey();
+
+  /// One-time flag; bump the suffix to re-show after a big chooser redesign.
+  static const String _tutorialSeenKey = 'mortarverse_tutorial_seen_v1';
+
+  SpotlightTutorialController? _tutorial;
 
   @override
   void initState() {
@@ -63,82 +68,74 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
     // logged after the user left.
     CurrentConferenceHolder.instance.clear();
     _activeConferenceFuture = _conferenceRepository.fetchActiveConference();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeRunTour());
+    unawaited(_maybeShowTutorial());
   }
 
   @override
   void dispose() {
-    _activeTour?.finish();
+    // Navigating away mid-tutorial must take the overlay with it — it lives in
+    // the root overlay, not in this screen's subtree.
+    _tutorial?.dismiss();
     super.dispose();
   }
 
-  /// First-visit walkthrough of this screen — "can we get a short tutorial to
-  /// learn how to navigate the home screen?" Testers landed on the Mortarverse
-  /// after sign-in with no explanation of the focus card, the street of
-  /// destinations, or where their QR card lived.
-  ///
-  /// Seen-state is separate from the networking hall's tour ([ExpansionShell]),
-  /// because reaching one screen never implies having seen the other.
-  static const String _seenKey = 'mortarverse_tour_seen';
-
-  Future<void> _maybeRunTour() async {
-    if (!mounted) return;
+  /// Auto-runs the tutorial once per install. Marked seen up front so a crash
+  /// or navigation mid-tour doesn't re-trap the user in it on every visit —
+  /// the header's "?" replays it on demand.
+  Future<void> _maybeShowTutorial() async {
     final prefs = await SharedPreferences.getInstance();
-    if (prefs.getBool(_seenKey) ?? false) return;
-    // Let the street and events strip lay out before pointing at them.
-    await Future<void>.delayed(const Duration(milliseconds: 800));
+    if (prefs.getBool(_tutorialSeenKey) ?? false) return;
+    await prefs.setBool(_tutorialSeenKey, true);
     if (!mounted) return;
-    await prefs.setBool(_seenKey, true);
-    _startTour();
+    // Let the first frame (and the street's tiles) lay out.
+    await Future<void>.delayed(const Duration(milliseconds: 700));
+    if (!mounted) return;
+    _startTutorial();
   }
 
-  void _startTour() {
-    if (!mounted) return;
-    _activeTour?.finish();
-    // A step whose target never laid out would spotlight nothing, so drop it.
-    final steps = <TourStep>[
-      TourStep(
-        key: _tourFocusCard,
-        shape: TourShape.rrect,
-        title: 'What needs you',
-        body: 'The top card always shows the one thing worth doing next — an '
-            'unread message, an open conference, your next event. Tap it to go there.',
-      ),
-      TourStep(
-        key: _tourStreet,
-        shape: TourShape.rrect,
-        title: 'Pick a destination',
-        body: 'Swipe this street sideways. Each planet is a place: the '
-            'Networking Hall, a live Conference, the Commons, and Digital '
-            'Curriculum on the web.',
-      ),
-      TourStep(
-        key: _tourEvents,
-        shape: TourShape.rrect,
-        title: 'Upcoming events',
-        body: 'The next MORTAR events sit down here. Tap one to see the '
-            'details and register.',
-      ),
-      TourStep(
-        key: _tourCardScan,
-        shape: TourShape.rrect,
-        title: 'Your member card',
-        body: 'This opens your QR card — show it to another member to swap '
-            'details, or scan theirs.',
-      ),
-    ].where((s) => s.key.currentContext != null).toList();
-    if (steps.isEmpty) return;
-
+  void _startTutorial() {
+    if (_tutorial?.isShowing ?? false) return;
     unawaited(ExpansionAnalytics.log(
-      'mortarverse_tour_started',
+      'mortarverse_tutorial_started',
       sourceScreen: 'mortarverse',
     ));
-    final tour = buildExpansionTour(
-      steps: steps,
-      onDone: () => _activeTour = null,
+    _tutorial = SpotlightTutorial.show(
+      context,
+      accent: Cosmic.accentExpansion,
+      onDone: () => _tutorial = null,
+      steps: [
+        SpotlightStep(
+          targetKey: _tutFocusCard,
+          title: 'What needs you',
+          body: 'This card cycles through whatever is waiting for you — '
+              'unread conversations, an open conference, upcoming events. '
+              'Swipe it to flip through, and tap the glowing button to jump '
+              'straight there.',
+        ),
+        SpotlightStep(
+          targetKey: _tutStreet,
+          title: 'Pick a destination',
+          body: 'Each planet is a place. The Networking Hall is for matching '
+              'and messaging members, the Conference Center opens during live '
+              'conferences, The Commons holds your profile, groups and feed, '
+              'and Digital Curriculum opens the course platform in your '
+              'browser.',
+        ),
+        SpotlightStep(
+          targetKey: _tutNetworkingTile,
+          title: 'Waiting on you',
+          body: 'When someone messages you, a WAITING count appears on the '
+              'Networking Hall — and at the top of the card above — until '
+              'you reply.',
+        ),
+        SpotlightStep(
+          targetKey: _tutCardScan,
+          title: 'Your member card',
+          body: 'Open your QR card here: show it to be scanned, or scan '
+              'another member\'s card to connect on the spot.',
+        ),
+      ],
     );
-    _activeTour = tour;
-    tour.show(context: context);
   }
 
   /// Priority order: conversations waiting → a conference to enter → the next
@@ -208,6 +205,96 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
     '/profile/edit',
     '/card',
   ];
+
+  /// Confirms, then opens the Digital Curriculum web app in the external
+  /// browser (Grace: "the mobile app should take the user back to the Digital
+  /// Curriculum web app"). The sheet exists so a mis-tap on the planet doesn't
+  /// yank the user out of the app without warning.
+  Future<void> _confirmOpenCurriculum() async {
+    unawaited(ExpansionAnalytics.log(
+      'digital_curriculum_planet_tapped',
+      sourceScreen: 'mortarverse',
+    ));
+    final open = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: const Color(0xF00A0508),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(Cosmic.radiusPanel),
+        ),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 22, 24, 18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Open the Digital Curriculum?',
+                style: TextStyle(
+                  color: Cosmic.textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'This opens in your browser.',
+                style: TextStyle(
+                  color: Cosmic.textBody,
+                  fontSize: 13,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(false),
+                    child: const Text(
+                      'Cancel',
+                      style: TextStyle(color: Cosmic.textMuted),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton.icon(
+                    onPressed: () => Navigator.of(ctx).pop(true),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: AppColors.onPrimary,
+                    ),
+                    icon: const Icon(Icons.open_in_new_rounded, size: 16),
+                    label: const Text('Open'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (open != true || !mounted) return;
+    unawaited(ExpansionAnalytics.log(
+      'digital_curriculum_opened',
+      sourceScreen: 'mortarverse',
+    ));
+    var launched = false;
+    try {
+      launched = await launchUrl(
+        Uri.parse(kDigitalCurriculumUrl),
+        mode: LaunchMode.externalApplication,
+      );
+    } catch (_) {
+      launched = false;
+    }
+    if (!launched && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open the Digital Curriculum.')),
+      );
+    }
+  }
 
   /// Partner uids of the threads currently waiting on the user (latest value
   /// from [MortarverseSignalsService.watchWaitingConversationPartners]).
@@ -389,22 +476,28 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
                   ),
                 ),
               ),
+              // Replays the home-screen tutorial on demand.
+              Positioned(
+                left: 0,
+                child: Semantics(
+                  button: true,
+                  label: 'Replay tutorial',
+                  child: IconButton(
+                    onPressed: _startTutorial,
+                    icon: const Icon(
+                      Icons.help_outline_rounded,
+                      size: 20,
+                      color: Cosmic.textFaint,
+                    ),
+                    tooltip: 'How this screen works',
+                  ),
+                ),
+              ),
               Positioned(
                 right: 0,
                 child: _CardScanButton(
-                  key: _tourCardScan,
+                  key: _tutCardScan,
                   onTap: () => context.push('/card'),
-                ),
-              ),
-              // Replays the walkthrough for anyone who skipped it or is
-              // returning after a while.
-              Positioned(
-                left: 0,
-                child: IconButton(
-                  onPressed: _startTour,
-                  icon: const Icon(Icons.help_outline_rounded,
-                      color: Cosmic.textFaint, size: 20),
-                  tooltip: 'How this screen works',
                 ),
               ),
             ],
@@ -415,9 +508,9 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
           child: TornHorizon(),
         ),
         Padding(
+          key: _tutFocusCard,
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
           child: MortarverseFocusCard(
-            key: _tourFocusCard,
             queue: queue,
             onOpen: _openAction,
             onShown: _reportShown,
@@ -474,15 +567,18 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
           ),
         ),
         _ShopStreet(
-          key: _tourStreet,
+          key: _tutStreet,
           hasExpansionAccess: hasExpansionAccess,
+          waiting: waiting,
           conference: conference,
           conferenceLoading: conferenceLoading,
           signals: signals,
+          networkingTileKey: _tutNetworkingTile,
+          onOpenCurriculum: _confirmOpenCurriculum,
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 30, 20, 40),
-          child: _EventsStrip(key: _tourEvents, events: upcoming),
+          child: _EventsStrip(events: upcoming),
         ),
       ],
     );
@@ -699,20 +795,30 @@ class _SecondaryChip extends StatelessWidget {
   }
 }
 
-/// The three shops as a horizontally scrollable street.
+/// The destinations as a horizontally scrollable street.
 class _ShopStreet extends StatelessWidget {
   const _ShopStreet({
     super.key,
     required this.hasExpansionAccess,
+    required this.waiting,
     required this.conference,
     required this.conferenceLoading,
     required this.signals,
+    required this.onOpenCurriculum,
+    this.networkingTileKey,
   });
 
   final bool hasExpansionAccess;
+  final int waiting;
   final Conference? conference;
   final bool conferenceLoading;
   final MortarverseSignals signals;
+
+  /// Opens the Digital Curriculum flow (confirmation sheet → browser).
+  final VoidCallback onOpenCurriculum;
+
+  /// Spotlight target for the tutorial's waiting-indicator step.
+  final Key? networkingTileKey;
 
   @override
   Widget build(BuildContext context) {
@@ -726,15 +832,17 @@ class _ShopStreet extends StatelessWidget {
         padding: const EdgeInsets.only(left: 22, right: 10),
         children: [
           _ShopTile(
+            key: networkingTileKey,
             title: 'NETWORKING\nHALL',
-            // Deliberately steady copy. This used to swap to "N waiting on you"
-            // / "N WAITING", which duplicated the focus card directly above it
-            // and made the street read as an alert rather than a destination.
-            // (No presence system exists either, so it never claims who's online.)
-            subtitle: 'Connect • Grow • Collaborate',
-            pill: hasExpansionAccess ? 'OPEN' : 'LOCKED',
+            // No presence system exists, so this never claims who is online.
+            subtitle: waiting > 0
+                ? '$waiting waiting on you'
+                : 'Connect • Grow • Collaborate',
+            pill: hasExpansionAccess
+                ? (waiting > 0 ? '$waiting WAITING' : 'OPEN')
+                : 'LOCKED',
             shopColor: AppColors.primary,
-            planetAsset: MortarversePlanets.networkingHall,
+            planetStyle: MortarversePlanets.networkingHall,
             enabled: true,
             onTap: () => context.go(
               hasExpansionAccess ? '/home' : '/expansion/enter-code',
@@ -752,7 +860,7 @@ class _ShopStreet extends StatelessWidget {
                     ? 'OPEN NOW'
                     : 'CLOSED',
             shopColor: ConferenceColors.gold,
-            planetAsset: MortarversePlanets.conferenceCenter,
+            planetStyle: MortarversePlanets.conferenceCenter,
             enabled: conferenceOpen,
             onTap: conferenceOpen
                 ? () {
@@ -773,67 +881,54 @@ class _ShopStreet extends StatelessWidget {
                 ? 'PROFILE ${signals.profileCompletion}%'
                 : 'COMPLETE',
             shopColor: CommonsColors.accent,
-            planetAsset: MortarversePlanets.commons,
+            planetStyle: MortarversePlanets.commons,
             enabled: true,
             outlinedPill: true,
             onTap: () => context.go('/commons/profile'),
           ),
           const SizedBox(width: 12),
-          // Digital Curriculum is a separate web app, so this leaves the app
-          // rather than routing — the street is where people look for "where
-          // can I go", and the curriculum was missing from it entirely.
+          // Leaves the app for the curriculum web platform (Grace's request);
+          // the tap runs through a confirmation sheet before the browser opens.
           _ShopTile(
             title: 'DIGITAL\nCURRICULUM',
-            subtitle: 'Courses • Alumni application',
-            pill: 'ON THE WEB',
-            shopColor: _curriculumAccent,
-            planetAsset: MortarversePlanets.digitalCurriculum,
+            subtitle: 'Courses & lessons in your browser',
+            pill: 'WEB',
+            shopColor: _ShopTile.curriculumBlue,
+            planetStyle: MortarversePlanets.digitalCurriculum,
             enabled: true,
             outlinedPill: true,
-            onTap: () => _openCurriculum(context),
+            onTap: onOpenCurriculum,
           ),
         ],
       ),
-    );
-  }
-
-  /// Curriculum's own blue — distinct from Expansion red, Conference gold and
-  /// the Commons accent, so the street stays readable at a glance.
-  static const Color _curriculumAccent = Color(0xFF5B9DFF);
-
-  Future<void> _openCurriculum(BuildContext context) async {
-    unawaited(ExpansionAnalytics.log(
-      'mortarverse_digital_curriculum_opened',
-      sourceScreen: 'mortarverse',
-    ));
-    await safeLaunchExternalUrl(
-      Uri.parse(AppLinks.digitalCurriculum),
-      messengerContext: context,
-      userFailureMessage: 'Could not open Digital Curriculum.',
     );
   }
 }
 
 class _ShopTile extends StatefulWidget {
   const _ShopTile({
+    super.key,
     required this.title,
     required this.subtitle,
     required this.pill,
     required this.shopColor,
-    required this.planetAsset,
+    required this.planetStyle,
     required this.enabled,
     required this.onTap,
     this.outlinedPill = false,
   });
+
+  /// The Digital Curriculum tile's accent — the web platform has no zone
+  /// colour of its own, so this lives here rather than in a theme.
+  static const Color curriculumBlue = Color(0xFF7A8FD9);
 
   final String title;
   final String subtitle;
   final String pill;
   final Color shopColor;
 
-  /// The destination's planet illustration.
-  final String planetAsset;
-
+  /// The destination's painted planet.
+  final MortarversePlanetStyle planetStyle;
 
   final bool enabled;
   final VoidCallback? onTap;
@@ -848,6 +943,8 @@ class _ShopTileState extends State<_ShopTile> {
 
   @override
   Widget build(BuildContext context) {
+    final color = widget.shopColor;
+
     return Opacity(
       opacity: widget.enabled ? 1 : 0.45,
       child: GestureDetector(
@@ -885,14 +982,9 @@ class _ShopTileState extends State<_ShopTile> {
                               ),
                             ),
                             MortarversePlanet(
-                              asset: widget.planetAsset,
+                              style: widget.planetStyle,
                               size: 114,
                               enabled: widget.enabled,
-                              // Any destination whose artwork is missing falls
-                              // back to a sphere in its own accent, so the
-                              // street keeps its rhythm instead of showing a
-                              // gap where a planet should be.
-                              fallbackTint: widget.shopColor,
                             ),
                           ],
                         ),
@@ -928,9 +1020,10 @@ class _ShopTileState extends State<_ShopTile> {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      // No tile carries urgency any more — the focus card above
-                      // owns "what needs you", the street is just destinations.
-                      color: Cosmic.textFaint,
+                      // Urgency reads in the accent; everything else recedes.
+                      color: color == AppColors.primary && widget.subtitle.contains('waiting')
+                          ? Cosmic.textAccent
+                          : Cosmic.textFaint,
                       fontSize: 10.5,
                       height: 1.25,
                       fontWeight: FontWeight.w300,
@@ -985,7 +1078,7 @@ class _StatusPill extends StatelessWidget {
 /// Upcoming MORTAR events. Hidden entirely when there are none — an empty
 /// strip would just be a heading over nothing.
 class _EventsStrip extends StatelessWidget {
-  const _EventsStrip({super.key, required this.events});
+  const _EventsStrip({required this.events});
 
   final List<CommunityEvent> events;
 

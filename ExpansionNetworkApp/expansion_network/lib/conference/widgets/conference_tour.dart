@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../widgets/expansion_tour.dart';
+import '../../widgets/spotlight_tutorial.dart';
 import '../theme/conference_colors.dart';
 
 /// Screens the conference walkthrough visits, in order.
@@ -47,7 +48,7 @@ class ConferenceTourRunner {
 
   ConferenceTourChapter? _pending;
   String? _conferenceId;
-  ExpansionTour? _active;
+  SpotlightTutorialController? _active;
 
   bool get isRunning => _pending != null;
 
@@ -66,7 +67,7 @@ class ConferenceTourRunner {
 
   /// Abandons the tour, leaving it un-seen so it can run again next visit.
   void abandon() {
-    _active?.finish();
+    _active?.dismiss();
     _active = null;
     _pending = null;
     _conferenceId = null;
@@ -94,11 +95,27 @@ class ConferenceTourRunner {
       return;
     }
 
+    // Presented with the moving-highlight overlay: the screen stays static and
+    // the spotlight cutout glides from target to target. Beta feedback
+    // (Naimah) asked for this in place of the old zoom-in/zoom-out coach
+    // marks. Step content and Next/Skip controls are unchanged.
+    //
     // onSkip fires before onDone, so by the time onDone runs we know which of
     // the two ended the chapter.
     var skipped = false;
-    final tour = buildExpansionTour(
-      steps: steps,
+    _active = SpotlightTutorial.show(
+      context,
+      steps: [
+        for (final s in steps)
+          SpotlightStep(
+            targetKey: s.key,
+            title: s.title,
+            body: s.body,
+            shape: s.shape == ShapeLightFocus.Circle
+                ? SpotlightShape.circle
+                : SpotlightShape.rrect,
+          ),
+      ],
       accent: ConferenceColors.gold,
       onAccent: Colors.black,
       onSkip: () => skipped = true,
@@ -115,8 +132,6 @@ class ConferenceTourRunner {
         _advance(context, chapter);
       },
     );
-    _active = tour;
-    tour.show(context: context);
   }
 
   void _advance(BuildContext context, ConferenceTourChapter finished) {

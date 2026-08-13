@@ -19,7 +19,6 @@ export {
   setNetworkingEnabled,
   recordConferenceSwipe,
   undoConferenceSwipe,
-  listConferenceInboundLikes,
 } from "./conferenceNetworking";
 
 export { onUserCreated } from "./triggers/onUserCreated";

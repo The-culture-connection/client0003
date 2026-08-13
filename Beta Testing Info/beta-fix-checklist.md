@@ -153,6 +153,30 @@
   renders 24-hour on some machines and 12-hour on others, which is what made the
   format confusing.
 
+## Round 4 — Aug 13, later
+
+- [x] **Networking planet artwork** — all four planets replaced from
+  `pickerplanetphotos/`, including the real Digital Curriculum planet (the blue
+  placeholder sphere is gone). Geometry verified identical to the old art:
+  1920×1080 canvas, sphere occupying y 108–971 (864px), so every planet renders
+  at exactly the same size as before.
+- [x] **My Connections is now matches only** — the "Waiting on you" section and
+  the whole inbound-likes feature are removed, along with the
+  `listConferenceInboundLikes` callable, its Dart service method and the
+  `InboundLike` model. One list of every match, newest first, each with a button
+  into the conversation, whether or not anyone has spoken.
+- [x] **`View my application` button removed** from the graduation meeting email;
+  replaced with a line pointing at the attached calendar invite.
+- [x] **Alumni application banner** (Naimah, round 2) — the round-3 fix explained
+  the slots *inside* the dialog, but the decision to click Apply happens on the
+  card, so an eligible applicant still met the slot picker cold. The Alumni
+  Application card now carries a "Before you apply — here's how it works" panel
+  covering all four beats: you pick up to three *alternative* windows, we book
+  one meeting inside one of them, you pitch your business, you get a confirmed
+  time by email within 3 business days with a calendar invite. The pending state
+  repeats the same model ("one meeting inside one of these windows") so it holds
+  while people wait.
+
 ## Deploy Steps — round 2
 
 All commands are run from the repo root. Pick the environment first — the alias
@@ -162,22 +186,34 @@ comes from `.firebaserc` (`staging` = mortar-stage, `prod` = mortar-9d29d):
 firebase use staging
 ```
 
+> ⚠️ **The default alias is `mortar-dev`.** A bare `firebase deploy` goes to dev,
+> not to the staging project the beta is running against — which looks exactly
+> like "I deployed and nothing changed". Pass `--project` explicitly, or run
+> `firebase use staging` first and confirm with `firebase use` (it prints the
+> active alias). The beta web app at `mortar-stage-stage.up.railway.app` talks to
+> **mortar-stage**.
+
 - [ ] **Firestore rules** — required for DM reactions *and* for the admin
       view-profile dialog (staff read on certificates / surveyResponses):
       ```powershell
-      firebase deploy --only firestore:rules
+      firebase deploy --only firestore:rules --project mortar-stage
       ```
-- [ ] **Cloud Functions.** All three at once:
+      Verify afterwards in the console — Firestore → Rules → the History tab
+      shows the deployed ruleset and its timestamp. `users/{userId}/certificates`
+      and `users/{userId}/surveyResponses` must both read
+      `allow read: if isOwner(userId) || hasStaffClaim();`.
+- [ ] **Cloud Functions:**
       ```powershell
-      firebase deploy --only functions:onEventSubmittedEmail,functions:listConferenceInboundLikes,functions:onGraduationApplicationEmail
-      ```
-      Just the event-submitted email on its own:
-      ```powershell
-      firebase deploy --only functions:onEventSubmittedEmail
+      firebase deploy --only functions:onEventSubmittedEmail,functions:onGraduationApplicationEmail --project mortar-stage
       ```
       `onGraduationApplicationEmail` is in the list because the `.ics` invite is
       attached inside it — the calendar invite does not go out until that one
-      redeploys. `listConferenceInboundLikes` is what fills "Waiting on you".
+      redeploys.
+- [ ] **Delete the retired callable** — `listConferenceInboundLikes` was removed
+      from the source. If it was ever deployed, drop the dangling function:
+      ```powershell
+      firebase functions:delete listConferenceInboundLikes --project mortar-stage
+      ```
 - [ ] **Create Brevo template 19** `event_submitted_confirmation` — copy and HTML
       in `docs/brevo-transactional-email-templates.md` §11. Until it exists the
       trigger's sends fail and are logged in `email_activity`; nothing else breaks.

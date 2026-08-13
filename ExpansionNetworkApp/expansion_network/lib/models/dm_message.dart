@@ -19,20 +19,8 @@ class DmMessage {
   final String? attachmentType;
   final String? attachmentId;
 
-  /// uid → emoji. One reaction per person; the rules let a participant write
-  /// only their own key, so this can never carry someone else's edit.
+  /// Emoji reactions keyed by reactor uid (`reactions: {uid: emoji}`).
   final Map<String, String> reactions;
-
-  /// Emoji → how many people picked it, in first-seen order.
-  Map<String, int> get reactionCounts {
-    final counts = <String, int>{};
-    for (final emoji in reactions.values) {
-      counts[emoji] = (counts[emoji] ?? 0) + 1;
-    }
-    return counts;
-  }
-
-  String? reactionOf(String uid) => reactions[uid];
 
   static DmMessage? fromDoc(String id, Map<String, dynamic> d) {
     final sender = d['sender_id'];
@@ -52,8 +40,8 @@ class DmMessage {
   static Map<String, String> _reactions(dynamic v) {
     if (v is! Map) return const {};
     final out = <String, String>{};
-    v.forEach((key, value) {
-      if (key is String && value is String && value.isNotEmpty) out[key] = value;
+    v.forEach((k, e) {
+      if (k is String && e is String && e.isNotEmpty) out[k] = e;
     });
     return out;
   }

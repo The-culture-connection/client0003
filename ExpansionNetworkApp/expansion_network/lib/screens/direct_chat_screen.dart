@@ -31,6 +31,9 @@ class DirectChatScreen extends StatefulWidget {
 }
 
 class _DirectChatScreenState extends State<DirectChatScreen> {
+  /// Long-press reaction palette. Five is plenty.
+  static const List<String> _reactionEmojis = ['❤️', '👍', '😂', '🔥', '🙏'];
+
   final _controller = TextEditingController();
   final _dm = DmRepository();
   final _users = UserProfileRepository();
@@ -170,89 +173,72 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
     }
   }
 
-  /// Applies (or clears) my reaction. Tapping the emoji I already picked
-  /// removes it, so the picker doubles as the undo.
-  Future<void> _toggleReaction(DmMessage m, String me, String emoji) async {
-    final current = m.reactionOf(me);
-    final next = current == emoji ? null : emoji;
+  Future<void> _toggleReaction(String threadId, DmMessage m, String emoji) async {
     try {
-      await _dm.setReaction(
-        partnerUid: widget.userId,
-        messageId: m.id,
-        emoji: next,
-      );
+      // Same rationale as _send's timeout: the write is queued locally either
+      // way, so never leave the UI waiting on a flaky connection.
+      await _dm
+          .toggleReaction(threadId: threadId, messageId: m.id, emoji: emoji)
+          .timeout(const Duration(seconds: 12));
       unawaited(ExpansionAnalytics.log(
-        next == null ? 'direct_chat_reaction_removed' : 'direct_chat_reaction_added',
+        'direct_chat_message_reaction_toggled',
         entityId: widget.userId,
         sourceScreen: 'direct_chat',
-        extra: <String, Object?>{'emoji': next ?? current ?? ''},
       ));
+    } on TimeoutException {
+      // Queued offline — the stream will reflect it when the write lands.
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("We couldn't save that reaction. Try again.")),
+      unawaited(
+        ExpansionAnalytics.log(
+          'direct_chat_message_reaction_failed',
+          entityId: widget.userId,
+          sourceScreen: 'direct_chat',
+          extra: ExpansionAnalytics.errorExtras(e, code: 'toggle_reaction'),
+        ),
       );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Couldn\'t update your reaction. Try again.')),
+        );
+      }
     }
   }
 
-  void _openReactionPicker(DmMessage m, String me) {
-    final current = m.reactionOf(me);
+  void _showReactionPicker(String threadId, DmMessage m, String me) {
+    final current = m.reactions[me];
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: AppColors.card,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) => SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+          padding: const EdgeInsets.fromLTRB(16, 18, 16, 22),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              Text(
-                current == null ? 'React to this message' : 'Change your reaction',
-                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-              ),
-              const SizedBox(height: 14),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  for (final emoji in DmRepository.reactionChoices)
-                    InkWell(
-                      borderRadius: BorderRadius.circular(999),
-                      onTap: () {
-                        Navigator.of(ctx).pop();
-                        _toggleReaction(m, me, emoji);
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: emoji == current
-                              ? AppColors.primary.withValues(alpha: 0.25)
-                              : AppColors.glassFill,
-                          border: Border.all(
-                            color: emoji == current ? AppColors.primary : AppColors.border,
-                          ),
-                        ),
-                        child: Text(emoji, style: const TextStyle(fontSize: 22)),
+              for (final emoji in _reactionEmojis)
+                InkResponse(
+                  radius: 32,
+                  onTap: () {
+                    Navigator.of(ctx).pop();
+                    unawaited(_toggleReaction(threadId, m, emoji));
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: emoji == current
+                          ? AppColors.primary.withValues(alpha: 0.25)
+                          : Colors.transparent,
+                      border: Border.all(
+                        color: emoji == current ? AppColors.primary : Colors.transparent,
                       ),
                     ),
-                ],
-              ),
-              if (current != null) ...[
-                const SizedBox(height: 6),
-                TextButton.icon(
-                  onPressed: () {
-                    Navigator.of(ctx).pop();
-                    _toggleReaction(m, me, current);
-                  },
-                  icon: const Icon(Icons.close_rounded, size: 18),
-                  label: const Text('Remove my reaction'),
+                    child: Text(emoji, style: const TextStyle(fontSize: 28)),
+                  ),
                 ),
-              ],
             ],
           ),
         ),
@@ -260,46 +246,37 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
     );
   }
 
-  Widget _reactionChips(DmMessage m, String me) {
-    final counts = m.reactionCounts;
-    final mine = m.reactionOf(me);
+  /// Small chips under a bubble: one per distinct emoji with its count. Your
+  /// own reaction is outlined — tap it to remove (tapping another emoji's chip
+  /// switches your reaction to it).
+  Widget _reactionChips(String threadId, DmMessage m, String me, {required bool mine}) {
+    final counts = <String, int>{};
+    for (final emoji in m.reactions.values) {
+      counts[emoji] = (counts[emoji] ?? 0) + 1;
+    }
+    final myEmoji = m.reactions[me];
     return Padding(
       padding: const EdgeInsets.only(top: 4),
       child: Wrap(
+        alignment: mine ? WrapAlignment.end : WrapAlignment.start,
         spacing: 4,
+        runSpacing: 4,
         children: [
           for (final entry in counts.entries)
-            InkWell(
-              borderRadius: BorderRadius.circular(999),
-              onTap: () => _toggleReaction(m, me, entry.key),
+            GestureDetector(
+              onTap: () => unawaited(_toggleReaction(threadId, m, entry.key)),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: entry.key == mine
-                      ? AppColors.primary.withValues(alpha: 0.2)
-                      : AppColors.card,
-                  borderRadius: BorderRadius.circular(999),
+                  color: AppColors.card,
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: entry.key == mine ? AppColors.primary : AppColors.border,
+                    color: entry.key == myEmoji ? AppColors.primary : AppColors.border,
                   ),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(entry.key, style: const TextStyle(fontSize: 13)),
-                    // A 1:1 thread tops out at two reactors, so the count only
-                    // earns its space when both people picked the same emoji.
-                    if (entry.value > 1) ...[
-                      const SizedBox(width: 3),
-                      Text(
-                        '${entry.value}',
-                        style: const TextStyle(
-                            fontSize: 11,
-                            color: AppColors.mutedForeground,
-                            fontWeight: FontWeight.w600),
-                      ),
-                    ],
-                  ],
+                child: Text(
+                  entry.value > 1 ? '${entry.key} ${entry.value}' : entry.key,
+                  style: const TextStyle(fontSize: 12, color: AppColors.foreground),
                 ),
               ),
             ),
@@ -467,36 +444,28 @@ class _DirectChatScreenState extends State<DirectChatScreen> {
                                     ),
                                   ),
                                 GestureDetector(
-                                  // Long-press is the reaction gesture on both
-                                  // platforms' messaging apps, so it needs no
-                                  // affordance of its own; the tooltip covers
-                                  // discovery for anyone exploring by tap-hold.
-                                  onLongPress: () => _openReactionPicker(m, me),
-                                  child: Tooltip(
-                                    message: 'Hold to react',
-                                    triggerMode: TooltipTriggerMode.manual,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(12),
-                                      decoration: BoxDecoration(
-                                        color: mine ? AppColors.primary : AppColors.card,
-                                        borderRadius: Cosmic.chipRadius.copyWith(
-                                          bottomRight: mine ? const Radius.circular(4) : null,
-                                          bottomLeft: !mine ? const Radius.circular(4) : null,
-                                        ),
-                                        border: mine ? null : Border.all(color: AppColors.border),
+                                  onLongPress: () => _showReactionPicker(threadId, m, me),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: mine ? AppColors.primary : AppColors.card,
+                                      borderRadius: Cosmic.chipRadius.copyWith(
+                                        bottomRight: mine ? const Radius.circular(4) : null,
+                                        bottomLeft: !mine ? const Radius.circular(4) : null,
                                       ),
-                                      child: Text(
-                                        m.text,
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          color: mine ? AppColors.onPrimary : AppColors.foreground,
-                                        ),
+                                      border: mine ? null : Border.all(color: AppColors.border),
+                                    ),
+                                    child: Text(
+                                      m.text,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: mine ? AppColors.onPrimary : AppColors.foreground,
                                       ),
                                     ),
                                   ),
                                 ),
                                 if (m.reactions.isNotEmpty)
-                                  _reactionChips(m, me),
+                                  _reactionChips(threadId, m, me, mine: mine),
                               ],
                             ),
                           ),
