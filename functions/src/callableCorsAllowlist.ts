@@ -19,6 +19,11 @@ export const callableCorsAllowlist: (string | RegExp)[] = [
   // Production Firebase hosting (project `mortar-9d29d`).
   "https://mortar-9d29d.firebaseapp.com",
   "https://mortar-9d29d.web.app",
+  // Custom domains mapped to the Railway web service. Both apex and `www` are
+  // listed: whichever host actually serves the page is the browser `Origin`,
+  // and a redirect between them does not rewrite it.
+  "https://www.mortarmastersonline.com",
+  "https://mortarmastersonline.com",
   // Mortar Railway service hostnames only (e.g. `mortar-stage-stage`, `mortar-web-staging`,
   // `mortar-prod-*`). Scoped to the `mortar-` prefix so an unrelated attacker-controlled
   // `*.up.railway.app` deployment cannot pass the allowlist.

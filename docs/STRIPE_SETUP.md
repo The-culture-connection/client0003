@@ -36,7 +36,7 @@ firebase deploy --only functions:createStripeCheckoutSession,functions:stripeWeb
 
 Optional env (already used elsewhere):
 
-- `DIGITAL_CURRICULUM_PLATFORM_URL` — success/cancel redirect base (e.g. `https://mortar-stage-stage.up.railway.app`)
+- `DIGITAL_CURRICULUM_PLATFORM_URL` — success/cancel redirect base and transactional email link base. Set per project in `functions/.env.<project-id>` (e.g. `functions/.env.mortar-stage` → `https://www.mortarmastersonline.com`); the Firebase CLI loads it at deploy time. Web checkout sends its own `success_url` / `cancel_url` derived from `window.location.origin`, so this env only governs mobile and server-generated links.
 
 Deploy:
 

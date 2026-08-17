@@ -19,6 +19,25 @@ type CheckoutResponse = {
   currency: string;
 };
 
+/**
+ * Redirect targets built from the host the user is actually on, so Checkout returns
+ * to that domain (custom domain, Railway URL, localhost) instead of the server-side
+ * `DIGITAL_CURRICULUM_PLATFORM_URL` default. Web only — `ios`/`android` must keep the
+ * server's `mobilePaymentReturn` deep-link handoff.
+ */
+function originRedirects(
+  platform: PaymentClientPlatform,
+  paths?: { success?: string; cancel?: string }
+): { success_url: string; cancel_url: string } | Record<string, never> {
+  if (platform !== "web" || typeof window === "undefined") return {};
+  const origin = window.location.origin.replace(/\/$/, "");
+  if (!origin) return {};
+  return {
+    success_url: `${origin}${paths?.success ?? "/payment/success"}`,
+    cancel_url: `${origin}${paths?.cancel ?? "/payment/cancel"}`,
+  };
+}
+
 async function startCheckout(
   payload: Record<string, unknown>,
   analyticsEvent: (typeof WEB_ANALYTICS_EVENTS)[keyof typeof WEB_ANALYTICS_EVENTS],
@@ -52,21 +71,17 @@ export async function checkoutModule(params: {
   curriculumModuleId?: string;
   clientPlatform?: PaymentClientPlatform;
 }): Promise<void> {
-  const origin =
-    typeof window !== "undefined" ? window.location.origin.replace(/\/$/, "") : "";
-  const coursePath = `/courses/${encodeURIComponent(params.courseId)}`;
+  const platform = params.clientPlatform ?? "web";
   await startCheckout(
     {
       purchase_type: "module",
       course_id: params.courseId,
       module_id: params.moduleId,
-      client_platform: params.clientPlatform ?? "web",
-      ...(origin
-        ? {
-            success_url: `${origin}/payment/success?course_id=${encodeURIComponent(params.courseId)}`,
-            cancel_url: `${origin}${coursePath}`,
-          }
-        : {}),
+      client_platform: platform,
+      ...originRedirects(platform, {
+        success: `/payment/success?course_id=${encodeURIComponent(params.courseId)}`,
+        cancel: `/courses/${encodeURIComponent(params.courseId)}`,
+      }),
     },
     WEB_ANALYTICS_EVENTS.PAYMENT_MODULE_PURCHASE_CLICKED
   );
@@ -77,12 +92,14 @@ export async function checkoutEventTicket(params: {
   collection?: typeof COLLECTION_EVENTS | typeof COLLECTION_EVENTS_MOBILE;
   clientPlatform?: PaymentClientPlatform;
 }): Promise<void> {
+  const platform = params.clientPlatform ?? "web";
   await startCheckout(
     {
       purchase_type: "event",
       event_id: params.eventId,
       event_collection: params.collection ?? COLLECTION_EVENTS,
-      client_platform: params.clientPlatform ?? "web",
+      client_platform: platform,
+      ...originRedirects(platform),
     },
     WEB_ANALYTICS_EVENTS.PAYMENT_EVENT_TICKET_CLICKED
   );
@@ -95,9 +112,11 @@ export async function checkoutShopCart(params: {
   if (params.lines.length === 0) {
     throw new Error("Cart is empty");
   }
+  const platform = params.clientPlatform ?? "web";
   await startCheckout(
     {
       purchase_type: "shop",
+      ...originRedirects(platform),
       lines: params.lines.map((l) => {
         const line: Record<string, string | number> = {
           item_id: l.itemId,
@@ -109,7 +128,7 @@ export async function checkoutShopCart(params: {
         }
         return line;
       }),
-      client_platform: params.clientPlatform ?? "web",
+      client_platform: platform,
     },
     WEB_ANALYTICS_EVENTS.PAYMENT_SHOP_CHECKOUT_CLICKED,
     { openInNewTab: true }
