@@ -271,19 +271,30 @@ export async function getUpcomingEvents(): Promise<Event[]> {
  * Get a single event by ID (checks `events` first, then `events_mobile`).
  */
 export async function getEvent(eventId: string): Promise<Event | null> {
+  // Checked in sequence, not in parallel. Nearly every event lives in `events`,
+  // so the mobile lookup is usually a wasted read — and when the two were issued
+  // together a failure on either killed both, which is how a curriculum-only
+  // event (no mobile twin) took the whole detail page down for members. Each
+  // lookup now fails on its own. See tools/rules-tests/event-detail-read.test.mjs.
   try {
-    const eRef = doc(db, COLLECTION_EVENTS, eventId);
-    const mRef = doc(db, COLLECTION_EVENTS_MOBILE, eventId);
-    const [eSnap, mSnap] = await Promise.all([getDoc(eRef), getDoc(mRef)]);
-    if (!eSnap.exists() && !mSnap.exists()) return null;
+    const eSnap = await getDoc(doc(db, COLLECTION_EVENTS, eventId));
     if (eSnap.exists()) {
       return { id: eSnap.id, ...eSnap.data() } as Event;
     }
-    return { id: mSnap.id, ...mSnap.data() } as Event;
   } catch (error) {
-    console.error("Error fetching event:", error);
-    return null;
+    console.error("Error fetching curriculum event:", error);
   }
+
+  try {
+    const mSnap = await getDoc(doc(db, COLLECTION_EVENTS_MOBILE, eventId));
+    if (mSnap.exists()) {
+      return { id: mSnap.id, ...mSnap.data() } as Event;
+    }
+  } catch (error) {
+    console.error("Error fetching mobile event:", error);
+  }
+
+  return null;
 }
 
 function buildStaffEventPayload(

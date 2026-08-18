@@ -26,7 +26,7 @@ export type BetaStepId =
   | "account"
   | "onboarding"
   | "dashboard"
-  | "purchase"
+  | "start"
   | "lesson"
   | "application"
   | "dataroom"
@@ -80,16 +80,15 @@ export const BETA_STEPS: BetaStep[] = [
     },
   },
   {
-    id: "purchase",
-    title: "Buy the Beta Testing course",
+    id: "start",
+    title: "Start the Beta Testing course",
     detail: [
-      "Open Curriculum, find the Beta Testing course, and click Buy Module.",
-      "Pay with the test card 4242 4242 4242 4242, any future expiry, any 3-digit code, any name.",
-      "Watch for a purchase confirmation email.",
+      "Open Curriculum and find the Beta Testing course.",
+      "Open it and click Start Lesson — the first slide is enough to begin.",
     ],
     note: {
-      label: "No charge",
-      text: "This is a test payment system. No real card is accepted and no money moves.",
+      label: "Already yours",
+      text: "The course is free and already assigned to your account, so there is nothing to buy. This step ticks as soon as you open the first lesson.",
     },
   },
   {
@@ -233,27 +232,45 @@ async function hasRegisteredForAnyEvent(uid: string): Promise<boolean> {
   return curriculum || mobile;
 }
 
+interface CourseProgressSummary {
+  /** A progress doc exists at all — see {@link courseProgressSummary}. */
+  started: boolean;
+  /** At least one course reads as finished. */
+  completed: boolean;
+}
+
 /**
- * True once any course reads as finished.
+ * Started and finished state for the tester's courses, in one query.
+ *
+ * `courseProgress/{uid}_{courseId}` is created lazily by
+ * `initializeCourseProgress` the first time a learner views a slide, so the
+ * document's mere existence is the "started the course" signal — there is no
+ * separate enrolment record to look for, and the beta course is free and
+ * pre-assigned, so nothing is purchased along the way.
  *
  * Filtered on `userId` alone and finished off in memory: adding `completed` to
  * the query would need a composite index, and a tester has only a handful of
  * progress docs. `completed` is the authoritative flag, but a course sitting at
  * 100 without it counts too — that gap is exactly what a beta finds.
+ *
+ * Assumes the beta cohort is assigned a single course, so "any progress doc"
+ * means the beta course. Scope this to a course id if that stops being true.
  */
-async function anyCourseComplete(uid: string): Promise<boolean> {
+async function courseProgressSummary(uid: string): Promise<CourseProgressSummary> {
   try {
     const snap = await getDocs(
       query(collection(db, "courseProgress"), where("userId", "==", uid))
     );
-    return snap.docs.some((d) => {
+    if (snap.empty) return { started: false, completed: false };
+    const completed = snap.docs.some((d) => {
       const data = d.data() as { completed?: unknown; progress?: unknown };
       if (data.completed === true) return true;
       return typeof data.progress === "number" && data.progress >= 100;
     });
+    return { started: true, completed };
   } catch (e) {
     console.warn("[betaChecklist] courseProgress lookup failed", e);
-    return false;
+    return { started: false, completed: false };
   }
 }
 
@@ -282,24 +299,23 @@ export async function evaluateBetaChecklist(
   }
 
   const stamps = (data?.[BETA_CHECKLIST_FIELD] ?? {}) as Record<string, unknown>;
-  const membership = (data?.membership ?? {}) as { paid_modules?: unknown };
 
-  const [hasApplication, hasSurvey, hasCertificate, hasEvent, hasDm, courseDone] =
+  const [hasApplication, hasSurvey, hasCertificate, hasEvent, hasDm, course] =
     await Promise.all([
       anyDocExists("GraduationApplications", "userId", uid),
       anySubcollectionDoc(uid, "surveyResponses"),
       anySubcollectionDoc(uid, "certificates"),
       hasRegisteredForAnyEvent(uid),
       anyDocExists("Digital Student DMs", "uid", uid),
-      anyCourseComplete(uid),
+      courseProgressSummary(uid),
     ]);
 
   // Reaching the dashboard at all means the account exists and is usable.
   state.account = true;
   state.onboarding = data?.onboarding_status === "complete";
   state.dashboard = Boolean(stamps.dashboard_viewed_at);
-  state.purchase = Array.isArray(membership.paid_modules) && membership.paid_modules.length > 0;
-  state.lesson = courseDone;
+  state.start = course.started;
+  state.lesson = course.completed;
   state.application = hasApplication;
   state.dataroom = hasSurvey && hasCertificate;
   state.event = hasEvent;

@@ -237,6 +237,14 @@ service cloud.firestore {
     function eventReadableByMember() {
       return isSignedIn() && (
         hasStaffClaim()
+        // resource is null for a get() on a document that does not exist, and
+        // reaching into resource.data below would error rather than return
+        // empty. getEvent() reads events/{id} and events_mobile/{id} together,
+        // so every curriculum-only event asks for an absent mobile twin —
+        // without this, opening any event failed for non-staff members with
+        // "Missing or insufficient permissions". Allowing it leaks nothing: the
+        // document is not there. Same guard as courseProgress below.
+        || resource == null
         || !(resource.data.keys().hasAll(['approval_status']))
         || resource.data.get('approval_status', 'approved') == 'approved'
         || (resource.data.keys().hasAll(['created_by'])
