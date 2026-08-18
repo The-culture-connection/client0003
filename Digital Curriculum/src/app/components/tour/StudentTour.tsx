@@ -7,10 +7,14 @@
  * Tour button in the top navigation via `startTour()`.
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Joyride, { CallBackProps, STATUS, Step } from "react-joyride";
 
-const SEEN_KEY = "mortar_tour_seen_student";
+// Bumped to _v2 when the unskippable "how to report" step was added: anyone who
+// had already seen the old tour would otherwise never be shown it, which is the
+// one thing every beta tester has to know. Bump again only for a change that
+// genuinely warrants re-running the whole tour for everybody.
+const SEEN_KEY = "mortar_tour_seen_student_v2";
 const START_EVENT = "mortar:start-tour";
 
 /** Re-open the tour from anywhere (e.g. the nav "?" button). */
@@ -20,14 +24,43 @@ export function startTour() {
   }
 }
 
-const steps: Step[] = [
+/** CSS hook on the floating bug button, set in `BetaFeedbackWidget`. */
+const BETA_FEEDBACK_TARGET = '[data-tour="beta-feedback"]';
+
+/**
+ * Opening step: how to report, before anything else.
+ *
+ * Deliberately unskippable — no Skip, no close button, no dismissing by
+ * clicking the backdrop or pressing Escape. A beta round is only worth what
+ * testers report, so nobody reaches the rest of the tour without being shown
+ * how. Every other step keeps its Skip button.
+ */
+const betaFeedbackStep: Step = {
+  target: BETA_FEEDBACK_TARGET,
+  placement: "left",
+  disableBeacon: true,
+  showSkipButton: false,
+  hideCloseButton: true,
+  disableOverlayClose: true,
+  disableCloseOnEsc: true,
+  title: "Start here — tell us everything",
+  content:
+    "This bug button is on every screen, bottom-right. Use it for ANY AND ALL " +
+    "things you notice and want noted for change — a typo, a slow page, a " +
+    "confusing label, a colour you dislike, a feature you wish existed. " +
+    "Nothing is too small or too opinionated. It grabs a screenshot of what " +
+    "you are looking at, so press it the moment something catches your eye " +
+    "rather than trying to remember it later.",
+};
+
+const baseSteps: Step[] = [
   {
     target: "body",
     placement: "center",
     disableBeacon: true,
     title: "Welcome to MORTAR 👋",
     content:
-      "Here's a 30-second tour of where everything is. You can skip anytime, and re-open this from the ? button up top whenever you like.",
+      "Now here's a 30-second tour of where everything is. You can skip from here on, and re-open this from the ? button up top whenever you like.",
   },
   {
     target: '[data-tour="nav-dashboard"]',
@@ -87,23 +120,39 @@ const steps: Step[] = [
 
 export function StudentTour() {
   const [run, setRun] = useState(false);
+  const [steps, setSteps] = useState<Step[]>(baseSteps);
+
+  /**
+   * Decide the step list at the moment the tour opens.
+   *
+   * The report step leads only when its target is actually on the page. An
+   * unskippable step pointing at nothing would leave the tester stuck behind an
+   * overlay with no Skip, no close and no Escape — so when the widget is absent
+   * (signed out, or it failed to mount) the tour simply starts at the welcome.
+   */
+  const begin = useCallback(() => {
+    const hasReportButton =
+      typeof document !== "undefined" &&
+      document.querySelector(BETA_FEEDBACK_TARGET) !== null;
+    setSteps(hasReportButton ? [betaFeedbackStep, ...baseSteps] : baseSteps);
+    setRun(true);
+  }, []);
 
   // Auto-run once, after the nav has mounted.
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!localStorage.getItem(SEEN_KEY)) {
-      const t = window.setTimeout(() => setRun(true), 600);
+      const t = window.setTimeout(begin, 600);
       return () => window.clearTimeout(t);
     }
-  }, []);
+  }, [begin]);
 
   // Allow re-opening from the "?" Tour button.
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const handler = () => setRun(true);
-    window.addEventListener(START_EVENT, handler);
-    return () => window.removeEventListener(START_EVENT, handler);
-  }, []);
+    window.addEventListener(START_EVENT, begin);
+    return () => window.removeEventListener(START_EVENT, begin);
+  }, [begin]);
 
   const handleCallback = (data: CallBackProps) => {
     const { status } = data;

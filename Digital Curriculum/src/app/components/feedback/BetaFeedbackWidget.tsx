@@ -101,7 +101,9 @@ export function BetaFeedbackWidget() {
     <>
       {/* Sits above the sentiment widget's bottom-right slot so the two
           never overlap. */}
-      <div {...uiProps} className="fixed bottom-24 right-6 z-50">
+      {/* `data-tour` anchors the student tour's opening step — the one thing a
+          beta tester has to know before anything else. */}
+      <div {...uiProps} data-tour="beta-feedback" className="fixed bottom-24 right-6 z-50">
         <button
           type="button"
           onClick={handleOpen}
