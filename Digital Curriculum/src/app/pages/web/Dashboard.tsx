@@ -6,6 +6,7 @@ import { Badge } from "../../components/ui/badge";
 import { Progress } from "../../components/ui/progress";
 import { Skeleton } from "../../components/ui/skeleton";
 import { GetTheAppCallout } from "../../components/GetTheAppCallout";
+import { BetaChecklistRail } from "../../components/beta/BetaChecklistRail";
 import {
   Calendar,
   Award,
@@ -798,6 +799,13 @@ export function WebDashboard() {
         </div>
       </div>
       </div>
+
+      {/* Lives in the page gutter, outside the max-w-7xl column, so it only
+          appears where there is genuinely empty space to put it. */}
+      <BetaChecklistRail
+        userId={user?.uid}
+        userData={profile as Record<string, unknown> | undefined}
+      />
     </div>
   );
 }

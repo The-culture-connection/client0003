@@ -17,6 +17,7 @@ import {
 } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { auth, db, storage } from "./firebase";
+import { stampBetaChecklist } from "./betaChecklist";
 
 export const BETA_FEEDBACK_COLLECTION = "beta_feedback";
 export const BETA_FEEDBACK_STORAGE_FOLDER = "beta_feedback";
@@ -261,6 +262,12 @@ export async function submitBetaFeedback(input: SubmitBetaFeedbackInput): Promis
     ...(screenshotError ? { screenshot_error: screenshotError } : {}),
     created_at: serverTimestamp(),
   });
+
+  // Mirror the fact of the report onto the tester's own user doc. `beta_feedback`
+  // is staff-read-only, so this stamp is the only way the tester-facing beta
+  // checklist can tell that they have filed one. Best-effort: the report itself
+  // is already safely written, and a failed stamp must not surface as an error.
+  void stampBetaChecklist(user.uid, "reported_at");
 
   return docRef.id;
 }
