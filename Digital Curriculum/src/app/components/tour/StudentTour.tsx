@@ -37,7 +37,12 @@ const BETA_FEEDBACK_TARGET = '[data-tour="beta-feedback"]';
  */
 const betaFeedbackStep: Step = {
   target: BETA_FEEDBACK_TARGET,
-  placement: "left",
+  // "left-end", not "left": the bug button is `fixed bottom-24`, so a tooltip
+  // centred on it hangs its bottom half — the footer with Next — off the
+  // bottom of the viewport, and scrolling cannot rescue it because a fixed
+  // target moves with the page. Anchoring the tooltip's bottom edge to the
+  // button's makes it grow upward into the empty page instead.
+  placement: "left-end",
   disableBeacon: true,
   showSkipButton: false,
   hideCloseButton: true,
@@ -192,6 +197,13 @@ export function StudentTour() {
         tooltipTitle: {
           fontWeight: 700,
           fontSize: 16,
+        },
+        // Belt and braces against the same failure anywhere else: however long a
+        // step's copy is, the body scrolls and the footer — Back / Next — stays
+        // on screen rather than being pushed past the bottom of the viewport.
+        tooltipContent: {
+          maxHeight: "50vh",
+          overflowY: "auto",
         },
         buttonNext: {
           borderRadius: 8,
