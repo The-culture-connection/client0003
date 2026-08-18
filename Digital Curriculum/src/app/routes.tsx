@@ -83,6 +83,7 @@ const AdminLayout = lazyPage(() => import("./layouts/AdminLayout"), "AdminLayout
 const PublicCertificatePage = lazyPage(() => import("./pages/PublicCertificate"), "PublicCertificatePage");
 const DeleteAccountPage = lazyPage(() => import("./pages/DeleteAccount"), "DeleteAccountPage");
 const ChildSafetyPage = lazyPage(() => import("./pages/ChildSafety"), "ChildSafetyPage");
+const GetTheAppPage = lazyPage(() => import("./pages/GetTheApp"), "GetTheAppPage");
 
 function StaffAdminGate({ children }: { children: ReactNode }) {
   return <RoleGate allowedRoles={["superAdmin", "Admin"]}>{children}</RoleGate>;
@@ -141,6 +142,13 @@ export const router = createBrowserRouter([
   {
     path: "/child-safety",
     Component: ChildSafetyPage,
+  },
+  // Public on purpose: this is the link we hand out in emails, socials and QR
+  // codes, so it has to work for someone who has neither the app nor an
+  // account. Keep the URL stable once it is in circulation.
+  {
+    path: "/get-the-app",
+    Component: GetTheAppPage,
   },
   {
     path: "/onboarding",

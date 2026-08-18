@@ -7,6 +7,7 @@ import { Card } from "../components/ui/card";
 import { useAuth } from "../components/auth/AuthProvider";
 import { useAdminViewMode } from "../contexts/AdminViewModeContext";
 import { isStaffAdminRole, staffPrimaryHomePath } from "../lib/adminHubNavigation";
+import { GET_THE_APP_PATH, MOBILE_APP_NAME } from "../lib/appStoreLinks";
 import { useScreenAnalytics } from "../analytics/useScreenAnalytics";
 import { trackEvent } from "../analytics/trackEvent";
 import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalyticsContract";
@@ -242,6 +243,16 @@ export function LoginPage() {
             className="text-sm text-accent hover:text-accent/90"
           >
             Join with invite code →
+          </Link>
+        </div>
+
+        {/* Alumni land here looking for the mobile network, not the curriculum. */}
+        <div className="mt-4 border-t border-border pt-4 text-center">
+          <Link
+            to={GET_THE_APP_PATH}
+            className="text-sm text-muted-foreground hover:text-foreground"
+          >
+            Get the {MOBILE_APP_NAME} app →
           </Link>
         </div>
       </Card>

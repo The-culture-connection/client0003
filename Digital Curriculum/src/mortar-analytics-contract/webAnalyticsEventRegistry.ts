@@ -114,6 +114,8 @@ export const WEB_ANALYTICS_EVENTS = {
   PAYMENT_MODULE_PURCHASE_CLICKED: "payment_module_purchase_clicked",
   PAYMENT_EVENT_TICKET_CLICKED: "payment_event_ticket_clicked",
   PAYMENT_SHOP_CHECKOUT_CLICKED: "payment_shop_checkout_clicked",
+  /** Public download page — which store a visitor left for. */
+  MOBILE_APP_STORE_LINK_CLICKED: "mobile_app_store_link_clicked",
 } as const;
 
 export type WebAnalyticsEventName = (typeof WEB_ANALYTICS_EVENTS)[keyof typeof WEB_ANALYTICS_EVENTS];
@@ -136,6 +138,8 @@ export const ANONYMOUS_WEB_ANALYTICS_EVENT_NAMES = [
   WEB_ANALYTICS_EVENTS.LOGIN_SIGN_IN_FAILED,
   WEB_ANALYTICS_EVENTS.LOGIN_PASSWORD_RESET_SUBMITTED,
   WEB_ANALYTICS_EVENTS.LOGIN_PASSWORD_RESET_SUCCEEDED,
+  // /get-the-app is public by design, so its store clicks arrive without auth.
+  WEB_ANALYTICS_EVENTS.MOBILE_APP_STORE_LINK_CLICKED,
 ] as const;
 
 export type AnonymousWebAnalyticsEventName = (typeof ANONYMOUS_WEB_ANALYTICS_EVENT_NAMES)[number];

@@ -16,6 +16,30 @@ export const DEFAULT_EXPANSION_APP_NAME =
 export const DEFAULT_EXPANSION_REDEEM_URL =
   process.env.EXPANSION_APP_REDEEM_URL?.trim() || DEFAULT_PLATFORM_URL;
 
+/**
+ * Store listings for THE MORTARVERSE mobile app.
+ *
+ * Duplicated from the web platform's `src/app/lib/appStoreLinks.ts` on purpose:
+ * Brevo templates render server-side and cannot import from that bundle. If a
+ * listing moves, change both — and prefer sending people to
+ * {@link mobileAppDownloadUrl} so most links keep working either way.
+ */
+export const IOS_APP_STORE_URL =
+  process.env.IOS_APP_STORE_URL?.trim() ||
+  "https://apps.apple.com/us/app/the-mortarverse/id6761732245";
+
+/** `id` must match the Flutter app's Android `applicationId`. */
+export const ANDROID_PLAY_STORE_URL =
+  process.env.ANDROID_PLAY_STORE_URL?.trim() ||
+  "https://play.google.com/store/apps/details?id=com.expansionnetwork.expansion_network";
+
+/** Public, unauthenticated download page on the web platform (`/get-the-app`). */
+export function mobileAppDownloadUrl(): string {
+  const explicit = process.env.MOBILE_APP_DOWNLOAD_URL?.trim();
+  if (explicit) return explicit;
+  return `${DEFAULT_PLATFORM_URL.replace(/\/$/, "")}/get-the-app`;
+}
+
 export const DEFAULT_COURSE_DISPLAY_NAME =
   process.env.DEFAULT_COURSE_DISPLAY_NAME?.trim() || "MORTAR Masters Online";
 

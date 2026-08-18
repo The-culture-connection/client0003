@@ -54,11 +54,40 @@
               </table>
 
               <p style="margin:0 0 12px;font-size:14px;font-weight:bold;color:#2d2d2d;">How to get in:</p>
-              <ol style="margin:0 0 24px;padding-left:20px;font-size:15px;line-height:1.7;color:#2d2d2d;">
-                <li>Open the Mortar app and head to the <strong>Mortarverse</strong>.</li>
+              <ol style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.7;color:#2d2d2d;">
+                <li>Install the Mortar app if you do not have it yet — links below.</li>
+                <li>Open it and head to the <strong>Mortarverse</strong>.</li>
                 <li>Tap <strong>Conference Center</strong>.</li>
                 <li>Enter the code above to unlock {{ params.conference_name }}.</li>
               </ol>
+
+              <!-- A ticket buyer may not have the app yet, and the code is only
+                   redeemable inside it. -->
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 12px;">
+                <tr>
+                  <td style="padding:0 8px 0 0;">
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td style="border-radius:6px;background-color:#2d2d2d;">
+                          <a href="{{ params.ios_app_url }}" target="_blank" style="display:inline-block;padding:11px 20px;font-size:14px;font-weight:bold;color:#ffffff;text-decoration:none;">Get it for iPhone</a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                  <td>
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td style="border-radius:6px;background-color:#2d2d2d;">
+                          <a href="{{ params.android_app_url }}" target="_blank" style="display:inline-block;padding:11px 20px;font-size:14px;font-weight:bold;color:#ffffff;text-decoration:none;">Get it for Android</a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:0 0 24px;font-size:13px;line-height:1.6;color:#6b6b6b;">
+                Or open <a href="{{ params.get_the_app_url }}" target="_blank" style="color:#871002;">{{ params.get_the_app_url }}</a> on your phone.
+              </p>
 
               <!-- Order summary -->
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 24px;">

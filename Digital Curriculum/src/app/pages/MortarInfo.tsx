@@ -1,6 +1,12 @@
 import { useNavigate } from "react-router";
 import { useScreenAnalytics } from "../analytics/useScreenAnalytics";
 import { Button } from "../components/ui/button";
+import {
+  ANDROID_PLAY_STORE_URL,
+  GET_THE_APP_PATH,
+  IOS_APP_STORE_URL,
+  MOBILE_APP_NAME,
+} from "../lib/appStoreLinks";
 
 const YOUTUBE_EMBED_URL = "https://www.youtube.com/embed/ScN2yhwYoqw?start=1";
 
@@ -164,6 +170,46 @@ export function MortarInfoPage() {
                 </ol>
               </div>
             ))}
+          </div>
+
+          {/* Graduates continue in the mobile network, so the course rundown
+              is the natural place to point at it. */}
+          <div className="mt-14 border-2 border-neutral-900 bg-white px-6 py-8 text-center">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#871002]">
+              After the course
+            </p>
+            <h3 className="mt-2 text-2xl font-bold uppercase tracking-tight text-neutral-900">
+              Keep building in {MOBILE_APP_NAME}
+            </h3>
+            <p className="mx-auto mt-3 max-w-xl text-neutral-600">
+              MORTAR alumni stay connected in the mobile network — a founders&rsquo;
+              feed, groups, events and matching. Free on iPhone and Android.
+            </p>
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+              <a
+                href={IOS_APP_STORE_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="min-w-[160px] border-2 border-neutral-900 bg-neutral-900 px-6 py-3 font-semibold text-white hover:bg-neutral-800"
+              >
+                App Store
+              </a>
+              <a
+                href={ANDROID_PLAY_STORE_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="min-w-[160px] border-2 border-neutral-900 bg-white px-6 py-3 font-semibold text-neutral-900 hover:bg-neutral-100"
+              >
+                Google Play
+              </a>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate(GET_THE_APP_PATH)}
+              className="mt-4 text-sm text-neutral-600 underline hover:text-neutral-900"
+            >
+              How access works
+            </button>
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-4 mt-14">

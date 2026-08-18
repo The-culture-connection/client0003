@@ -73,6 +73,22 @@ Use these **exact template names** in Brevo (Transactional → Templates) so the
 | `platform_url` | `https://mortar-stage-stage.up.railway.app` | Primary CTA link (curriculum web) |
 | `support_email` | `masters@wearemortar.com` | Footer contact |
 
+**Mobile app params** — sent by `mobileAppLinkParams()` (see `emailConfig.ts`) and
+available only in the three templates that ask the reader to open the app:
+`app_access_code_invite`, `graduation_admitted_to_alumni`,
+`conference_ticket_confirmed`. Do **not** add them to student-facing templates —
+curriculum-only students have no app access, and pointing them at the store is
+the confusion we already guard against in `conferenceAnnouncementParams`.
+
+| Param | Example | Purpose |
+|-------|---------|---------|
+| `ios_app_url` | `https://apps.apple.com/us/app/the-mortarverse/id6761732245` | Apple App Store listing |
+| `android_app_url` | `https://play.google.com/store/apps/details?id=com.expansionnetwork.expansion_network` | Google Play listing |
+| `get_the_app_url` | `https://mortar-stage-stage.up.railway.app/get-the-app` | Public download page (picks the store for the visitor) |
+
+Override any of them with the `IOS_APP_STORE_URL`, `ANDROID_PLAY_STORE_URL` and
+`MOBILE_APP_DOWNLOAD_URL` env vars without redeploying template HTML.
+
 After creating each template in Brevo, record its **numeric ID** in `functions/src/email/brevoTemplates.ts` or set `BREVO_TPL_*` env vars.
 
 ---
@@ -164,7 +180,7 @@ sequenceDiagram
 
 ## 2. `graduation_admitted_to_alumni`
 
-**Params:** `first_name`, `next_steps`, `platform_url`, `support_email`
+**Params:** `first_name`, `next_steps`, `platform_url`, `support_email`, `ios_app_url`, `android_app_url`, `get_the_app_url`
 
 **Subject:**  
 `Welcome to Mortar Alumni`
@@ -287,7 +303,7 @@ Staff with **Admin** or **superAdmin** can open **Admin → Email testing** (`/a
 
 ## 9. `app_access_code_invite`
 
-**Params:** `first_name`, `invite_code`, `expires_in`, `expires_at`, `app_name`, `redeem_url` (optional), `support_email`
+**Params:** `first_name`, `invite_code`, `expires_in`, `expires_at`, `app_name`, `redeem_url` (optional), `support_email`, `ios_app_url`, `android_app_url`, `get_the_app_url`
 
 **Subject:**  
 `Your MORTARverse App Access Code Has Arrived`
@@ -365,7 +381,7 @@ there is nothing pending to confirm.
 { first_name, meeting_time, notes, platform_url, support_email }
 
 // graduation_admitted_to_alumni (admin Admit → users.roles)
-{ first_name, next_steps, platform_url, support_email }
+{ first_name, next_steps, platform_url, support_email, ios_app_url, android_app_url, get_the_app_url }
 
 // graduation_not_admitted (admin Reject → status rejected)
 { first_name, notes, platform_url, support_email }
@@ -386,7 +402,8 @@ there is nothing pending to confirm.
 { first_name, headline, message_body, sender_name, cta_url?, cta_label?, support_email }
 
 // app_access_code_invite
-{ first_name, invite_code, expires_in, expires_at, app_name, redeem_url?, support_email }
+{ first_name, invite_code, expires_in, expires_at, app_name, redeem_url?, support_email,
+  ios_app_url, android_app_url, get_the_app_url }
 
 // payment_shop_order_confirmed (after Stripe webhook fulfills shop order)
 { first_name, order_id, order_lines_plain, amount_subtotal, amount_tax, amount_shipping, amount_total, shipping_address_plain, platform_url, support_email }

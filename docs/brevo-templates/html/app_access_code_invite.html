@@ -37,11 +37,38 @@
                 </tr>
               </table>
               <p style="margin:0 0 12px;font-size:14px;font-weight:bold;color:#2d2d2d;">Steps to activate:</p>
-              <ol style="margin:0 0 24px;padding-left:20px;font-size:15px;line-height:1.7;color:#2d2d2d;">
-                <li>Download the MORTARverse app from the App Store or Google Play.</li>
+              <ol style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.7;color:#2d2d2d;">
+                <li>Download the MORTARverse app using the buttons below.</li>
                 <li>Open the app and enter the email address associated with your account.</li>
                 <li>When prompted, enter the Access Code provided above.</li>
               </ol>
+
+              <!-- Store buttons -->
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 12px;">
+                <tr>
+                  <td style="padding:0 8px 8px 0;">
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td style="border-radius:6px;background-color:#2d2d2d;">
+                          <a href="{{ params.ios_app_url }}" target="_blank" style="display:inline-block;padding:12px 24px;font-size:14px;font-weight:bold;color:#ffffff;text-decoration:none;">Download for iPhone</a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                  <td style="padding:0 0 8px 0;">
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td style="border-radius:6px;background-color:#2d2d2d;">
+                          <a href="{{ params.android_app_url }}" target="_blank" style="display:inline-block;padding:12px 24px;font-size:14px;font-weight:bold;color:#ffffff;text-decoration:none;">Download for Android</a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:0 0 24px;font-size:13px;line-height:1.6;color:#6b6b6b;">
+                Not sure which one? Open <a href="{{ params.get_the_app_url }}" target="_blank" style="color:#871002;">{{ params.get_the_app_url }}</a> on your phone and it will pick for you.
+              </p>
               <p style="margin:0 0 24px;font-size:14px;line-height:1.6;color:#2d2d2d;">
                 <strong>Note:</strong> For security purposes, this code will expire in {{ params.expires_in }}. If you need a new code, please reply directly to this email.
               </p>

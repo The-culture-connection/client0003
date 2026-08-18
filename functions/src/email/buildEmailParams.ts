@@ -1,6 +1,7 @@
 import {Timestamp} from "firebase-admin/firestore";
 import {
   ADMITTED_ALUMNI_NEXT_STEPS,
+  ANDROID_PLAY_STORE_URL,
   DEFAULT_COURSE_BENEFIT,
   DEFAULT_COURSE_DISPLAY_NAME,
   DEFAULT_EXPANSION_APP_NAME,
@@ -8,6 +9,8 @@ import {
   DEFAULT_PLATFORM_URL,
   DEFAULT_SCHEDULE_HOURS,
   DEFAULT_SUPPORT_EMAIL,
+  IOS_APP_STORE_URL,
+  mobileAppDownloadUrl,
 } from "./emailConfig";
 import type {CourseEmailContext} from "./resolveCourseEmailContext";
 import {formatMeetingTimeLabel} from "../helpers/formatDateTime";
@@ -65,6 +68,24 @@ export function sharedFooterParams(overrides?: {
   };
 }
 
+/**
+ * Store links for templates that tell the reader to open the mobile app.
+ *
+ * Only spread this into templates whose recipient actually has app access —
+ * curriculum-only students do not, and promising them the app is the confusion
+ * `conferenceAnnouncementParams` already guards against.
+ */
+export function mobileAppLinkParams(): Pick<
+  JsonObject,
+  "ios_app_url" | "android_app_url" | "get_the_app_url"
+> {
+  return {
+    ios_app_url: IOS_APP_STORE_URL,
+    android_app_url: ANDROID_PLAY_STORE_URL,
+    get_the_app_url: mobileAppDownloadUrl(),
+  };
+}
+
 export function graduationMeetingTimeSelectedParams(input: {
   first_name?: string;
   userName?: string;
@@ -112,6 +133,9 @@ export function graduationAdmittedToAlumniParams(input: {
     first_name: input.first_name ?? firstNameFrom(input.userName, input.userEmail),
     next_steps: input.next_steps?.trim() || ADMITTED_ALUMNI_NEXT_STEPS,
     application_url: graduationApplicationUrl(),
+    // Admission is what unlocks the alumni network, so this is the moment to
+    // hand over the download links rather than just naming the app.
+    ...mobileAppLinkParams(),
     ...sharedFooterParams(),
   };
 }
@@ -323,6 +347,9 @@ export function appAccessCodeInviteParams(input: {
     app_name: input.app_name?.trim() || DEFAULT_EXPANSION_APP_NAME,
     redeem_url: input.redeem_url?.trim() || DEFAULT_EXPANSION_REDEEM_URL,
     support_email: DEFAULT_SUPPORT_EMAIL,
+    // The code is useless without the app, and step 1 of this email is
+    // "download it" — so the email has to carry the store links itself.
+    ...mobileAppLinkParams(),
   };
 }
 
@@ -457,6 +484,9 @@ export function conferenceTicketConfirmedParams(input: {
     code_active_label: input.code_active_label,
     order_id: input.order_id,
     amount_total: formatMoneyCents(input.amount_total, input.currency),
+    // A ticket buyer may never have installed the app — the code is redeemed in
+    // the Conference Center, so they need a way to get there.
+    ...mobileAppLinkParams(),
     ...sharedFooterParams(),
   };
 }

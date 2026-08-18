@@ -29,10 +29,45 @@
               <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#2d2d2d;">
                 {{ params.next_steps }}
               </p>
-              <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 28px;">
                 <tr>
                   <td style="border-radius:6px;background-color:#871002;">
                     <a href="{{ params.platform_url }}" target="_blank" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:bold;color:#fafcfc;text-decoration:none;">Go to Digital Curriculum</a>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Alumni status is what unlocks the mobile network, so the
+                   download links belong in this email. -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0;">
+                <tr>
+                  <td style="padding:20px 24px;background-color:#f5f5f5;border-radius:8px;border:1px solid #e0e0e0;">
+                    <p style="margin:0 0 6px;font-size:15px;font-weight:bold;color:#2d2d2d;">Get THE MORTARVERSE app</p>
+                    <p style="margin:0 0 14px;font-size:14px;line-height:1.6;color:#6b6b6b;">
+                      The alumni network lives on your phone — the founders&rsquo; feed, groups, events and matching. Free on iPhone and Android.
+                    </p>
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td style="padding:0 8px 0 0;">
+                          <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                            <tr>
+                              <td style="border-radius:6px;background-color:#2d2d2d;">
+                                <a href="{{ params.ios_app_url }}" target="_blank" style="display:inline-block;padding:11px 20px;font-size:14px;font-weight:bold;color:#ffffff;text-decoration:none;">iPhone</a>
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                        <td>
+                          <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                            <tr>
+                              <td style="border-radius:6px;background-color:#2d2d2d;">
+                                <a href="{{ params.android_app_url }}" target="_blank" style="display:inline-block;padding:11px 20px;font-size:14px;font-weight:bold;color:#ffffff;text-decoration:none;">Android</a>
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
                   </td>
                 </tr>
               </table>

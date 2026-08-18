@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from "react-router";
 import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
+import { GetTheAppCallout } from "../../components/GetTheAppCallout";
 import { Badge } from "../../components/ui/badge";
 import { Input } from "../../components/ui/input";
 import {
@@ -251,6 +252,9 @@ export function WebCommunityHub() {
           Connect, learn, and grow with fellow entrepreneurs
         </p>
       </div>
+
+      {/* The community lives on mobile too — alumni kept asking where the app was. */}
+      <GetTheAppCallout className="mb-6" />
 
       {/* Featured Event Hero */}
       {loadingEvents ? (

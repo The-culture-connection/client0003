@@ -5,6 +5,7 @@ import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import { Progress } from "../../components/ui/progress";
 import { Skeleton } from "../../components/ui/skeleton";
+import { GetTheAppCallout } from "../../components/GetTheAppCallout";
 import {
   Calendar,
   Award,
@@ -717,6 +718,10 @@ export function WebDashboard() {
         </div>
 
         <div className="lg:col-span-4 space-y-5">
+          {/* Unnumbered on purpose — it is a pointer off-platform, not one of
+              the dashboard's numbered sections. */}
+          <GetTheAppCallout className="rounded-none glass-card shadow-md" />
+
           {/* Achievements - real certificates as badges */}
           <Card className="rounded-none glass-card p-5 shadow-md">
             <h2 className="font-headline text-base font-black uppercase tracking-wider text-foreground mb-4"><span className="font-technical text-xs text-verse mr-2 align-middle">06 /</span>Your Achievements</h2>
