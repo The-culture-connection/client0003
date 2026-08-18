@@ -1,6 +1,9 @@
 import {HttpsError} from "firebase-functions/v2/https";
 import type {Firestore} from "firebase-admin/firestore";
+import type Stripe from "stripe";
 import {z} from "zod";
+import {buildShirtSizeCustomField} from "./checkoutSessionExtras";
+import {readConferenceTiers, selectConferenceTier} from "./conferenceTiers";
 import {
   COLLECTION_EVENTS,
   COLLECTION_EVENTS_MOBILE,
@@ -46,6 +49,8 @@ export const createCheckoutInputSchema = z.discriminatedUnion("purchase_type", [
   z.object({
     purchase_type: z.literal("conference"),
     conference_id: z.string().min(1),
+    /** Which ticket tier (e.g. `ga`, `vip`); optional only for single-tier conferences. */
+    tier_id: z.string().min(1).max(64).optional(),
     success_url: z.string().url().optional(),
     cancel_url: z.string().url().optional(),
     client_platform: z.enum(["web", "ios", "android"]).default("web"),
@@ -65,6 +70,8 @@ export interface ResolvedCheckout {
   line_items: ResolvedLineItem[];
   currency: string;
   metadata: Record<string, string>;
+  /** Extra answers Stripe Checkout should collect (e.g. a VIP tier's shirt size). */
+  custom_fields?: Stripe.Checkout.SessionCreateParams.CustomField[];
 }
 
 const MIN_CHARGE_CENTS_USD = 50;
@@ -252,7 +259,8 @@ export async function resolveCheckoutPricing(
       throw new HttpsError("failed-precondition", "This conference is closed.");
     }
     const currency = String(conf.currency ?? "usd").toLowerCase();
-    const cents = Number(conf.priceCents ?? 0);
+    const tier = selectConferenceTier(readConferenceTiers(conf), input.tier_id);
+    const cents = tier.priceCents;
     if (!Number.isFinite(cents) || cents <= 0) {
       throw new HttpsError("failed-precondition", "This conference is free — no payment required.");
     }
@@ -267,15 +275,22 @@ export async function resolveCheckoutPricing(
       currency,
       line_items: [
         {
-          name: `${title} — Ticket`,
+          name: `${title} — ${tier.name}`,
           amount_cents: Math.round(cents),
           quantity: 1,
-          metadata: {conference_id: input.conference_id},
+          metadata: {
+            conference_id: input.conference_id,
+            conference_tier_id: tier.id,
+          },
         },
       ],
+      // Only VIP-style tiers ask for a size, so a GA buyer sees no extra field.
+      ...(tier.collectsShirtSize ? {custom_fields: [buildShirtSizeCustomField()]} : {}),
       metadata: {
         purchase_type: "conference",
         conference_id: input.conference_id,
+        conference_tier_id: tier.id,
+        conference_tier_name: tier.name,
       },
     };
   }

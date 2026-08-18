@@ -453,10 +453,21 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
       await _registerFree(c);
       return;
     }
+
+    // One ticket type needs no choosing; more than one always does — the server
+    // rejects a checkout that does not name a tier.
+    final tiers = c.sellableTiers;
+    final tier = tiers.length == 1 ? tiers.first : await _pickTier(c, tiers);
+    if (tier == null || !mounted) return;
+
     setState(() => _buyingId = c.id);
     try {
       _checkoutConferenceId = c.id;
-      await _checkout.checkoutConferenceTicket(context: context, conferenceId: c.id);
+      await _checkout.checkoutConferenceTicket(
+        context: context,
+        conferenceId: c.id,
+        tierId: tier.id,
+      );
     } catch (e) {
       _checkoutConferenceId = null;
       if (!mounted) return;
@@ -466,6 +477,55 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
     } finally {
       if (mounted) setState(() => _buyingId = null);
     }
+  }
+
+  /// Choose a ticket type. Returns null if the sheet is dismissed, which
+  /// abandons the purchase rather than defaulting to a tier the buyer did not
+  /// pick. Prices shown are labels — the server re-resolves the real amount
+  /// from the conference doc at checkout.
+  Future<ConferenceTier?> _pickTier(Conference c, List<ConferenceTier> tiers) {
+    return showModalBottomSheet<ConferenceTier>(
+      context: context,
+      backgroundColor: ConferenceColors.atmosphere,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Choose your ticket',
+                  style: TextStyle(
+                    color: ConferenceColors.gold,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  c.name,
+                  style: TextStyle(color: Cosmic.textMuted, fontSize: 13, height: 1.4),
+                ),
+                const SizedBox(height: 16),
+                for (final tier in tiers) ...[
+                  _TierOption(
+                    tier: tier,
+                    onTap: () => Navigator.of(ctx).pop(tier),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   /// Free conference: auto-issue + email the code, then redeem it right away
@@ -902,9 +962,11 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
   }
 
   Widget _buildConferenceCard(Conference c, int index, {bool muted = false}) {
+    // "From $25.00" when there is a choice — the card shows the entry price and
+    // the picker shows what each tier actually costs.
     final priceLabel = c.isFree
         ? 'FREE'
-        : '\$${(c.priceCents / 100).toStringAsFixed(2)}';
+        : '${c.hasTierChoice ? 'From ' : ''}\$${(c.lowestPriceCents / 100).toStringAsFixed(2)}';
     final dateLabel = c.startDate != null ? DateFormat('MMM d, y').format(c.startDate!) : null;
     final icons = [
       Icons.auto_awesome_rounded,
@@ -1120,6 +1182,89 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
       ),
       onPressed: _buyingId == null ? onTap : null,
       child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
+    );
+  }
+}
+
+/// One selectable ticket type in the picker: name, price, and what it includes.
+class _TierOption extends StatelessWidget {
+  const _TierOption({required this.tier, required this.onTap});
+
+  final ConferenceTier tier;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final price = '\$${(tier.priceCents / 100).toStringAsFixed(2)}';
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: Cosmic.chipRadius,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.05),
+          borderRadius: Cosmic.chipRadius,
+          border: Border.all(color: ConferenceColors.goldAlpha(0.4)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    tier.name,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  price,
+                  style: const TextStyle(
+                    color: ConferenceColors.gold,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+            if (tier.perks.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              for (final perk in tier.perks)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 3),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.check_rounded,
+                        size: 14,
+                        color: ConferenceColors.goldAlpha(0.8),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          perk,
+                          style: TextStyle(
+                            color: Cosmic.textMuted,
+                            fontSize: 12.5,
+                            height: 1.35,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

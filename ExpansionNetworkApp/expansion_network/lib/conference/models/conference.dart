@@ -1,5 +1,45 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+/// One buyable ticket type on a conference (General Admission, VIP, …).
+///
+/// Mirrors `functions/src/stripe/conferenceTiers.ts` — the server re-resolves
+/// the price from the same doc at checkout, so what is shown here is a label,
+/// never the amount actually charged.
+class ConferenceTier {
+  const ConferenceTier({
+    required this.id,
+    required this.name,
+    required this.priceCents,
+    this.perks = const [],
+  });
+
+  final String id;
+  final String name;
+  final int priceCents;
+
+  /// What the tier includes, shown under its name when choosing.
+  final List<String> perks;
+
+  bool get isFree => priceCents <= 0;
+
+  static ConferenceTier? fromMap(Map<String, dynamic> data) {
+    final id = (data['id'] as String? ?? '').trim();
+    final name = (data['name'] as String? ?? '').trim();
+    if (id.isEmpty || name.isEmpty) return null;
+    final perks = (data['perks'] as List<dynamic>?)
+            ?.map((p) => p?.toString().trim() ?? '')
+            .where((p) => p.isNotEmpty)
+            .toList() ??
+        const <String>[];
+    return ConferenceTier(
+      id: id,
+      name: name,
+      priceCents: (data['priceCents'] as num?)?.toInt() ?? 0,
+      perks: perks,
+    );
+  }
+}
+
 /// `conferences/{conferenceId}`.
 class Conference {
   const Conference({
@@ -22,6 +62,7 @@ class Conference {
     this.attendeeCount = 0,
     this.checkInTotal = 0,
     this.priceCents = 0,
+    this.ticketTiers = const [],
     this.currency = 'usd',
     this.activeFrom,
     this.activeUntil,
@@ -57,9 +98,35 @@ class Conference {
   /// All-time cumulative check-ins across all days (server-maintained).
   final int checkInTotal;
 
-  /// Ticket price in cents (0 = free). Charged via Stripe in a later phase.
+  /// Legacy single ticket price in cents (0 = free), superseded by
+  /// [ticketTiers]. Still read for conferences created before tiers existed.
   final int priceCents;
+
+  /// Buyable ticket types. Empty for legacy single-price conferences — use
+  /// [sellableTiers], which folds [priceCents] into one General Admission tier
+  /// exactly as the server does.
+  final List<ConferenceTier> ticketTiers;
+
   final String currency;
+
+  /// Ticket types to offer, always at least one.
+  List<ConferenceTier> get sellableTiers => ticketTiers.isNotEmpty
+      ? ticketTiers
+      : [
+          ConferenceTier(
+            id: 'ga',
+            name: 'General Admission',
+            priceCents: priceCents,
+          ),
+        ];
+
+  /// Cheapest paid ticket, used for the "from $x" label on the buy card.
+  int get lowestPriceCents => sellableTiers
+      .map((t) => t.priceCents)
+      .reduce((a, b) => a < b ? a : b);
+
+  /// Whether the buyer picks between more than one ticket type.
+  bool get hasTierChoice => sellableTiers.length > 1;
 
   /// Active window: a ticket code only unlocks entry between these bounds.
   final DateTime? activeFrom;
@@ -71,7 +138,10 @@ class Conference {
     return exp != null && exp.isBefore(DateTime.now());
   }
 
-  bool get isFree => priceCents <= 0;
+  /// Free only when nothing on offer costs anything — a tiered conference
+  /// leaves `priceCents` at 0, so reading that field alone would hand paid
+  /// tickets out through the free-registration path.
+  bool get isFree => sellableTiers.every((t) => t.isFree);
 
   /// Whether the ticket-code window is currently open (mirrors the server
   /// check in `conferenceTickets.checkConferenceWindow`).
@@ -152,6 +222,12 @@ class Conference {
       attendeeCount: (data['attendeeCount'] as num?)?.toInt() ?? 0,
       checkInTotal: (data['checkInTotal'] as num?)?.toInt() ?? 0,
       priceCents: (data['priceCents'] as num?)?.toInt() ?? 0,
+      ticketTiers: (data['ticketTiers'] as List<dynamic>?)
+              ?.whereType<Map<String, dynamic>>()
+              .map(ConferenceTier.fromMap)
+              .whereType<ConferenceTier>()
+              .toList() ??
+          const <ConferenceTier>[],
       currency: data['currency'] as String? ?? 'usd',
       activeFrom: _toDate(data['activeFrom']),
       activeUntil: _toDate(data['activeUntil']),

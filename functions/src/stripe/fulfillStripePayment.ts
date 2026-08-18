@@ -13,6 +13,7 @@ import {
 } from "./paymentTypes";
 import {logPaymentAnalytics, PAYMENT_ANALYTICS} from "./logPaymentAnalytics";
 import type {CheckoutSnapshot} from "./extractCheckoutSnapshot";
+import {SHIRT_SIZE_FIELD_KEY} from "./checkoutSessionExtras";
 import {sendPurchaseConfirmationEmail} from "../email/paymentOrderEmails";
 import {internalGenerateConferenceTicketForPurchase} from "../conferenceTickets";
 
@@ -119,16 +120,27 @@ async function fulfillConferenceTicket(
   uid: string,
   orderId: string,
   conferenceId: string,
+  tier: {id: string | null; name: string | null},
   snapshot: CheckoutSnapshot
 ): Promise<void> {
   const email = await resolveBuyerEmail(db, uid, snapshot.customer_email);
-  const gen = await internalGenerateConferenceTicketForPurchase(conferenceId, email, uid);
+  // Uppercased because the dropdown values are lowercased for Stripe, but the
+  // size is read by a human packing swag.
+  const shirtSize = (snapshot.custom_fields[SHIRT_SIZE_FIELD_KEY] ?? "").toUpperCase() || null;
+  const gen = await internalGenerateConferenceTicketForPurchase(conferenceId, email, uid, {
+    tierId: tier.id,
+    tierName: tier.name,
+    shirtSize,
+  });
   await db.collection(PAYMENT_ORDERS_COLLECTION).doc(orderId).set(
     {
       metadata: {
         conference_id: conferenceId,
         conference_ticket_code: gen.plainCode,
         conference_ticket_email: gen.normalizedEmail,
+        ...(tier.id ? {conference_tier_id: tier.id} : {}),
+        ...(tier.name ? {conference_tier_name: tier.name} : {}),
+        ...(shirtSize ? {conference_shirt_size: shirtSize} : {}),
       },
       updated_at: FieldValue.serverTimestamp(),
     },
@@ -254,7 +266,14 @@ export async function fulfillStripePayment(params: {
   case "conference": {
     const conferenceId = metadata.conference_id;
     if (!conferenceId) throw new Error("Missing conference_id in payment metadata");
-    await fulfillConferenceTicket(db, uid, orderId, conferenceId, checkoutSnapshot);
+    await fulfillConferenceTicket(
+      db,
+      uid,
+      orderId,
+      conferenceId,
+      {id: metadata.conference_tier_id || null, name: metadata.conference_tier_name || null},
+      checkoutSnapshot
+    );
     break;
   }
   default:

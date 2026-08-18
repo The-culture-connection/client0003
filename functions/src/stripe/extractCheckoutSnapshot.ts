@@ -19,6 +19,25 @@ export interface CheckoutSnapshot {
   customer_email: string | null;
   shipping_address: MortarAddress | null;
   billing_address: MortarAddress | null;
+  /** Answers to any `custom_fields` on the session, keyed by field key. */
+  custom_fields: Record<string, string>;
+}
+
+/**
+ * Flatten Checkout's custom-field answers to `key → value`.
+ *
+ * Stripe returns the answer under whichever sub-object matches the field type,
+ * and only one of them is ever populated.
+ */
+function extractCustomFields(session: Stripe.Checkout.Session): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const field of session.custom_fields ?? []) {
+    const raw =
+      field.dropdown?.value ?? field.text?.value ?? field.numeric?.value ?? null;
+    const value = typeof raw === "string" ? raw.trim() : "";
+    if (value) out[field.key] = value;
+  }
+  return out;
 }
 
 function mapStripeAddress(
@@ -52,5 +71,6 @@ export function extractCheckoutSnapshot(session: Stripe.Checkout.Session): Check
     customer_email: customer?.email ?? session.customer_email ?? null,
     shipping_address: mapStripeAddress(shipping?.name ?? customer?.name ?? undefined, shipping?.address),
     billing_address: mapStripeAddress(customer?.name, customer?.address ?? undefined),
+    custom_fields: extractCustomFields(session),
   };
 }

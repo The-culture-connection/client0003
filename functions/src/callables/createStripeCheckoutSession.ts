@@ -154,6 +154,7 @@ export const createStripeCheckoutSession = onCall(
         client_reference_id: orderId,
         customer_email: customerEmail,
         ...buildCheckoutSessionExtras(purchaseType),
+        ...(resolved.custom_fields?.length ? {custom_fields: resolved.custom_fields} : {}),
         line_items: resolved.line_items.map((li) => ({
           quantity: li.quantity,
           price_data: {

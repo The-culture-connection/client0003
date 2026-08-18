@@ -28,6 +28,7 @@ import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { callableCorsAllowlist } from "./callableCorsAllowlist";
 import { BREVO_API_KEY } from "./email/brevoClient";
 import { sendConferenceTicketConfirmationEmail } from "./email/conferenceTicketEmail";
+import { readConferenceTiers } from "./stripe/conferenceTiers";
 
 if (getApps().length === 0) {
   initializeApp();
@@ -174,6 +175,16 @@ async function internalGenerateTicketCode(
   return { ticketId: codeRef.id, plainCode: code, expiresAt };
 }
 
+/**
+ * What a paid buyer bought. Recorded on the roster row so the admin panel can
+ * show General Admission vs VIP, and so swag has a size against a name.
+ */
+export interface TicketPurchaseDetails {
+  tierId?: string | null;
+  tierName?: string | null;
+  shirtSize?: string | null;
+}
+
 /** Upsert a buyer roster row and attach a freshly generated code. */
 async function internalUpsertBuyerWithCode(
   conferenceId: string,
@@ -181,11 +192,19 @@ async function internalUpsertBuyerWithCode(
   source: string,
   createdByUid: string,
   expirationDays: number,
+  purchase?: TicketPurchaseDetails,
 ): Promise<{ normalizedEmail: string; ticketId: string; plainCode: string; expiresAt: Date }> {
   const normalizedEmail = normalizeEmail(emailRaw);
   const buyerRef = conferenceRef(conferenceId).collection(TICKET_BUYERS).doc(normalizedEmail);
   const existed = (await buyerRef.get()).exists;
   const now = FieldValue.serverTimestamp();
+
+  // Only write tier fields we actually have. Re-issuing a lost code goes through
+  // here too, and must not blank out the tier recorded at purchase.
+  const purchaseFields: Record<string, string> = {};
+  if (purchase?.tierId) purchaseFields.tierId = purchase.tierId;
+  if (purchase?.tierName) purchaseFields.tierName = purchase.tierName;
+  if (purchase?.shirtSize) purchaseFields.shirtSize = purchase.shirtSize;
 
   await buyerRef.set(
     {
@@ -193,6 +212,7 @@ async function internalUpsertBuyerWithCode(
       normalizedEmail,
       source,
       updatedAt: now,
+      ...purchaseFields,
       ...(existed ? {} : { redeemed: false, createdAt: now }),
     },
     { merge: true },
@@ -223,6 +243,7 @@ export async function internalGenerateConferenceTicketForPurchase(
   conferenceId: string,
   emailRaw: string,
   buyerUid: string,
+  purchase?: TicketPurchaseDetails,
 ): Promise<{ normalizedEmail: string; ticketId: string; plainCode: string; expiresAt: Date }> {
   return internalUpsertBuyerWithCode(
     conferenceId,
@@ -230,6 +251,7 @@ export async function internalGenerateConferenceTicketForPurchase(
     "stripe_purchase",
     buyerUid,
     DEFAULT_EXPIRATION_DAYS,
+    purchase,
   );
 }
 
@@ -543,7 +565,10 @@ export const registerFreeConferenceTicket = onCall(callableWithBrevo, async (req
   if (conf.status === "closed") {
     throw new HttpsError("failed-precondition", "This conference is closed.");
   }
-  if (Number(conf.priceCents ?? 0) > 0) {
+  // Judged on the tiers, not the legacy `priceCents`: a tiered conference can
+  // leave that field at 0, and gating on it would hand out free tickets to a
+  // conference that sells paid ones.
+  if (readConferenceTiers(conf).some((t) => t.priceCents > 0)) {
     throw new HttpsError("failed-precondition", "This conference requires a ticket purchase.");
   }
 

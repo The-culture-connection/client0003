@@ -30,12 +30,30 @@ const CONFERENCES = "conferences";
 
 type ConferenceStatus = "draft" | "active" | "closed";
 
+/**
+ * Ticket tiers, mirroring `functions/src/stripe/conferenceTiers.ts`.
+ *
+ * The panel edits the two tiers Mortar sells — General Admission and VIP — but
+ * the stored shape is a list, so more can be added later without a migration.
+ */
+const GA_TIER_ID = "ga";
+const VIP_TIER_ID = "vip";
+
+interface ConferenceTierRow {
+  id: string;
+  name: string;
+  priceCents: number;
+  perks?: string[];
+  collectsShirtSize?: boolean;
+}
+
 interface ConferenceRow {
   id: string;
   name?: string;
   description?: string;
   status?: string;
   priceCents?: number;
+  ticketTiers?: ConferenceTierRow[];
   currency?: string;
   location?: string;
   timezone?: string;
@@ -60,6 +78,20 @@ interface TicketCodeRow {
   usedByUid?: string;
   revoked?: boolean;
   expiresAt?: Timestamp;
+}
+
+/**
+ * `conferences/{id}/ticketBuyers/{normalizedEmail}` — the roster row the Stripe
+ * webhook writes, carrying which tier was bought and any size collected with it.
+ */
+interface TicketBuyerRow {
+  id: string;
+  email?: string;
+  normalizedEmail?: string;
+  source?: string;
+  tierId?: string;
+  tierName?: string;
+  shirtSize?: string;
 }
 
 interface CheckinDayRow {
@@ -94,6 +126,9 @@ export function ConferencesPanel() {
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState<ConferenceStatus>("draft");
   const [priceDollars, setPriceDollars] = useState("0");
+  const [vipPriceDollars, setVipPriceDollars] = useState("");
+  const [vipPerks, setVipPerks] = useState("");
+  const [vipCollectsShirtSize, setVipCollectsShirtSize] = useState(true);
   const [currency, setCurrency] = useState("usd");
   const [location, setLocation] = useState("");
   const [timezone, setTimezone] = useState("");
@@ -113,6 +148,7 @@ export function ConferencesPanel() {
   const [selectedConfId, setSelectedConfId] = useState<string | null>(null);
   const [codes, setCodes] = useState<TicketCodeRow[]>([]);
   const [codesLoading, setCodesLoading] = useState(false);
+  const [buyers, setBuyers] = useState<TicketBuyerRow[]>([]);
   const [codeEmail, setCodeEmail] = useState("");
   const [bulkEmails, setBulkEmails] = useState("");
   const [codeBusy, setCodeBusy] = useState(false);
@@ -159,6 +195,40 @@ export function ConferencesPanel() {
     return () => unsub();
   }, [selectedConfId]);
 
+  // Live buyer roster — carries the tier each person bought, keyed by email so
+  // it can be read alongside their code below.
+  useEffect(() => {
+    if (!selectedConfId) {
+      setBuyers([]);
+      return;
+    }
+    const unsub = onSnapshot(
+      query(collection(db, CONFERENCES, selectedConfId, "ticketBuyers")),
+      (snap) => {
+        setBuyers(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<TicketBuyerRow, "id">) })));
+      },
+      (e) => setError(e.message),
+    );
+    return () => unsub();
+  }, [selectedConfId]);
+
+  const buyersByEmail = useMemo(() => {
+    const map = new Map<string, TicketBuyerRow>();
+    for (const b of buyers) map.set(b.normalizedEmail ?? b.id, b);
+    return map;
+  }, [buyers]);
+
+  /** How many bought each tier, for a quick head count before the doors open. */
+  const tierCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const b of buyers) {
+      if (!b.tierName && !b.tierId) continue;
+      const label = b.tierName ?? b.tierId!;
+      counts.set(label, (counts.get(label) ?? 0) + 1);
+    }
+    return [...counts.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  }, [buyers]);
+
   // Live daily check-in counts for the selected conference.
   useEffect(() => {
     if (!selectedConfId) {
@@ -183,6 +253,9 @@ export function ConferencesPanel() {
     setDescription("");
     setStatus("draft");
     setPriceDollars("0");
+    setVipPriceDollars("");
+    setVipPerks("");
+    setVipCollectsShirtSize(true);
     setCurrency("usd");
     setLocation("");
     setTimezone("");
@@ -204,7 +277,13 @@ export function ConferencesPanel() {
     setName(c.name ?? "");
     setDescription(c.description ?? "");
     setStatus((c.status as ConferenceStatus) ?? "draft");
-    setPriceDollars(String(((c.priceCents ?? 0) / 100).toFixed(2)));
+    // Tiers win when present; `priceCents` is the pre-tiers shape.
+    const ga = c.ticketTiers?.find((t) => t.id === GA_TIER_ID);
+    const vip = c.ticketTiers?.find((t) => t.id === VIP_TIER_ID);
+    setPriceDollars(String(((ga?.priceCents ?? c.priceCents ?? 0) / 100).toFixed(2)));
+    setVipPriceDollars(vip ? String((vip.priceCents / 100).toFixed(2)) : "");
+    setVipPerks((vip?.perks ?? []).join("\n"));
+    setVipCollectsShirtSize(vip ? vip.collectsShirtSize === true : true);
     setCurrency(c.currency ?? "usd");
     setLocation(c.location ?? "");
     setTimezone(c.timezone ?? "");
@@ -287,12 +366,45 @@ export function ConferencesPanel() {
         setError("Price must be a non-negative number.");
         return;
       }
+      const vipTrimmed = vipPriceDollars.trim();
+      const vipDollars = vipTrimmed === "" ? null : Number(vipTrimmed);
+      if (vipDollars !== null && (!Number.isFinite(vipDollars) || vipDollars <= 0)) {
+        setError("VIP price must be a positive number, or blank for no VIP tier.");
+        return;
+      }
+
+      const ticketTiers: ConferenceTierRow[] = [
+        {
+          id: GA_TIER_ID,
+          name: "General Admission",
+          priceCents: Math.round(dollars * 100),
+          perks: [],
+          collectsShirtSize: false,
+        },
+        ...(vipDollars !== null
+          ? [
+            {
+              id: VIP_TIER_ID,
+              name: "VIP Admission",
+              priceCents: Math.round(vipDollars * 100),
+              perks: vipPerks
+                .split("\n")
+                .map((p) => p.trim())
+                .filter((p) => p.length > 0),
+              collectsShirtSize: vipCollectsShirtSize,
+            },
+          ]
+          : []),
+      ];
       const hero = await resolveHeroImageUrl();
       const payload: Record<string, unknown> = {
         name: name.trim(),
         description: description.trim(),
         status,
+        // Kept in step with the GA tier so app builds that predate tiers still
+        // read a real price instead of showing the conference as free.
         priceCents: Math.round(dollars * 100),
+        ticketTiers,
         currency: currency.trim().toLowerCase() || "usd",
         location: location.trim() || null,
         timezone: timezone.trim() || null,
@@ -491,9 +603,9 @@ export function ConferencesPanel() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-2">
-            <Label className="text-foreground">Ticket price ({currency.toUpperCase()})</Label>
+            <Label className="text-foreground">General Admission ({currency.toUpperCase()})</Label>
             <Input type="number" min="0" step="0.01" value={priceDollars} onChange={(e) => setPriceDollars(e.target.value)} className="bg-background" />
-            <p className="text-xs text-muted-foreground">0 = free. Charged via Stripe in a later phase.</p>
+            <p className="text-xs text-muted-foreground">0 = free for everyone (no VIP tier either).</p>
           </div>
           <div className="space-y-2">
             <Label className="text-foreground">Currency</Label>
@@ -502,6 +614,49 @@ export function ConferencesPanel() {
           <div className="space-y-2">
             <Label className="text-foreground">Timezone</Label>
             <Input value={timezone} onChange={(e) => setTimezone(e.target.value)} className="bg-background" placeholder="America/New_York" />
+          </div>
+        </div>
+
+        <div className="rounded-md border border-border p-4 space-y-4">
+          <div>
+            <p className="text-sm font-medium text-foreground">VIP tier (optional)</p>
+            <p className="text-xs text-muted-foreground">
+              Leave the price blank to sell General Admission only. Buyers pick their tier in the app,
+              and which one they bought is recorded against their email below.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-foreground">VIP price ({currency.toUpperCase()})</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={vipPriceDollars}
+                onChange={(e) => setVipPriceDollars(e.target.value)}
+                className="bg-background"
+                placeholder="e.g. 37.50"
+              />
+              <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={vipCollectsShirtSize}
+                  onChange={(e) => setVipCollectsShirtSize(e.target.checked)}
+                  className="accent-primary"
+                />
+                Ask for a T-shirt size at checkout
+              </label>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-foreground">VIP includes (one per line)</Label>
+              <Textarea
+                value={vipPerks}
+                onChange={(e) => setVipPerks(e.target.value)}
+                rows={4}
+                className="bg-background"
+                placeholder={"Access to VIP Lounge\nSwag Tote\nT Shirt\nAdditional drink ticket"}
+              />
+            </div>
           </div>
         </div>
 
@@ -750,6 +905,11 @@ export function ConferencesPanel() {
 
           <div className="border-t border-border pt-4">
             <p className="text-sm font-medium text-foreground mb-2">Who has a code / redeemed</p>
+            {tierCounts.length > 0 ? (
+              <p className="text-xs text-muted-foreground mb-2">
+                {tierCounts.map(([label, n]) => `${n} ${label}`).join(" · ")}
+              </p>
+            ) : null}
             {codesLoading ? (
               <div className="flex items-center gap-2 text-muted-foreground text-sm">
                 <Loader2 className="w-4 h-4 animate-spin" /> Loading…
@@ -762,6 +922,8 @@ export function ConferencesPanel() {
                   <thead>
                     <tr className="border-b border-border bg-muted/40">
                       <th className="p-2 font-medium">Email</th>
+                      <th className="p-2 font-medium">Ticket</th>
+                      <th className="p-2 font-medium">Size</th>
                       <th className="p-2 font-medium">Code</th>
                       <th className="p-2 font-medium">Status</th>
                       <th className="p-2 font-medium"></th>
@@ -771,6 +933,12 @@ export function ConferencesPanel() {
                     {codes.map((c) => (
                       <tr key={c.id} className="border-b border-border/70 last:border-0">
                         <td className="p-2 text-foreground">{c.normalizedEmail}</td>
+                        <td className="p-2 text-muted-foreground">
+                          {buyersByEmail.get(c.normalizedEmail ?? "")?.tierName ?? "—"}
+                        </td>
+                        <td className="p-2 text-muted-foreground">
+                          {buyersByEmail.get(c.normalizedEmail ?? "")?.shirtSize ?? "—"}
+                        </td>
                         <td className="p-2 font-mono text-muted-foreground">{c.codePreview ?? "—"}</td>
                         <td className="p-2">
                           {c.revoked ? (

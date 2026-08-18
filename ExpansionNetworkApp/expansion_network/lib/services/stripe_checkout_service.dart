@@ -58,9 +58,13 @@ class StripeCheckoutService {
   /// Stripe Checkout for a paid conference ticket. On success the webhook
   /// generates the buyer's unique Conference Center code and emails it; the
   /// buyer then redeems it on the conference gate screen.
+  /// [tierId] names the ticket type (`ga`, `vip`, …). The server re-resolves
+  /// its price from the conference doc, so this only selects — it never sets
+  /// what the buyer is charged.
   Future<void> checkoutConferenceTicket({
     required BuildContext context,
     required String conferenceId,
+    String? tierId,
   }) async {
     final platform =
         Theme.of(context).platform == TargetPlatform.iOS ? 'ios' : 'android';
@@ -75,6 +79,7 @@ class StripeCheckoutService {
     final result = await callable.call<Map<String, dynamic>>({
       'purchase_type': 'conference',
       'conference_id': conferenceId,
+      if (tierId != null && tierId.isNotEmpty) 'tier_id': tierId,
       'client_platform': platform,
     });
 
