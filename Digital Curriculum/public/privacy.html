@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<!--
+  Static on purpose.
+
+  Google Play's policy checker fetches this URL without running JavaScript, so a
+  React route would hand it an empty <div id="root"> and fail validation again —
+  which is how the previous Canva link was rejected. This file is copied
+  verbatim into dist/ by Vite and served directly by `serve -s dist`, ahead of
+  the SPA fallback, so the full text is in the initial HTML response.
+
+  Source of truth for the wording: docs/PRIVACY_POLICY.md. Edit both together.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Privacy Policy — MORTAR</title>
+  <meta name="description" content="How MORTAR collects, uses, shares, and protects your information across the MORTARverse app and the MORTAR learning platform." />
+  <meta name="robots" content="index, follow" />
+  <style>
+    :root {
+      --brick: #871002;
+      --ink: #2d2d2d;
+      --muted: #6b6b6b;
+      --line: #e0e0e0;
+      --ground: #ececec;
+      --card: #ffffff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--ground);
+      color: var(--ink);
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 16px;
+      line-height: 1.65;
+    }
+    .wrap { max-width: 820px; margin: 0 auto; padding: 32px 16px 64px; }
+    header.masthead {
+      background: var(--brick);
+      color: #fafcfc;
+      padding: 28px 32px;
+      border-radius: 8px 8px 0 0;
+    }
+    header.masthead p.brand {
+      margin: 0; font-size: 22px; font-weight: bold; letter-spacing: 0.02em;
+    }
+    header.masthead p.sub { margin: 8px 0 0; font-size: 13px; color: #f0d4d0; }
+    main {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-top: none;
+      border-radius: 0 0 8px 8px;
+      padding: 32px;
+    }
+    h1 { font-size: 28px; line-height: 1.25; margin: 0 0 8px; }
+    h2 {
+      font-size: 19px;
+      margin: 36px 0 10px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+    }
+    h3 { font-size: 16px; margin: 22px 0 6px; }
+    p, li { color: var(--ink); }
+    ul { padding-left: 22px; }
+    li { margin-bottom: 6px; }
+    a { color: var(--brick); }
+    .dates {
+      margin: 0 0 24px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+    .lede { font-size: 16.5px; }
+    .tablewrap { overflow-x: auto; margin: 14px 0; }
+    table { border-collapse: collapse; width: 100%; min-width: 460px; }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 9px 12px;
+      text-align: left;
+      font-size: 15px;
+      vertical-align: top;
+    }
+    th { background: #f5f5f5; }
+    .callout {
+      background: #f5f5f5;
+      border-left: 3px solid var(--brick);
+      padding: 14px 16px;
+      margin: 20px 0;
+      font-size: 15px;
+    }
+    footer.pagefoot {
+      margin-top: 34px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+      font-size: 13.5px;
+      color: var(--muted);
+    }
+    footer.pagefoot a { color: var(--brick); }
+    address { font-style: normal; margin: 8px 0 0; }
+    @media (max-width: 600px) {
+      main, header.masthead { padding: 22px 18px; }
+      h1 { font-size: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="masthead">
+      <p class="brand">MORTAR</p>
+      <p class="sub">MORTARverse app &middot; MORTAR learning platform</p>
+    </header>
+
+    <main>
+      <h1>Privacy Policy</h1>
+      <p class="dates">
+        <strong>Effective date:</strong> July 1, 2026 &nbsp;&middot;&nbsp;
+        <strong>Last updated:</strong> July 1, 2026
+      </p>
+
+      <p class="lede">
+        This Privacy Policy explains how <strong>MORTAR</strong> (&ldquo;MORTAR,&rdquo;
+        &ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;) collects, uses, shares, and
+        protects your information when you use the <strong>MORTARverse</strong> (Mortar Alumni
+        Network) mobile app, the <strong>MORTAR</strong> learning platform and websites, and
+        related services (together, the &ldquo;Services&rdquo;).
+      </p>
+      <p>
+        By creating an account or using the Services, you agree to this Privacy Policy. If you do
+        not agree, please do not use the Services. This Policy is incorporated into and part of our
+        Terms of Use.
+      </p>
+
+      <h2>1. Who we are</h2>
+      <p>
+        The Services are operated by <strong>MORTAR</strong>, located at 2453 Gilbert Avenue,
+        Cincinnati, OH 45206, United States. For any privacy question or request, contact us at
+        <a href="mailto:mortarmasters@wearemortar.com">mortarmasters@wearemortar.com</a>.
+      </p>
+      <p>
+        For most information you provide, MORTAR is the &ldquo;controller&rdquo; (the party that
+        decides how and why your data is processed). Some processing is carried out by our service
+        providers (&ldquo;processors&rdquo;) on our behalf &mdash; see Section 6.
+      </p>
+
+      <h2>2. Information we collect</h2>
+
+      <h3>a. Information you provide</h3>
+      <ul>
+        <li><strong>Account &amp; access:</strong> email address and password (managed by our authentication provider), and, for invite-based access, your invitation eligibility (email on an approved roster) and cohort.</li>
+        <li><strong>Profile:</strong> first and last name, display name, city and state, cohort, biography, profile photo, business/logo image, professional goals, skills you&rsquo;re confident in, skills you want to develop, industry, and links you choose to add (e.g. LinkedIn, portfolio, and other social profiles).</li>
+        <li><strong>Content you create:</strong> posts, community/group threads and comments, replies, votes/likes, direct messages, event submissions and RSVPs, job and skill listings, survey responses, and graduation/alumni applications.</li>
+        <li><strong>Communications &amp; preferences:</strong> messages you send us, and your email notification preferences (e.g. events, course nudges, admin messages).</li>
+        <li><strong>Support &amp; reports:</strong> information you submit when you contact us or report content or another user.</li>
+      </ul>
+
+      <h3>b. Payment information</h3>
+      <p>
+        When you make a purchase (e.g. paid course modules, event tickets, or shop orders), payment
+        card details are collected and processed <strong>directly by our payment processor,
+        Stripe</strong> &mdash; we do <strong>not</strong> receive or store your full card number.
+        We retain order records such as items purchased, amounts, tax, shipping address (for shop
+        orders), and payment status.
+      </p>
+
+      <h3>c. Information collected automatically</h3>
+      <ul>
+        <li><strong>Usage &amp; analytics:</strong> in-app events and interactions (e.g. screens viewed, features used, checkout steps), timestamps, and a session identifier, used to understand and improve the Services.</li>
+        <li><strong>Device &amp; technical data:</strong> device and app version information, and a <strong>push-notification token</strong> if you enable notifications, so we can deliver alerts.</li>
+        <li><strong>We do not collect precise GPS location.</strong> Any location shown (e.g. your city/state) is text you provide.</li>
+      </ul>
+
+      <h3>d. Information from third parties</h3>
+      <ul>
+        <li><strong>Authentication and infrastructure providers</strong> (see Section 6) supply account and technical data needed to operate the Services.</li>
+        <li>If your organization or a cohort administrator adds you to an approved access roster, we receive the email address used to invite you.</li>
+      </ul>
+
+      <h2>3. How we use your information</h2>
+      <p>We use your information to:</p>
+      <ul>
+        <li>Create and manage your account and verify eligibility/access;</li>
+        <li>Provide the Services &mdash; profiles, communities, events, direct messaging, the jobs &amp; skills marketplace, and <strong>matching</strong> (suggesting relevant members based on your skills, goals, and industry);</li>
+        <li>Process payments and fulfill orders;</li>
+        <li>Send transactional and, where permitted, informational or promotional emails and push notifications (you can opt out &mdash; see Section 8);</li>
+        <li>Personalize content and recommendations;</li>
+        <li>Maintain safety and integrity &mdash; moderate content, review reports, prevent fraud and abuse, and enforce our Terms;</li>
+        <li>Analyze and improve the Services and develop new features;</li>
+        <li>Comply with legal obligations and enforce our agreements.</li>
+      </ul>
+      <p>
+        <strong>Legal bases (EEA/UK users):</strong> we process your information to perform our
+        contract with you (providing the Services), based on your consent (e.g. marketing emails,
+        push notifications), for our legitimate interests (securing and improving the Services),
+        and to comply with legal obligations.
+      </p>
+
+      <h2>4. How your information is shared / visible</h2>
+      <ul>
+        <li><strong>With other users:</strong> your profile (name, photo, skills, goals, industry, links) and the content you post (community threads, comments, listings, event participation) are visible to other members of the network. Direct messages are visible to the participants of that conversation. Please don&rsquo;t share anything you consider private in public areas of the Services.</li>
+        <li><strong>With administrators:</strong> MORTAR staff/administrators can view member profiles, content, reports, and order/payment records to operate and moderate the Services.</li>
+        <li><strong>With service providers (processors):</strong> see Section 6.</li>
+        <li><strong>For legal reasons:</strong> to comply with law, respond to lawful requests, or protect the rights, safety, and property of MORTAR, our users, or others.</li>
+        <li><strong>Business transfers:</strong> in connection with a merger, acquisition, financing, or sale of assets, information may be transferred as part of that transaction.</li>
+      </ul>
+      <div class="callout">
+        <strong>We do not sell your personal information, and we do not share it for
+        cross-context behavioral advertising.</strong>
+      </div>
+
+      <h2>5. Community content and messaging</h2>
+      <p>
+        Content you post to communities, events, listings, and discussions may be seen by other
+        members and by administrators, and may remain visible to others even after you delete your
+        account (for example, in others&rsquo; conversations or where a copy has been re-shared).
+        Direct messages are accessible to the people in the conversation and to administrators for
+        safety and moderation.
+      </p>
+
+      <h2>6. Service providers we use (sub-processors)</h2>
+      <p>
+        We rely on trusted providers to run the Services. They process data only as needed to
+        provide their services to us:
+      </p>
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr><th>Provider</th><th>Purpose</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>Google Firebase / Google Cloud</strong></td><td>Authentication, database (Firestore), file storage, cloud functions, and push messaging (FCM)</td></tr>
+            <tr><td><strong>Stripe</strong></td><td>Payment processing and tax calculation</td></tr>
+            <tr><td><strong>Brevo (Sendinblue)</strong></td><td>Transactional and informational email delivery</td></tr>
+            <tr><td><strong>Railway</strong></td><td>Web application hosting</td></tr>
+            <tr><td><strong>Apple / Google</strong></td><td>App distribution and push-notification delivery (APNs / FCM)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        Each provider maintains its own privacy practices. We encourage you to review the policies
+        of Stripe, Google, Brevo, Apple, and Google Play.
+      </p>
+
+      <h2>7. Data retention</h2>
+      <p>
+        We keep your information for as long as your account is active or as needed to provide the
+        Services, and thereafter as required to comply with legal obligations, resolve disputes,
+        prevent abuse, and enforce our agreements. Payment and order records are retained as needed
+        for tax, accounting, and legal purposes. Aggregated or de-identified analytics may be
+        retained indefinitely.
+      </p>
+
+      <h2>8. Your choices</h2>
+      <ul>
+        <li><strong>Profile:</strong> you can view and edit your profile information in the app at any time.</li>
+        <li><strong>Notifications:</strong> manage push notifications in your device settings; manage email preferences in the app (or via the unsubscribe link in our emails). We may still send essential transactional messages (e.g. account, security, and payment notices).</li>
+        <li><strong>Marketing consent:</strong> where you opted in, you may withdraw consent at any time.</li>
+      </ul>
+
+      <h2>9. How to access or delete your account and data</h2>
+      <p>
+        You can request to access, correct, or delete your personal information, or delete your
+        account, by:
+      </p>
+      <ul>
+        <li>Using in-app account controls where available, or the
+          <a href="/delete-account">account deletion request form</a>, or</li>
+        <li>Emailing <a href="mailto:mortarmasters@wearemortar.com?subject=Privacy%20Request">mortarmasters@wearemortar.com</a> with the subject &ldquo;Privacy Request.&rdquo;</li>
+      </ul>
+      <p>
+        We will verify your request and respond within the time required by applicable law. Some
+        information may be retained where we have a legal obligation or legitimate business need
+        (see Section 7), and content shared in community areas may persist as described in
+        Section 5.
+      </p>
+
+      <h2>10. Your privacy rights</h2>
+      <p>Depending on where you live, you may have rights to:</p>
+      <ul>
+        <li>Access the personal information we hold about you;</li>
+        <li>Correct inaccurate information;</li>
+        <li>Delete your information;</li>
+        <li>Port your information to another service;</li>
+        <li>Object to or restrict certain processing;</li>
+        <li>Withdraw consent where processing is based on consent.</li>
+      </ul>
+      <p>
+        To exercise any right, contact
+        <a href="mailto:mortarmasters@wearemortar.com">mortarmasters@wearemortar.com</a>. We will
+        not discriminate against you for exercising these rights. You may also have the right to
+        appeal a decision or to lodge a complaint with your local data protection authority.
+      </p>
+      <p>
+        <strong>California residents (CCPA/CPRA):</strong> you have the rights described above,
+        including the right to know, delete, and correct. We do <strong>not</strong> sell or
+        &ldquo;share&rdquo; (for cross-context behavioral advertising) your personal information.
+      </p>
+      <p>
+        <strong>EEA/UK residents (GDPR):</strong> the legal bases for our processing are described
+        in Section 3. You may contact your supervisory authority if you have concerns.
+      </p>
+
+      <h2>11. Children&rsquo;s privacy</h2>
+      <p>
+        The Services are intended for users <strong>18</strong> and older. We do not knowingly
+        collect personal information from children under 13 (or the minimum age required in your
+        jurisdiction). If you believe a child has provided us information, contact
+        <a href="mailto:mortarmasters@wearemortar.com">mortarmasters@wearemortar.com</a> and we
+        will delete it.
+      </p>
+      <p>
+        Our standards against child sexual abuse and exploitation are published separately at
+        <a href="/child-safety">/child-safety</a>.
+      </p>
+
+      <h2>12. Security</h2>
+      <p>
+        We use administrative, technical, and organizational safeguards &mdash; including access
+        controls and encryption in transit &mdash; to protect your information. No method of
+        transmission or storage is 100% secure, and we cannot guarantee absolute security. Please
+        protect your account credentials.
+      </p>
+
+      <h2>13. International data transfers</h2>
+      <p>
+        We are based in the United States, and our providers may process and store information in
+        the U.S. and other countries. Where required, we rely on appropriate safeguards (such as
+        standard contractual clauses) for international transfers. By using the Services, you
+        understand your information may be transferred to and processed in the United States.
+      </p>
+
+      <h2>14. Changes to this Policy</h2>
+      <p>
+        We may update this Privacy Policy from time to time. When we do, we will revise the
+        &ldquo;Last updated&rdquo; date above and, where appropriate, provide additional notice
+        (for example, in the app or by email). Your continued use of the Services after changes
+        take effect constitutes acceptance of the updated Policy.
+      </p>
+
+      <h2>15. Contact us</h2>
+      <p><strong>MORTAR</strong></p>
+      <address>
+        2453 Gilbert Avenue<br />
+        Cincinnati, OH 45206<br />
+        United States<br />
+        Email: <a href="mailto:mortarmasters@wearemortar.com">mortarmasters@wearemortar.com</a><br />
+        Website: <a href="https://wearemortar.com">wearemortar.com</a>
+      </address>
+      <p style="margin-top:16px;">
+        This Policy is governed by the laws of the State of <strong>Ohio</strong>, United States,
+        without regard to its conflict-of-laws principles.
+      </p>
+
+      <footer class="pagefoot">
+        <p>
+          <a href="/child-safety">Child safety standards</a> &nbsp;&middot;&nbsp;
+          <a href="/delete-account">Delete your account</a> &nbsp;&middot;&nbsp;
+          <a href="/get-the-app">Get the app</a>
+        </p>
+        <p>&copy; MORTAR &middot; Cincinnati, Ohio</p>
+      </footer>
+    </main>
+  </div>
+</body>
+</html>

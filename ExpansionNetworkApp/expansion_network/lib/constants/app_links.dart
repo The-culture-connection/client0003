@@ -12,4 +12,17 @@ abstract final class AppLinks {
     'DIGITAL_CURRICULUM_URL',
     defaultValue: 'https://mortar-stage-stage.up.railway.app',
   );
+
+  /// Public privacy policy — the URL registered in Play Console and App Store
+  /// Connect, and the one linked from the profile screen.
+  ///
+  /// `.html` is not a typo. The page is a static file (`public/privacy.html`)
+  /// rather than a React route, because Google Play's policy checker fetches it
+  /// without running JavaScript and a route would hand it an empty shell. That
+  /// is what got the previous Canva link rejected. Keep this in step with
+  /// `digitalCurriculum` above.
+  static const String privacyPolicy = '$digitalCurriculum/privacy.html';
+
+  /// Public account & data deletion request form (Google Play requirement).
+  static const String deleteAccount = '$digitalCurriculum/delete-account';
 }

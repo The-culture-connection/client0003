@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../constants/app_links.dart';
 import '../data/curriculum_onboarding_data.dart';
+import '../utils/safe_launch_url.dart';
 import '../profile/profile_edit_sections.dart';
 import '../services/user_profile_repository.dart';
 import '../theme/app_theme.dart';
@@ -770,6 +772,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                 // 5.1.1(v). Shown on the full profile edit only — a deep link
                 // to one section ("?section=industry") is a focused task and
                 // has no business offering to delete the account.
+                if (showAll) _privacyPolicyLink(context),
                 if (showAll) _dangerZone(context),
                 const SizedBox(height: 32),
               ],
@@ -809,6 +812,34 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   /// Bottom-of-page destructive section. Deliberately understated — it opens a
   /// screen that explains the consequences and takes a typed confirmation, so
   /// this button itself does nothing irreversible.
+  /// In-app route to the published privacy policy. Google Play expects the
+  /// policy to be reachable from inside the app as well as from the listing.
+  Widget _privacyPolicyLink(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 32),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: TextButton.icon(
+          onPressed: () => safeLaunchExternalUrl(
+            Uri.parse(AppLinks.privacyPolicy),
+            messengerContext: context,
+            userFailureMessage: 'Could not open the privacy policy.',
+          ),
+          style: TextButton.styleFrom(
+            foregroundColor: AppColors.mutedForeground,
+            padding: EdgeInsets.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          icon: const Icon(Icons.privacy_tip_outlined, size: 16),
+          label: const Text(
+            'Privacy policy',
+            style: TextStyle(fontSize: 13, decoration: TextDecoration.underline),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _dangerZone(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(top: 40),

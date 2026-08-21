@@ -196,6 +196,11 @@ export function GetTheAppPage() {
             </a>
           </p>
           <p className="text-xs">
+            {/* Static file, not a route — see public/privacy.html. */}
+            <a className="underline" href="/privacy.html">
+              Privacy policy
+            </a>{" "}
+            ·{" "}
             <a className="underline" href="/delete-account">
               Delete your account
             </a>{" "}

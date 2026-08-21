@@ -254,6 +254,16 @@ export function LoginPage() {
           >
             Get the {MOBILE_APP_NAME} app →
           </Link>
+          <p className="mt-3 text-xs text-muted-foreground">
+            {/* Static file, not a route — see public/privacy.html. */}
+            <a className="underline hover:text-foreground" href="/privacy.html">
+              Privacy policy
+            </a>{" "}
+            ·{" "}
+            <a className="underline hover:text-foreground" href="/child-safety">
+              Child safety
+            </a>
+          </p>
         </div>
       </Card>
     </div>

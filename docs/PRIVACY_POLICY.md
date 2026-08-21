@@ -17,6 +17,12 @@
     [GOVERNING STATE]     e.g. Ohio
 -->
 
+> **Published version:** `Digital Curriculum/public/privacy.html`, served at
+> `<platform-url>/privacy.html`. That static file — not this Markdown — is what
+> Google Play and the App Store crawl, and it is deliberately a plain HTML file
+> rather than a React route because the Play policy checker does not run
+> JavaScript. **Edit both together**, and keep the `.html` in the registered URL.
+
 # Privacy Policy
 
 **Effective date:** [7/1/2026]

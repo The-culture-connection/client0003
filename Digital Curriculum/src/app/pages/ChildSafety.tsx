@@ -184,9 +184,19 @@ export function ChildSafetyPage() {
           </p>
         </Card>
 
-        <p className="pb-8 text-center text-sm text-muted-foreground">
-          MORTAR · Cincinnati, Ohio
-        </p>
+        <div className="space-y-2 pb-8 text-center text-sm text-muted-foreground">
+          <p>
+            {/* Static file, not a route — see public/privacy.html. */}
+            <a className="underline" href="/privacy.html">
+              Privacy policy
+            </a>{" "}
+            ·{" "}
+            <a className="underline" href="/delete-account">
+              Delete your account
+            </a>
+          </p>
+          <p>MORTAR · Cincinnati, Ohio</p>
+        </div>
       </div>
     </div>
   );

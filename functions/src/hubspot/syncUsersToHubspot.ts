@@ -46,6 +46,10 @@ export type HubspotSyncResult = {
   scanned: number;
   mapped: number;
   skippedNoEmail: number;
+  /** Users with `hubspot_sync_exclude: true` on their users/{uid} doc. */
+  skippedExcluded: number;
+  /** Extra user docs sharing an email already mapped this run (only the most recently updated doc per email is sent). */
+  skippedDuplicateEmail: number;
   batches: number;
   upserted: number;
   failedBatches: number;
@@ -53,6 +57,17 @@ export type HubspotSyncResult = {
   /** First few mapped payloads — returned on dry runs for inspection. */
   samplePayloads?: HubspotContactInput[];
 };
+
+function toMillisSafe(value: unknown): number {
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as {toMillis?: unknown}).toMillis === "function"
+  ) {
+    return (value as {toMillis: () => number}).toMillis();
+  }
+  return 0;
+}
 
 /**
  * Core sync routine, shared by the scheduled function and the admin callable.
@@ -68,32 +83,21 @@ export async function runHubspotUserSync(
     scanned: 0,
     mapped: 0,
     skippedNoEmail: 0,
+    skippedExcluded: 0,
+    skippedDuplicateEmail: 0,
     batches: 0,
     upserted: 0,
     failedBatches: 0,
     unknownRoles: [],
   };
-  const samples: HubspotContactInput[] = [];
   const unknownRoleSet = new Set<string>();
 
-  let pending: HubspotContactInput[] = [];
-
-  const flush = async (): Promise<void> => {
-    if (pending.length === 0) return;
-    const batch = pending;
-    pending = [];
-    result.batches++;
-    if (dryRun) {
-      result.upserted += batch.length;
-      return;
-    }
-    const res = await batchUpsertContacts(batch);
-    if (res.ok) {
-      result.upserted += res.upserted;
-    } else {
-      result.failedBatches++;
-    }
-  };
+  // Dedupe by email across the whole scan: if two user docs resolve to the
+  // same email, only the most recently updated doc is sent. Prevents one
+  // person with multiple accounts (or duplicate user docs) from producing
+  // conflicting upserts in a single run.
+  const byEmail = new Map<string, {input: HubspotContactInput; updatedAtMs: number}>();
+  const duplicateEmails = new Set<string>();
 
   let lastDoc: FirebaseFirestore.QueryDocumentSnapshot | null = null;
   while (result.scanned < scanLimit) {
@@ -110,27 +114,63 @@ export async function runHubspotUserSync(
 
     for (const docSnap of page.docs) {
       result.scanned++;
-      const mappedUser = mapUserToHubspotContact(docSnap.id, docSnap.data());
+      const data = docSnap.data();
+      // Opt-out flag for test/beta accounts: set users/{uid}.hubspot_sync_exclude = true
+      // and this user is never sent to HubSpot (existing contacts are not deleted).
+      if (data.hubspot_sync_exclude === true) {
+        result.skippedExcluded++;
+        continue;
+      }
+      const mappedUser = mapUserToHubspotContact(docSnap.id, data);
       if (!mappedUser) {
         result.skippedNoEmail++;
         continue;
       }
-      result.mapped++;
       mappedUser.unknownRoles.forEach((r) => unknownRoleSet.add(r));
-      if (samples.length < 3) samples.push(mappedUser.input);
-      pending.push(mappedUser.input);
-      if (pending.length >= HUBSPOT_BATCH_LIMIT) {
-        // eslint-disable-next-line no-await-in-loop
-        await flush();
+      const email = mappedUser.input.id;
+      const updatedAtMs = toMillisSafe(data.updated_at);
+      const existing = byEmail.get(email);
+      if (existing) {
+        result.skippedDuplicateEmail++;
+        duplicateEmails.add(email);
+        if (updatedAtMs > existing.updatedAtMs) {
+          byEmail.set(email, {input: mappedUser.input, updatedAtMs});
+        }
+      } else {
+        byEmail.set(email, {input: mappedUser.input, updatedAtMs});
       }
     }
 
     if (page.size < PAGE_SIZE) break;
   }
-  await flush();
+
+  const finalInputs = Array.from(byEmail.values()).map((v) => v.input);
+  result.mapped = finalInputs.length;
+
+  if (duplicateEmails.size > 0) {
+    logger.warn("HubSpot sync: multiple user docs share an email; sent most-recent only", {
+      duplicateEmailCount: duplicateEmails.size,
+    });
+  }
+
+  for (let i = 0; i < finalInputs.length; i += HUBSPOT_BATCH_LIMIT) {
+    const batch = finalInputs.slice(i, i + HUBSPOT_BATCH_LIMIT);
+    result.batches++;
+    if (dryRun) {
+      result.upserted += batch.length;
+      continue;
+    }
+    // eslint-disable-next-line no-await-in-loop
+    const res = await batchUpsertContacts(batch);
+    if (res.ok) {
+      result.upserted += res.upserted;
+    } else {
+      result.failedBatches++;
+    }
+  }
 
   result.unknownRoles = Array.from(unknownRoleSet);
-  if (dryRun) result.samplePayloads = samples;
+  if (dryRun) result.samplePayloads = finalInputs.slice(0, 3);
 
   if (result.unknownRoles.length > 0) {
     logger.warn("HubSpot sync: roles with no HubSpot option (add options in HubSpot + mapper)", {
@@ -150,6 +190,8 @@ export async function runHubspotUserSync(
         scanned: result.scanned,
         mapped: result.mapped,
         skipped_no_email: result.skippedNoEmail,
+        skipped_excluded: result.skippedExcluded,
+        skipped_duplicate_email: result.skippedDuplicateEmail,
         batches: result.batches,
         upserted: result.upserted,
         failed_batches: result.failedBatches,
@@ -168,6 +210,8 @@ export async function runHubspotUserSync(
     scanned: result.scanned,
     mapped: result.mapped,
     skippedNoEmail: result.skippedNoEmail,
+    skippedExcluded: result.skippedExcluded,
+    skippedDuplicateEmail: result.skippedDuplicateEmail,
     batches: result.batches,
     upserted: result.upserted,
     failedBatches: result.failedBatches,
