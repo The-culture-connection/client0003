@@ -1335,25 +1335,44 @@ export function LessonPlayer() {
           <ChevronLeft className="w-5 h-5 mr-2" />
           Previous
         </Button>
-        <Button
-          variant="secondary"
-          size="lg"
-          onClick={handleNext}
-          disabled={nextDisabled}
-          className="text-foreground"
-        >
-          {atEnd && hasQuiz && !userPassed
-            ? "Start Quiz"
-            : pendingSurveysAfterCurrentSlide().length > 0 ||
-                (atEnd && pendingEndSurveys().length > 0)
-              ? pendingSurveysAfterCurrentSlide()[0]?.title?.trim()
-                ? `Survey: ${pendingSurveysAfterCurrentSlide()[0].title}`
-                : atEnd && pendingEndSurveys()[0]?.title?.trim()
-                  ? `Survey: ${pendingEndSurveys()[0].title}`
-                  : "Start Survey"
-              : "Next"}
-          <ChevronRight className="w-5 h-5 ml-2" />
-        </Button>
+        {/* On the final slide there is nowhere left to advance, so the Next
+            button becomes a Close button (in addition to the one in the
+            header) rather than sitting there greyed out. */}
+        {nextDisabled ? (
+          <Button
+            variant="secondary"
+            size="lg"
+            onClick={saveProgressAndExit}
+            disabled={isSaving}
+            className="text-foreground"
+          >
+            {isSaving ? (
+              <Loader2 className="w-5 h-5 animate-spin mr-2" />
+            ) : (
+              <LogOut className="w-5 h-5 mr-2" />
+            )}
+            Close
+          </Button>
+        ) : (
+          <Button
+            variant="secondary"
+            size="lg"
+            onClick={handleNext}
+            className="text-foreground"
+          >
+            {atEnd && hasQuiz && !userPassed
+              ? "Start Quiz"
+              : pendingSurveysAfterCurrentSlide().length > 0 ||
+                  (atEnd && pendingEndSurveys().length > 0)
+                ? pendingSurveysAfterCurrentSlide()[0]?.title?.trim()
+                  ? `Survey: ${pendingSurveysAfterCurrentSlide()[0].title}`
+                  : atEnd && pendingEndSurveys()[0]?.title?.trim()
+                    ? `Survey: ${pendingEndSurveys()[0].title}`
+                    : "Start Survey"
+                : "Next"}
+            <ChevronRight className="w-5 h-5 ml-2" />
+          </Button>
+        )}
       </div>
         </>
       )}

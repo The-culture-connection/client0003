@@ -28,13 +28,39 @@ export function LessonSlideScreen({
 }: LessonSlideScreenProps) {
   const [openPopupId, setOpenPopupId] = useState<string | null>(null);
 
+  const hasLinks = links.length > 0;
+
   return (
     <div className="w-full h-full flex flex-col items-center justify-center gap-3 p-2 md:p-3">
+      {/* Beta feedback: the slide's own "Download Here" call-out sits partway
+          down a tall image, and the link buttons used to render below the
+          viewer where they were easy to miss. They now sit at the TOP of the
+          screen, above the slide, so the download is visible immediately. */}
+      {hasLinks && (
+        <div className="w-full max-w-[1400px] flex flex-wrap items-center justify-center gap-3">
+          {links.map((link, i) => (
+            <a key={i} href={link.url} target="_blank" rel="noopener noreferrer">
+              <Button size="lg" className="gap-2 shadow-lg">
+                {isDownload(link) ? (
+                  <Download className="w-4 h-4" />
+                ) : (
+                  <ExternalLink className="w-4 h-4" />
+                )}
+                {link.label}
+              </Button>
+            </a>
+          ))}
+        </div>
+      )}
       {/* Viewer window — sized to the viewport height (not a fixed 16:9
           letterbox) so more of each tall slide is visible at once; vertical
           scroll for the rest. Content fills nearly the whole page (beta
           feedback: less scrolling, no decorative texture on the surface). */}
-      <div className="relative w-full max-w-[1400px] h-[calc(100vh-150px)] min-h-[420px] overflow-hidden rounded-xl lesson-card-surface shadow-2xl ring-1 ring-black/10">
+      <div
+        className={`relative w-full max-w-[1400px] min-h-[420px] overflow-hidden rounded-xl lesson-card-surface shadow-2xl ring-1 ring-black/10 ${
+          hasLinks ? "h-[calc(100vh-210px)]" : "h-[calc(100vh-150px)]"
+        }`}
+      >
         <div className="absolute inset-0 overflow-y-auto">
           <div className="relative w-full">
             <img src={src} alt={alt} className="w-full block" draggable={false} />
@@ -61,23 +87,6 @@ export function LessonSlideScreen({
           </div>
         </div>
       </div>
-
-      {links.length > 0 && (
-        <div className="flex flex-wrap items-center justify-center gap-3">
-          {links.map((link, i) => (
-            <a key={i} href={link.url} target="_blank" rel="noopener noreferrer">
-              <Button className="gap-2">
-                {isDownload(link) ? (
-                  <Download className="w-4 h-4" />
-                ) : (
-                  <ExternalLink className="w-4 h-4" />
-                )}
-                {link.label}
-              </Button>
-            </a>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

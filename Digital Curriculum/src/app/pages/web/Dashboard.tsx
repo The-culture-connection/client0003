@@ -237,10 +237,18 @@ export function WebDashboard() {
     return map;
   }, [courses]);
 
-  const displayName =
-    profile?.first_name || profile?.last_name
-      ? [profile.first_name, profile.last_name].filter(Boolean).join(" ") || user?.displayName || user?.email || "User"
-      : user?.displayName || user?.email || "User";
+  // Beta feedback: the welcome header greets the learner by FIRST NAME only —
+  // never their email address. Falls back through the auth display name, then a
+  // best-effort first token of the email local part, then a neutral greeting.
+  const displayName = (() => {
+    const first = profile?.first_name?.trim();
+    if (first) return first.split(/\s+/)[0];
+    const authName = user?.displayName?.trim();
+    if (authName) return authName.split(/\s+/)[0];
+    const localPart = user?.email?.split("@")[0]?.split(/[._\-+]/)[0]?.trim();
+    if (localPart) return localPart.charAt(0).toUpperCase() + localPart.slice(1);
+    return "Builder";
+  })();
 
   const primaryCourse = courses[0];
   const primaryProgress = primaryCourse?.id ? progressMap[primaryCourse.id] : null;
