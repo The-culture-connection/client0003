@@ -132,6 +132,62 @@
     }
     footer.pagefoot a { color: var(--brick); }
     address { font-style: normal; }
+
+    /* Confirmation popup for the copy-email button. */
+    .popup-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 100;
+    }
+    .popup-backdrop[hidden] { display: none; }
+    .popup {
+      background: var(--card);
+      border-radius: 10px;
+      max-width: 420px;
+      width: 100%;
+      padding: 26px 26px 20px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+      text-align: center;
+    }
+    .popup h2 {
+      margin: 0 0 10px;
+      padding: 0;
+      border: none;
+      font-size: 18px;
+      color: var(--brick);
+    }
+    .popup p { margin: 0 0 8px; font-size: 15px; }
+    .popup .addr {
+      display: block;
+      margin: 14px 0 4px;
+      padding: 11px 12px;
+      background: #f5f5f5;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      font-family: "Courier New", Courier, monospace;
+      font-size: 15px;
+      word-break: break-all;
+      user-select: all;
+    }
+    .popup button {
+      margin-top: 16px;
+      background: var(--brick);
+      color: #fafcfc;
+      border: none;
+      border-radius: 6px;
+      padding: 11px 30px;
+      font-size: 15px;
+      font-weight: bold;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    .popup button:focus-visible { outline: 3px solid #f0d4d0; outline-offset: 2px; }
+
     @media (max-width: 600px) {
       main, header.masthead { padding: 22px 18px; }
       h1 { font-size: 23px; }
@@ -189,7 +245,20 @@
       </p>
       <p>
         <a class="cta" href="/delete-account">Open the deletion request form</a>
-        <a class="cta secondary" href="mailto:masters@wearemortar.com?subject=Account%20deletion%20request&amp;body=Please%20delete%20my%20MORTAR%20Alumni%20Network%20account.%0A%0AEmail%20address%20on%20the%20account%3A%20%0AName%20on%20the%20account%20(optional)%3A%20">Request by email instead</a>
+        <!-- href is a mailto so the button still does something useful with
+             JavaScript off; the script below intercepts the click and copies
+             instead, because a mailto is dead on any device with no mail client
+             configured, which is how this button first shipped doing nothing. -->
+        <a
+          class="cta secondary"
+          id="copy-support-email"
+          data-email="masters@wearemortar.com"
+          href="mailto:masters@wearemortar.com?subject=Account%20deletion%20request&amp;body=Please%20delete%20my%20MORTAR%20Alumni%20Network%20account.%0A%0AEmail%20address%20on%20the%20account%3A%20%0AName%20on%20the%20account%20(optional)%3A%20"
+        >Copy our support email</a>
+      </p>
+      <p style="font-size:15px;color:var(--muted);margin-top:2px;">
+        Or write to us directly at
+        <a href="mailto:masters@wearemortar.com">masters@wearemortar.com</a>.
       </p>
 
       <h2>What gets deleted</h2>
@@ -252,5 +321,97 @@
       </footer>
     </main>
   </div>
+
+  <!-- Shown after the copy button is pressed. Inert markup until then, so it
+       costs the Play crawler nothing. -->
+  <div class="popup-backdrop" id="copied-popup" hidden>
+    <div class="popup" role="dialog" aria-modal="true" aria-labelledby="copied-title">
+      <h2 id="copied-title">Copied</h2>
+      <p id="copied-message">
+        MORTAR&rsquo;s technical support email has been copied. Let us know what
+        we can do to help, or delete your account!
+      </p>
+      <span class="addr" id="copied-address">masters@wearemortar.com</span>
+      <button type="button" id="copied-close">Close</button>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var trigger = document.getElementById('copy-support-email');
+      var popup = document.getElementById('copied-popup');
+      var closeBtn = document.getElementById('copied-close');
+      var message = document.getElementById('copied-message');
+      var title = document.getElementById('copied-title');
+      if (!trigger || !popup || !closeBtn) return;
+
+      var email = trigger.getAttribute('data-email') || '';
+      var lastFocus = null;
+
+      // Older browsers, and any context where the async Clipboard API is
+      // unavailable, still get a working copy through the legacy path.
+      function legacyCopy(text) {
+        var field = document.createElement('textarea');
+        field.value = text;
+        field.setAttribute('readonly', '');
+        field.style.position = 'fixed';
+        field.style.top = '-1000px';
+        document.body.appendChild(field);
+        field.select();
+        var ok = false;
+        try {
+          ok = document.execCommand('copy');
+        } catch (e) {
+          ok = false;
+        }
+        document.body.removeChild(field);
+        return ok;
+      }
+
+      function copy(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          return navigator.clipboard.writeText(text).then(
+            function () { return true; },
+            function () { return legacyCopy(text); }
+          );
+        }
+        return Promise.resolve(legacyCopy(text));
+      }
+
+      function open(copied) {
+        // A failed copy must not look like a success — the address is on screen
+        // either way, so the reader can always take it manually.
+        if (!copied) {
+          title.textContent = 'Our support email';
+          message.textContent =
+            'Copy the address below and email us. Let us know what we can do to ' +
+            'help, or delete your account!';
+        }
+        lastFocus = document.activeElement;
+        popup.hidden = false;
+        closeBtn.focus();
+      }
+
+      function close() {
+        popup.hidden = true;
+        if (lastFocus && lastFocus.focus) lastFocus.focus();
+      }
+
+      trigger.addEventListener('click', function (event) {
+        // Only take over when we can actually copy. With JavaScript disabled
+        // this listener never runs and the mailto href stands.
+        event.preventDefault();
+        copy(email).then(open);
+      });
+
+      closeBtn.addEventListener('click', close);
+      popup.addEventListener('click', function (event) {
+        if (event.target === popup) close();
+      });
+      document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && !popup.hidden) close();
+      });
+    })();
+  </script>
 </body>
 </html>
