@@ -101,6 +101,14 @@ export function DeleteAccountPage() {
             web platform. You do not need to be signed in, or to have the app
             installed, to use it.
           </p>
+          {/* Named explicitly because Google Play requires the deletion page to
+              reference the app and developer as they appear in the listing. The
+              URL registered with Play is the static /delete-account.html, which
+              their non-JavaScript checker can actually read — keep both in step. */}
+          <p className="mt-2 text-xs text-muted-foreground">
+            MORTAR Alumni Network (com.expansionnetwork.expansion_network) is
+            published by MORTAR, Cincinnati, Ohio.
+          </p>
         </div>
 
         <Card className="p-6">

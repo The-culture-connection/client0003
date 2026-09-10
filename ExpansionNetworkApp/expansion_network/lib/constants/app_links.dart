@@ -23,6 +23,13 @@ abstract final class AppLinks {
   /// `digitalCurriculum` above.
   static const String privacyPolicy = '$digitalCurriculum/privacy.html';
 
-  /// Public account & data deletion request form (Google Play requirement).
-  static const String deleteAccount = '$digitalCurriculum/delete-account';
+  /// Public account & data deletion page — the URL registered in the Play
+  /// Data safety form.
+  ///
+  /// `.html` for the same reason as [privacyPolicy]: Play's reviewer does not
+  /// run JavaScript, so the React route at `/delete-account` reads to them as an
+  /// empty page with no app or developer named — which is exactly what the
+  /// September 2026 Data safety review flagged. The static page states the app
+  /// name, package and developer, and links on to the interactive form.
+  static const String deleteAccount = '$digitalCurriculum/delete-account.html';
 }

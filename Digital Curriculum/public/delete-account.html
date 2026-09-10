@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<!--
+  Static on purpose — this is the URL registered in the Google Play Data safety
+  form.
+
+  The React route at /delete-account renders the same information, but Play's
+  reviewer fetches the URL WITHOUT running JavaScript and receives only the
+  empty <div id="root"> shell. That is why the September 2026 review reported
+  "does not link to a valid page, missing reference to the app or to the entity"
+  even though the React page names MORTAR Alumni Network in its copy: none of it
+  was in the HTML response.
+
+  Play requires this page to name the app and/or the developer exactly as they
+  appear in the store listing, so the identity block below is deliberately
+  explicit and near the top. Keep it in step with the listing.
+
+  Served directly by `serve -s dist` because public/serve.json sets
+  cleanUrls=false — see railway.toml. Wording mirrors
+  src/app/pages/DeleteAccount.tsx; edit both together.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Delete your MORTAR Alumni Network account — MORTAR</title>
+  <meta name="description" content="How to permanently delete your MORTAR Alumni Network account and associated data. MORTAR Alumni Network is published by MORTAR, Cincinnati, Ohio." />
+  <meta name="robots" content="index, follow" />
+  <style>
+    :root {
+      --brick: #871002;
+      --ink: #2d2d2d;
+      --muted: #6b6b6b;
+      --line: #e0e0e0;
+      --ground: #ececec;
+      --card: #ffffff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--ground);
+      color: var(--ink);
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 16px;
+      line-height: 1.65;
+    }
+    .wrap { max-width: 820px; margin: 0 auto; padding: 32px 16px 64px; }
+    header.masthead {
+      background: var(--brick);
+      color: #fafcfc;
+      padding: 28px 32px;
+      border-radius: 8px 8px 0 0;
+    }
+    header.masthead p.brand { margin: 0; font-size: 22px; font-weight: bold; }
+    header.masthead p.sub { margin: 8px 0 0; font-size: 13px; color: #f0d4d0; }
+    main {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-top: none;
+      border-radius: 0 0 8px 8px;
+      padding: 32px;
+    }
+    h1 { font-size: 27px; line-height: 1.25; margin: 0 0 10px; }
+    h2 {
+      font-size: 19px;
+      margin: 34px 0 10px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+    }
+    h3 { font-size: 16px; margin: 20px 0 4px; }
+    ul { padding-left: 22px; }
+    li { margin-bottom: 6px; }
+    a { color: var(--brick); }
+    .lede { font-size: 16.5px; }
+    .identity {
+      background: #f5f5f5;
+      border: 1px solid var(--line);
+      border-left: 3px solid var(--brick);
+      padding: 16px 18px;
+      margin: 22px 0 8px;
+    }
+    .identity dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; }
+    .identity dt { color: var(--muted); font-size: 14px; }
+    .identity dd { margin: 0; font-size: 14.5px; }
+    .cta {
+      display: inline-block;
+      background: var(--brick);
+      color: #fafcfc;
+      text-decoration: none;
+      font-weight: bold;
+      padding: 13px 26px;
+      border-radius: 6px;
+      margin: 6px 8px 6px 0;
+    }
+    .cta.secondary {
+      background: #ffffff;
+      color: var(--brick);
+      border: 1px solid var(--brick);
+    }
+    .steps { counter-reset: s; padding-left: 0; list-style: none; }
+    .steps li {
+      counter-increment: s;
+      position: relative;
+      padding-left: 34px;
+      margin-bottom: 12px;
+    }
+    .steps li::before {
+      content: counter(s);
+      position: absolute;
+      left: 0; top: 1px;
+      width: 23px; height: 23px;
+      background: var(--brick);
+      color: #fff;
+      border-radius: 50%;
+      text-align: center;
+      font-size: 13px;
+      line-height: 23px;
+      font-weight: bold;
+    }
+    .note {
+      background: #f5f5f5;
+      border-left: 3px solid var(--brick);
+      padding: 14px 16px;
+      margin: 20px 0;
+      font-size: 15px;
+    }
+    footer.pagefoot {
+      margin-top: 34px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+      font-size: 13.5px;
+      color: var(--muted);
+    }
+    footer.pagefoot a { color: var(--brick); }
+    address { font-style: normal; }
+    @media (max-width: 600px) {
+      main, header.masthead { padding: 22px 18px; }
+      h1 { font-size: 23px; }
+      .identity dl { grid-template-columns: 1fr; gap: 2px; }
+      .identity dt { margin-top: 8px; }
+      .cta { display: block; text-align: center; margin-right: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="masthead">
+      <p class="brand">MORTAR</p>
+      <p class="sub">Account &amp; data deletion request</p>
+    </header>
+
+    <main>
+      <h1>Delete your MORTAR Alumni Network account and data</h1>
+
+      <p class="lede">
+        This page explains how to permanently delete your account and associated
+        data from <strong>MORTAR Alumni Network</strong> (also shown as
+        <strong>THE MORTARVERSE</strong> on iOS) and the MORTAR web learning
+        platform. You do not need to be signed in, or to have the app installed,
+        to request deletion.
+      </p>
+
+      <div class="identity">
+        <dl>
+          <dt>App</dt>
+          <dd><strong>MORTAR Alumni Network</strong></dd>
+          <dt>Package name</dt>
+          <dd>com.expansionnetwork.expansion_network</dd>
+          <dt>Developer</dt>
+          <dd><strong>MORTAR</strong> — Cincinnati, Ohio, United States</dd>
+          <dt>Contact</dt>
+          <dd><a href="mailto:masters@wearemortar.com">masters@wearemortar.com</a></dd>
+        </dl>
+      </div>
+
+      <h2>How to request deletion</h2>
+      <p>Use whichever of these suits you. All three reach the same team.</p>
+
+      <h3>From inside the app</h3>
+      <ol class="steps">
+        <li>Open MORTAR Alumni Network and go to your profile.</li>
+        <li>Tap <strong>Edit profile</strong>.</li>
+        <li>Scroll to the bottom and tap <strong>Delete account</strong>, then confirm.</li>
+      </ol>
+
+      <h3>On the web, without the app</h3>
+      <p>
+        Fill in the request form with the email address on your account. We email
+        you to confirm it is really you before anything is deleted.
+      </p>
+      <p>
+        <a class="cta" href="/delete-account">Open the deletion request form</a>
+        <a class="cta secondary" href="mailto:masters@wearemortar.com?subject=Account%20deletion%20request&amp;body=Please%20delete%20my%20MORTAR%20Alumni%20Network%20account.%0A%0AEmail%20address%20on%20the%20account%3A%20%0AName%20on%20the%20account%20(optional)%3A%20">Request by email instead</a>
+      </p>
+
+      <h2>What gets deleted</h2>
+      <ul>
+        <li>Your account, sign-in credentials, and profile, including your photo</li>
+        <li>Posts, comments, replies, and discussion threads you created</li>
+        <li>Direct messages you sent, and your group memberships</li>
+        <li>Event, conference, and session registrations, and check-in history</li>
+        <li>Badges, missions, and course or quiz progress</li>
+        <li>Your networking profile, matches, and connection activity</li>
+        <li>Usage analytics linked to your account</li>
+      </ul>
+
+      <h2>What we keep, and why</h2>
+      <ul>
+        <li>
+          <strong>Purchase and payment records</strong> — retained where we are
+          legally required to keep financial records for tax and accounting
+          purposes.
+        </li>
+        <li>
+          <strong>Safety and moderation records</strong> — retained where needed
+          to resolve a dispute, investigate a report, or enforce our terms.
+        </li>
+        <li>
+          <strong>Aggregated statistics</strong> — totals and counts that no
+          longer identify you, and cannot be traced back to you once your account
+          is gone.
+        </li>
+      </ul>
+
+      <div class="note">
+        <strong>Deletion is permanent and cannot be undone.</strong> We complete
+        requests within <strong>30 days</strong> of confirming your identity.
+        Retained records listed above are kept only for as long as the legal or
+        safety purpose requires, and are then deleted.
+      </div>
+
+      <h2>Questions</h2>
+      <p>
+        Email <a href="mailto:masters@wearemortar.com">masters@wearemortar.com</a>
+        and we will help. For how we handle personal information generally, see our
+        <a href="/privacy.html">Privacy Policy</a>.
+      </p>
+
+      <address>
+        <strong>MORTAR</strong><br />
+        2453 Gilbert Avenue<br />
+        Cincinnati, OH 45206<br />
+        United States
+      </address>
+
+      <footer class="pagefoot">
+        <p>
+          <a href="/privacy.html">Privacy policy</a> &nbsp;&middot;&nbsp;
+          <a href="/child-safety">Child safety standards</a> &nbsp;&middot;&nbsp;
+          <a href="/get-the-app">Get the app</a>
+        </p>
+        <p>&copy; MORTAR &middot; Cincinnati, Ohio</p>
+      </footer>
+    </main>
+  </div>
+</body>
+</html>
