@@ -93,6 +93,19 @@
   /* Brick red — brand trowell red (#870000) lifted to pass contrast on
      the dark surface. App-shell accent. */
   --mortar-brick: #c1442a;
+  /* Beta feedback (5+ reports, Aug 31 – Sep 11): "the red against the gray
+     background is difficult to read", "I would reevaluate making all of the
+     red texts/elements pop". Measured against the lesson surfaces, the two
+     existing reds are well under the 3:1 WCAG minimum for non-text UI:
+       --secondary  #871002 on #2d2d2d = 1.38:1   on #3a3a3a = 1.14:1
+       --mortar-brick #c1442a on #2d2d2d = 2.71:1  on #3a3a3a = 2.24:1
+     This tint is the same brand ramp taken to the top end (it matches
+     --chart-5) and clears the bar on both:
+       #e9614a on #2d2d2d = 4.12:1   on #3a3a3a = 3.40:1
+     Use it for borders, rules and icon strokes that sit ON the dark surface.
+     It is NOT a fill for white body text (3.22:1) — keep #871002 for that,
+     where white already reads at ~10:1. */
+  --mortar-brick-strong: #e9614a;
 
   /* Active verse/chapter theme color. Overridden per lesson via an
      inline style (see verseTheme.ts) so progress bars, stats, quiz
@@ -159,6 +172,9 @@
 
   /* Brick red darkened a touch for contrast on paper */
   --mortar-brick: #a53820;
+  /* On paper the contrast problem inverts — the deep brick is already the
+     high-contrast choice, so the "strong" token points back at it. */
+  --mortar-brick-strong: #871002;
 }
 
 @theme inline {
@@ -210,6 +226,7 @@
   --color-mortar-red: var(--mortar-red);
   --color-mortar-verse-green: var(--mortar-verse-green);
   --color-mortar-brick: var(--mortar-brick);
+  --color-mortar-brick-strong: var(--mortar-brick-strong);
 
   /* font-display / font-body / font-stencil utilities */
   --font-headline: var(--brand-font-headline);

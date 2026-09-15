@@ -647,6 +647,11 @@ export function LessonPlayer() {
       const target = e.target as HTMLElement | null;
       const tag = target?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target?.isContentEditable) return;
+      // While a slide is zoomed in, Left/Right belong to the slide so the
+      // learner can pan across it; hijacking them here would make the
+      // right-hand side of a zoomed slide unreachable from the keyboard.
+      // (LessonSlideScreen sets this attribute on its scroll container.)
+      if (document.querySelector('[data-slide-zoomed="true"]')) return;
       if (e.key === "ArrowLeft") {
         handlePrevious();
       } else if (e.key === "ArrowRight") {
@@ -1025,12 +1030,16 @@ export function LessonPlayer() {
             <span className="text-sm text-muted-foreground">
               {currentSlideIndex + 1} of {itemCount}
             </span>
+            {/* Beta feedback: the brand brick (#871002) sits at 1.38:1 against
+                the dark shell, so these buttons read as a dark smudge rather
+                than a control. A high-contrast brick border gives the shape a
+                4.1:1 edge while the white-on-brick label keeps its ~10:1. */}
             <Button
               variant="secondary"
               size="sm"
               onClick={saveProgressAndExit}
               disabled={isSaving}
-              className="text-foreground"
+              className="text-foreground border border-mortar-brick-strong"
             >
               {isSaving ? (
                 <Loader2 className="w-4 h-4 animate-spin mr-2" />
@@ -1311,7 +1320,7 @@ export function LessonPlayer() {
         aria-label="Previous slide"
         onClick={handlePrevious}
         disabled={currentSlideIndex === 0}
-        className="fixed left-2 md:left-4 top-1/2 -translate-y-1/2 z-40 flex items-center justify-center w-11 h-11 rounded-full bg-background/80 backdrop-blur-sm border border-border text-foreground shadow-lg hover:bg-background hover:border-verse transition-colors disabled:opacity-25 disabled:pointer-events-none"
+        className="fixed left-2 md:left-4 top-1/2 -translate-y-1/2 z-40 hidden md:flex items-center justify-center w-11 h-11 rounded-full bg-background/80 backdrop-blur-sm border border-border text-foreground shadow-lg hover:bg-background hover:border-verse transition-colors disabled:opacity-25 disabled:pointer-events-none"
       >
         <ChevronLeft className="w-6 h-6" />
       </button>
@@ -1320,7 +1329,7 @@ export function LessonPlayer() {
         aria-label="Next slide"
         onClick={handleNext}
         disabled={nextDisabled}
-        className="fixed right-2 md:right-4 top-1/2 -translate-y-1/2 z-40 flex items-center justify-center w-11 h-11 rounded-full bg-background/80 backdrop-blur-sm border border-border text-foreground shadow-lg hover:bg-background hover:border-verse transition-colors disabled:opacity-25 disabled:pointer-events-none"
+        className="fixed right-2 md:right-4 top-1/2 -translate-y-1/2 z-40 hidden md:flex items-center justify-center w-11 h-11 rounded-full bg-background/80 backdrop-blur-sm border border-border text-foreground shadow-lg hover:bg-background hover:border-verse transition-colors disabled:opacity-25 disabled:pointer-events-none"
       >
         <ChevronRight className="w-6 h-6" />
       </button>
@@ -1330,7 +1339,7 @@ export function LessonPlayer() {
           size="lg"
           onClick={handlePrevious}
           disabled={currentSlideIndex === 0}
-          className="text-foreground"
+          className="text-foreground border border-mortar-brick-strong"
         >
           <ChevronLeft className="w-5 h-5 mr-2" />
           Previous
@@ -1344,7 +1353,7 @@ export function LessonPlayer() {
             size="lg"
             onClick={saveProgressAndExit}
             disabled={isSaving}
-            className="text-foreground"
+            className="text-foreground border border-mortar-brick-strong"
           >
             {isSaving ? (
               <Loader2 className="w-5 h-5 animate-spin mr-2" />
@@ -1358,7 +1367,7 @@ export function LessonPlayer() {
             variant="secondary"
             size="lg"
             onClick={handleNext}
-            className="text-foreground"
+            className="text-foreground border border-mortar-brick-strong"
           >
             {atEnd && hasQuiz && !userPassed
               ? "Start Quiz"

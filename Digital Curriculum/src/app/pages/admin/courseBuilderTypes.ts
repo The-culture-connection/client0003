@@ -1,6 +1,6 @@
 /** Shared draft types for Course Builder (surveys, slides). */
 
-import type { LessonVideoProvider, SlidePopup } from "../../lib/curriculum";
+import type { LessonVideoProvider, SlidePopup, SlideLink } from "../../lib/curriculum";
 
 export interface DraftSlide {
   type: "image" | "video";
@@ -9,6 +9,8 @@ export interface DraftSlide {
   existingImageUrl?: string;
   existingStoragePath?: string;
   popups?: SlidePopup[];
+  /** Clickable link buttons rendered above the slide image in the player. */
+  links?: SlideLink[];
   videoProvider?: LessonVideoProvider;
   videoId?: string;
   videoUrl?: string;

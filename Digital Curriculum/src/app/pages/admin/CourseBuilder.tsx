@@ -61,6 +61,8 @@ import {
   type LessonImage,
   type LessonContentSlide,
   type QuizQuestion,
+  type SlidePopup,
+  type SlideLink,
 } from "../../lib/curriculum";
 import {
   createCourse,
@@ -92,6 +94,7 @@ import { MediaVideoBlock } from "../../components/curriculum/MediaVideoBlock";
 import { SlideImageWithPopups } from "../../components/curriculum/SlideImageWithPopups";
 import { AddVideoSlideDialog, type VideoSlideInput } from "../../components/curriculum/AddVideoSlideDialog";
 import { SlidePopupsEditor } from "../../components/curriculum/SlidePopupsEditor";
+import { SlideLinksEditor } from "../../components/curriculum/SlideLinksEditor";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../components/ui/dialog";
 import { SKILL_CATEGORIES, ALL_SKILLS, type SkillCategory } from "../../lib/onboardingData";
 import { Checkbox } from "../../components/ui/checkbox";
@@ -266,6 +269,26 @@ export function CourseBuilder() {
     lessonIndex: number;
     slideIndex: number;
   } | null>(null);
+  /** Slide link-buttons editor target slide */
+  const [linksEditorTarget, setLinksEditorTarget] = useState<{
+    moduleIndex: number;
+    lessonIndex: number;
+    slideIndex: number;
+  } | null>(null);
+  /**
+   * Lessons whose slide METADATA (popups, link buttons) was edited in this
+   * session, keyed "moduleIndex:lessonIndex".
+   *
+   * The save path below deliberately skips rewriting lesson content for a
+   * preexisting lesson unless new media was uploaded, so that merely opening a
+   * migrated course cannot clobber it. Editing popups or links uploads nothing,
+   * so without this set those edits were discarded on save — the reason slide
+   * link buttons never appeared for beta testers even once an editor existed.
+   */
+  const [slidesDirtyLessons, setSlidesDirtyLessons] = useState<Set<string>>(new Set());
+
+  const markSlidesDirty = (moduleIndex: number, lessonIndex: number) =>
+    setSlidesDirtyLessons((prev) => new Set(prev).add(`${moduleIndex}:${lessonIndex}`));
 
   // Initialize curriculum structure (create new only when not editing)
   useEffect(() => {
@@ -360,6 +383,7 @@ export function CourseBuilder() {
                       existingImageUrl: s.image_url,
                       existingStoragePath: s.storage_path,
                       popups: s.popups ?? [],
+                      links: s.links ?? [],
                     };
                   }
                   return {
@@ -633,6 +657,21 @@ export function CourseBuilder() {
     if (!slide || slide.type !== "image") return;
     slide.popups = popups;
     setModules(updated);
+    markSlidesDirty(moduleIndex, lessonIndex);
+  };
+
+  const handleSaveSlideLinks = (
+    moduleIndex: number,
+    lessonIndex: number,
+    slideIndex: number,
+    links: SlideLink[]
+  ) => {
+    const updated = [...modules];
+    const slide = updated[moduleIndex].lessons[lessonIndex].slides?.[slideIndex];
+    if (!slide || slide.type !== "image") return;
+    slide.links = links;
+    setModules(updated);
+    markSlidesDirty(moduleIndex, lessonIndex);
   };
 
   const handleRemoveSlide = (moduleIndex: number, lessonIndex: number, slideIndex: number) => {
@@ -878,7 +917,13 @@ export function CourseBuilder() {
           // (all slides are existing, no new files) is left untouched.
           const lessonPreexisted = !!lessonId;
           const hasNewUploads = slides.some((s) => s.file || s.videoFile);
-          const shouldWriteContent = hasContent && (!lessonPreexisted || hasNewUploads);
+          // …but popup/link edits upload nothing, so they need their own signal
+          // or they are silently dropped on save.
+          const slidesMetadataEdited = slidesDirtyLessons.has(
+            `${moduleIndex}:${lessonIndex}`
+          );
+          const shouldWriteContent =
+            hasContent && (!lessonPreexisted || hasNewUploads || slidesMetadataEdited);
 
           if (!lessonId) {
             lessonId = await createLesson(
@@ -922,6 +967,7 @@ export function CourseBuilder() {
                       storage_path,
                       alt_text: s.file.name,
                       popups: s.popups?.length ? s.popups : undefined,
+                      links: s.links?.length ? s.links : undefined,
                     });
                   } else if (s.existingImageUrl) {
                     contentSlides.push({
@@ -931,6 +977,7 @@ export function CourseBuilder() {
                       storage_path: s.existingStoragePath ?? "",
                       alt_text: "Slide",
                       popups: s.popups?.length ? s.popups : undefined,
+                      links: s.links?.length ? s.links : undefined,
                     });
                   }
                 } else if (s.videoFile) {
@@ -1851,6 +1898,11 @@ export function CourseBuilder() {
                                             · {slide.popups!.length} popup{slide.popups!.length === 1 ? "" : "s"}
                                           </span>
                                         )}
+                                        {(slide.links?.length ?? 0) > 0 && (
+                                          <span className="text-muted-foreground ml-1">
+                                            · {slide.links!.length} link{slide.links!.length === 1 ? "" : "s"}
+                                          </span>
+                                        )}
                                       </span>
                                     )}
                                     {slide.type === "video" && (
@@ -1876,6 +1928,23 @@ export function CourseBuilder() {
                                         }
                                       >
                                         Popups
+                                      </Button>
+                                    )}
+                                    {slide.type === "image" && slide.imagePreviewUrl && (
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-7 text-xs"
+                                        onClick={() =>
+                                          setLinksEditorTarget({
+                                            moduleIndex,
+                                            lessonIndex,
+                                            slideIndex: slideIdx,
+                                          })
+                                        }
+                                      >
+                                        Links
                                       </Button>
                                     )}
                                     <div className="flex items-center flex-shrink-0">
@@ -2694,6 +2763,33 @@ export function CourseBuilder() {
                 popupsEditorTarget.lessonIndex,
                 popupsEditorTarget.slideIndex,
                 popups
+              )
+            }
+          />
+        );
+      })()}
+
+      {linksEditorTarget && (() => {
+        const slide =
+          modules[linksEditorTarget.moduleIndex]?.lessons[linksEditorTarget.lessonIndex]
+            ?.slides?.[linksEditorTarget.slideIndex];
+        if (!slide || slide.type !== "image") return null;
+        return (
+          <SlideLinksEditor
+            key={`${linksEditorTarget.moduleIndex}-${linksEditorTarget.lessonIndex}-${linksEditorTarget.slideIndex}`}
+            open
+            onOpenChange={(open) => {
+              if (!open) setLinksEditorTarget(null);
+            }}
+            imageSrc={slide.imagePreviewUrl}
+            imageAlt={slide.file?.name}
+            links={slide.links ?? []}
+            onSave={(links) =>
+              handleSaveSlideLinks(
+                linksEditorTarget.moduleIndex,
+                linksEditorTarget.lessonIndex,
+                linksEditorTarget.slideIndex,
+                links
               )
             }
           />

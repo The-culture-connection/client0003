@@ -2,7 +2,7 @@
  * Groups data structures and utilities
  */
 
-import { collection, doc, getDoc, getDocs, addDoc, updateDoc, query, where, orderBy, limit, serverTimestamp, Timestamp } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, addDoc, updateDoc, arrayUnion, arrayRemove, query, where, orderBy, limit, serverTimestamp, Timestamp } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "./firebase";
 
@@ -177,4 +177,67 @@ export async function getLastGroupMessage(groupId: string): Promise<GroupMessage
  */
 export function getMemberCount(group: Group): number {
   return group.GroupMembers?.length || 0;
+}
+
+/** A person as shown in the admin member picker. */
+export interface DirectoryUser {
+  uid: string;
+  name: string;
+  email: string;
+}
+
+/**
+ * Everyone in the `users` collection, for the admin "add member" picker.
+ *
+ * Beta feedback (Sep 2, shortege@mail.uc.edu, /admin/panel/groups): "Add people
+ * to groups from admin portal." Until now an admin could only APPROVE someone
+ * who had already requested to join — there was no way to place a person into a
+ * group directly, and the member list rendered raw UIDs.
+ */
+export async function getDirectoryUsers(): Promise<DirectoryUser[]> {
+  try {
+    const snapshot = await getDocs(collection(db, "users"));
+    return snapshot.docs
+      .map((d) => {
+        const data = d.data() as Record<string, unknown>;
+        const name =
+          `${(data.first_name as string) || ""} ${(data.last_name as string) || ""}`.trim() ||
+          (data.display_name as string) ||
+          (data.email as string) ||
+          "Unknown";
+        return {
+          uid: d.id,
+          name,
+          email: ((data.email as string) || (data.email_address as string) || "").trim(),
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+  } catch (error) {
+    console.error("Error fetching directory users:", error);
+    return [];
+  }
+}
+
+/**
+ * Place a user into a group directly, bypassing the request/approve flow.
+ * arrayUnion keeps this safe against a concurrent join from the member side —
+ * a read-modify-write here would silently drop whoever wrote in between.
+ * Also clears any outstanding pending request so the person is not left
+ * sitting in both lists.
+ */
+export async function addGroupMember(groupId: string, userId: string): Promise<void> {
+  const groupRef = doc(db, "Groups", groupId);
+  await updateDoc(groupRef, {
+    GroupMembers: arrayUnion(userId),
+    PendingMembers: arrayRemove(userId),
+  });
+}
+
+/** Remove a user from a group (and from its pending list). */
+export async function removeGroupMember(groupId: string, userId: string): Promise<void> {
+  const groupRef = doc(db, "Groups", groupId);
+  await updateDoc(groupRef, {
+    GroupMembers: arrayRemove(userId),
+    PendingMembers: arrayRemove(userId),
+  });
 }

@@ -56,8 +56,13 @@ import {
   getGroups,
   getGroup,
   joinGroup,
+  getDirectoryUsers,
+  addGroupMember,
+  removeGroupMember,
   type Group,
+  type DirectoryUser,
 } from "../lib/groups";
+import { AdminGroupMembersPanel } from "../components/admin/AdminGroupMembersPanel";
 import {
   collection,
   query,
@@ -242,6 +247,10 @@ export function AdminPage() {
   const [viewProfileSurveys, setViewProfileSurveys] = useState<SurveyResponseDocument[]>([]);
   const [viewProfileLoading, setViewProfileLoading] = useState(false);
 
+  /** User directory backing the group member picker (loaded with the tab). */
+  const [directoryUsers, setDirectoryUsers] = useState<DirectoryUser[]>([]);
+  const [directoryLoading, setDirectoryLoading] = useState(true);
+
   // Group creation state
   const [newGroupName, setNewGroupName] = useState("");
   const [newGroupStatus, setNewGroupStatus] = useState<"Open" | "Closed">("Open");
@@ -345,13 +354,16 @@ export function AdminPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [groupsData, dmsData, eventsData, applicationsData] = await Promise.all([
-        getGroups(),
-        loadDirectMessages(),
-        getAllEventsForAdmin(),
-        getGraduationApplications(),
-      ]);
+      const [groupsData, dmsData, eventsData, applicationsData, directoryData] =
+        await Promise.all([
+          getGroups(),
+          loadDirectMessages(),
+          getAllEventsForAdmin(),
+          getGraduationApplications(),
+          getDirectoryUsers(),
+        ]);
       setGroups(groupsData);
+      setDirectoryUsers(directoryData);
       setDms(dmsData);
       setEvents(eventsData);
       setGraduationApplications(applicationsData);
@@ -371,6 +383,9 @@ export function AdminPage() {
       console.error("Error loading admin data:", error);
     } finally {
       setLoading(false);
+      // Cleared in `finally` so a failure anywhere above does not leave the
+      // group member picker stuck on "Loading people…" forever.
+      setDirectoryLoading(false);
     }
   };
 
@@ -897,6 +912,36 @@ export function AdminPage() {
     return group.PendingMembers || [];
   };
 
+  /** Resolve a UID to a display name, falling back to a short UID. */
+  const describeUser = (userId: string): { name: string; email: string } => {
+    const match = directoryUsers.find((u) => u.uid === userId);
+    if (match) return { name: match.name, email: match.email };
+    return { name: `Unknown user (${userId.substring(0, 8)}…)`, email: "" };
+  };
+
+  /**
+   * Refresh only the groups after a membership change.
+   *
+   * loadData() would also re-read DMs, events, every graduation application
+   * (with a getUserInfo per application) and the whole users collection — on
+   * every single add/remove click, with the row's spinner held for the
+   * duration. Membership lives entirely on the group docs, so re-reading those
+   * is enough.
+   */
+  const refreshGroups = async () => {
+    setGroups(await getGroups());
+  };
+
+  const handleAddGroupMember = async (groupId: string, userId: string) => {
+    await addGroupMember(groupId, userId);
+    await refreshGroups();
+  };
+
+  const handleRemoveGroupMember = async (groupId: string, userId: string) => {
+    await removeGroupMember(groupId, userId);
+    await refreshGroups();
+  };
+
   // Component to display registered users
   function RegisteredUsersList({ userIds }: { userIds: string[] }) {
     const [userInfos, setUserInfos] = useState<Record<string, { name: string; email: string }>>({});
@@ -1269,7 +1314,9 @@ export function AdminPage() {
                           Pending Members ({pendingMembers.length})
                         </h4>
                         <div className="space-y-2">
-                          {pendingMembers.map((userId) => (
+                          {pendingMembers.map((userId) => {
+                            const person = describeUser(userId);
+                            return (
                             <div
                               key={userId}
                               className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
@@ -1277,14 +1324,19 @@ export function AdminPage() {
                               <div className="flex items-center gap-2">
                                 <div className="w-8 h-8 bg-accent/10 rounded-full flex items-center justify-center">
                                   <span className="text-xs font-bold text-accent">
-                                    {userId.substring(0, 2).toUpperCase()}
+                                    {person.name.substring(0, 2).toUpperCase()}
                                   </span>
                                 </div>
                                 <div>
+                                  {/* Beta feedback: admins could not tell who a
+                                      pending request belonged to — the row only
+                                      ever showed a truncated UID. */}
                                   <p className="text-sm font-medium text-foreground">
-                                    User: {userId.substring(0, 8)}...
+                                    {person.name}
                                   </p>
-                                  <p className="text-xs text-muted-foreground">UID: {userId}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {person.email || `UID: ${userId}`}
+                                  </p>
                                 </div>
                               </div>
                               <div className="flex gap-2">
@@ -1306,10 +1358,21 @@ export function AdminPage() {
                                 </Button>
                               </div>
                             </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     )}
+
+                    <AdminGroupMembersPanel
+                      groupId={group.id}
+                      groupName={group.Name}
+                      memberIds={group.GroupMembers ?? []}
+                      directory={directoryUsers}
+                      directoryLoading={directoryLoading}
+                      onAddMember={handleAddGroupMember}
+                      onRemoveMember={handleRemoveGroupMember}
+                    />
                   </Card>
                 );
               })

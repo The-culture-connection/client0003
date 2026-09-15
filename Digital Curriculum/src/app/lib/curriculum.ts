@@ -643,6 +643,11 @@ export async function setLessonContentSlides(
             storage_path: s.storage_path,
             alt_text: s.alt_text,
             popups: s.popups,
+            // Clickable link buttons (e.g. "Download Here", "Visit SCORE").
+            // This allowlist is the only thing that reaches Firestore, so a
+            // field missing here is silently dropped no matter what the caller
+            // passes. The Object.fromEntries filter below strips undefined.
+            links: s.links,
           }
         : s.type === "html"
           ? { html_content: s.html_content ?? "" }

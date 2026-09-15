@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   addDoc,
   collection,
@@ -17,7 +17,8 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
 import { Label } from "../ui/label";
-import { Loader2, Check, Trash2, Upload } from "lucide-react";
+import { Loader2, Check, Trash2, Upload, Users } from "lucide-react";
+import { Badge } from "../ui/badge";
 
 interface SessionRow {
   id: string;
@@ -32,6 +33,13 @@ interface SessionRow {
   speakerPhotoUrl?: string;
   startTime?: Timestamp;
   endTime?: Timestamp;
+  /**
+   * UIDs of attendees who have RSVP'd. Written by the mobile app, which toggles
+   * only its own membership (see the conferences/{id}/sessions rule in
+   * firestore.rules). It was already on the document; the admin panel just
+   * never read it.
+   */
+  registered_users?: string[];
 }
 
 interface FloorLite {
@@ -100,6 +108,21 @@ export function ConferenceSessionsPanel({ conferenceId }: { conferenceId: string
     );
     return () => unsub();
   }, [conferenceId]);
+
+  /**
+   * Beta feedback (Sep 2, shortege@mail.uc.edu, /admin/panel/conferences):
+   * "see registration numbers for each session". Counted client-side off the
+   * snapshot that already streams every session doc — no extra reads.
+   */
+  const registrationTotals = useMemo(() => {
+    const perSession = sessions.map((s) => s.registered_users?.length ?? 0);
+    const unique = new Set<string>();
+    sessions.forEach((s) => (s.registered_users ?? []).forEach((uid) => unique.add(uid)));
+    return {
+      totalSignups: perSession.reduce((sum, n) => sum + n, 0),
+      uniqueAttendees: unique.size,
+    };
+  }, [sessions]);
 
   const reset = useCallback(() => {
     setEditingId(null);
@@ -212,6 +235,15 @@ export function ConferenceSessionsPanel({ conferenceId }: { conferenceId: string
         <div>
           <h3 className="text-lg font-semibold text-foreground">Sessions / Schedule</h3>
           <p className="text-sm text-muted-foreground mt-1">Talks and workshops shown on the mobile Event Schedule.</p>
+          {sessions.length > 0 ? (
+            <p className="text-sm text-muted-foreground mt-1">
+              {registrationTotals.totalSignups}{" "}
+              {registrationTotals.totalSignups === 1 ? "registration" : "registrations"} across{" "}
+              {sessions.length} {sessions.length === 1 ? "session" : "sessions"} ·{" "}
+              {registrationTotals.uniqueAttendees}{" "}
+              {registrationTotals.uniqueAttendees === 1 ? "person" : "people"}
+            </p>
+          ) : null}
         </div>
         {editingId ? (
           <Button type="button" variant="outline" size="sm" onClick={reset}>New session</Button>
@@ -303,6 +335,15 @@ export function ConferenceSessionsPanel({ conferenceId }: { conferenceId: string
                     {s.speakerNames?.[0] ? ` · ${s.speakerNames[0]}` : ""}
                   </p>
                 </div>
+                <Badge
+                  variant="outline"
+                  className="shrink-0 gap-1 tabular-nums"
+                  aria-label={`${s.registered_users?.length ?? 0} registered`}
+                  title={`${s.registered_users?.length ?? 0} attendee(s) registered for this session`}
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  {s.registered_users?.length ?? 0}
+                </Badge>
                 <div className="flex gap-1 shrink-0">
                   <Button type="button" variant="outline" size="sm" onClick={() => loadIntoForm(s)}>Edit</Button>
                   <Button type="button" variant="ghost" size="sm" className="text-destructive" onClick={() => void remove(s.id, s.title || s.id)}>
