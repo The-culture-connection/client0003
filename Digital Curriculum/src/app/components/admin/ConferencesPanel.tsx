@@ -18,7 +18,9 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
 import { Label } from "../ui/label";
-import { Loader2, Check, Trash2, SlidersHorizontal, Upload } from "lucide-react";
+import { Loader2, Check, Trash2, SlidersHorizontal, Upload, Copy, Link as LinkIcon } from "lucide-react";
+import { toast } from "sonner";
+import { ticketsUrl } from "../../lib/appStoreLinks";
 import { ConferenceAnalyticsPanel } from "./ConferenceAnalyticsPanel";
 import { ConferenceAnnouncePanel } from "./ConferenceAnnouncePanel";
 import { ConferenceMissionsPanel } from "./ConferenceMissionsPanel";
@@ -111,6 +113,26 @@ function localInputToTs(v: string): Timestamp | null {
   if (!v) return null;
   const d = new Date(v);
   return Number.isNaN(d.getTime()) ? null : Timestamp.fromDate(d);
+}
+
+/**
+ * Copies [text] and confirms it.
+ *
+ * `navigator.clipboard` is unavailable on an insecure origin and can be denied
+ * by permission policy, so a failure shows the value instead of swallowing it
+ * — the point is getting the id or link into someone's hands, and a toast they
+ * can read from is still that.
+ */
+async function copyText(text: string, message: string, showOnFailure?: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.success(message);
+  } catch {
+    toast.error("Could not copy. Here it is to copy by hand:", {
+      description: showOnFailure ?? text,
+      duration: 15000,
+    });
+  }
 }
 
 export function ConferencesPanel() {
@@ -781,6 +803,25 @@ export function ConferencesPanel() {
       {!selectedConfId ? (
       <Card className="p-6 space-y-4">
         <h2 className="text-xl font-semibold text-foreground">Conferences</h2>
+        {/* The untargeted link. Resolves to whatever is on sale when it is
+            scanned, so it survives between conferences — which makes it the
+            one to use on anything reprinted rarely, like signage or merch.
+            Per-conference links are on each row below. */}
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/20 p-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-foreground">Ticket link for all conferences</p>
+            <code className="block truncate text-xs text-muted-foreground">{ticketsUrl()}</code>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="shrink-0"
+            onClick={() => void copyText(ticketsUrl(), "Ticket link copied.", ticketsUrl())}
+          >
+            <Copy className="w-3.5 h-3.5 mr-1" /> Copy
+          </Button>
+        </div>
         {loading ? (
           <div className="flex items-center gap-2 text-muted-foreground text-sm">
             <Loader2 className="w-4 h-4 animate-spin" /> Loading…
@@ -802,8 +843,37 @@ export function ConferencesPanel() {
                     <span className="rounded bg-muted/80 px-1 py-0.5 font-mono">{c.status ?? "draft"}</span>{" "}
                     · {((c.priceCents ?? 0) / 100).toFixed(2)} {(c.currency ?? "usd").toUpperCase()} · {c.attendeeCount ?? 0} attendees · {c.checkInTotal ?? 0} check-ins
                   </p>
+                  {/* The conference id is the `?c=` value in a ticket link, and
+                      it is a random Firestore id nobody can retype from memory
+                      — so it is shown, and copyable, rather than hidden. */}
+                  <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <span className="shrink-0">ID</span>
+                    <code className="truncate rounded bg-muted/80 px-1 py-0.5 font-mono">{c.id}</code>
+                    <button
+                      type="button"
+                      onClick={() => void copyText(c.id, "Conference ID copied.")}
+                      className="shrink-0 rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                      title="Copy the conference ID"
+                      aria-label={`Copy the conference ID for ${c.name || c.id}`}
+                    >
+                      <Copy className="h-3 w-3" />
+                    </button>
+                  </p>
                 </div>
                 <div className="flex gap-1 shrink-0">
+                  {/* The thing most people actually want: the full URL to put
+                      behind a QR code for this specific conference. */}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      void copyText(ticketsUrl(c.id), "Ticket link copied.", ticketsUrl(c.id))
+                    }
+                    title={ticketsUrl(c.id)}
+                  >
+                    <LinkIcon className="w-3.5 h-3.5 mr-1" /> Ticket link
+                  </Button>
                   <Button type="button" variant="outline" size="sm" onClick={() => openManage(c)}>
                     <SlidersHorizontal className="w-3.5 h-3.5 mr-1" /> Manage
                   </Button>

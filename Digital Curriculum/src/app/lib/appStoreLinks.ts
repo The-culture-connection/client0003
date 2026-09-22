@@ -59,3 +59,35 @@ export function getTheAppUrl(origin?: string): string {
     origin ?? (typeof window === "undefined" ? "" : window.location.origin);
   return `${base.replace(/\/$/, "")}${GET_THE_APP_PATH}`;
 }
+
+/**
+ * Public conference ticket entry point — the URL that goes behind a QR code.
+ *
+ * Opens the app directly when it is installed and link verification has
+ * completed; otherwise the page at this path hands off to the store. Safe for
+ * printed material, so keep the path stable once it is out in the world.
+ *
+ * Mirrors `kTicketsPath` / `ticketsShareUrl` in the Flutter app
+ * (`lib/services/deep_link_resolver.dart`). The app only acts on links whose
+ * host it claims, so these two must agree.
+ */
+export const TICKETS_PATH = "/tickets";
+
+/** Conference ids are Firestore document ids; bound rather than trust input. */
+const CONFERENCE_ID_RE = /^[A-Za-z0-9_-]{1,128}$/;
+
+/**
+ * Absolute ticket URL. Pass [conferenceId] to point a QR at one event; omit it
+ * for the general link, which resolves to whatever is on sale when scanned.
+ *
+ * An unusable id is dropped rather than interpolated, so a bad value yields the
+ * general link instead of a dead one.
+ */
+export function ticketsUrl(conferenceId?: string, origin?: string): string {
+  const base = (
+    origin ?? (typeof window === "undefined" ? "" : window.location.origin)
+  ).replace(/\/$/, "");
+  const id = conferenceId?.trim();
+  if (!id || !CONFERENCE_ID_RE.test(id)) return `${base}${TICKETS_PATH}`;
+  return `${base}${TICKETS_PATH}?c=${encodeURIComponent(id)}`;
+}
