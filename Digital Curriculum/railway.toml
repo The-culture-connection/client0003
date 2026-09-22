@@ -13,13 +13,28 @@ buildCommand = "npm install --include=dev --no-audit --no-fund && npm run build"
 watchPatterns = ["Digital Curriculum", "Digital Curriculum/**"]
 
 [deploy]
-# `serve` reads public/serve.json (shipped into dist/) alongside these flags.
-# That file sets cleanUrls=false, which the privacy policy depends on: by
-# default serve 301s /privacy.html to /privacy, and `-s` then answers /privacy
-# with index.html — the empty React shell. Google Play's policy checker does not
-# run JavaScript, so it would see no policy and reject the listing. Keep
-# serve.json to the documented keys only; serve refuses to start on an unknown
-# property (including a "_comment"), which would take the whole site down.
-startCommand = "npx serve -s dist -l $PORT"
+# This overrides package.json "start" — change it here, not there, or the
+# change silently does nothing.
+#
+# Was `npx serve -s dist -l $PORT`. `serve -s` rewrites every extension-less
+# request path to the SPA shell whether or not a real file sits there, and
+# Apple requires /.well-known/apple-app-site-association to have no extension,
+# so iOS was handed index.html instead of JSON and Universal Links failed
+# silently. (Android was unaffected: assetlinks.json has an extension.) No
+# serve.json setting can exempt that path — see docs/mobile-app-links.md for
+# the four that were tried.
+#
+# The two things `serve` was relied on for still hold:
+#   * /privacy.html is served as a real file, not 301'd to /privacy and then
+#     answered with the empty React shell. That redirect is what Google Play's
+#     policy checker would have seen, since it does not run JavaScript, and it
+#     is why public/serve.json set cleanUrls=false. express.static serves the
+#     file directly, so the hazard is gone rather than configured around.
+#   * Unknown paths still fall back to index.html, so client-side routes work
+#     on a hard refresh.
+#
+# public/serve.json is now inert — nothing reads it. It is kept so that
+# reverting this line to the old `serve` command still behaves correctly.
+startCommand = "node ./scripts/serve-dist.mjs"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10
