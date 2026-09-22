@@ -5,18 +5,45 @@ directly instead of bouncing the visitor into a browser. Both are fetched by
 the operating system, not by our code, so they only work when served from the
 **exact host** the app claims.
 
-That host is currently `mortar-stage-stage.up.railway.app`, and it is named in
-four places that must always agree:
+**Three hosts are claimed**, and they all serve the same site:
+
+| Host | Role |
+| --- | --- |
+| `mortarmastersonline.com` | the public domain — QR codes, printed material, anything shared with a person |
+| `www.mortarmastersonline.com` | claimed too, because people type it and tools rewrite to it |
+| `mortar-stage-stage.up.railway.app` | the Railway host; links to it exist in the wild, and it is what the in-app privacy and account-deletion links use |
+
+Two constants in `lib/constants/app_links.dart` drive this, and they are
+separate on purpose:
+
+- **`publicLinkOrigin`** (`mortarmastersonline.com`) builds shareable ticket
+  links. Cheap to change — nothing outside the app depends on it.
+- **`digitalCurriculum`** (the Railway host) also builds `privacyPolicy` and
+  `deleteAccount`, which are **registered with Google Play and App Store
+  Connect**. Moving it means updating those store listings, so it is not a
+  free rename.
+
+Every claimed host is named in four places that must agree:
 
 | Where | What |
 | --- | --- |
-| `Digital Curriculum/src/app/lib/appStoreLinks.ts` (via the app's `AppLinks.digitalCurriculum`) | the origin the app builds share links against |
-| `ExpansionNetworkApp/expansion_network/lib/constants/app_links.dart` | `AppLinks.digitalCurriculum` |
-| `ExpansionNetworkApp/expansion_network/lib/services/deep_link_resolver.dart` | `_claimedHosts`, the allow-list of hosts whose links the app will act on |
-| `android/app/src/main/AndroidManifest.xml` and `ios/Runner/Runner.entitlements` | the native intent-filter / associated-domain |
+| `ExpansionNetworkApp/expansion_network/lib/constants/app_links.dart` | `publicLinkOrigin` and `digitalCurriculum` |
+| `ExpansionNetworkApp/expansion_network/lib/services/deep_link_resolver.dart` | `_claimedHosts`, derived from those two — the allow-list of hosts whose links the app acts on |
+| `android/app/src/main/AndroidManifest.xml` | one `<data>` entry per host |
+| `ios/Runner/Runner.entitlements` | one `applinks:` entry per host |
 
-Change the host and you must change all of them, redeploy this site, and ship a
-new app build. Anything already printed with the old URL stops opening the app.
+The web side builds its URLs from `window.location.origin`
+(`Digital Curriculum/src/app/lib/appStoreLinks.ts` → `ticketsUrl`), so the
+admin portal always emits links for whichever host it is being used on.
+
+**Each host must serve both `.well-known` files.** Android and iOS verify per
+host, so one that does not serve them simply never verifies — its links open a
+chooser or the browser, silently, while the other hosts work. That asymmetry is
+the first thing to check when a QR works on one link but not another.
+
+Adding or changing a host means changing all four places, redeploying the site
+on that host, and shipping a new app build. Anything already printed against a
+removed host stops opening the app.
 
 ## `assetlinks.json` (Android App Links)
 

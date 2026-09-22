@@ -25,12 +25,35 @@ const String kTicketsPath = '/tickets';
 /// lands on that event rather than the general list.
 const String kConferenceQueryParam = 'c';
 
-/// Hosts whose `https://` links this app claims. Derived from the configured
-/// Digital Curriculum origin so a `--dart-define=DIGITAL_CURRICULUM_URL=…`
-/// build stays consistent with the native App Link / Universal Link config.
+/// Hosts whose `https://` links this app claims.
+///
+/// Derived from the configured origins so a `--dart-define=…` build stays
+/// consistent with the native App Link / Universal Link config, rather than
+/// drifting from a second hard-coded list.
+///
+/// Both the public link origin and the Digital Curriculum origin are included:
+/// the two serve the same site, and links to it exist on both in the wild.
+/// `www.` is claimed alongside the bare public host because a person typing or
+/// a tool rewriting the URL will produce it, and a link that silently stops
+/// opening the app is worse than one extra entry.
+///
+/// **Every host here must also serve `/.well-known/assetlinks.json` and
+/// `/.well-known/apple-app-site-association`**, and be listed in
+/// `AndroidManifest.xml` and `Runner.entitlements`. A host claimed here but
+/// missing from those places will not open the app; a host in those places but
+/// missing here will open the app and then be ignored.
 Set<String> get _claimedHosts {
-  final host = Uri.tryParse(AppLinks.digitalCurriculum)?.host.toLowerCase();
-  return <String>{if (host != null && host.isNotEmpty) host};
+  final hosts = <String>{};
+  for (final origin in <String>[
+    AppLinks.publicLinkOrigin,
+    AppLinks.digitalCurriculum,
+  ]) {
+    final host = Uri.tryParse(origin)?.host.toLowerCase();
+    if (host == null || host.isEmpty) continue;
+    hosts.add(host);
+    if (!host.startsWith('www.')) hosts.add('www.$host');
+  }
+  return hosts;
 }
 
 /// Conference ids are Firestore document ids; bound the value rather than
@@ -92,9 +115,14 @@ String? resolveDeepLink(String? raw) {
 
 /// The shareable https URL for the ticket flow — what goes behind a QR code.
 ///
+/// Built on [AppLinks.publicLinkOrigin], not the Digital Curriculum origin:
+/// this is the URL that ends up on printed material and in other people's
+/// messages, so it should be the public-facing domain. Both hosts resolve to
+/// the same flow, so an older link built the other way keeps working.
+///
 /// [conferenceId] targets one event; omit it for the general "what's on" link.
 String ticketsShareUrl({String? conferenceId}) {
-  final base = AppLinks.digitalCurriculum.replaceAll(RegExp(r'/$'), '');
+  final base = AppLinks.publicLinkOrigin.replaceAll(RegExp(r'/$'), '');
   final id = conferenceId?.trim();
   if (id == null || id.isEmpty || !_conferenceIdPattern.hasMatch(id)) {
     return '$base$kTicketsPath';

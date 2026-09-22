@@ -3,9 +3,10 @@ import 'package:expansion_network/services/deep_link_resolver.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  // The host the app claims, derived the same way the resolver derives it, so
-  // these tests keep passing if the Digital Curriculum origin is repointed.
-  final claimedHost = Uri.parse(AppLinks.digitalCurriculum).host;
+  // Hosts derived the same way the resolver derives them, so these tests keep
+  // passing if either origin is repointed.
+  final claimedHost = Uri.parse(AppLinks.publicLinkOrigin).host;
+  final curriculumHost = Uri.parse(AppLinks.digitalCurriculum).host;
 
   group('resolveDeepLink accepts', () {
     test('an https ticket link on the claimed host', () {
@@ -46,6 +47,24 @@ void main() {
 
     test('surrounding whitespace', () {
       expect(resolveDeepLink('  https://$claimedHost/tickets  '), '/tickets');
+    });
+
+    test('the Digital Curriculum host as well as the public one', () {
+      // Both serve the same site and links to each exist in the wild, so a
+      // ticket link on either must open the app.
+      expect(resolveDeepLink('https://$curriculumHost/tickets'), '/tickets');
+    });
+
+    test('the www form of the public host', () {
+      // A person typing the URL, or a tool rewriting it, produces this.
+      expect(resolveDeepLink('https://www.$claimedHost/tickets'), '/tickets');
+    });
+
+    test('a host regardless of letter case', () {
+      expect(
+        resolveDeepLink('https://${claimedHost.toUpperCase()}/tickets'),
+        '/tickets',
+      );
     });
   });
 

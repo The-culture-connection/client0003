@@ -21,6 +21,10 @@
 	     `_claimedHosts` set in lib/services/deep_link_resolver.dart. -->
 	<key>com.apple.developer.associated-domains</key>
 	<array>
+		<!-- Public domain: what goes on QR codes and printed material. -->
+		<string>applinks:mortarmastersonline.com</string>
+		<string>applinks:www.mortarmastersonline.com</string>
+		<!-- Railway host: same site, and links to it exist in the wild. -->
 		<string>applinks:mortar-stage-stage.up.railway.app</string>
 	</array>
 </dict>

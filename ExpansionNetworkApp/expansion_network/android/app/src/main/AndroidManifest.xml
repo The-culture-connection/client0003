@@ -49,20 +49,31 @@
                  link directly instead of showing a chooser — which is the whole
                  point: a scanned QR should land in the app, not in Chrome.
 
-                 VERIFICATION IS NOT LIVE until assetlinks.json on the host
-                 lists the release signing cert's SHA-256 fingerprint (see
-                 `Digital Curriculum/public/.well-known/assetlinks.json`). Until
-                 then the link still works — Android just offers a chooser
-                 rather than going straight in.
+                 EVERY host listed below must serve
+                 /.well-known/assetlinks.json carrying the app's signing
+                 fingerprint. Android verifies each host separately, so one that
+                 does not serve the file simply never verifies — its links open
+                 a chooser instead of the app, silently, while the others work.
+                 That asymmetry is the thing to check first when "the QR works
+                 on one link but not another".
 
-                 Host must match `AppLinks.digitalCurriculum` in
-                 lib/constants/app_links.dart and the `_claimedHosts` set in
-                 lib/services/deep_link_resolver.dart. Change one, change all
-                 three. -->
+                 Hosts must match `_claimedHosts` in
+                 lib/services/deep_link_resolver.dart (derived from
+                 `AppLinks.publicLinkOrigin` and `AppLinks.digitalCurriculum`)
+                 and the associated domains in ios/Runner/Runner.entitlements.
+                 Change one, change all three. -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
+                <!-- Public domain: what goes on QR codes and printed material. -->
+                <data android:scheme="https"
+                      android:host="mortarmastersonline.com"
+                      android:pathPrefix="/tickets" />
+                <data android:scheme="https"
+                      android:host="www.mortarmastersonline.com"
+                      android:pathPrefix="/tickets" />
+                <!-- Railway host: same site, and links to it exist in the wild. -->
                 <data android:scheme="https"
                       android:host="mortar-stage-stage.up.railway.app"
                       android:pathPrefix="/tickets" />

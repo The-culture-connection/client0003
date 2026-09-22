@@ -13,6 +13,26 @@ abstract final class AppLinks {
     defaultValue: 'https://mortar-stage-stage.up.railway.app',
   );
 
+  /// Public-facing origin for links handed to people — today, conference
+  /// ticket links and the QR codes built from them.
+  ///
+  /// Deliberately separate from [digitalCurriculum]. Both hosts serve the same
+  /// site, but they are not interchangeable in what they cost to change:
+  /// [digitalCurriculum] also builds [privacyPolicy] and [deleteAccount],
+  /// which are registered with Google Play and App Store Connect, so moving it
+  /// means updating those listings. This constant carries no such baggage, so
+  /// the nicer domain can front anything printed or shared without touching a
+  /// store submission.
+  ///
+  /// Both hosts are claimed by the app — see `_claimedHosts` in
+  /// `deep_link_resolver.dart` — so a link on either one opens the app. Any
+  /// host added here must also serve `/.well-known/assetlinks.json` and
+  /// `/.well-known/apple-app-site-association`, or verification fails for it.
+  static const String publicLinkOrigin = String.fromEnvironment(
+    'PUBLIC_LINK_ORIGIN',
+    defaultValue: 'https://mortarmastersonline.com',
+  );
+
   /// Public privacy policy — the URL registered in Play Console and App Store
   /// Connect, and the one linked from the profile screen.
   ///
