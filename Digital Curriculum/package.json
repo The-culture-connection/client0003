@@ -17,7 +17,7 @@
     "dev:staging": "vite --mode staging",
     "dev:prod": "vite --mode production",
     "preview": "vite preview",
-    "start": "serve -s dist -l ${PORT:-3000}"
+    "start": "node ./scripts/serve-dist.mjs"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
@@ -56,6 +56,7 @@
     "cmdk": "1.1.1",
     "date-fns": "3.6.0",
     "embla-carousel-react": "8.6.0",
+    "express": "^5.2.1",
     "firebase": "^12.10.0",
     "input-otp": "1.4.2",
     "jspdf": "^4.2.0",

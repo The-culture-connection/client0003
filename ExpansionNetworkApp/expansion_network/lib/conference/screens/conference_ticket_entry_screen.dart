@@ -21,8 +21,8 @@ import '../theme/conference_colors.dart';
 ///   sign in or create an account; the stash brings them back once auth
 ///   resolves.
 /// * **Signed in, already an attendee of a conference that is open** — the
-///   card reveal animation, then their scannable member card. Someone already
-///   holding a ticket wants their badge, not a shop.
+///   their scannable member card. Someone already holding a ticket wants their
+///   badge, not a shop.
 /// * **Signed in, no ticket** (or the conference is not open yet) — the
 ///   Conference Center gate, which already handles browse / buy / register /
 ///   redeem.
@@ -85,7 +85,10 @@ class _ConferenceTicketEntryScreenState
         targeted: targeted,
       ));
       if (!mounted) return;
-      context.go('/conference/card-reveal');
+      // `ctx=conference` swaps the card's accent to the conference gold,
+      // matching the room they are standing in. The preceding
+      // `CurrentConferenceHolder.enter` is what makes that context real.
+      context.go('/card?ctx=conference');
     } catch (_) {
       if (!mounted) return;
       _toGate(targeted);

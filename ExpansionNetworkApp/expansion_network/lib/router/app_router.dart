@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import '../auth/auth_controller.dart';
 import '../commons/widgets/commons_shell.dart';
 import '../conference/screens/conference_booth_scan_screen.dart';
-import '../conference/screens/conference_card_reveal_screen.dart';
 import '../conference/screens/conference_ticket_entry_screen.dart';
 import '../conference/screens/conference_community_compose_screen.dart';
 import '../conference/screens/conference_community_post_screen.dart';
@@ -203,17 +202,6 @@ GoRouter createAppRouter(AuthController auth) {
       // gold sub-brand keeps its accent instead of inheriting the app-wide
       // Expansion red. Wrapping here rather than inside each screen means a
       // new conference route picks it up for free.
-      GoRoute(
-        parentNavigatorKey: _rootNavigatorKey,
-        // Under `/conference/` on purpose: the entry screen admits the user to
-        // a conference before forwarding here, so the prefix gate is exactly
-        // the guard wanted — reaching the reveal any other way bounces to the
-        // gate rather than playing a badge animation for someone with no badge.
-        path: '/conference/card-reveal',
-        builder: (context, state) => const ConferenceTheme(
-          child: ConferenceCardRevealScreen(),
-        ),
-      ),
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,
         path: '/conference/gate',

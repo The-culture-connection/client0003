@@ -20,20 +20,27 @@ new app build. Anything already printed with the old URL stops opening the app.
 
 ## `assetlinks.json` (Android App Links)
 
-**Not finished.** `sha256_cert_fingerprints` is a placeholder. Until it holds
-the real fingerprint, Android will not verify the link and will show an
-app-chooser sheet instead of opening the app directly. The link still works —
-it is just one extra tap, and some users will pick the browser.
+**Done.** `sha256_cert_fingerprints` holds the confirmed signing fingerprint:
 
-Get the real value from **Play Console → your app → Test and release → Setup →
-App signing → App signing key certificate → SHA-256 certificate fingerprint**,
-and paste it in (uppercase hex, colon-separated).
+```
+B4:F2:8E:F8:5E:DD:F7:85:1D:6D:12:74:39:29:D1:75:83:C6:00:0A:CC:9B:6E:36:C3:15:40:26:12:25:6D:36
+```
 
-Use the **App signing key**, not the upload key: Play re-signs the APK it
-delivers, so the upload key's fingerprint will not match what users install. If
-you also install debug builds for testing, add that fingerprint as a second
-entry in the array — `keytool -list -v -keystore ~/.android/debug.keystore
--alias androiddebugkey -storepass android -keypass android`.
+Certificate: `CN=Grace, OU=Shorter, O=Mortar Cincinnati, L=Cincinnati, ST=Ohio,
+C=US`, valid to August 2053. Confirmed by the project owner as the key Android
+verifies against — do not replace it on the basis of a fresh `keytool` run
+without checking with them first.
+
+**If verification ever fails specifically on Play-installed builds** (and only
+those — sideloaded builds verifying fine is the tell), the thing to re-check is
+Play Console → your app → Test and release → Setup → **App signing** → *App
+signing key certificate* → SHA-256. When Play App Signing is enabled Google
+re-signs the delivered APK with its own key, and that fingerprint has to be
+present here too. `sha256_cert_fingerprints` is an array, so the fix is to
+append the second value rather than swap this one out. The same applies to the
+debug keystore if you want locally-installed debug builds to verify:
+`keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey
+-storepass android -keypass android`.
 
 Verify after deploying:
 
@@ -66,52 +73,59 @@ app, or reinstall.
 Both files must be reachable at the paths above with no authentication and no
 SPA rewrite.
 
-### Known blocker: `serve -s` swallows the AASA file
+### How the files are served, and why not `serve`
 
-**`assetlinks.json` (Android) is served correctly today. The iOS AASA file is
-not.** This was measured against the real production command, `serve -s dist`
-(see `Digital Curriculum/package.json` → `start`):
+The site is served by `Digital Curriculum/scripts/serve-dist.mjs` (Express),
+started by `npm start`. It replaced `serve -s dist`, which **could not serve
+the AASA file at all**.
+
+The cause: `serve` applies its SPA rewrite to any request path with **no file
+extension**, whether or not a real file sits there. Apple requires
+`apple-app-site-association` to have no extension, so iOS was handed
+`index.html` instead of JSON and Universal Links failed silently — nothing logs
+anywhere, links just open in Safari. Android was unaffected because
+`assetlinks.json` has an extension. Measured before the change:
 
 ```
-GET /.well-known/assetlinks.json
-  200  application/json  299 bytes   ← correct
-
-GET /.well-known/apple-app-site-association
-  200  text/html  1050 bytes         ← index.html, not the file
+GET /.well-known/assetlinks.json                 200  application/json  299 B   correct
+GET /.well-known/apple-app-site-association      200  text/html        1050 B   index.html
 ```
 
-The cause is a rule inside `serve`'s handler: it applies SPA rewrites to any
-request path **with no file extension**, whether or not a real file sits there.
-Apple requires this file to have no extension, so `-s` always wins and iOS
-receives the HTML shell instead of JSON. Universal Links then fail silently —
-nothing logs anywhere, links simply open in Safari.
+Config-only fixes were tried against `serve` and none work: a `rewrites` entry
+pointing at a `.json` twin (a literal `.well-known/...` source never matches, in
+either rule order), a self-referential rewrite (the destination is still
+extension-less, so it re-triggers), and a catch-all with a negative lookahead
+(the bundled `path-to-regexp` throws and the server will not boot).
 
-Things that were tried and do **not** work:
+**Two things in `serve-dist.mjs` are load-bearing.** Both default to refusing
+dot-segments, and either one alone reintroduces the bug:
 
-- A `rewrites` entry in `serve.json` pointing the path at a `.json` twin — a
-  literal `.well-known/...` source never matches, in either rule order.
-- A self-referential rewrite — the destination is still extension-less, so the
-  rule re-triggers.
-- A catch-all with a negative lookahead (`/:path((?!\.well-known).*)`) — the
-  bundled `path-to-regexp` throws on it and the server will not boot.
+1. `express.static(DIST, { dotfiles: "allow" })` — Express defaults to
+   `"ignore"`, which treats everything under `/.well-known/` as missing.
+2. `res.sendFile(..., { dotfiles: "allow" })` on the explicit AASA route —
+   `sendFile` enforces its **own** dotfile policy, independent of the static
+   middleware. Without it that route 404s and falls through to the SPA shell.
 
-What does work, verified: dropping `-s` and listing routes explicitly, e.g.
-`{"source": "/tickets", "destination": "/index.html"}`. Literal, non-dot
-sources match fine, and both `.well-known` files are then served correctly.
+The explicit route also sets `Content-Type: application/json`, which the
+extension-less file would not otherwise get, and it is declared before the
+static middleware so it always wins.
 
-So there are two ways forward, and both are deployment decisions rather than
-app changes:
+Ordering matters generally: real files first, SPA fallback last, so the
+fallback only ever answers genuinely missing paths.
 
-1. **Enumerate the SPA routes** in `serve.json` `rewrites` and change `start`
-   to `serve dist` (no `-s`). Correct immediately, but every new top-level
-   route has to be added here or it 404s on hard refresh.
-2. **Replace `serve` with a small static server** (Express, or `serve-handler`
-   driven directly) that serves real files first and falls back to
-   `index.html` only for genuine misses. More robust, slightly more to own.
+### Regression check
 
-Until one of those lands:
+After any change to the server or the build, run it and confirm:
 
-- **Android** works fully once the fingerprint above is filled in.
-- **iOS** falls back to the `mortaralumni://` custom scheme, which the
-  public `/tickets` page triggers automatically, so scanned links still reach
-  the app — just via a page load rather than instantly.
+| Path | Expect |
+|---|---|
+| `/.well-known/apple-app-site-association` | 200, `application/json`, ~418 B — **not** ~1050 B of `index.html` |
+| `/.well-known/assetlinks.json` | 200, `application/json` |
+| `/tickets`, `/get-the-app`, `/curriculum/abc` | 200 `text/html` (SPA fallback intact) |
+| `/privacy.html`, a hashed `/assets/*.js` | 200, correct content types |
+
+The byte length is the tell: if the AASA response is the same size as the SPA
+shell, it is the shell.
+
+If the host ever moves to a platform that serves static files itself, check
+these two paths first when links stop opening — they fail silently everywhere.

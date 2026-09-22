@@ -52,22 +52,6 @@ abstract final class ConferenceAnalytics {
             'targeted': targeted,
           });
 
-  /// The member-card reveal animation finished (or was skipped).
-  ///
-  /// [assetMissing] true means the video was not bundled and the screen
-  /// forwarded straight to the card — worth seeing in the dashboard rather
-  /// than discovering from a bug report.
-  static Future<void> cardRevealPlayed({
-    required bool assetMissing,
-    required bool skipped,
-  }) =>
-      _log('conference_card_reveal_played',
-          screen: 'conference_card_reveal',
-          extra: {
-            'asset_missing': assetMissing,
-            'skipped': skipped,
-          });
-
   /// The shareable ticket link was copied or shared from the gate.
   static Future<void> ticketLinkShared({required bool targeted}) =>
       _log('conference_ticket_link_shared',
