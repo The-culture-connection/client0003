@@ -135,6 +135,42 @@ await check('an admin WITHOUT the roles custom claim is denied', async () => {
   await assertFails(getDocs(surveys(noClaim)));
 });
 
+// --- privilege escalation on the user's own document ---
+//
+// Ported here when `beta-checklist-stamp.test.mjs` was deleted with the beta
+// checklist. The assertion has nothing to do with beta: `match /users/{userId}`
+// lets an owner update their own document, and the property worth holding is
+// that "their own document" does not extend to handing themselves a role. It
+// belongs next to the claims tests above, which cover the other half — that
+// `hasStaffClaim()` reads the custom claim and not this field.
+
+await check('a member cannot grant themselves a staff role on their own doc', async () => {
+  await assertFails(
+    setDoc(doc(member(), 'users', MEMBER), { roles: ['superAdmin'] }, { merge: true }),
+  );
+});
+
+await check('a member cannot smuggle a role in alongside a legitimate field', async () => {
+  // The original form of this test: a real write the user is allowed to make,
+  // with `roles` appended. Rejecting the whole write is the point — a rule that
+  // only checked the "main" field would let this through.
+  await assertFails(
+    setDoc(
+      doc(member(), 'users', MEMBER),
+      { first_name: 'Mem', roles: ['superAdmin'] },
+      { merge: true },
+    ),
+  );
+});
+
+await check('a member can still update an ordinary field on their own doc', async () => {
+  // The control. Without this, the two checks above would also pass if owner
+  // writes were broken outright.
+  await assertSucceeds(
+    setDoc(doc(member(), 'users', MEMBER), { first_name: 'Memorable' }, { merge: true }),
+  );
+});
+
 await testEnv.cleanup();
 
 for (const [status, name] of results) console.log(`${status}  ${name}`);

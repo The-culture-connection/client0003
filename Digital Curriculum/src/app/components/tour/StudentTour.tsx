@@ -24,40 +24,6 @@ export function startTour() {
   }
 }
 
-/** CSS hook on the floating bug button, set in `BetaFeedbackWidget`. */
-const BETA_FEEDBACK_TARGET = '[data-tour="beta-feedback"]';
-
-/**
- * Opening step: how to report, before anything else.
- *
- * Deliberately unskippable — no Skip, no close button, no dismissing by
- * clicking the backdrop or pressing Escape. A beta round is only worth what
- * testers report, so nobody reaches the rest of the tour without being shown
- * how. Every other step keeps its Skip button.
- */
-const betaFeedbackStep: Step = {
-  target: BETA_FEEDBACK_TARGET,
-  // "left-end", not "left": the bug button is `fixed bottom-24`, so a tooltip
-  // centred on it hangs its bottom half — the footer with Next — off the
-  // bottom of the viewport, and scrolling cannot rescue it because a fixed
-  // target moves with the page. Anchoring the tooltip's bottom edge to the
-  // button's makes it grow upward into the empty page instead.
-  placement: "left-end",
-  disableBeacon: true,
-  showSkipButton: false,
-  hideCloseButton: true,
-  disableOverlayClose: true,
-  disableCloseOnEsc: true,
-  title: "Start here — tell us everything",
-  content:
-    "This bug button is on every screen, bottom-right. Use it for ANY AND ALL " +
-    "things you notice and want noted for change — a typo, a slow page, a " +
-    "confusing label, a colour you dislike, a feature you wish existed. " +
-    "Nothing is too small or too opinionated. It grabs a screenshot of what " +
-    "you are looking at, so press it the moment something catches your eye " +
-    "rather than trying to remember it later.",
-};
-
 const baseSteps: Step[] = [
   {
     target: "body",
@@ -127,19 +93,8 @@ export function StudentTour() {
   const [run, setRun] = useState(false);
   const [steps, setSteps] = useState<Step[]>(baseSteps);
 
-  /**
-   * Decide the step list at the moment the tour opens.
-   *
-   * The report step leads only when its target is actually on the page. An
-   * unskippable step pointing at nothing would leave the tester stuck behind an
-   * overlay with no Skip, no close and no Escape — so when the widget is absent
-   * (signed out, or it failed to mount) the tour simply starts at the welcome.
-   */
   const begin = useCallback(() => {
-    const hasReportButton =
-      typeof document !== "undefined" &&
-      document.querySelector(BETA_FEEDBACK_TARGET) !== null;
-    setSteps(hasReportButton ? [betaFeedbackStep, ...baseSteps] : baseSteps);
+    setSteps(baseSteps);
     setRun(true);
   }, []);
 

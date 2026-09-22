@@ -8,10 +8,9 @@ import '../theme/cosmic_widgets.dart';
 /// identically on every hall tab so the plus always looks and sits the same.
 ///
 /// Positioning: the hall's tab screens extend under the floating
-/// [CosmicBottomNav] pill (`extendBody: true`), and the draggable
-/// beta-feedback button hovers near the bottom-right — so the button is
-/// lifted clear of both. `viewPadding` is used (not `padding`) because it
-/// reports the raw device inset even inside consumed SafeAreas.
+/// [CosmicBottomNav] pill (`extendBody: true`), so the button is lifted clear
+/// of it. `viewPadding` is used (not `padding`) because it reports the raw
+/// device inset even inside consumed SafeAreas.
 class ExpansionComposeFab extends StatelessWidget {
   const ExpansionComposeFab({
     super.key,
@@ -39,8 +38,10 @@ class ExpansionComposeFab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Above the pill nav AND the beta-feedback bug button, whose edge-snapped
-    // resting spot is the slot directly over the nav's right end.
+    // Clears the pill nav. The value also used to clear the beta-feedback bug
+    // button that rested over the nav's right end; that button is gone, but the
+    // lift is left as-is because it is what the tab screens are laid out
+    // against — retuning it is a visual change, not a cleanup.
     final lift = 152 + MediaQuery.viewPaddingOf(context).bottom;
     // The delegate notifies on every navigation, so this rebuilds (and hides
     // the button) the moment a compose route is pushed over the tab.

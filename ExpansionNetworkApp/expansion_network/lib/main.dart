@@ -11,7 +11,6 @@ import 'analytics/analytics_error_hooks.dart';
 import 'analytics/analytics_navigation_binding.dart';
 import 'analytics/analytics_service.dart';
 import 'auth/auth_controller.dart';
-import 'beta_feedback/beta_feedback_overlay.dart';
 import 'expansion_release_trace.dart';
 import 'firebase_options.dart';
 import 'router/app_router.dart';
@@ -228,26 +227,21 @@ class _ExpansionNetworkAppState extends State<ExpansionNetworkApp> {
         // One persistent Mortarverse sky under every screen (screens render
         // transparent scaffolds on top — mirrors the webapp's Root shell).
         //
-        // [BetaFeedbackOverlay] sits outside that stack on purpose: it captures
-        // everything inside it as the report screenshot, so its own button and
-        // sheet must not be part of what it captures.
         // Universal keyboard dismissal: tapping anywhere outside a text
         // field drops focus and closes the keyboard, on every screen.
         // (Buttons and fields still receive their taps first — this only
         // wins when nothing else claims the touch.)
-        return BetaFeedbackOverlay(
-          child: GestureDetector(
-            behavior: HitTestBehavior.translucent,
-            onTap: () {
-              final focus = FocusManager.instance.primaryFocus;
-              if (focus != null && focus.context != null) focus.unfocus();
-            },
-            child: Stack(
-              children: [
-                const MortarverseSky(),
-                ContentSuspensionGate(child: child),
-              ],
-            ),
+        return GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: () {
+            final focus = FocusManager.instance.primaryFocus;
+            if (focus != null && focus.context != null) focus.unfocus();
+          },
+          child: Stack(
+            children: [
+              const MortarverseSky(),
+              ContentSuspensionGate(child: child),
+            ],
           ),
         );
       },

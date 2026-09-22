@@ -22,8 +22,6 @@ import '../../theme/app_theme.dart';
 import '../mortarverse_signals.dart';
 import '../../theme/cosmic_widgets.dart';
 import '../../widgets/spotlight_tutorial.dart';
-import '../../beta/beta_checklist.dart';
-import '../../beta/beta_checklist_banner.dart';
 import '../widgets/mortarverse_focus_card.dart';
 import '../widgets/mortarverse_planet.dart';
 import '../../theme/cosmic_content.dart';
@@ -51,22 +49,14 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
   // Spotlight targets for the home-screen tutorial (Jazmine: "Can we get a
   // short tutorial to learn how to navigate the home screen?").
   final GlobalKey _tutFocusCard = GlobalKey();
-  final GlobalKey _tutBetaChecklist = GlobalKey();
   final GlobalKey _tutStreet = GlobalKey();
   final GlobalKey _tutNetworkingTile = GlobalKey();
   final GlobalKey _tutCardScan = GlobalKey();
 
-  /// Beta checklist state. Loaded rather than streamed: seven live queries on
-  /// the landing screen is not worth it when the checklist reloads on entry,
-  /// whenever the profile signals change, and on demand from the banner.
-  final BetaChecklistService _betaService = BetaChecklistService();
-  BetaChecklistState _beta = const BetaChecklistState.empty();
-  bool _betaLoading = true;
-  bool _profileCompleteForBeta = false;
-  String? _conferenceIdForBeta;
-
-  /// True while the spotlight tutorial is on screen, so the banner collapses
-  /// and cannot cover a spotlight cut-out.
+  /// True while the spotlight tutorial is on screen.
+  ///
+  /// Anything this screen can overlay must stay out of the way while it runs —
+  /// a card drawn over a spotlight cut-out reads as a broken tutorial.
   bool _tutorialShowing = false;
 
   /// One-time flag; bump the suffix to re-show after a big chooser redesign.
@@ -85,38 +75,6 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
     CurrentConferenceHolder.instance.clear();
     _activeConferenceFuture = _conferenceRepository.fetchActiveConference();
     unawaited(_maybeShowTutorial());
-    unawaited(_loadBetaChecklist());
-  }
-
-  /// Re-reads every checklist signal. Cheap enough to call on entry and on
-  /// demand: seven single-field queries, each capped at one document.
-  Future<void> _loadBetaChecklist() async {
-    if (!mounted) return;
-    setState(() => _betaLoading = true);
-    final state = await _betaService.load(
-      profileComplete: _profileCompleteForBeta,
-      openConferenceId: _conferenceIdForBeta,
-    );
-    if (!mounted) return;
-    setState(() {
-      _beta = state;
-      _betaLoading = false;
-    });
-  }
-
-  /// The profile percentage and the open conference arrive from streams that
-  /// resolve after the first build, so the checklist reloads when either
-  /// changes rather than being stuck with whatever was known at init.
-  void _syncBetaInputs({required bool profileComplete, String? conferenceId}) {
-    if (profileComplete == _profileCompleteForBeta &&
-        conferenceId == _conferenceIdForBeta) {
-      return;
-    }
-    _profileCompleteForBeta = profileComplete;
-    _conferenceIdForBeta = conferenceId;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) unawaited(_loadBetaChecklist());
-    });
   }
 
   @override
@@ -165,13 +123,6 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
               'unread conversations, an open conference, upcoming events. '
               'Swipe it to flip through, and tap the glowing button to jump '
               'straight there.',
-        ),
-        SpotlightStep(
-          targetKey: _tutBetaChecklist,
-          title: 'Your beta checklist',
-          body: 'While the beta is running, this tracks what you have tried. '
-              'Tap it to open the list — each step crosses itself off once you '
-              'have actually done it, so there is nothing to tick by hand.',
         ),
         SpotlightStep(
           targetKey: _tutStreet,
@@ -502,14 +453,6 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
     required bool conferenceLoading,
     required List<CommunityEvent> upcoming,
   }) {
-    // Profile completeness and the open conference arrive from streams, so the
-    // checklist is told about them here. Reloading is deferred to a post-frame
-    // callback inside, because this runs during build.
-    _syncBetaInputs(
-      profileComplete: !signals.profileIncomplete,
-      conferenceId: conference?.id,
-    );
-
     final queue = _buildQueue(
       waiting: waiting,
       conference: conference,
@@ -583,18 +526,6 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
             queue: queue,
             onOpen: _openAction,
             onShown: _reportShown,
-          ),
-        ),
-        // Its own sibling, outside every key the tutorial targets — the focus
-        // card's spotlight rect is unchanged by it.
-        Padding(
-          key: _tutBetaChecklist,
-          padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-          child: BetaChecklistBanner(
-            state: _beta,
-            loading: _betaLoading,
-            onRefresh: _loadBetaChecklist,
-            forceCollapsed: _tutorialShowing,
           ),
         ),
         Padding(
