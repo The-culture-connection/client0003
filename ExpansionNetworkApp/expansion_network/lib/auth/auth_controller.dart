@@ -8,6 +8,7 @@ import '../analytics/expansion_analytics.dart';
 import '../constants/alumni_network_constants.dart';
 import '../expansion_release_trace.dart';
 import '../services/expansion_session_service.dart';
+import '../mortarverse/mortarverse_popup_service.dart';
 import '../services/pending_deep_link.dart';
 import '../services/push_notifications_service.dart';
 import '../services/user_profile_repository.dart';
@@ -114,6 +115,10 @@ class AuthController extends ChangeNotifier {
       // it into whoever signs in next would send a new account to a ticket
       // flow they never asked for.
       PendingDeepLink.instance.clear();
+      // Same reasoning for the popup's once-per-launch guard: signing in as a
+      // different person starts a new run, and they should not be silently
+      // skipped because the previous account already used it up.
+      MortarversePopupService.resetLaunchGuard();
       _needsExpansionOnboarding = null;
       _hasExpansionAccess = false;
       _expansionOnboardingRoles = null;

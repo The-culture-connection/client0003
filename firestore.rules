@@ -502,7 +502,12 @@ service cloud.firestore {
     function mortarInfoPostKeys() {
       return [
         'title', 'body', 'published', 'media', 'created_at', 'updated_at',
-        'newsletter_url', 'newsletter_label'
+        'newsletter_url', 'newsletter_label',
+        // Mortarverse popup: staff opt a post in to surfacing as a one-time
+        // card on the Mortarverse screen, optionally until a cutoff. Both are
+        // optional — posts written before these existed keep saving, because
+        // hasOnly() bounds which keys may appear, not which must.
+        'popup', 'popup_expires_at'
       ];
     }
 
@@ -523,7 +528,12 @@ service cloud.firestore {
               || request.resource.data.newsletter_url.matches('https://.*'))))
         && (!('newsletter_label' in request.resource.data)
           || (request.resource.data.newsletter_label is string
-            && request.resource.data.newsletter_label.size() <= 200));
+            && request.resource.data.newsletter_label.size() <= 200))
+        && (!('popup' in request.resource.data)
+          || request.resource.data.popup is bool)
+        && (!('popup_expires_at' in request.resource.data)
+          || request.resource.data.popup_expires_at == null
+          || request.resource.data.popup_expires_at is timestamp);
     }
 
     match /mortar_info_posts/{postId} {

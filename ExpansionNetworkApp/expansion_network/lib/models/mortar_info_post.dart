@@ -12,6 +12,8 @@ class MortarInfoPost {
     this.updatedAt,
     this.newsletterUrl,
     this.newsletterLabel,
+    this.popup = false,
+    this.popupExpiresAt,
   });
 
   final String id;
@@ -24,6 +26,26 @@ class MortarInfoPost {
   /// Optional https link (e.g. newsletter) shown as a LinkedIn-style link card.
   final String? newsletterUrl;
   final String? newsletterLabel;
+
+  /// Staff opted this post in to the one-time Mortarverse popup.
+  ///
+  /// Defaults to false, so every post written before the flag existed — and
+  /// every ordinary post since — is treated as "do not interrupt anyone".
+  final bool popup;
+
+  /// Optional cutoff after which the popup stops appearing. Null means it keeps
+  /// showing to anyone who has not already seen it.
+  final DateTime? popupExpiresAt;
+
+  /// Whether this post should interrupt *right now*.
+  ///
+  /// Unpublishing a post or letting its cutoff pass both silence the popup
+  /// without anyone having to clear the flag.
+  bool popupActiveAt(DateTime now) {
+    if (!popup || !published) return false;
+    final expiry = popupExpiresAt;
+    return expiry == null || now.isBefore(expiry);
+  }
 
   bool get hasNewsletterLink =>
       newsletterUrl != null && newsletterUrl!.trim().isNotEmpty && newsletterUrl!.trim().startsWith('https://');
@@ -50,6 +72,8 @@ class MortarInfoPost {
       updatedAt: _ts(data['updated_at']),
       newsletterUrl: _s(data['newsletter_url']),
       newsletterLabel: _s(data['newsletter_label']),
+      popup: data['popup'] == true,
+      popupExpiresAt: _ts(data['popup_expires_at']),
     );
   }
 

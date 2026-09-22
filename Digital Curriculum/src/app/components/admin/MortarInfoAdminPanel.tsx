@@ -9,7 +9,10 @@ import {
   query,
   serverTimestamp,
   updateDoc,
-  type Timestamp,
+  // A value import, not `type Timestamp`: the popup cutoff calls
+  // `Timestamp.fromDate` at runtime, and a type-only import is erased at build
+  // time, so it would be undefined in the browser.
+  Timestamp,
 } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { db, storage } from "../../lib/firebase";
@@ -31,6 +34,8 @@ type PostRow = {
   newsletter_url?: string;
   newsletter_label?: string;
   created_at?: Timestamp | null;
+  popup?: boolean;
+  popup_expires_at?: Timestamp | null;
 };
 
 function mediaTypeFromFile(f: File): "image" | "video" {
@@ -64,6 +69,10 @@ export function MortarInfoAdminPanel() {
   const [newsletterUrl, setNewsletterUrl] = useState("");
   const [newsletterLabel, setNewsletterLabel] = useState("");
   const [published, setPublished] = useState(true);
+  // Opting a post in to the one-time Mortarverse popup. Off by default: most
+  // posts belong in the feed, and interrupting should be a deliberate act.
+  const [popup, setPopup] = useState(false);
+  const [popupExpiresAt, setPopupExpiresAt] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -107,6 +116,8 @@ export function MortarInfoAdminPanel() {
             newsletter_url: typeof data.newsletter_url === "string" ? data.newsletter_url : "",
             newsletter_label: typeof data.newsletter_label === "string" ? data.newsletter_label : "",
             created_at: data.created_at as Timestamp | undefined,
+            popup: data.popup === true,
+            popup_expires_at: (data.popup_expires_at as Timestamp | undefined) ?? null,
           };
         });
         setPosts(rows);
@@ -149,6 +160,13 @@ export function MortarInfoAdminPanel() {
         newsletter_label: newsletterLabel.trim(),
         created_at: serverTimestamp(),
         updated_at: serverTimestamp(),
+        popup,
+        // Only sent when the popup is on and a date was given. The app treats a
+        // missing cutoff as "until dismissed", and the rules accept the field
+        // being absent entirely.
+        ...(popup && popupExpiresAt
+          ? { popup_expires_at: Timestamp.fromDate(new Date(popupExpiresAt)) }
+          : {}),
       });
 
       const media: MediaItem[] = [];
@@ -171,6 +189,8 @@ export function MortarInfoAdminPanel() {
       setNewsletterUrl("");
       setNewsletterLabel("");
       setPublished(true);
+      setPopup(false);
+      setPopupExpiresAt("");
       setFiles([]);
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (err: unknown) {
@@ -347,6 +367,43 @@ export function MortarInfoAdminPanel() {
                     />
                     Publish to app
                   </label>
+                  {/* Interrupting is opt-in per post. Disabled while the post is
+                      a draft, because an unpublished post cannot pop up — the
+                      app checks `published` too, and a checked box that does
+                      nothing is worse than one you cannot check. */}
+                  <label
+                    className={`flex items-center gap-2 text-sm select-none ${
+                      published
+                        ? "text-muted-foreground cursor-pointer"
+                        : "text-muted-foreground/50 cursor-not-allowed"
+                    }`}
+                    title={
+                      published
+                        ? "Show this once as a card on the Mortarverse screen"
+                        : "Publish the post first"
+                    }
+                  >
+                    <input
+                      type="checkbox"
+                      checked={popup && published}
+                      disabled={!published}
+                      onChange={(e) => setPopup(e.target.checked)}
+                      className="h-4 w-4 rounded border-border"
+                    />
+                    Show as popup
+                  </label>
+                  {popup && published && (
+                    <label className="flex items-center gap-2 text-sm text-muted-foreground select-none">
+                      <span className="whitespace-nowrap">Stop after</span>
+                      <input
+                        type="date"
+                        value={popupExpiresAt}
+                        onChange={(e) => setPopupExpiresAt(e.target.value)}
+                        className="h-8 rounded border border-border bg-background px-2 text-sm"
+                        title="Optional. Leave blank to keep showing until each person dismisses it."
+                      />
+                    </label>
+                  )}
                   <Button
                     type="submit"
                     disabled={saving}
@@ -391,6 +448,15 @@ export function MortarInfoAdminPanel() {
                           <Badge variant={p.published ? "default" : "secondary"} className="text-[10px]">
                             {p.published ? "Live" : "Draft"}
                           </Badge>
+                          {/* Which posts are currently allowed to interrupt is
+                              worth seeing at a glance from the list. */}
+                          {p.popup && p.published && (
+                            <Badge variant="outline" className="text-[10px]">
+                              {p.popup_expires_at
+                                ? `Popup until ${p.popup_expires_at.toDate().toLocaleDateString()}`
+                                : "Popup"}
+                            </Badge>
+                          )}
                           <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={() => togglePublished(p.id, !p.published)}>
                             {p.published ? "Unpublish" : "Publish"}
                           </Button>

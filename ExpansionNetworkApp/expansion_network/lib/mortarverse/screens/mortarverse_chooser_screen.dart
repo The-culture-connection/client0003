@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -16,14 +17,19 @@ import '../../conference/services/conference_repository.dart';
 import '../../conference/theme/conference_colors.dart';
 import '../../constants/digital_curriculum_constants.dart';
 import '../../models/community_event.dart';
+import '../../models/mortar_info_post.dart';
 import '../../services/events_repository.dart';
+import '../../services/mortar_info_repository.dart';
 import '../../services/user_profile_repository.dart';
 import '../../theme/app_theme.dart';
+import '../mortarverse_popup.dart';
+import '../mortarverse_popup_service.dart';
 import '../mortarverse_signals.dart';
 import '../../theme/cosmic_widgets.dart';
 import '../../widgets/spotlight_tutorial.dart';
 import '../widgets/mortarverse_focus_card.dart';
 import '../widgets/mortarverse_planet.dart';
+import '../widgets/mortarverse_popup_card.dart';
 import '../../theme/cosmic_content.dart';
 
 /// Post-login landing screen: a live action widget answering "what needs me?",
@@ -59,6 +65,33 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
   /// a card drawn over a spotlight cut-out reads as a broken tutorial.
   bool _tutorialShowing = false;
 
+  // --- Mortarverse popup ------------------------------------------------
+  //
+  // One slide-up notice per app launch, chosen from announcements, imminent
+  // events and waiting conversations. Suppression is deliberately generous:
+  // the cost of showing nothing is nil, the cost of nagging is real.
+
+  final MortarversePopupService _popups = MortarversePopupService();
+  final MortarInfoRepository _mortarInfo = MortarInfoRepository();
+
+  MortarversePopupCandidate? _popup;
+
+  /// Guards the one-shot resolve. The screen rebuilds on every stream tick, so
+  /// without this the resolve would re-run constantly.
+  bool _popupResolveStarted = false;
+
+  /// Latest announcements, captured from their stream so the resolve can read
+  /// them without opening a second query.
+  List<MortarInfoPost> _posts = const [];
+  StreamSubscription<List<MortarInfoPost>>? _postsSub;
+
+  /// Published events, captured during build for the same reason.
+  ///
+  /// The screen's own `_upcoming` list is date-filtered for the events strip;
+  /// the popup needs the unfiltered set so it can apply its own "registered,
+  /// and starting within 48 hours" rule.
+  List<CommunityEvent> _eventsForPopup = const [];
+
   /// One-time flag; bump the suffix to re-show after a big chooser redesign.
   static const String _tutorialSeenKey = 'mortarverse_tutorial_seen_v1';
 
@@ -75,6 +108,13 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
     CurrentConferenceHolder.instance.clear();
     _activeConferenceFuture = _conferenceRepository.fetchActiveConference();
     unawaited(_maybeShowTutorial());
+    // Announcements are not otherwise needed by this screen, so they are
+    // subscribed here rather than added as a fifth layer to the builder
+    // pyramid in build().
+    _postsSub = _mortarInfo.watchPublishedPosts().listen(
+      (posts) => _posts = posts,
+      onError: (_) {/* No announcements is a valid state, not an error. */},
+    );
   }
 
   @override
@@ -82,7 +122,100 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
     // Navigating away mid-tutorial must take the overlay with it — it lives in
     // the root overlay, not in this screen's subtree.
     _tutorial?.dismiss();
+    _postsSub?.cancel();
     super.dispose();
+  }
+
+  /// Decides whether a popup is shown, once per app launch.
+  ///
+  /// Waits for the screen to settle first, mirroring the tutorial's own delay:
+  /// a card sliding in over a still-laying-out street looks like a glitch.
+  ///
+  /// Every guard here is a reason *not* to interrupt, and they are checked
+  /// twice — before the delay and after — because the tutorial can start, the
+  /// user can navigate away, or another launch-guard can win in between.
+  Future<void> _maybeShowPopup() async {
+    if (_popupResolveStarted) return;
+    _popupResolveStarted = true;
+
+    if (MortarversePopupService.shownThisLaunch) return;
+    if (_tutorialShowing) return;
+    // A first run belongs to the tutorial. The popup waits for the next launch
+    // rather than competing with it.
+    final prefs = await SharedPreferences.getInstance();
+    if (!(prefs.getBool(_tutorialSeenKey) ?? false)) return;
+    if (!mounted) return;
+
+    if (!await _popupsEnabled()) return;
+    if (!mounted) return;
+
+    final seen = await _popups.loadSeenKeys();
+    if (!mounted || _tutorialShowing) return;
+
+    final candidate = selectMortarversePopup(
+      candidates: _popups.buildCandidates(
+        posts: _posts,
+        events: _eventsForPopup,
+        waitingPartnerIds: _waitingPartnerIds,
+        now: DateTime.now(),
+      ),
+      seenKeys: seen,
+      now: DateTime.now(),
+    );
+    if (candidate == null) return;
+
+    await Future<void>.delayed(const Duration(milliseconds: 900));
+    if (!mounted || _tutorialShowing) return;
+    if (MortarversePopupService.shownThisLaunch) return;
+
+    // Claim the launch before showing, so a rebuild racing this cannot show a
+    // second one.
+    MortarversePopupService.markShownThisLaunch();
+    setState(() => _popup = candidate);
+    unawaited(ExpansionAnalytics.log(
+      'mortarverse_popup_shown',
+      sourceScreen: 'mortarverse',
+      extra: {'popup_type': candidate.kind.name},
+    ));
+  }
+
+  /// Remote off-switch at `app_config/mortarverse_popups`.
+  ///
+  /// Defaults to **on** when the document is missing or unreadable, matching
+  /// the convention the beta feedback overlay used: a config the team has not
+  /// created yet should not silently disable a shipped feature.
+  Future<bool> _popupsEnabled() async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('app_config')
+          .doc('mortarverse_popups')
+          .get();
+      final data = doc.data();
+      if (data == null) return true;
+      return data['enabled'] != false;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  /// Dismissal and opening both mean "do not show me this again".
+  void _closePopup(MortarversePopupCandidate c, {required bool opened}) {
+    unawaited(_popups.markSeen(c.seenKey));
+    unawaited(ExpansionAnalytics.log(
+      opened ? 'mortarverse_popup_tapped' : 'mortarverse_popup_dismissed',
+      sourceScreen: 'mortarverse',
+      extra: {'popup_type': c.kind.name},
+    ));
+    if (mounted) setState(() => _popup = null);
+    if (opened) {
+      // Same push/go split the focus card uses: leaf screens are pushed so
+      // back returns here, shell worlds replace.
+      if (_pushedRoutes.any(c.route.startsWith)) {
+        context.push(c.route);
+      } else {
+        context.go(c.route);
+      }
+    }
   }
 
   /// Auto-runs the tutorial once per install. Marked seen up front so a crash
@@ -216,6 +349,9 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
     '/events',
     '/profile/edit',
     '/card',
+    // Announcement detail is a leaf too: back should return to the Mortarverse,
+    // not replace it.
+    '/mortar-info',
   ];
 
   /// Confirms, then opens the Digital Curriculum web app in the external
@@ -406,7 +542,15 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
                         return StreamBuilder<List<CommunityEvent>>(
                           stream: _events.watchPublishedEvents(),
                           builder: (context, eventSnap) {
-                            final upcoming = _upcoming(eventSnap.data ?? const []);
+                            _eventsForPopup = eventSnap.data ?? const [];
+                            final upcoming = _upcoming(_eventsForPopup);
+                            // Deferred to after the frame: this runs inside
+                            // build, and the resolve calls setState.
+                            if (eventSnap.hasData && !_popupResolveStarted) {
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                if (mounted) unawaited(_maybeShowPopup());
+                              });
+                            }
                             return _buildBody(
                               context,
                               hasExpansionAccess: hasExpansionAccess,
@@ -425,6 +569,22 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
               },
             ),
           ),
+          // Anchored to the bottom of the screen, outside the SafeArea above so
+          // it can sit against the edge and handle its own inset. Last in the
+          // Stack so it draws over the street, but it is not modal — there is
+          // no barrier, and everything behind stays scrollable and tappable.
+          if (_popup != null)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: MortarversePopupCard(
+                key: ValueKey(_popup!.seenKey),
+                candidate: _popup!,
+                onOpen: () => _closePopup(_popup!, opened: true),
+                onDismiss: () => _closePopup(_popup!, opened: false),
+              ),
+            ),
         ],
       ),
       // The design puts the card/scan control top-right beside the wordmark as
