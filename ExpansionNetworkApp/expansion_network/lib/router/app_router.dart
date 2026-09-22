@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../auth/auth_controller.dart';
 import '../commons/widgets/commons_shell.dart';
 import '../conference/screens/conference_booth_scan_screen.dart';
+import '../conference/screens/conference_card_reveal_screen.dart';
+import '../conference/screens/conference_ticket_entry_screen.dart';
 import '../conference/screens/conference_community_compose_screen.dart';
 import '../conference/screens/conference_community_post_screen.dart';
 import '../conference/screens/conference_community_screen.dart';
@@ -54,6 +56,8 @@ import '../screens/mortar_info_detail_screen.dart';
 import '../screens/matches_screen.dart';
 import '../screens/matching_screen.dart';
 import '../screens/member_card_screen.dart';
+import '../services/deep_link_resolver.dart' show kConferenceQueryParam, kTicketsPath;
+import '../services/pending_deep_link.dart';
 import '../screens/messages_screen.dart';
 import '../screens/onboarding_screen.dart';
 import '../screens/achievements_screen.dart';
@@ -103,11 +107,25 @@ GoRouter createAppRouter(AuthController auth) {
       /// still on `/auth/*`, so `refreshListenable` can redirect from there
       /// before the screen's own `go('/session')` runs — if only the `/session`
       /// branch checked the flag, the intro would be skipped in that race.
-      String postAuthDestination() =>
-          auth.welcomeIntroPending ? '/welcome-intro' : '/mortarverse';
+      ///
+      /// A destination stashed by [PendingDeepLink] — a `/tickets` QR followed
+      /// while signed out — wins over the chooser, so signing in resumes the
+      /// link instead of dumping the user in the Mortarverse wondering whether
+      /// the code worked. The welcome intro still goes first when it is
+      /// pending; it consumes the stash itself on the way out.
+      String postAuthDestination() {
+        if (auth.welcomeIntroPending) return '/welcome-intro';
+        return PendingDeepLink.instance.consume() ?? '/mortarverse';
+      }
 
       if (auth.loading) {
         if (loc == '/session' || loc.startsWith('/auth') || loc == '/welcome-intro') return null;
+        // A QR scan cold-starts the app: the link arrives while the session is
+        // still resolving, so stash it here too or the bounce to `/session`
+        // throws it away before anyone can act on it.
+        if (loc.startsWith(kTicketsPath)) {
+          PendingDeepLink.instance.remember(state.uri.toString());
+        }
         return '/session';
       }
 
@@ -127,6 +145,15 @@ GoRouter createAppRouter(AuthController auth) {
 
       final loggedIn = auth.user != null;
       final publicAuth = loc == '/' || loc.startsWith('/auth');
+
+      // A ticket link is public — anyone can scan the QR, including someone
+      // with no account. Send them to the landing screen, which offers both
+      // "Sign in" and "Create account", but remember where they were headed so
+      // `postAuthDestination` can finish the journey for them.
+      if (!loggedIn && loc.startsWith(kTicketsPath)) {
+        PendingDeepLink.instance.remember(state.uri.toString());
+        return '/';
+      }
 
       if (!loggedIn && !publicAuth && !loc.startsWith('/onboarding')) {
         if (loc == '/welcome-intro' && FirebaseAuth.instance.currentUser != null) {
@@ -159,10 +186,34 @@ GoRouter createAppRouter(AuthController auth) {
         path: '/mortarverse',
         builder: (context, state) => const MortarverseChooserScreen(),
       ),
+      // Public entry point for ticket links and QR codes. Deliberately NOT
+      // under `/conference/`: that prefix is gated on an admitted, open
+      // conference, and the whole job of this route is to run *before* anyone
+      // knows whether the visitor has a ticket at all.
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: kTicketsPath,
+        builder: (context, state) => ConferenceTheme(
+          child: ConferenceTicketEntryScreen(
+            conferenceId: state.uri.queryParameters[kConferenceQueryParam],
+          ),
+        ),
+      ),
       // Every `/conference/*` screen is wrapped in [ConferenceTheme] so the
       // gold sub-brand keeps its accent instead of inheriting the app-wide
       // Expansion red. Wrapping here rather than inside each screen means a
       // new conference route picks it up for free.
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        // Under `/conference/` on purpose: the entry screen admits the user to
+        // a conference before forwarding here, so the prefix gate is exactly
+        // the guard wanted — reaching the reveal any other way bounces to the
+        // gate rather than playing a badge animation for someone with no badge.
+        path: '/conference/card-reveal',
+        builder: (context, state) => const ConferenceTheme(
+          child: ConferenceCardRevealScreen(),
+        ),
+      ),
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,
         path: '/conference/gate',

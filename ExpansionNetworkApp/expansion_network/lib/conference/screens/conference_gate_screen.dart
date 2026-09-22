@@ -6,10 +6,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../services/expansion_session_service.dart'
     show userMessageForFirebaseCallableError;
 import '../../router/app_router.dart' show expansionRootNavigatorKey;
+import '../../services/deep_link_resolver.dart' show ticketsShareUrl;
 import '../../services/stripe_checkout_service.dart';
 import '../conference_analytics.dart';
 import '../current_conference_holder.dart';
@@ -634,15 +636,47 @@ class _ConferenceGateScreenState extends State<ConferenceGateScreen>
   }
 
   Widget _buildTopBar(BuildContext context) {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(8, 8, 16, 4),
-        child: IconButton(
-          icon: const Icon(Icons.arrow_back, color: ConferenceColors.gold),
-          tooltip: 'Back to the MORTARVERSE',
-          onPressed: _exit,
-        ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back, color: ConferenceColors.gold),
+            tooltip: 'Back to the MORTARVERSE',
+            onPressed: _exit,
+          ),
+          const Spacer(),
+          IconButton(
+            icon: const Icon(Icons.ios_share, color: ConferenceColors.gold),
+            tooltip: 'Share a ticket link',
+            onPressed: _shareTicketLink,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Shares the public `/tickets` URL — the same link that goes behind a
+  /// printed QR code.
+  ///
+  /// Targets whichever conference the code card is currently pointed at, so
+  /// sharing from a specific event hands over a link to *that* event. With
+  /// nothing selected it shares the general link, which resolves to whatever
+  /// is on sale when the recipient opens it.
+  ///
+  /// This is what makes the flow spreadable without anyone generating assets by
+  /// hand: the recipient does not need the app, because the URL falls back to
+  /// the download page for anyone who has not installed it.
+  Future<void> _shareTicketLink() async {
+    final conferenceId = _conferenceId;
+    final url = ticketsShareUrl(conferenceId: conferenceId);
+    unawaited(ConferenceAnalytics.ticketLinkShared(
+      targeted: conferenceId != null,
+    ));
+    await SharePlus.instance.share(
+      ShareParams(
+        text: 'Get your MORTAR conference ticket:\n$url',
+        subject: 'MORTAR conference tickets',
       ),
     );
   }

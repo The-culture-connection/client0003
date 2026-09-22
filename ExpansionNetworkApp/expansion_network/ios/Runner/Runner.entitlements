@@ -4,5 +4,24 @@
 <dict>
 	<key>aps-environment</key>
 	<string>development</string>
+	<!-- Universal Links for the conference ticket QR codes. iOS fetches
+	     https://<host>/.well-known/apple-app-site-association and, if this
+	     app's <TeamID>.<bundleID> is listed there, opens /tickets links in the
+	     app instead of Safari.
+
+	     Two things must be true before this works on device:
+	       1. The "Associated Domains" capability is enabled for the App ID in
+	          the Apple Developer portal (entitlement alone is not enough — the
+	          provisioning profile has to carry it, or the build fails to sign).
+	       2. The AASA file is live on the host with the real Team ID, see
+	          `Digital Curriculum/public/.well-known/apple-app-site-association`.
+
+	     Host must match `AppLinks.digitalCurriculum` in
+	     lib/constants/app_links.dart, the Android intent-filter host, and the
+	     `_claimedHosts` set in lib/services/deep_link_resolver.dart. -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:mortar-stage-stage.up.railway.app</string>
+	</array>
 </dict>
 </plist>

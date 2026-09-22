@@ -15,6 +15,7 @@ import 'beta_feedback/beta_feedback_overlay.dart';
 import 'expansion_release_trace.dart';
 import 'firebase_options.dart';
 import 'router/app_router.dart';
+import 'services/deep_link_resolver.dart';
 import 'services/photo_picker_config.dart';
 import 'services/push_notifications_service.dart';
 import 'mortarverse/widgets/mortarverse_sky.dart';
@@ -41,15 +42,24 @@ Future<void> main() async {
   final pushNotificationsService = PushNotificationsService();
   await pushNotificationsService.initialize(
     onDeepLink: (deepLink) async {
-      _openDeepLink(router, deepLink);
+      final destination = resolveDeepLink(deepLink);
+      if (destination != null) {
+        _openDeepLink(router, destination);
+      }
     },
   );
 
+  // `uriLinkStream` replays the link that cold-started the app, so this covers
+  // both a tap while the app is running and a launch from a QR scan.
+  //
+  // Everything is routed through [resolveDeepLink] rather than `uri.path`:
+  // inbound links are public surface, and feeding an arbitrary path to the
+  // router let any link the OS handed us drive navigation anywhere in the app.
   final appLinks = AppLinks();
   appLinks.uriLinkStream.listen((uri) {
-    final path = uri.path;
-    if (path.isNotEmpty) {
-      _openDeepLink(router, path);
+    final destination = resolveDeepLink(uri.toString());
+    if (destination != null) {
+      _openDeepLink(router, destination);
     }
   });
 

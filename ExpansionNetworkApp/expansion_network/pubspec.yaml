@@ -109,7 +109,12 @@ flutter:
 
   assets:
     - assets/welcome_mortarverse.gif
-    - assets/conference/shop_storefront.png
+    # Declared as a directory rather than file-by-file so the member-card
+    # reveal video (assets/conference/mortar_card_spin.mp4) can be dropped in
+    # without a pubspec change. A file listed here but absent fails the build,
+    # and ConferenceCardRevealScreen is written to survive the asset missing —
+    # naming it explicitly would defeat that.
+    - assets/conference/
     - assets/planets/
 
   # An image asset can refer to one or more resolution-specific "variants", see

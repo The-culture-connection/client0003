@@ -8,6 +8,7 @@ import '../analytics/expansion_analytics.dart';
 import '../constants/alumni_network_constants.dart';
 import '../expansion_release_trace.dart';
 import '../services/expansion_session_service.dart';
+import '../services/pending_deep_link.dart';
 import '../services/push_notifications_service.dart';
 import '../services/user_profile_repository.dart';
 
@@ -109,6 +110,10 @@ class AuthController extends ChangeNotifier {
     if (user == null) {
       _iosSessionSettleUid = null;
       _welcomeIntroPending = false;
+      // A deep link stashed before sign-out belongs to that session. Resuming
+      // it into whoever signs in next would send a new account to a ticket
+      // flow they never asked for.
+      PendingDeepLink.instance.clear();
       _needsExpansionOnboarding = null;
       _hasExpansionAccess = false;
       _expansionOnboardingRoles = null;

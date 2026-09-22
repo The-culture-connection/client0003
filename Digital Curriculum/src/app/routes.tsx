@@ -84,6 +84,10 @@ const PublicCertificatePage = lazyPage(() => import("./pages/PublicCertificate")
 const DeleteAccountPage = lazyPage(() => import("./pages/DeleteAccount"), "DeleteAccountPage");
 const ChildSafetyPage = lazyPage(() => import("./pages/ChildSafety"), "ChildSafetyPage");
 const GetTheAppPage = lazyPage(() => import("./pages/GetTheApp"), "GetTheAppPage");
+const ConferenceTicketsPage = lazyPage(
+  () => import("./pages/ConferenceTickets"),
+  "ConferenceTicketsPage"
+);
 
 function StaffAdminGate({ children }: { children: ReactNode }) {
   return <RoleGate allowedRoles={["superAdmin", "Admin"]}>{children}</RoleGate>;
@@ -149,6 +153,15 @@ export const router = createBrowserRouter([
   {
     path: "/get-the-app",
     Component: GetTheAppPage,
+  },
+  // Public on purpose: this is the URL behind the conference ticket QR codes.
+  // When the app is installed and link verification has completed, the OS
+  // intercepts it and this page never renders — it is the fallback for people
+  // who do not have the app, so it must work with no account. Keep the URL
+  // stable: it goes on printed material.
+  {
+    path: "/tickets",
+    Component: ConferenceTicketsPage,
   },
   {
     path: "/onboarding",

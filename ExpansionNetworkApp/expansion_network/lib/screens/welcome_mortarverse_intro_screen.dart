@@ -10,6 +10,7 @@ import 'package:vibration/vibration.dart';
 
 import '../analytics/expansion_analytics.dart';
 import '../auth/auth_controller.dart';
+import '../services/pending_deep_link.dart';
 
 /// Post–sign-in / post–profile-completion welcome, then the Mortarverse chooser.
 const String kWelcomeGifAsset = 'assets/welcome_mortarverse.gif';
@@ -264,7 +265,12 @@ class _WelcomeMortarverseIntroScreenState extends State<WelcomeMortarverseIntroS
     unawaited(
       ExpansionAnalytics.log('welcome_intro_navigated_home', sourceScreen: 'welcome_intro'),
     );
-    context.go('/mortarverse');
+    // A deep link followed while signed out (a `/tickets` QR, say) waits
+    // behind the intro: the router sends a new sign-in here first, so this is
+    // where that journey resumes. Without this the intro would swallow the
+    // link and land a first-time user on the chooser instead of the thing they
+    // scanned.
+    context.go(PendingDeepLink.instance.consume() ?? '/mortarverse');
   }
 
   @override

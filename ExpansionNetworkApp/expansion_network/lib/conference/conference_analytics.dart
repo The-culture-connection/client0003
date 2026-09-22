@@ -32,6 +32,48 @@ abstract final class ConferenceAnalytics {
   static Future<void> entered() =>
       _log('conference_entered', screen: 'conference_lobby');
 
+  // --- Ticket links & QR entry ---
+
+  /// A `/tickets` link or QR resolved for a signed-in user.
+  ///
+  /// [destination] is `card` when they already held entry to an open
+  /// conference (and go to the reveal + member card), or `gate` when they were
+  /// sent to browse, buy or redeem. [targeted] records whether the link named
+  /// one conference (`?c=`), which separates "QR on a door" from the general
+  /// shareable link.
+  static Future<void> ticketLinkOpened({
+    required String destination,
+    required bool targeted,
+  }) =>
+      _log('conference_ticket_link_opened',
+          screen: 'conference_ticket_entry',
+          extra: {
+            'destination': destination,
+            'targeted': targeted,
+          });
+
+  /// The member-card reveal animation finished (or was skipped).
+  ///
+  /// [assetMissing] true means the video was not bundled and the screen
+  /// forwarded straight to the card — worth seeing in the dashboard rather
+  /// than discovering from a bug report.
+  static Future<void> cardRevealPlayed({
+    required bool assetMissing,
+    required bool skipped,
+  }) =>
+      _log('conference_card_reveal_played',
+          screen: 'conference_card_reveal',
+          extra: {
+            'asset_missing': assetMissing,
+            'skipped': skipped,
+          });
+
+  /// The shareable ticket link was copied or shared from the gate.
+  static Future<void> ticketLinkShared({required bool targeted}) =>
+      _log('conference_ticket_link_shared',
+          screen: 'conference_gate',
+          extra: {'targeted': targeted});
+
   // --- Check-in ---
 
   static Future<void> checkedIn({

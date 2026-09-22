@@ -116,6 +116,13 @@ export const WEB_ANALYTICS_EVENTS = {
   PAYMENT_SHOP_CHECKOUT_CLICKED: "payment_shop_checkout_clicked",
   /** Public download page — which store a visitor left for. */
   MOBILE_APP_STORE_LINK_CLICKED: "mobile_app_store_link_clicked",
+  /**
+   * Public /tickets page — a conference ticket QR or link was opened in a
+   * browser rather than handled by the app. Counting these against the app's
+   * own `conference_ticket_link_opened` is how we see what share of scans are
+   * reaching people who do not have the app installed.
+   */
+  CONFERENCE_TICKET_LINK_OPENED: "conference_ticket_link_opened",
 } as const;
 
 export type WebAnalyticsEventName = (typeof WEB_ANALYTICS_EVENTS)[keyof typeof WEB_ANALYTICS_EVENTS];
@@ -140,6 +147,9 @@ export const ANONYMOUS_WEB_ANALYTICS_EVENT_NAMES = [
   WEB_ANALYTICS_EVENTS.LOGIN_PASSWORD_RESET_SUCCEEDED,
   // /get-the-app is public by design, so its store clicks arrive without auth.
   WEB_ANALYTICS_EVENTS.MOBILE_APP_STORE_LINK_CLICKED,
+  // /tickets is scanned off printed material by people who may have neither
+  // the app nor an account — the whole point is that it works signed out.
+  WEB_ANALYTICS_EVENTS.CONFERENCE_TICKET_LINK_OPENED,
 ] as const;
 
 export type AnonymousWebAnalyticsEventName = (typeof ANONYMOUS_WEB_ANALYTICS_EVENT_NAMES)[number];

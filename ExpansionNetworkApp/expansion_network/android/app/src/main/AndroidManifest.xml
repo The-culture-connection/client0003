@@ -42,6 +42,41 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- Android App Links: https://<host>/tickets, the URL behind the
+                 conference ticket QR codes. `autoVerify` makes Android fetch
+                 /.well-known/assetlinks.json from the host at install time and,
+                 if this app's signing fingerprint is listed there, open the
+                 link directly instead of showing a chooser — which is the whole
+                 point: a scanned QR should land in the app, not in Chrome.
+
+                 VERIFICATION IS NOT LIVE until assetlinks.json on the host
+                 lists the release signing cert's SHA-256 fingerprint (see
+                 `Digital Curriculum/public/.well-known/assetlinks.json`). Until
+                 then the link still works — Android just offers a chooser
+                 rather than going straight in.
+
+                 Host must match `AppLinks.digitalCurriculum` in
+                 lib/constants/app_links.dart and the `_claimedHosts` set in
+                 lib/services/deep_link_resolver.dart. Change one, change all
+                 three. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https"
+                      android:host="mortar-stage-stage.up.railway.app"
+                      android:pathPrefix="/tickets" />
+            </intent-filter>
+            <!-- Custom scheme, already registered on iOS as CFBundleURLSchemes.
+                 Kept as the belt-and-braces path: it needs no host verification,
+                 so `mortaralumni://tickets` works on a device where App Link
+                 verification has not completed (or the host has changed). -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="mortaralumni" />
+            </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

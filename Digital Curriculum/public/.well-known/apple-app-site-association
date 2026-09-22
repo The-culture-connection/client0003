@@ -1,0 +1,19 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["76BLRVU779.com.mortar.wearemortar"],
+        "components": [
+          {
+            "/": "/tickets",
+            "comment": "Conference ticket entry - the URL behind the QR codes."
+          },
+          {
+            "/": "/tickets/*",
+            "comment": "Conference ticket entry for one named conference."
+          }
+        ]
+      }
+    ]
+  }
+}
