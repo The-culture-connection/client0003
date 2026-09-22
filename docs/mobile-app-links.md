@@ -75,9 +75,16 @@ SPA rewrite.
 
 ### How the files are served, and why not `serve`
 
-The site is served by `Digital Curriculum/scripts/serve-dist.mjs` (Express),
-started by `npm start`. It replaced `serve -s dist`, which **could not serve
-the AASA file at all**.
+The site is served by `Digital Curriculum/scripts/serve-dist.mjs` (Express). It
+replaced `serve -s dist`, which **could not serve the AASA file at all**.
+
+> **The start command lives in `Digital Curriculum/railway.toml`**, under
+> `[deploy] startCommand`, and it **overrides `package.json` "start"**. Change
+> it in `railway.toml` or the change silently does nothing — which is exactly
+> what happened the first time: the new server shipped, deployed, and never
+> ran. The tell was `assetlinks.json` coming back as JSON while
+> `apple-app-site-association` still came back as the SPA shell, since that
+> extension-ful / extension-less split is `serve`'s signature.
 
 The cause: `serve` applies its SPA rewrite to any request path with **no file
 extension**, whether or not a real file sits there. Apple requires
@@ -115,17 +122,29 @@ fallback only ever answers genuinely missing paths.
 
 ### Regression check
 
-After any change to the server or the build, run it and confirm:
+Run this against the **deployed host**, not just locally. The local server and
+the deployed one are selected by different files, so a local pass proves the
+code works, not that it is running.
+
+After any change to the server or the build, confirm:
 
 | Path | Expect |
 |---|---|
 | `/.well-known/apple-app-site-association` | 200, `application/json`, ~418 B — **not** ~1050 B of `index.html` |
 | `/.well-known/assetlinks.json` | 200, `application/json` |
 | `/tickets`, `/get-the-app`, `/curriculum/abc` | 200 `text/html` (SPA fallback intact) |
-| `/privacy.html`, a hashed `/assets/*.js` | 200, correct content types |
+| `/privacy.html` | 200, **0 redirects**, ~18 KB of real policy text |
+| `/delete-account.html` | 200, **0 redirects**, ~14.5 KB |
+| A hashed `/assets/*.js` | 200, `text/javascript` |
 
 The byte length is the tell: if the AASA response is the same size as the SPA
 shell, it is the shell.
+
+The two `.html` rows are not decoration. Google Play's policy and Data safety
+reviewers fetch those URLs and **do not run JavaScript**, so if either one ever
+starts redirecting to its extension-less route and getting the React shell,
+the reviewer sees an empty page and the listing gets rejected. That already
+happened once. Check redirect count, not just status.
 
 If the host ever moves to a platform that serves static files itself, check
 these two paths first when links stop opening — they fail silently everywhere.
