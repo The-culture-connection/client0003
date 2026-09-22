@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   addDoc,
   collection,
@@ -18,7 +18,8 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
 import { Label } from "../ui/label";
-import { Loader2, Check, Trash2, SlidersHorizontal, Upload, Copy, Link as LinkIcon } from "lucide-react";
+import { Loader2, Check, Trash2, SlidersHorizontal, Upload, Copy, Download, QrCode, Link as LinkIcon } from "lucide-react";
+import { QRCodeCanvas } from "qrcode.react";
 import { toast } from "sonner";
 import { ticketsUrl } from "../../lib/appStoreLinks";
 import { ConferenceAnalyticsPanel } from "./ConferenceAnalyticsPanel";
@@ -135,8 +136,84 @@ async function copyText(text: string, message: string, showOnFailure?: string) {
   }
 }
 
+/**
+ * Printable ticket QR for one conference (or for the general link).
+ *
+ * The canvas is rendered at [EXPORT_QR_PX] and scaled down by CSS for display,
+ * so the downloaded PNG is large enough to print on signage rather than being
+ * a blurry upscale of a thumbnail.
+ *
+ * `marginSize` is the quiet zone. It is not decoration — a QR printed flush
+ * against other artwork often will not scan, which is the kind of thing you
+ * discover after the banner is made.
+ */
+const EXPORT_QR_PX = 1024;
+
+function TicketQrPanel({ url, filename, caption }: { url: string; filename: string; caption: string }) {
+  const canvasWrapRef = useRef<HTMLDivElement | null>(null);
+
+  const download = () => {
+    const canvas = canvasWrapRef.current?.querySelector("canvas");
+    if (!canvas) {
+      toast.error("Could not read the QR code to save it.");
+      return;
+    }
+    try {
+      const a = document.createElement("a");
+      a.href = canvas.toDataURL("image/png");
+      a.download = `${filename}.png`;
+      a.click();
+      toast.success("QR code saved.");
+    } catch {
+      toast.error("Could not save the QR code. Right-click it and choose Save image instead.");
+    }
+  };
+
+  return (
+    <div className="mt-3 flex flex-wrap items-start gap-4 rounded-lg border border-border bg-muted/20 p-4">
+      {/* White plate: a QR on a tinted or dark background will not scan. */}
+      <div ref={canvasWrapRef} className="shrink-0 rounded-lg bg-white p-3">
+        <QRCodeCanvas
+          value={url}
+          size={EXPORT_QR_PX}
+          level="M"
+          marginSize={2}
+          style={{ width: 176, height: 176 }}
+        />
+      </div>
+      <div className="min-w-0 flex-1 space-y-2">
+        <p className="text-sm font-medium text-foreground">{caption}</p>
+        <code className="block break-all rounded bg-muted px-2 py-1 text-[11px] text-muted-foreground">
+          {url}
+        </code>
+        <div className="flex flex-wrap gap-2 pt-1">
+          <Button type="button" variant="outline" size="sm" onClick={download}>
+            <Download className="w-3.5 h-3.5 mr-1" /> Download PNG
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => void copyText(url, "Ticket link copied.", url)}
+          >
+            <Copy className="w-3.5 h-3.5 mr-1" /> Copy link
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Scanning this opens the ticket flow: the app if it is installed, otherwise the download
+          page. Test it with a phone camera before it goes to print.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export function ConferencesPanel() {
   const [conferences, setConferences] = useState<ConferenceRow[]>([]);
+  /** Conference whose ticket QR is expanded, or null. */
+  const [qrConfId, setQrConfId] = useState<string | null>(null);
+  /** Whether the all-conferences QR is expanded. */
+  const [showGeneralQr, setShowGeneralQr] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -814,6 +891,15 @@ export function ConferencesPanel() {
           </div>
           <Button
             type="button"
+            variant={showGeneralQr ? "default" : "outline"}
+            size="sm"
+            className="shrink-0"
+            onClick={() => setShowGeneralQr((v) => !v)}
+          >
+            <QrCode className="w-3.5 h-3.5 mr-1" /> QR
+          </Button>
+          <Button
+            type="button"
             variant="outline"
             size="sm"
             className="shrink-0"
@@ -821,6 +907,15 @@ export function ConferencesPanel() {
           >
             <Copy className="w-3.5 h-3.5 mr-1" /> Copy
           </Button>
+          {showGeneralQr ? (
+            <div className="w-full">
+              <TicketQrPanel
+                url={ticketsUrl()}
+                filename="mortar-tickets-all-conferences"
+                caption="All conferences — ticket QR"
+              />
+            </div>
+          ) : null}
         </div>
         {loading ? (
           <div className="flex items-center gap-2 text-muted-foreground text-sm">
@@ -833,10 +928,11 @@ export function ConferencesPanel() {
             {conferences.map((c) => (
               <li
                 key={c.id}
-                className={`flex items-center gap-3 p-3 rounded-lg border bg-background/80 ${
+                className={`p-3 rounded-lg border bg-background/80 ${
                   selectedConfId === c.id ? "border-accent ring-1 ring-accent/30" : "border-border"
                 }`}
               >
+                <div className="flex items-center gap-3">
                 <div className="min-w-0 flex-1">
                   <p className="font-medium text-foreground truncate">{c.name || c.id}</p>
                   <p className="text-xs text-muted-foreground">
@@ -865,6 +961,15 @@ export function ConferencesPanel() {
                       behind a QR code for this specific conference. */}
                   <Button
                     type="button"
+                    variant={qrConfId === c.id ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setQrConfId(qrConfId === c.id ? null : c.id)}
+                    title={`QR code for ${c.name || c.id}`}
+                  >
+                    <QrCode className="w-3.5 h-3.5 mr-1" /> QR
+                  </Button>
+                  <Button
+                    type="button"
                     variant="outline"
                     size="sm"
                     onClick={() =>
@@ -881,6 +986,14 @@ export function ConferencesPanel() {
                     <Trash2 className="w-3.5 h-3.5" />
                   </Button>
                 </div>
+                </div>
+                {qrConfId === c.id ? (
+                  <TicketQrPanel
+                    url={ticketsUrl(c.id)}
+                    filename={`mortar-tickets-${(c.name || c.id).replace(/[^\w-]+/g, "-").toLowerCase()}`}
+                    caption={`${c.name || c.id} — ticket QR`}
+                  />
+                ) : null}
               </li>
             ))}
           </ul>
