@@ -251,6 +251,8 @@ export function ConferencesPanel() {
   const [codeEmail, setCodeEmail] = useState("");
   const [bulkEmails, setBulkEmails] = useState("");
   const [codeBusy, setCodeBusy] = useState(false);
+  /** Email the code to each recipient. On by default — a code nobody receives is not much use. */
+  const [emailCodes, setEmailCodes] = useState(true);
   const [lastGenerated, setLastGenerated] = useState<{ email: string; code: string }[]>([]);
   const [checkinDays, setCheckinDays] = useState<CheckinDayRow[]>([]);
 
@@ -589,10 +591,24 @@ export function ConferencesPanel() {
     const out = await runCallable("generateConferenceTicketCode", {
       conferenceId: selectedConfId,
       email: codeEmail.trim(),
+      sendEmail: emailCodes,
     });
     if (out?.ok) {
-      setLastGenerated([{ email: out.normalizedEmail as string, code: out.code as string }]);
-      setSuccess(`Code generated for ${out.normalizedEmail as string}.`);
+      const who = out.normalizedEmail as string;
+      setLastGenerated([{ email: who, code: out.code as string }]);
+      // Say plainly whether it was delivered. The code exists either way, so a
+      // failed send is a "copy this and send it yourself", not an error.
+      if (!emailCodes) {
+        setSuccess(`Code generated for ${who}. Not emailed — copy it below.`);
+      } else if (out.emailed) {
+        setSuccess(`Code generated and emailed to ${who}.`);
+      } else {
+        setError(
+          `Code generated for ${who}, but the email did not send${
+            out.emailError ? `: ${out.emailError}` : ""
+          }. Copy the code below and send it manually.`,
+        );
+      }
       setCodeEmail("");
     }
   };
@@ -607,11 +623,27 @@ export function ConferencesPanel() {
     const out = await runCallable("bulkAddConferenceTicketBuyers", {
       conferenceId: selectedConfId,
       emails,
+      sendEmail: emailCodes,
     });
     if (out?.ok) {
-      const results = (out.results as { email: string; code: string }[]) ?? [];
+      const results = (out.results as { email: string; code: string; emailed?: boolean }[]) ?? [];
       setLastGenerated(results);
-      setSuccess(`Generated ${out.written as number} code(s).`);
+      const written = out.written as number;
+      const failed = (out.emailFailed as number) ?? 0;
+      if (!emailCodes) {
+        setSuccess(`Generated ${written} code(s). Not emailed — copy them below.`);
+      } else if (failed > 0) {
+        // Name the ones that failed: with a roster of hundreds, "some failed"
+        // is unusable.
+        const who = results.filter((r) => r.emailed === false).map((r) => r.email);
+        setError(
+          `Generated ${written} code(s), emailed ${out.emailed as number}. ` +
+            `Could not email ${failed}: ${who.slice(0, 10).join(", ")}` +
+            `${who.length > 10 ? ` and ${who.length - 10} more` : ""}. Their codes are listed below.`,
+        );
+      } else {
+        setSuccess(`Generated and emailed ${written} code(s).`);
+      }
       setBulkEmails("");
     }
   };
@@ -1053,6 +1085,25 @@ export function ConferencesPanel() {
               <p className="text-xs text-muted-foreground">No check-ins yet.</p>
             )}
           </div>
+
+          {/* Applies to both generate paths below. On by default — issuing a
+              code the recipient never receives was the old behaviour and the
+              reason codes had to be pasted into emails by hand. */}
+          <label className="flex items-start gap-2 text-sm text-muted-foreground cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={emailCodes}
+              onChange={(e) => setEmailCodes(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-border"
+            />
+            <span>
+              Email each code to its recipient
+              <span className="block text-xs text-muted-foreground/80">
+                Sends the conference ticket email with the code, dates and location. Codes are
+                still shown below either way.
+              </span>
+            </span>
+          </label>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">

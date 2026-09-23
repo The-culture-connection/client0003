@@ -11,8 +11,10 @@
  * flow). Conference users are already signed in, so redemption consumes the code
  * for an authed uid (like `finalizeInviteClaim`) — it does NOT create accounts.
  *
- * Phase A: no email is sent — generated codes are returned to the admin UI.
- * Automated ticket emails are Phase B/C.
+ * Every route that issues a code emails it: paid Stripe fulfillment, free
+ * self-registration, and both admin paths (single and bulk). Admin issue is
+ * best-effort about the mail — the code is written first and survives a send
+ * failure, which is reported back so the console can show it for copying.
  */
 import { getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
@@ -24,6 +26,7 @@ import {
   getFirestore,
 } from "firebase-admin/firestore";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
+import * as logger from "firebase-functions/logger";
 
 import { callableCorsAllowlist } from "./callableCorsAllowlist";
 import { BREVO_API_KEY } from "./email/brevoClient";
@@ -41,7 +44,8 @@ const defaultCallableOptions = {
   cors: callableCorsAllowlist,
 };
 
-/** Options for callables that send Brevo email (free registration). */
+/** Options for callables that send Brevo email. Without the secret bound, the
+ * API key is absent at runtime and every send fails. */
 const callableWithBrevo = {
   ...defaultCallableOptions,
   secrets: [BREVO_API_KEY],
@@ -379,7 +383,67 @@ async function loadTicketClaimContext(
 // ---------------------------------------------------------------------------
 
 /** Admin: generate (or reissue) a ticket code for one buyer email. */
-export const generateConferenceTicketCode = onCall(defaultCallableOptions, async (request) => {
+/**
+ * Emails an admin-issued ticket code, without letting a mail failure undo it.
+ *
+ * The code is already written to Firestore by the time this runs, so throwing
+ * here would tell the admin nothing happened when in fact the code exists and
+ * is redeemable. Instead the outcome is reported back and shown in the console,
+ * where someone can copy the code and send it by hand.
+ */
+async function emailIssuedTicketCode(input: {
+  conferenceId: string;
+  to: string;
+  ticketCode: string;
+  currency?: string;
+}): Promise<{ emailed: boolean; emailError?: string }> {
+  try {
+    await sendConferenceTicketConfirmationEmail({
+      db,
+      to: input.to,
+      conferenceId: input.conferenceId,
+      ticketCode: input.ticketCode,
+      // Issued by staff rather than bought, so there is no order or amount to
+      // quote. The template renders these as a dash.
+      currency: input.currency,
+    });
+    return { emailed: true };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    logger.warn("Admin-issued ticket code email failed", {
+      conferenceId: input.conferenceId,
+      to: input.to,
+      error: message,
+    });
+    return { emailed: false, emailError: message };
+  }
+}
+
+/**
+ * Runs [task] over [items] with at most [limit] in flight.
+ *
+ * Bulk issue allows 500 emails and a callable gets 60 seconds. Sending them one
+ * after another does not fit; firing all 500 at once risks Brevo rate limits.
+ * A small pool keeps both in bounds.
+ */
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  task: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const out = new Array<R>(items.length);
+  let next = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (next < items.length) {
+      const i = next++;
+      out[i] = await task(items[i]);
+    }
+  });
+  await Promise.all(workers);
+  return out;
+}
+
+export const generateConferenceTicketCode = onCall(callableWithBrevo, async (request) => {
   if (!request.auth?.uid) throw new HttpsError("unauthenticated", "Sign in required.");
   await assertCallerIsAdmin(request.auth.uid);
 
@@ -392,6 +456,11 @@ export const generateConferenceTicketCode = onCall(defaultCallableOptions, async
   }
   await assertConferenceExists(conferenceId);
 
+  // Defaults to true: a code the recipient never receives is not much use, and
+  // until now this was the gap — paid purchase and free registration both
+  // emailed the code, while an admin-issued one silently did not.
+  const sendEmail = request.data?.sendEmail !== false;
+
   const out = await internalUpsertBuyerWithCode(
     conferenceId,
     emailRaw,
@@ -399,6 +468,14 @@ export const generateConferenceTicketCode = onCall(defaultCallableOptions, async
     request.auth.uid,
     expirationDays,
   );
+
+  const mail = sendEmail ?
+    await emailIssuedTicketCode({
+      conferenceId,
+      to: out.normalizedEmail,
+      ticketCode: out.plainCode,
+    }) :
+    { emailed: false as const };
 
   return {
     ok: true,
@@ -408,11 +485,13 @@ export const generateConferenceTicketCode = onCall(defaultCallableOptions, async
     code: out.plainCode,
     codePreview: maskedPreview(out.plainCode),
     expiresAt: out.expiresAt.toISOString(),
+    emailed: mail.emailed,
+    emailError: mail.emailError,
   };
 });
 
 /** Admin: bulk-add buyers (each gets a fresh code). Up to 500 per call. */
-export const bulkAddConferenceTicketBuyers = onCall(defaultCallableOptions, async (request) => {
+export const bulkAddConferenceTicketBuyers = onCall(callableWithBrevo, async (request) => {
   if (!request.auth?.uid) throw new HttpsError("unauthenticated", "Sign in required.");
   await assertCallerIsAdmin(request.auth.uid);
 
@@ -428,7 +507,9 @@ export const bulkAddConferenceTicketBuyers = onCall(defaultCallableOptions, asyn
   }
   await assertConferenceExists(conferenceId);
 
-  const results: { email: string; code: string; codePreview: string }[] = [];
+  const sendEmail = request.data?.sendEmail !== false;
+
+  const results: { email: string; code: string; codePreview: string; emailed?: boolean; emailError?: string }[] = [];
   const seen = new Set<string>();
   for (const emailRaw of emails) {
     if (!emailRaw || typeof emailRaw !== "string") continue;
@@ -449,7 +530,29 @@ export const bulkAddConferenceTicketBuyers = onCall(defaultCallableOptions, asyn
     });
   }
 
-  return { ok: true, written: results.length, results };
+  // Codes are all written before any mail goes out, so a slow or failing
+  // mailbox can never leave the roster half-built.
+  let emailedCount = 0;
+  if (sendEmail && results.length > 0) {
+    await mapWithConcurrency(results, 8, async (row) => {
+      const mail = await emailIssuedTicketCode({
+        conferenceId,
+        to: row.email,
+        ticketCode: row.code,
+      });
+      row.emailed = mail.emailed;
+      if (mail.emailError) row.emailError = mail.emailError;
+      if (mail.emailed) emailedCount++;
+    });
+  }
+
+  return {
+    ok: true,
+    written: results.length,
+    emailed: emailedCount,
+    emailFailed: sendEmail ? results.length - emailedCount : 0,
+    results,
+  };
 });
 
 /** Admin: revoke a ticket code (lost-code flow = revoke then regenerate). */
