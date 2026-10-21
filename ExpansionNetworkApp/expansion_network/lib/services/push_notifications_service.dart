@@ -42,6 +42,10 @@ class PushNotificationsService {
   }) async {
     if (_initialized) return;
     _initialized = true;
+    // Push is phone-only: the web build (mobile test suite) ships no
+    // firebase-messaging service worker, so getToken() never resolves there
+    // and would hang sign-in.
+    if (kIsWeb) return;
     _onDeepLink = onDeepLink;
 
     final settings = await _messaging.requestPermission(
@@ -80,6 +84,7 @@ class PushNotificationsService {
   }
 
   Future<void> syncTokenForCurrentUser() async {
+    if (kIsWeb) return;
     final token = await _messaging.getToken();
     if (token == null || token.isEmpty) return;
     await _saveTokenForCurrentUser(token);
@@ -111,6 +116,7 @@ class PushNotificationsService {
   /// Removes the token from the user doc (so the backend stops targeting this device)
   /// and deletes it on-device so a fresh token is minted on the next login.
   Future<void> removeTokenForCurrentUser() async {
+    if (kIsWeb) return;
     final uid = _auth.currentUser?.uid;
     String? token;
     try {

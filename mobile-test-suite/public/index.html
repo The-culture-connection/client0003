@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mortarverse Test Suite</title>
+  <style>
+    :root {
+      --bg: #000; --panel: #101010; --panel-2: #181818; --border: #2a2a2a;
+      --text: #fff; --muted: #9a9a9a; --primary: #C1442A; --gold: #E6DBB4;
+      --pass: #34D399; --fail: #FF5A5F; --blocked: #F5B942;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+      font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    button, select, input, textarea { font: inherit; color: inherit; }
+    header { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px;
+      padding: 12px 16px; border-bottom: 1px solid var(--border); }
+    header h1 { margin: 0; font-size: 15px; letter-spacing: .12em; font-weight: 800; }
+    header .build { color: var(--muted); font-size: 12px; }
+    header nav { margin-left: auto; display: flex; flex-wrap: wrap; gap: 8px; }
+    a.chip, button.chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px;
+      border-radius: 999px; border: 1px solid var(--border); background: var(--panel-2);
+      text-decoration: none; cursor: pointer; font-size: 13px; }
+    a.chip:hover, button.chip:hover { border-color: #555; }
+    button.primary { background: var(--primary); border-color: var(--primary); }
+    main { display: grid; grid-template-columns: minmax(0, 1fr) 440px; height: calc(100% - 57px); }
+    .stage { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--border); }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 16px; }
+    .toolbar select { background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; }
+    .viewport { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 12px; }
+    .device { position: relative; flex: none; border-radius: 44px; padding: 12px; background: #1c1c1c;
+      box-shadow: 0 0 0 2px #333, 0 30px 80px rgba(193, 68, 42, .18); transform-origin: center center; }
+    .device iframe { display: block; border: 0; border-radius: 32px; background: #000; }
+    .panel { overflow-y: auto; padding: 16px; }
+    .panel h2 { font-size: 12px; letter-spacing: .14em; color: var(--muted); margin: 0 0 10px; }
+    .tester { display: flex; gap: 8px; margin-bottom: 12px; }
+    .tester input { flex: 1; background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; }
+    .progress { height: 6px; border-radius: 3px; background: var(--panel-2); overflow: hidden; margin: 6px 0 4px; }
+    .progress > div { height: 100%; background: var(--pass); width: 0; transition: width .2s; }
+    .summary { color: var(--muted); font-size: 12px; margin-bottom: 14px; }
+    .group { margin: 18px 0 8px; }
+    .group h3 { margin: 0; font-size: 14px; }
+    .group p { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
+    .case { border: 1px solid var(--border); background: var(--panel); border-radius: 12px; padding: 12px; margin-top: 8px; }
+    .case[data-status="pass"] { border-color: rgba(52, 211, 153, .5); }
+    .case[data-status="fail"] { border-color: rgba(255, 90, 95, .6); }
+    .case[data-status="blocked"] { border-color: rgba(245, 185, 66, .6); }
+    .case h4 { margin: 0 0 6px; font-size: 14px; }
+    .case ol { margin: 0 0 6px; padding-left: 18px; color: #ddd; }
+    .case .expect { font-size: 13px; color: var(--muted); }
+    .case .expect b { color: var(--gold); font-weight: 600; }
+    .status { display: flex; gap: 6px; margin-top: 10px; }
+    .status button { flex: 1; padding: 6px 0; border-radius: 8px; border: 1px solid var(--border); background: var(--panel-2); cursor: pointer; font-size: 12px; font-weight: 700; }
+    .status button[aria-pressed="true"][data-v="pass"] { background: var(--pass); color: #000; border-color: var(--pass); }
+    .status button[aria-pressed="true"][data-v="fail"] { background: var(--fail); color: #000; border-color: var(--fail); }
+    .status button[aria-pressed="true"][data-v="blocked"] { background: var(--blocked); color: #000; border-color: var(--blocked); }
+    .case textarea { width: 100%; margin-top: 8px; min-height: 34px; resize: vertical; background: var(--panel-2);
+      border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; font-size: 13px; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+    .toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: #222; border: 1px solid #444;
+      padding: 8px 14px; border-radius: 999px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+    .toast.show { opacity: 1; }
+    @media (max-width: 900px) {
+      main { grid-template-columns: 1fr; height: auto; }
+      .stage { border-right: 0; border-bottom: 1px solid var(--border); }
+      .viewport { height: 78vh; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>MORTARVERSE TEST SUITE</h1>
+    <span class="build" id="build">Mobile app · web build</span>
+    <nav>
+      <a class="chip" href="/app/" target="_blank" rel="noopener">Open app full screen ↗</a>
+      <a class="chip" href="https://mortar-stage-stage.up.railway.app/" target="_blank" rel="noopener">Staging web platform ↗</a>
+      <a class="chip" href="https://github.com/The-culture-connection/client0003/actions/workflows/mobile-e2e.yml" target="_blank" rel="noopener">Automated runs ↗</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="stage">
+      <div class="toolbar">
+        <select id="device" aria-label="Device"></select>
+        <button class="chip" id="rotate" type="button">Rotate</button>
+        <button class="chip" id="reload" type="button">Reload app</button>
+        <button class="chip" id="reset" type="button" title="Signs out and clears the app's saved state">Reset session</button>
+      </div>
+      <div class="viewport" id="viewport">
+        <div class="device" id="frame"><iframe id="app" src="/app/" title="Mortarverse mobile app"></iframe></div>
+      </div>
+    </section>
+
+    <aside class="panel">
+      <h2>MANUAL CHECKLIST</h2>
+      <div class="tester">
+        <input id="tester" placeholder="Your name (goes on the report)" autocomplete="name">
+      </div>
+      <div class="progress"><div id="bar"></div></div>
+      <div class="summary" id="summary"></div>
+      <div id="cases"></div>
+      <div class="actions">
+        <button class="chip primary" id="copy" type="button">Copy report</button>
+        <button class="chip" id="clear" type="button">Clear results</button>
+      </div>
+      <p class="summary" style="margin-top:14px">
+        Runs against the live <b>mortar-stage</b> backend — real members can see what you create.
+        Camera QR scanning and push notifications need a real phone.
+      </p>
+    </aside>
+  </main>
+  <div class="toast" id="toast"></div>
+
+  <script type="module">
+    import {CHECKLIST} from "./checklist.js";
+
+    const DEVICES = [
+      {id: "iphone15", name: "iPhone 15", w: 393, h: 852},
+      {id: "iphonese", name: "iPhone SE", w: 375, h: 667},
+      {id: "pixel8", name: "Pixel 8", w: 412, h: 915},
+      {id: "galaxys23", name: "Galaxy S23", w: 360, h: 780},
+      {id: "ipadmini", name: "iPad mini", w: 744, h: 1133},
+    ];
+    const KEY = "mts-results-v1";
+    const PREFS = "mts-prefs-v1";
+
+    const store = {
+      get(k, fallback) { try { return JSON.parse(localStorage.getItem(k)) ?? fallback; } catch { return fallback; } },
+      set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* private mode */ } },
+    };
+    const $ = (id) => document.getElementById(id);
+    const toast = (msg) => { const t = $("toast"); t.textContent = msg; t.classList.add("show"); setTimeout(() => t.classList.remove("show"), 1800); };
+
+    // ---- Device frame ----
+    const prefs = store.get(PREFS, {device: "iphone15", landscape: false, tester: ""});
+    const select = $("device");
+    for (const d of DEVICES) select.add(new Option(`${d.name} · ${d.w}×${d.h}`, d.id));
+    select.value = DEVICES.some((d) => d.id === prefs.device) ? prefs.device : "iphone15";
+
+    function layout() {
+      const d = DEVICES.find((x) => x.id === select.value) || DEVICES[0];
+      const [w, h] = prefs.landscape ? [d.h, d.w] : [d.w, d.h];
+      const iframe = $("app");
+      iframe.style.width = w + "px";
+      iframe.style.height = h + "px";
+      const vp = $("viewport").getBoundingClientRect();
+      const scale = Math.min(1, (vp.width - 24) / (w + 24), (vp.height - 24) / (h + 24));
+      $("frame").style.transform = `scale(${scale})`;
+    }
+    select.addEventListener("change", () => { prefs.device = select.value; store.set(PREFS, prefs); layout(); });
+    $("rotate").addEventListener("click", () => { prefs.landscape = !prefs.landscape; store.set(PREFS, prefs); layout(); });
+    addEventListener("resize", layout);
+    layout();
+
+    $("reload").addEventListener("click", () => { $("app").src = "/app/"; });
+
+    // Signs the app out: Firebase Auth persists in IndexedDB, the app's own
+    // prefs in localStorage under "flutter." — both share this origin.
+    $("reset").addEventListener("click", async () => {
+      if (!confirm("Sign out and clear the app's saved state?")) return;
+      $("app").src = "about:blank";
+      await new Promise((r) => setTimeout(r, 300));
+      try {
+        const dbs = indexedDB.databases ? await indexedDB.databases() : [{name: "firebaseLocalStorageDb"}];
+        await Promise.all(dbs.map((db) => new Promise((r) => {
+          const req = indexedDB.deleteDatabase(db.name);
+          req.onsuccess = req.onerror = req.onblocked = () => r();
+        })));
+      } catch { /* nothing stored */ }
+      try {
+        Object.keys(localStorage).filter((k) => k.startsWith("flutter.")).forEach((k) => localStorage.removeItem(k));
+        sessionStorage.clear();
+      } catch { /* storage blocked */ }
+      $("app").src = "/app/";
+      toast("Session reset");
+    });
+
+    fetch("/app/version.json").then((r) => r.ok ? r.json() : null).then((v) => {
+      if (v?.version) $("build").textContent = `Mobile app ${v.version}+${v.build_number} · web build · mortar-stage`;
+    }).catch(() => {});
+
+    // ---- Checklist ----
+    const results = store.get(KEY, {});
+    $("tester").value = prefs.tester || "";
+    $("tester").addEventListener("input", (e) => { prefs.tester = e.target.value; store.set(PREFS, prefs); });
+
+    const esc = (s) => s.replace(/[&<>"]/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+    const all = CHECKLIST.flatMap((g) => g.cases);
+
+    function render() {
+      $("cases").innerHTML = CHECKLIST.map((g) => `
+        <div class="group"><h3>${esc(g.group)}</h3>${g.note ? `<p>${esc(g.note)}</p>` : ""}</div>
+        ${g.cases.map((c) => {
+          const r = results[c.id] || {};
+          return `<div class="case" data-id="${c.id}" data-status="${r.status || ""}">
+            <h4>${esc(c.title)}</h4>
+            <ol>${c.steps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol>
+            <div class="expect"><b>Expect:</b> ${esc(c.expect)}</div>
+            <div class="status">
+              ${["pass", "fail", "blocked"].map((v) => `<button type="button" data-v="${v}" aria-pressed="${r.status === v}">${v.toUpperCase()}</button>`).join("")}
+            </div>
+            <textarea placeholder="Notes (what happened, device, screenshot link)">${esc(r.note || "")}</textarea>
+          </div>`;
+        }).join("")}
+      `).join("");
+      summarize();
+    }
+
+    function summarize() {
+      const counts = {pass: 0, fail: 0, blocked: 0};
+      for (const c of all) { const s = results[c.id]?.status; if (s) counts[s]++; }
+      const done = counts.pass + counts.fail + counts.blocked;
+      $("bar").style.width = `${(done / all.length) * 100}%`;
+      $("summary").textContent = `${done} of ${all.length} checked · ${counts.pass} pass · ${counts.fail} fail · ${counts.blocked} blocked`;
+    }
+
+    $("cases").addEventListener("click", (e) => {
+      const btn = e.target.closest(".status button");
+      if (!btn) return;
+      const card = btn.closest(".case");
+      const id = card.dataset.id;
+      const r = results[id] || {};
+      r.status = r.status === btn.dataset.v ? undefined : btn.dataset.v;
+      r.at = new Date().toISOString();
+      results[id] = r;
+      store.set(KEY, results);
+      card.dataset.status = r.status || "";
+      card.querySelectorAll(".status button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === r.status)));
+      summarize();
+    });
+    $("cases").addEventListener("input", (e) => {
+      if (e.target.tagName !== "TEXTAREA") return;
+      const id = e.target.closest(".case").dataset.id;
+      results[id] = {...(results[id] || {}), note: e.target.value};
+      store.set(KEY, results);
+    });
+
+    $("copy").addEventListener("click", async () => {
+      const d = DEVICES.find((x) => x.id === select.value);
+      const lines = [
+        `# Mortarverse test report`,
+        `Tester: ${prefs.tester || "(unnamed)"} · ${new Date().toLocaleString()} · ${d.name}${prefs.landscape ? " (landscape)" : ""}`,
+        `${$("build").textContent}`,
+        "",
+      ];
+      for (const g of CHECKLIST) {
+        lines.push(`## ${g.group}`);
+        for (const c of g.cases) {
+          const r = results[c.id] || {};
+          const mark = {pass: "✅ PASS", fail: "❌ FAIL", blocked: "⚠️ BLOCKED"}[r.status] || "⬜ not run";
+          lines.push(`- ${mark} — ${c.title}${r.note ? `\n  - ${r.note.replace(/\n/g, "\n    ")}` : ""}`);
+        }
+        lines.push("");
+      }
+      try { await navigator.clipboard.writeText(lines.join("\n")); toast("Report copied"); }
+      catch { prompt("Copy the report:", lines.join("\n")); }
+    });
+
+    $("clear").addEventListener("click", () => {
+      if (!confirm("Clear all your checklist results?")) return;
+      for (const k of Object.keys(results)) delete results[k];
+      store.set(KEY, results);
+      render();
+    });
+
+    render();
+  </script>
+</body>
+</html>

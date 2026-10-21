@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:app_links/app_links.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -22,8 +24,17 @@ import 'theme/app_theme.dart';
 import 'theme/cosmic.dart';
 import 'widgets/content_suspension_gate.dart';
 
+/// Set only by the mobile test suite's web build (`mobile-test-suite/Dockerfile`).
+const bool _kE2eSemantics = bool.fromEnvironment('E2E_SEMANTICS');
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Flutter web paints to a canvas; forcing the semantics tree on gives the
+  // Playwright suite real buttons and text fields to find by name.
+  if (kIsWeb && _kE2eSemantics) {
+    SemanticsBinding.instance.ensureSemantics();
+  }
 
   // Gallery picks go through the Android Photo Picker — no media permission, per Play policy.
   configureImagePicker();

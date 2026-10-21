@@ -1,0 +1,13 @@
+# BuildKit reads <Dockerfile>.dockerignore for this Dockerfile only, so the
+# repo-root build context sends just what the image needs.
+*
+!ExpansionNetworkApp/expansion_network/
+ExpansionNetworkApp/expansion_network/build/
+ExpansionNetworkApp/expansion_network/.dart_tool/
+ExpansionNetworkApp/expansion_network/android/
+ExpansionNetworkApp/expansion_network/ios/
+ExpansionNetworkApp/expansion_network/windows/
+ExpansionNetworkApp/expansion_network/macos/
+ExpansionNetworkApp/expansion_network/linux/
+!mobile-test-suite/server.mjs
+!mobile-test-suite/public/
