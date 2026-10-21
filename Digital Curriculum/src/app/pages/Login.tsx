@@ -237,15 +237,6 @@ export function LoginPage() {
           </button>
         </div>
 
-        <div className="mt-4 text-center">
-          <Link
-            to="/join"
-            className="text-sm text-accent hover:text-accent/90"
-          >
-            Join with invite code →
-          </Link>
-        </div>
-
         {/* Alumni land here looking for the mobile network, not the curriculum. */}
         <div className="mt-4 border-t border-border pt-4 text-center">
           <Link

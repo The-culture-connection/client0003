@@ -68,6 +68,12 @@ class _ConferenceLobbyScreenState extends State<ConferenceLobbyScreen>
       route: '/conference/network',
     ),
     _Zone(
+      title: 'Smart Matching',
+      subtitle: 'See your most compatible attendees',
+      icon: Icons.auto_awesome_rounded,
+      route: '/conference/matching',
+    ),
+    _Zone(
       title: 'Event Schedule',
       subtitle: 'Sessions & Workshops',
       icon: Icons.calendar_month_rounded,

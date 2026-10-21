@@ -102,6 +102,93 @@ class UserProfileRepository {
     return true;
   }
 
+  /// Minimal save from the short onboarding: first name, profession and
+  /// business goals only.
+  ///
+  /// Sets the same onboarding-complete flags as [saveExpansionProfile], so the
+  /// app and `initializeUserSession` let the user in, but records
+  /// `profile_completed: false` — the Mortarverse and conference matching then
+  /// prompt them to fill in the rest (see `isProfileFullyComplete`).
+  /// On an existing document, fields not collected here are left untouched.
+  Future<void> saveMinimalProfile({
+    required List<String> roles,
+    required String firstName,
+    required String profession,
+    required List<String> businessGoals,
+    bool emailOptIn = true,
+    String termsVersion = '2023-07',
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null) throw StateError('Not signed in');
+    final uid = user.uid;
+    // Same role rule as [saveExpansionProfile].
+    final sanitizedRoles = AlumniAccessRepository.filterAllowedRoles(roles);
+    if (roles.isNotEmpty && sanitizedRoles.isEmpty) {
+      throw StateError(
+        'No allowed Expansion Network roles. Expected one of: '
+        '${kExpansionNetworkAllowedRoles.join(", ")}.',
+      );
+    }
+    final ref = _users.doc(uid);
+    final existing = await ref.get();
+    final alreadyAppRegistered =
+        existing.exists && existing.data()?['expansion_app_registered'] == true;
+
+    final payload = <String, dynamic>{
+      'uid': uid,
+      'email': user.email ?? '',
+      'email_verified': user.emailVerified,
+      'first_name': firstName.trim(),
+      'profession': profession.trim(),
+      'business_goals': businessGoals,
+      'onboarding_status': 'complete',
+      'profile_completed': false,
+      'expansionOnboardingComplete': true,
+      'expansionOnboardingCompletedAt': FieldValue.serverTimestamp(),
+      'profileCreated': true,
+      'onboardingComplete': true,
+      'updated_at': FieldValue.serverTimestamp(),
+      'expansion_app_registered': true,
+      'terms_accepted': true,
+      'terms_version': termsVersion,
+      'terms_accepted_at': FieldValue.serverTimestamp(),
+      'email_opt_out_all': !emailOptIn,
+      'email_pref_course_nudges': emailOptIn,
+      'email_pref_graduation_updates': emailOptIn,
+      'email_pref_events': emailOptIn,
+      'email_pref_admin_messages': emailOptIn,
+      if (!alreadyAppRegistered)
+        'expansion_app_registered_at': FieldValue.serverTimestamp(),
+    };
+
+    if (!existing.exists) {
+      await ref.set({
+        ...payload,
+        'display_name': null,
+        'photo_url': null,
+        'badges': <String, dynamic>{
+          'earned': <String>[],
+          'visible': <String>[],
+        },
+        'membership': <String, dynamic>{
+          'status': 'active',
+          'paid_modules': <String>[],
+        },
+        'points': <String, dynamic>{
+          'balance': 0,
+          'history_summary': <dynamic>[],
+        },
+        'permissions': <String, dynamic>{
+          'hidden_videos': <String>[],
+        },
+        'roles': sanitizedRoles,
+        'created_at': FieldValue.serverTimestamp(),
+      });
+    } else {
+      await ref.update(payload);
+    }
+  }
+
   /// Full save after onboarding — matches curriculum `users/{uid}` schema.
   ///
   /// **New document:** sets [roles] (from alumni allowlist), default `badges`, `membership`, `points`, `permissions`.

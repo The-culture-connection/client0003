@@ -148,6 +148,12 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Conference smart matching — Cloud Function `runConferenceUserMatching` writes; owner reads.
+    match /users/{userId}/conference_matches/{matchId} {
+      allow read: if isSignedIn() && isOwner(userId);
+      allow write: if false;
+    }
+
     // --- Web join (legacy); see file header ---
     match /invite_codes/{docId} {
       allow read: if true;

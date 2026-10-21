@@ -679,6 +679,21 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
           padding: EdgeInsets.only(top: 22, bottom: 18),
           child: TornHorizon(),
         ),
+        // Stays until the profile is complete — a minimal onboarding profile
+        // gets weaker matches, so this is not a one-time popup.
+        if (!signals.profileFullyComplete)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
+            child: _CompleteProfileBanner(
+              onTap: () {
+                unawaited(ExpansionAnalytics.log(
+                  'mortarverse_complete_profile_tapped',
+                  sourceScreen: 'mortarverse',
+                ));
+                context.push('/profile/edit');
+              },
+            ),
+          ),
         Padding(
           key: _tutFocusCard,
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
@@ -753,6 +768,71 @@ class _MortarverseChooserScreenState extends State<MortarverseChooserScreen> {
           child: _EventsStrip(events: upcoming),
         ),
       ],
+    );
+  }
+}
+
+/// Reminder shown to members who finished only the minimal onboarding.
+class _CompleteProfileBanner extends StatelessWidget {
+  const _CompleteProfileBanner({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: Cosmic.chipRadius,
+        border: Border.all(color: Cosmic.accentExpansion.withValues(alpha: 0.6)),
+        gradient: Cosmic.chipFill,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: Cosmic.chipRadius,
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+            child: Row(
+              children: [
+                const Icon(Icons.notifications_active_rounded, color: Cosmic.textAccent, size: 22),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Complete your profile',
+                        style: TextStyle(
+                          color: Cosmic.textPrimary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Your profile is minimally complete. Fully complete it to get '
+                        'the full Mortarverse experience and better matches.',
+                        style: TextStyle(color: Cosmic.textBody, fontSize: 12, height: 1.35),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: onTap,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                  ),
+                  child: const Text('Complete', style: TextStyle(fontSize: 12)),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

@@ -41,6 +41,30 @@ List<String> profileStringList(dynamic v) {
   return v.whereType<String>().where((s) => s.trim().isNotEmpty).toList();
 }
 
+/// Whether the user has filled in the full profile — everything the full
+/// onboarding and Edit Profile require, as opposed to the minimal onboarding
+/// (first name, profession, business goals).
+///
+/// Judged from field content rather than a flag, so members who finished the
+/// old full onboarding count as complete, and anyone who later fills the gaps
+/// in Edit Profile stops being reminded without a separate write.
+/// `company_name` is left out: it was added after many full profiles existed.
+bool isProfileFullyComplete(Map<String, dynamic> d) {
+  final textFields = [
+    profileString(d['first_name']) ?? profileString(d['firstName']),
+    profileString(d['last_name']) ?? profileString(d['lastName']),
+    profileString(d['profession']),
+    profileString(d['bio']),
+    profileString(d['city']),
+    profileString(d['state']),
+    profileString(d['tribe']) ?? profileString(d['industry']),
+  ];
+  if (textFields.any((v) => v == null)) return false;
+  return profileStringList(d['business_goals']).isNotEmpty &&
+      profileStringList(d['confident_skills']).isNotEmpty &&
+      profileStringList(d['desired_skills']).isNotEmpty;
+}
+
 List<Widget> profileRoleAndBadgeChips(Map<String, dynamic> d) {
   final chips = <Widget>[];
   final roles = d['roles'];

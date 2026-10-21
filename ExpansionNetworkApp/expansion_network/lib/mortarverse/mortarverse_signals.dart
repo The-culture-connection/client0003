@@ -30,6 +30,7 @@ class MortarverseSignals {
     this.waitingConversations = 0,
     this.profileCompletion = 0,
     this.badgesEarned = 0,
+    this.profileFullyComplete = true,
   });
 
   /// Threads whose most recent message came from the other participant.
@@ -39,6 +40,10 @@ class MortarverseSignals {
   final int profileCompletion;
 
   final int badgesEarned;
+
+  /// False for a minimal onboarding profile (see `isProfileFullyComplete`).
+  /// Defaults to true so nothing nags before the user doc has loaded.
+  final bool profileFullyComplete;
 
   bool get profileIncomplete => profileCompletion < 100;
 }
@@ -114,6 +119,7 @@ class MortarverseSignalsService {
       return MortarverseSignals(
         profileCompletion: profileCompletionPercent(data),
         badgesEarned: earnedBadgeCount(data),
+        profileFullyComplete: isProfileFullyComplete(data),
       );
     });
   }

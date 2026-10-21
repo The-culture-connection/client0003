@@ -69,4 +69,28 @@ class ExpansionMatch {
     if (v is Timestamp) return v.toDate();
     return null;
   }
+
+  /// Plain-language "Why you matched" lines for a match card.
+  List<String> get whyLines {
+    final lines = <String>[];
+    for (final g in goalMatches) {
+      if (lines.length >= 5) break;
+      lines.add(g);
+    }
+    if (aNeedsFromB.isNotEmpty) {
+      lines.add('You could strengthen: ${aNeedsFromB.take(4).join(', ')}');
+    }
+    if (bNeedsFromA.isNotEmpty) {
+      lines.add('They could learn from you: ${bNeedsFromA.take(4).join(', ')}');
+    }
+    if (mutualSkillBonus > 0) {
+      lines.add('Mutual skill overlap boost applied');
+    }
+    if (sameCity) lines.add('Same city');
+    if (sameIndustry) lines.add('Same tribe');
+    if (lines.isEmpty) {
+      lines.add('Strong complementary fit from your profiles.');
+    }
+    return lines;
+  }
 }

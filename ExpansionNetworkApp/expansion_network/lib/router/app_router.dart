@@ -18,6 +18,7 @@ import '../conference/screens/conference_session_detail_screen.dart';
 import '../conference/screens/conference_sponsor_detail_screen.dart';
 import '../conference/screens/conference_sponsors_screen.dart';
 import '../conference/screens/conference_networking_screen.dart';
+import '../conference/screens/conference_smart_matching_screen.dart';
 import '../conference/current_conference_holder.dart';
 import '../conference/theme/conference_buttons.dart';
 import '../conference/widgets/conference_shell.dart';
@@ -277,6 +278,12 @@ GoRouter createAppRouter(AuthController auth) {
         path: '/conference/network',
         builder: (context, state) =>
             const ConferenceTheme(child: ConferenceNetworkingScreen()),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/conference/matching',
+        builder: (context, state) =>
+            const ConferenceTheme(child: ConferenceSmartMatchingScreen()),
       ),
       // Declared before `/conference/sponsor/:sponsorId` so "scan" is not
       // swallowed as a sponsor id.

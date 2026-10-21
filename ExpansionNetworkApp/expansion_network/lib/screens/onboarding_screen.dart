@@ -16,7 +16,19 @@ import '../widgets/curriculum_skill_category_card.dart';
 import '../widgets/mortar_card.dart';
 import '../theme/cosmic_content.dart';
 
-/// Digital curriculum–aligned flow: identity → goals → skills ×2 → tribe → work structure → profile links.
+/// Two-phase onboarding.
+///
+/// **Quick start** (all required): terms → first name + profession → business
+/// goals. The minimal profile is saved at the end of it, which is enough to
+/// enter the app.
+///
+/// **Checkpoint**: "Profile is minimally complete…" with Continue (into the app)
+/// or Complete profile (into the second phase).
+///
+/// **Full profile**: identity + location → skills ×2 → tribe → work structure →
+/// profile links — the rest of the digital-curriculum profile, saved in full on
+/// the last step. Anyone who stops part-way keeps their minimal profile and is
+/// reminded on the Mortarverse.
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
 
@@ -46,6 +58,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   bool _notInCohort = false;
 
+  /// The cohort ID came from the invite, so it is shown read-only.
+  bool _cohortProvisioned = false;
+
   final Set<String> _selectedGoals = {};
   final Set<String> _confidentSkills = {};
   final Set<String> _desiredSkills = {};
@@ -68,15 +83,37 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   bool _onboardingCompletionEventSent = false;
   bool _profileSaveSucceeded = false;
 
+  /// The quick-start profile has been written; the user can already enter.
+  bool _minimalSaved = false;
+
+  /// Pages where Continue was pressed with something missing — their empty
+  /// required fields are outlined in red from then on.
+  final Set<int> _attempted = {};
+
   final _imagePicker = ImagePicker();
   XFile? _pickedProfilePhoto;
   XFile? _pickedBusinessLogo;
   static const int _maxImageBytes = 10 * 1024 * 1024;
 
   static const _minSkills = 3;
-  // 8 pages: 0=Terms, 1=Identity, 2=Goals, 3=ConfidentSkills, 4=DesiredSkills, 5=Tribe, 6=WorkStructure, 7=ProfileLinks
-  static const _pageCount = 8;
+
+  // Pages: 0=Terms, 1=Basics, 2=Goals | 3=Checkpoint | 4=Identity,
+  // 5=ConfidentSkills, 6=DesiredSkills, 7=Tribe, 8=WorkStructure, 9=ProfileLinks
+  static const _checkpointIndex = 3;
+  static const _fullStart = 4;
+  static const _pageCount = 10;
+  static const _quickStepCount = _checkpointIndex;
+  static const _fullStepCount = _pageCount - _fullStart;
   static const _termsVersion = '2023-07';
+
+  static const Map<int, String> _stepKeys = {
+    1: 'basics',
+    2: 'goals',
+    4: 'identity',
+    5: 'confident_skills',
+    6: 'desired_skills',
+    7: 'tribe',
+  };
 
   @override
   void initState() {
@@ -94,6 +131,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         setState(() {
           _cohortId.text = cid;
           _notInCohort = false;
+          _cohortProvisioned = true;
         });
       }
     });
@@ -106,7 +144,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         ExpansionAnalytics.log(
           'onboarding_abandoned',
           sourceScreen: 'onboarding',
-          extra: <String, Object?>{'step_index': _stepIndex},
+          extra: <String, Object?>{
+            'step_index': _stepIndex,
+            'minimal_saved': _minimalSaved,
+          },
         ),
       );
     }
@@ -144,15 +185,22 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     return true;
   }
 
-  bool _validateStep1(BuildContext context) {
-    if (_firstName.text.trim().isEmpty ||
-        _lastName.text.trim().isEmpty ||
+  bool _validateBasics() {
+    if (_firstName.text.trim().isEmpty || _profession.text.trim().isEmpty) {
+      _error = 'Enter your first name and profession to continue.';
+      return false;
+    }
+    _error = null;
+    return true;
+  }
+
+  bool _validateDetails(BuildContext context) {
+    if (_lastName.text.trim().isEmpty ||
         _bio.text.trim().isEmpty ||
-        _profession.text.trim().isEmpty ||
         _company.text.trim().isEmpty ||
         _city.text.trim().isEmpty ||
         _state.text.trim().isEmpty) {
-      _error = 'Please fill in all fields on this step.';
+      _error = 'Fill in every field marked * to continue.';
       return false;
     }
     if (!_notInCohort && _cohortIdIsBlank()) {
@@ -169,7 +217,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   bool _validateGoals() {
     if (_selectedGoals.isEmpty) {
-      _error = 'Select at least one goal (required).';
+      _error = 'Select at least one goal to continue.';
       return false;
     }
     _error = null;
@@ -178,7 +226,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   bool _validateConfident() {
     if (_confidentSkills.length < _minSkills) {
-      _error = 'Select a minimum of $_minSkills skills you are confident in.';
+      _error = 'Select at least $_minSkills skills you are confident in.';
       return false;
     }
     _error = null;
@@ -187,7 +235,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   bool _validateDesired() {
     if (_desiredSkills.length < _minSkills) {
-      _error = 'Select a minimum of $_minSkills skills you want to acquire.';
+      _error = 'Select at least $_minSkills skills you want to acquire.';
       return false;
     }
     _error = null;
@@ -196,111 +244,152 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   bool _validateTribe() {
     if (_selectedTribe == null || _selectedTribe!.isEmpty) {
-      _error = 'Select your tribe.';
+      _error = 'Select your tribe to continue.';
       return false;
     }
     _error = null;
     return true;
   }
 
-  void _nextStep() {
-    if (_stepIndex == 0) {
-      // Step 0: Terms & Email consent
-      if (!_validateTerms()) {
-        setState(() {});
-        return;
-      }
-    } else if (_stepIndex == 1) {
-      if (!_validateStep1(context)) {
-        unawaited(
-          ExpansionAnalytics.log(
-            'onboarding_step_validation_failed',
-            sourceScreen: 'onboarding',
-            extra: const <String, Object?>{'step_key': 'identity'},
-          ),
-        );
-        setState(() {});
-        return;
-      }
-    } else if (_stepIndex == 2) {
-      if (!_validateGoals()) {
-        unawaited(
-          ExpansionAnalytics.log(
-            'onboarding_step_validation_failed',
-            sourceScreen: 'onboarding',
-            extra: const <String, Object?>{'step_key': 'goals'},
-          ),
-        );
-        setState(() {});
-        return;
-      }
-    } else if (_stepIndex == 3) {
-      if (!_validateConfident()) {
-        unawaited(
-          ExpansionAnalytics.log(
-            'onboarding_step_validation_failed',
-            sourceScreen: 'onboarding',
-            extra: const <String, Object?>{'step_key': 'confident_skills'},
-          ),
-        );
-        setState(() {});
-        return;
-      }
-    } else if (_stepIndex == 4) {
-      if (!_validateDesired()) {
-        unawaited(
-          ExpansionAnalytics.log(
-            'onboarding_step_validation_failed',
-            sourceScreen: 'onboarding',
-            extra: const <String, Object?>{'step_key': 'desired_skills'},
-          ),
-        );
-        setState(() {});
-        return;
-      }
-    } else if (_stepIndex == 5) {
-      if (!_validateTribe()) {
-        unawaited(
-          ExpansionAnalytics.log(
-            'onboarding_step_validation_failed',
-            sourceScreen: 'onboarding',
-            extra: const <String, Object?>{'step_key': 'tribe'},
-          ),
-        );
-        setState(() {});
-        return;
-      }
-    } else if (_stepIndex == 6) {
-      // Work structure -- sliders always valid
-      setState(() => _error = null);
-    } else {
-      return;
+  /// Validates one page; pages with nothing required always pass.
+  bool _validatePage(int i) {
+    switch (i) {
+      case 0:
+        return _validateTerms();
+      case 1:
+        return _validateBasics();
+      case 2:
+        return _validateGoals();
+      case 4:
+        return _validateDetails(context);
+      case 5:
+        return _validateConfident();
+      case 6:
+        return _validateDesired();
+      case 7:
+        return _validateTribe();
+      default:
+        _error = null;
+        return true;
     }
+  }
+
+  bool _showFieldErrors() => _attempted.contains(_stepIndex);
+
+  void _goTo(int index) {
     setState(() {
       _error = null;
-      _stepIndex = _stepIndex + 1;
+      _stepIndex = index;
     });
-    _pageController.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.easeOutCubic);
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  Future<void> _nextStep() async {
+    if (_saving) return;
+    if (!_validatePage(_stepIndex)) {
+      _attempted.add(_stepIndex);
+      final key = _stepKeys[_stepIndex];
+      if (key != null) {
+        unawaited(
+          ExpansionAnalytics.log(
+            'onboarding_step_validation_failed',
+            sourceScreen: 'onboarding',
+            extra: <String, Object?>{'step_key': key},
+          ),
+        );
+      }
+      setState(() {});
+      return;
+    }
+    if (_stepIndex == _checkpointIndex - 1) {
+      await _saveMinimal();
+      return;
+    }
+    _goTo(_stepIndex + 1);
   }
 
   void _previousStep() {
-    if (_stepIndex == 0) return;
-    setState(() {
-      _error = null;
-      _stepIndex = _stepIndex - 1;
-    });
-    _pageController.previousPage(duration: const Duration(milliseconds: 300), curve: Curves.easeOutCubic);
+    if (_stepIndex == 0 || _stepIndex == _checkpointIndex) return;
+    _goTo(_stepIndex - 1);
   }
 
-  Future<void> _save() async {
-    if (!_validateTerms() ||
-        !_validateStep1(context) ||
-        !_validateGoals() ||
-        !_validateConfident() ||
-        !_validateDesired() ||
-        !_validateTribe()) {
-      setState(() {});
-      return;
+  /// End of quick start: writes the minimal profile, then shows the checkpoint.
+  Future<void> _saveMinimal() async {
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    unawaited(ExpansionAnalytics.log('onboarding_minimal_save_submitted', sourceScreen: 'onboarding'));
+    try {
+      // Empty roles are expected for open sign-up / Conference-only accounts —
+      // see the note in [_saveFull].
+      final roles = context.read<AuthController>().expansionOnboardingRoles;
+      await UserProfileRepository().saveMinimalProfile(
+        roles: roles,
+        firstName: _firstName.text.trim(),
+        profession: _profession.text.trim(),
+        businessGoals: _selectedGoals.toList(),
+        emailOptIn: _emailOptIn,
+        termsVersion: _termsVersion,
+      );
+      if (!mounted) return;
+      _minimalSaved = true;
+      _goTo(_checkpointIndex);
+    } catch (e) {
+      unawaited(
+        ExpansionAnalytics.log(
+          'onboarding_save_failed',
+          sourceScreen: 'onboarding',
+          extra: ExpansionAnalytics.errorExtras(e, code: 'save_minimal_profile'),
+        ),
+      );
+      if (mounted) setState(() => _error = e.toString());
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  /// Leaves onboarding for the app. [level] is `minimal` or `full`.
+  Future<void> _finish(String level) async {
+    if (!_onboardingCompletionEventSent) {
+      _onboardingCompletionEventSent = true;
+      await ExpansionAnalytics.log(
+        'onboarding_completed',
+        entityId: FirebaseAuth.instance.currentUser?.uid,
+        sourceScreen: 'onboarding',
+        extra: <String, Object?>{'profile_level': level},
+      );
+    }
+    if (!mounted) return;
+    context.read<AuthController>().markExpansionOnboardingComplete();
+    _profileSaveSucceeded = true;
+    context.go('/welcome-intro');
+  }
+
+  void _chooseCompleteProfile() {
+    unawaited(ExpansionAnalytics.log('onboarding_full_profile_chosen', sourceScreen: 'onboarding'));
+    _goTo(_fullStart);
+  }
+
+  void _chooseContinueMinimal() {
+    unawaited(ExpansionAnalytics.log('onboarding_minimal_continue_chosen', sourceScreen: 'onboarding'));
+    unawaited(_finish('minimal'));
+  }
+
+  /// Last page of the full profile: saves everything.
+  Future<void> _saveFull() async {
+    for (final page in const [0, 1, 2, 4, 5, 6, 7]) {
+      if (!_validatePage(page)) {
+        final message = _error;
+        _attempted.add(page);
+        _goTo(page);
+        setState(() => _error = message);
+        return;
+      }
     }
     setState(() {
       _saving = true;
@@ -358,18 +447,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         await FirebaseAuth.instance.currentUser?.updatePhotoURL(photoUrl);
       }
       if (!mounted) return;
-      if (!_onboardingCompletionEventSent) {
-        _onboardingCompletionEventSent = true;
-        await ExpansionAnalytics.log(
-          'onboarding_completed',
-          entityId: uid,
-          sourceScreen: 'onboarding',
-        );
-      }
-      if (!mounted) return;
-      context.read<AuthController>().markExpansionOnboardingComplete();
-      _profileSaveSucceeded = true;
-      context.go('/welcome-intro');
+      await _finish('full');
     } catch (e) {
       unawaited(
         ExpansionAnalytics.log(
@@ -378,28 +456,24 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           extra: ExpansionAnalytics.errorExtras(e, code: 'save_expansion_profile'),
         ),
       );
-      setState(() => _error = e.toString());
+      if (mounted) setState(() => _error = e.toString());
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
-  String _stepSubtitle() {
-    // Beta feedback: the old subtitle just repeated the page heading and never
-    // said WHY we collect the info. Each line now explains the purpose —
-    // serving alumni better and powering the matching algorithm.
-    const purposes = [
-      'Review and accept to start building your profile',
-      'Helps us serve you and fellow alumni better',
-      'Helps us serve alumni better and tailor your support',
-      'Powers the matching algorithm: what you can offer others',
-      'Powers the matching algorithm: what others can teach you',
-      'Helps us place you in the right community',
-      'Powers the matching algorithm: matches that fit how you work',
-      'Helps matched alumni get to know you',
-    ];
-    return 'Step ${_stepIndex + 1} of $_pageCount -- ${purposes[_stepIndex]}';
-  }
+  /// Why each page asks what it asks (beta feedback: say WHY we collect it).
+  static const Map<int, String> _purposes = {
+    0: 'Review and accept to start building your profile',
+    1: 'So members know who they are meeting',
+    2: 'Powers the matching algorithm: who can help you grow',
+    4: 'Helps us serve you and fellow alumni better',
+    5: 'Powers the matching algorithm: what you can offer others',
+    6: 'Powers the matching algorithm: what others can teach you',
+    7: 'Helps us place you in the right community',
+    8: 'Powers the matching algorithm: matches that fit how you work',
+    9: 'Helps matched members get to know you',
+  };
 
   Future<String> _uploadProfileImage(String uid, XFile x, {String subfolder = 'avatar'}) async {
     final safeName = x.name.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
@@ -581,28 +655,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       ),
       body: Column(
         children: [
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-            child: Row(
-              children: [
-                for (var i = 0; i < _pageCount; i++) ...[
-                  if (i > 0) const SizedBox(width: 4),
-                  _StepDot(active: _stepIndex == i, label: '${i + 1}'),
-                ],
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                _stepSubtitle(),
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.mutedForeground),
-              ),
-            ),
-          ),
+          _buildProgress(context),
           Expanded(
             child: PageView(
               controller: _pageController,
@@ -610,14 +663,172 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               onPageChanged: (i) => setState(() => _stepIndex = i),
               children: [
                 _buildStepTerms(context),
-                _buildStepAbout(context, email),
+                _buildStepBasics(context),
                 _buildStepGoals(context),
+                _buildCheckpoint(context),
+                _buildStepAbout(context, email),
                 _buildStepConfidentSkills(context),
                 _buildStepDesiredSkills(context),
                 _buildStepTribe(context),
                 _buildStepWorkStructure(context),
                 _buildStepProfileLinks(context),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Phase name, numbered dots for the current phase, and why the step exists.
+  Widget _buildProgress(BuildContext context) {
+    if (_stepIndex == _checkpointIndex) return const SizedBox(height: 8);
+    final quick = _stepIndex < _checkpointIndex;
+    final count = quick ? _quickStepCount : _fullStepCount;
+    final position = quick ? _stepIndex : _stepIndex - _fullStart;
+    final phase = quick ? 'QUICK START' : 'FULL PROFILE';
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '$phase · STEP ${position + 1} OF $count',
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1,
+              color: AppColors.mutedForeground,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              for (var i = 0; i < count; i++) ...[
+                if (i > 0) const SizedBox(width: 6),
+                _StepDot(
+                  label: '${i + 1}',
+                  state: i < position
+                      ? _DotState.done
+                      : i == position
+                          ? _DotState.active
+                          : _DotState.upcoming,
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _purposes[_stepIndex] ?? '',
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.mutedForeground),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Title block for every step, led by an unmissable REQUIRED / OPTIONAL badge.
+  Widget _stepHeader(
+    BuildContext context, {
+    required String title,
+    required bool required,
+    String? instruction,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _RequirementBadge(required: required),
+        const SizedBox(height: 10),
+        Text(
+          title,
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          instruction ??
+              (required
+                  ? 'You must complete this step to continue. Fields marked * are required.'
+                  : 'You can skip this step — tap Continue to move on.'),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.mutedForeground),
+        ),
+      ],
+    );
+  }
+
+  /// "n of 3 minimum" — red until the requirement is met, then green.
+  Widget _countIndicator(int selected, int minimum, String noun) {
+    final met = selected >= minimum;
+    return Row(
+      children: [
+        Icon(
+          met ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+          size: 18,
+          color: met ? const Color(0xFF34D399) : Colors.redAccent,
+        ),
+        const SizedBox(width: 6),
+        Text(
+          minimum == 1
+              ? '$selected selected · at least 1 $noun required'
+              : '$selected of $minimum minimum $noun selected',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: met ? const Color(0xFF34D399) : Colors.redAccent,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _errorBanner() {
+    if (_error == null) return const SizedBox.shrink();
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.redAccent.withValues(alpha: 0.12),
+        borderRadius: Cosmic.chipRadius,
+        border: Border.all(color: Colors.redAccent),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(_error!, style: const TextStyle(color: Colors.redAccent, fontSize: 13)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Back + primary action, pinned under a step.
+  Widget _navBar({String nextLabel = 'Continue', VoidCallback? onNext, bool showBack = true}) {
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Row(
+        children: [
+          if (showBack) ...[
+            OutlinedButton(
+              onPressed: _saving ? null : _previousStep,
+              child: const Text('Back'),
+            ),
+            const SizedBox(width: 12),
+          ],
+          Expanded(
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
+              onPressed: _saving ? null : (onNext ?? _nextStep),
+              child: _saving
+                  ? const SizedBox(
+                      height: 22,
+                      width: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.onPrimary),
+                    )
+                  : Text(nextLabel),
             ),
           ),
         ],
@@ -658,16 +869,13 @@ www.wearemortar.com''';
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            'Welcome to MORTAR',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Please review and agree to our Terms of Use before continuing.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+          _stepHeader(
+            context,
+            title: 'Welcome to MORTAR',
+            required: true,
+            instruction: 'Please review and agree to our Terms of Use before continuing.',
           ),
           const SizedBox(height: 16),
           // Scrollable terms box
@@ -688,39 +896,47 @@ www.wearemortar.com''';
           ),
           const SizedBox(height: 20),
           // Terms acceptance -- required
-          InkWell(
-            onTap: () => setState(() => _termsAccepted = !_termsAccepted),
-            borderRadius: Cosmic.chipRadius,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Checkbox(
-                  value: _termsAccepted,
-                  onChanged: (v) => setState(() => _termsAccepted = v ?? false),
-                ),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: RichText(
-                      text: TextSpan(
-                        style: Theme.of(context).textTheme.bodyMedium,
-                        children: const [
-                          TextSpan(text: 'I have read and agree to the '),
-                          TextSpan(
-                            text: 'MORTAR Terms of Use',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          TextSpan(
-                            text: '  (Required)',
-                            style: TextStyle(color: Colors.red, fontWeight: FontWeight.w500),
-                          ),
-                        ],
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: Cosmic.chipRadius,
+              border: Border.all(
+                color: _showFieldErrors() && !_termsAccepted ? Colors.redAccent : Colors.transparent,
+              ),
+            ),
+            child: InkWell(
+              onTap: () => setState(() => _termsAccepted = !_termsAccepted),
+              borderRadius: Cosmic.chipRadius,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Checkbox(
+                    value: _termsAccepted,
+                    onChanged: (v) => setState(() => _termsAccepted = v ?? false),
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: RichText(
+                        text: TextSpan(
+                          style: Theme.of(context).textTheme.bodyMedium,
+                          children: const [
+                            TextSpan(text: 'I have read and agree to the '),
+                            TextSpan(
+                              text: 'MORTAR Terms of Use',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            TextSpan(
+                              text: ' *',
+                              style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w700),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 8),
@@ -748,13 +964,7 @@ www.wearemortar.com''';
               ],
             ),
           ),
-          if (_error != null && _stepIndex == 0) ...[
-            const SizedBox(height: 8),
-            Text(
-              _error!,
-              style: const TextStyle(color: Colors.red, fontSize: 13),
-            ),
-          ],
+          _errorBanner(),
           const SizedBox(height: 24),
           FilledButton(
             style: FilledButton.styleFrom(
@@ -770,151 +980,27 @@ www.wearemortar.com''';
     );
   }
 
-  Widget _buildStepAbout(BuildContext context, String email) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            'Step 1: Identity + location',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Please provide your basic information (required).',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.mutedForeground),
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(child: _labeledField('First name', _firstName)),
-              const SizedBox(width: 12),
-              Expanded(child: _labeledField('Last name', _lastName)),
-            ],
-          ),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(child: _labeledField('City', _city)),
-              const SizedBox(width: 12),
-              Expanded(child: _labeledField('State (or metro)', _state)),
-            ],
-          ),
-          Text('Cohort', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 8),
-          RadioListTile<bool>(
-            title: const Text('I am in a cohort'),
-            value: false,
-            groupValue: _notInCohort,
-            onChanged: (v) => setState(() => _notInCohort = false),
-            contentPadding: EdgeInsets.zero,
-          ),
-          RadioListTile<bool>(
-            title: const Text('Not in a cohort'),
-            value: true,
-            groupValue: _notInCohort,
-            onChanged: (v) => setState(() {
-              _notInCohort = true;
-            }),
-            contentPadding: EdgeInsets.zero,
-          ),
-          if (!_notInCohort) ...[
-            const SizedBox(height: 4),
-            if (!_cohortIdIsBlank())
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Text(
-                  'Cohort ID: ${_cohortId.text.trim()}',
-                  style: const TextStyle(fontSize: 14, color: AppColors.mutedForeground),
-                ),
-              )
-            else ...[
-              _labeledField('Cohort ID', _cohortId),
-            ],
-          ],
-          if (_needsAlumniCityProgram(context)) ...[
-            const SizedBox(height: 8),
-            _labeledField('What city program did you graduate from?', _graduatedCityProgram),
-          ],
-          const SizedBox(height: 8),
-          Text('Profile photo', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              const Icon(Icons.person_outline, size: 40, color: AppColors.mutedForeground),
-              const SizedBox(width: 12),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: _saving ? null : _pickProfilePhoto,
-                  child: Text(
-                    _pickedProfilePhoto == null
-                        ? 'Add profile photo (optional)'
-                        : _pickedProfilePhoto!.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ),
-              if (_pickedProfilePhoto != null)
-                IconButton(
-                  onPressed: _saving ? null : () => setState(() => _pickedProfilePhoto = null),
-                  icon: const Icon(Icons.clear),
-                ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text('Business logo', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              const Icon(Icons.add_photo_alternate_outlined, size: 40, color: AppColors.mutedForeground),
-              const SizedBox(width: 12),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: _saving ? null : _pickBusinessLogo,
-                  child: Text(
-                    _pickedBusinessLogo == null
-                        ? 'Add business logo (optional)'
-                        : _pickedBusinessLogo!.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ),
-              if (_pickedBusinessLogo != null)
-                IconButton(
-                  onPressed: _saving ? null : () => setState(() => _pickedBusinessLogo = null),
-                  icon: const Icon(Icons.clear),
-                ),
-            ],
-          ),
-          _labeledField('Bio', _bio, maxLines: 4),
-          _labeledField('Profession', _profession),
-          _labeledField('Business or Company name', _company),
-          const SizedBox(height: 8),
-          InputDecorator(
-            decoration: const InputDecoration(
-              labelText: 'Email',
-              border: OutlineInputBorder(),
+  Widget _buildStepBasics(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _stepHeader(context, title: 'About you', required: true),
+                const SizedBox(height: 20),
+                _labeledField('First name', _firstName, required: true),
+                _labeledField('Profession', _profession, required: true),
+                _errorBanner(),
+              ],
             ),
-            child: Text(email.isEmpty ? '--' : email, style: const TextStyle(color: AppColors.mutedForeground)),
           ),
-          if (_error != null && _stepIndex == 0) ...[
-            const SizedBox(height: 12),
-            Text(_error!, style: const TextStyle(color: Colors.redAccent)),
-          ],
-          const SizedBox(height: 24),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-            ),
-            onPressed: _nextStep,
-            child: const Text('Continue'),
-          ),
-        ],
-      ),
+        ),
+        _navBar(),
+      ],
     );
   }
 
@@ -924,24 +1010,27 @@ www.wearemortar.com''';
       children: [
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  'How can we help your business grow?',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+                _stepHeader(
+                  context,
+                  title: 'How can we help your business grow?',
+                  required: true,
+                  instruction: 'You must complete this step to continue. Select all that apply.',
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'Select all that apply (required)',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.mutedForeground),
-                ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 12),
+                _countIndicator(_selectedGoals.length, 1, 'goal'),
+                const SizedBox(height: 12),
                 MortarCard(
                   shape: RoundedRectangleBorder(
                     borderRadius: Cosmic.chipRadius,
-                    side: const BorderSide(color: AppColors.border),
+                    side: BorderSide(
+                      color: _showFieldErrors() && _selectedGoals.isEmpty
+                          ? Colors.redAccent
+                          : AppColors.border,
+                    ),
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(16),
@@ -958,36 +1047,182 @@ www.wearemortar.com''';
                     ),
                   ),
                 ),
-                if (_error != null && _stepIndex == 1) ...[
-                  const SizedBox(height: 12),
-                  Text(_error!, style: const TextStyle(color: Colors.redAccent)),
-                ],
+                _errorBanner(),
               ],
             ),
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.all(20),
-          child: Row(
-            children: [
-              OutlinedButton(
-                onPressed: _saving ? null : _previousStep,
-                child: const Text('Back'),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  onPressed: _nextStep,
-                  child: const Text('Continue'),
+        _navBar(),
+      ],
+    );
+  }
+
+  /// Between the phases: the minimal profile is saved; enter now or keep going.
+  Widget _buildCheckpoint(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Icon(Icons.check_circle_rounded, size: 64, color: Color(0xFF34D399)),
+          const SizedBox(height: 20),
+          Text(
+            'Profile is minimally complete, fully complete profile to get the full '
+            'Mortarverse experience.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  height: 1.4,
                 ),
-              ),
-            ],
+          ),
+          _errorBanner(),
+          const SizedBox(height: 32),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+            ),
+            onPressed: _saving ? null : _chooseCompleteProfile,
+            child: const Text('Complete profile'),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton(
+            style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
+            onPressed: _saving ? null : _chooseContinueMinimal,
+            child: const Text('Continue'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStepAbout(BuildContext context, String email) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _stepHeader(context, title: 'Identity + location', required: true),
+                const SizedBox(height: 20),
+                _labeledField('Last name', _lastName, required: true),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: _labeledField('City', _city, required: true)),
+                    const SizedBox(width: 12),
+                    Expanded(child: _labeledField('State (or metro)', _state, required: true)),
+                  ],
+                ),
+                _fieldLabel(context, 'Cohort', required: true),
+                const SizedBox(height: 8),
+                RadioListTile<bool>(
+                  title: const Text('I am in a cohort'),
+                  value: false,
+                  groupValue: _notInCohort,
+                  onChanged: (v) => setState(() => _notInCohort = false),
+                  contentPadding: EdgeInsets.zero,
+                ),
+                RadioListTile<bool>(
+                  title: const Text('Not in a cohort'),
+                  value: true,
+                  groupValue: _notInCohort,
+                  onChanged: (v) => setState(() {
+                    _notInCohort = true;
+                  }),
+                  contentPadding: EdgeInsets.zero,
+                ),
+                if (!_notInCohort) ...[
+                  const SizedBox(height: 4),
+                  if (_cohortProvisioned && !_cohortIdIsBlank())
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Text(
+                        'Cohort ID: ${_cohortId.text.trim()}',
+                        style: const TextStyle(fontSize: 14, color: AppColors.mutedForeground),
+                      ),
+                    )
+                  else ...[
+                    _labeledField('Cohort ID', _cohortId, required: true),
+                  ],
+                ],
+                if (_needsAlumniCityProgram(context)) ...[
+                  const SizedBox(height: 8),
+                  _labeledField('What city program did you graduate from?', _graduatedCityProgram,
+                      required: true),
+                ],
+                const SizedBox(height: 8),
+                _fieldLabel(context, 'Profile photo', required: false),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(Icons.person_outline, size: 40, color: AppColors.mutedForeground),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _saving ? null : _pickProfilePhoto,
+                        child: Text(
+                          _pickedProfilePhoto == null
+                              ? 'Add profile photo'
+                              : _pickedProfilePhoto!.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                    if (_pickedProfilePhoto != null)
+                      IconButton(
+                        onPressed: _saving ? null : () => setState(() => _pickedProfilePhoto = null),
+                        icon: const Icon(Icons.clear),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                _fieldLabel(context, 'Business logo', required: false),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(Icons.add_photo_alternate_outlined, size: 40, color: AppColors.mutedForeground),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _saving ? null : _pickBusinessLogo,
+                        child: Text(
+                          _pickedBusinessLogo == null
+                              ? 'Add business logo'
+                              : _pickedBusinessLogo!.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                    if (_pickedBusinessLogo != null)
+                      IconButton(
+                        onPressed: _saving ? null : () => setState(() => _pickedBusinessLogo = null),
+                        icon: const Icon(Icons.clear),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                _labeledField('Bio', _bio, maxLines: 4, required: true),
+                _labeledField('Business or Company name', _company, required: true),
+                const SizedBox(height: 8),
+                InputDecorator(
+                  decoration: const InputDecoration(
+                    labelText: 'Email',
+                    border: OutlineInputBorder(),
+                  ),
+                  child: Text(email.isEmpty ? '--' : email, style: const TextStyle(color: AppColors.mutedForeground)),
+                ),
+                _errorBanner(),
+              ],
+            ),
           ),
         ),
+        _navBar(),
       ],
     );
   }
@@ -997,24 +1232,19 @@ www.wearemortar.com''';
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                'What skills are you confident in?',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+              _stepHeader(
+                context,
+                title: 'What skills are you confident in?',
+                required: true,
+                instruction:
+                    'You must select at least $_minSkills skills to continue. Expand a category to choose specific skills.',
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Select a minimum of $_minSkills skills (required). Expand a category to choose specific skills.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.mutedForeground),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Selected: ${_confidentSkills.length} ${_confidentSkills.length == 1 ? 'skill' : 'skills'}',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.mutedForeground),
-              ),
+              const SizedBox(height: 10),
+              _countIndicator(_confidentSkills.length, _minSkills, 'skills'),
             ],
           ),
         ),
@@ -1036,33 +1266,11 @@ www.wearemortar.com''';
             ],
           ),
         ),
-        if (_error != null && _stepIndex == 2)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Text(_error!, style: const TextStyle(color: Colors.redAccent)),
-          ),
         Padding(
-          padding: const EdgeInsets.all(20),
-          child: Row(
-            children: [
-              OutlinedButton(
-                onPressed: _saving ? null : _previousStep,
-                child: const Text('Back'),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  onPressed: _nextStep,
-                  child: const Text('Continue'),
-                ),
-              ),
-            ],
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: _errorBanner(),
         ),
+        _navBar(),
       ],
     );
   }
@@ -1072,24 +1280,19 @@ www.wearemortar.com''';
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                'What skills do you want to acquire?',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+              _stepHeader(
+                context,
+                title: 'What skills do you want to acquire?',
+                required: true,
+                instruction:
+                    'You must select at least $_minSkills skills to continue. Expand a category to choose specific skills.',
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Select a minimum of $_minSkills skills (required). Expand a category to choose specific skills.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.mutedForeground),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Selected: ${_desiredSkills.length} ${_desiredSkills.length == 1 ? 'skill' : 'skills'}',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.mutedForeground),
-              ),
+              const SizedBox(height: 10),
+              _countIndicator(_desiredSkills.length, _minSkills, 'skills'),
             ],
           ),
         ),
@@ -1111,33 +1314,11 @@ www.wearemortar.com''';
             ],
           ),
         ),
-        if (_error != null && _stepIndex == 3)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Text(_error!, style: const TextStyle(color: Colors.redAccent)),
-          ),
         Padding(
-          padding: const EdgeInsets.all(20),
-          child: Row(
-            children: [
-              OutlinedButton(
-                onPressed: _saving ? null : _previousStep,
-                child: const Text('Back'),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  onPressed: _nextStep,
-                  child: const Text('Continue'),
-                ),
-              ),
-            ],
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: _errorBanner(),
         ),
+        _navBar(),
       ],
     );
   }
@@ -1148,24 +1329,25 @@ www.wearemortar.com''';
       children: [
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  'What tribe are you in?',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Select one (required)',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.mutedForeground),
+                _stepHeader(
+                  context,
+                  title: 'What tribe are you in?',
+                  required: true,
+                  instruction: 'You must select one to continue.',
                 ),
                 const SizedBox(height: 16),
                 MortarCard(
                   shape: RoundedRectangleBorder(
                     borderRadius: Cosmic.chipRadius,
-                    side: const BorderSide(color: AppColors.border),
+                    side: BorderSide(
+                      color: _showFieldErrors() && _selectedTribe == null
+                          ? Colors.redAccent
+                          : AppColors.border,
+                    ),
                   ),
                   child: Column(
                     children: kIndustries.map((ind) {
@@ -1179,36 +1361,12 @@ www.wearemortar.com''';
                     }).toList(),
                   ),
                 ),
-                if (_error != null && _stepIndex == 4) ...[
-                  const SizedBox(height: 12),
-                  Text(_error!, style: const TextStyle(color: Colors.redAccent)),
-                ],
+                _errorBanner(),
               ],
             ),
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.all(20),
-          child: Row(
-            children: [
-              OutlinedButton(
-                onPressed: _saving ? null : _previousStep,
-                child: const Text('Back'),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  onPressed: _nextStep,
-                  child: const Text('Continue'),
-                ),
-              ),
-            ],
-          ),
-        ),
+        _navBar(),
       ],
     );
   }
@@ -1219,18 +1377,16 @@ www.wearemortar.com''';
       children: [
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  'What is your ideal work structure?',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Adjust the sliders to match your preferences',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.mutedForeground),
+                _stepHeader(
+                  context,
+                  title: 'What is your ideal work structure?',
+                  required: false,
+                  instruction:
+                      'Adjust the sliders to match your preferences, or tap Continue to keep the defaults.',
                 ),
                 const SizedBox(height: 20),
                 MortarCard(
@@ -1355,28 +1511,7 @@ www.wearemortar.com''';
             ),
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.all(20),
-          child: Row(
-            children: [
-              OutlinedButton(
-                onPressed: _saving ? null : _previousStep,
-                child: const Text('Back'),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  onPressed: _nextStep,
-                  child: const Text('Continue'),
-                ),
-              ),
-            ],
-          ),
-        ),
+        _navBar(),
       ],
     );
   }
@@ -1387,18 +1522,15 @@ www.wearemortar.com''';
       children: [
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  'Profile links & visibility',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Add your social media and portfolio links (optional)',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.mutedForeground),
+                _stepHeader(
+                  context,
+                  title: 'Profile links & visibility',
+                  required: false,
+                  instruction: 'Add your social media and portfolio links, or leave them blank.',
                 ),
                 const SizedBox(height: 20),
                 MortarCard(
@@ -1419,82 +1551,144 @@ www.wearemortar.com''';
                     ),
                   ),
                 ),
-                if (_error != null && _stepIndex == 7) ...[
-                  const SizedBox(height: 12),
-                  Text(_error!, style: const TextStyle(color: Colors.redAccent)),
-                ],
+                _errorBanner(),
               ],
             ),
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.all(20),
-          child: Row(
-            children: [
-              OutlinedButton(
-                onPressed: _saving ? null : _previousStep,
-                child: const Text('Back'),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  onPressed: _saving ? null : _save,
-                  child: _saving
-                      ? const SizedBox(
-                          height: 22,
-                          width: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.onPrimary),
-                        )
-                      : const Text('Complete profile'),
-                ),
-              ),
-            ],
-          ),
-        ),
+        _navBar(nextLabel: 'Complete profile', onNext: _saveFull),
       ],
     );
   }
 
-  Widget _labeledField(String label, TextEditingController c, {int maxLines = 1}) {
+  /// Section label with a red `*` when required, "(optional)" otherwise.
+  Widget _fieldLabel(BuildContext context, String label, {required bool required}) {
+    return Text.rich(
+      TextSpan(
+        text: label,
+        style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+        children: [
+          if (required)
+            const TextSpan(
+              text: ' *',
+              style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w700),
+            )
+          else
+            const TextSpan(
+              text: '  (optional)',
+              style: TextStyle(color: AppColors.mutedForeground, fontWeight: FontWeight.w400),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _labeledField(
+    String label,
+    TextEditingController c, {
+    int maxLines = 1,
+    bool required = false,
+  }) {
+    final missing = required && _showFieldErrors() && c.text.trim().isEmpty;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: TextField(
         controller: c,
         maxLines: maxLines,
         keyboardType: maxLines > 1 ? TextInputType.multiline : TextInputType.text,
-        decoration: InputDecoration(labelText: label, alignLabelWithHint: maxLines > 1),
+        // Rebuild so a field's red "Required" clears as soon as it is filled.
+        onChanged: missing ? (_) => setState(() {}) : null,
+        decoration: InputDecoration(
+          label: Text.rich(
+            TextSpan(
+              text: label,
+              children: [
+                if (required)
+                  const TextSpan(
+                    text: ' *',
+                    style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w700),
+                  ),
+              ],
+            ),
+          ),
+          alignLabelWithHint: maxLines > 1,
+          errorText: missing ? 'Required' : null,
+        ),
       ),
     );
   }
 }
 
-class _StepDot extends StatelessWidget {
-  const _StepDot({required this.active, required this.label});
+/// Pill at the top of every step saying whether it can be skipped.
+class _RequirementBadge extends StatelessWidget {
+  const _RequirementBadge({required this.required});
 
-  final bool active;
+  final bool required;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: required ? AppColors.primary : Colors.transparent,
+          borderRadius: Cosmic.pillRadius,
+          border: Border.all(color: required ? AppColors.primary : AppColors.mutedForeground),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              required ? Icons.priority_high_rounded : Icons.skip_next_rounded,
+              size: 14,
+              color: required ? AppColors.onPrimary : AppColors.mutedForeground,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              required ? 'REQUIRED STEP' : 'OPTIONAL STEP',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1,
+                color: required ? AppColors.onPrimary : AppColors.mutedForeground,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+enum _DotState { done, active, upcoming }
+
+class _StepDot extends StatelessWidget {
+  const _StepDot({required this.state, required this.label});
+
+  final _DotState state;
   final String label;
 
   @override
   Widget build(BuildContext context) {
+    final filled = state != _DotState.upcoming;
     return Container(
       width: 28,
       height: 28,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: active ? AppColors.primary : AppColors.secondary,
+        color: filled ? AppColors.primary : AppColors.secondary,
       ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: active ? AppColors.onPrimary : AppColors.mutedForeground,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
+      child: state == _DotState.done
+          ? const Icon(Icons.check_rounded, size: 16, color: AppColors.onPrimary)
+          : Text(
+              label,
+              style: TextStyle(
+                color: filled ? AppColors.onPrimary : AppColors.mutedForeground,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
     );
   }
 }

@@ -96,6 +96,7 @@ export { updateOnboardingStatus } from "./callables/updateOnboardingStatus";
 export { completeOnboarding } from "./callables/completeOnboarding";
 export { buildInitialMatches } from "./callables/buildInitialMatches";
 export { runExpansionUserMatching } from "./callables/runExpansionUserMatching";
+export { runConferenceUserMatching } from "./callables/runConferenceUserMatching";
 export { getCourseFile } from "./callables/getCourseFile";
 export { awardCourseModuleBadges } from "./callables/awardCourseModuleBadges";
 export { importPptxDeck } from "./callables/importPptxDeck";

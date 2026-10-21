@@ -394,29 +394,6 @@ class _MatchingScreenState extends State<MatchingScreen> {
   }
 }
 
-List<String> _whyLines(ExpansionMatch m) {
-  final lines = <String>[];
-  for (final g in m.goalMatches) {
-    if (lines.length >= 5) break;
-    lines.add(g);
-  }
-  if (m.aNeedsFromB.isNotEmpty) {
-    lines.add('You could strengthen: ${m.aNeedsFromB.take(4).join(', ')}');
-  }
-  if (m.bNeedsFromA.isNotEmpty) {
-    lines.add('They could learn from you: ${m.bNeedsFromA.take(4).join(', ')}');
-  }
-  if (m.mutualSkillBonus > 0) {
-    lines.add('Mutual skill overlap boost applied');
-  }
-  if (m.sameCity) lines.add('Same city');
-  if (m.sameIndustry) lines.add('Same tribe');
-  if (lines.isEmpty) {
-    lines.add('Strong complementary fit from your profiles.');
-  }
-  return lines;
-}
-
 class _ExpansionMatchCard extends StatelessWidget {
   const _ExpansionMatchCard({
     required this.match,
@@ -432,7 +409,7 @@ class _ExpansionMatchCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final why = _whyLines(match);
+    final why = match.whyLines;
     final me = FirebaseAuth.instance.currentUser?.uid;
 
     return Material(

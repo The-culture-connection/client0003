@@ -185,6 +185,25 @@ abstract final class ConferenceAnalytics {
   static Future<void> connectionsViewed() =>
       _log('conference_connections_viewed', screen: 'conference_connections');
 
+  // --- Smart matching ---
+
+  static Future<void> smartMatchingViewed() =>
+      _log('conference_smart_matching_viewed', screen: 'conference_smart_matching');
+
+  /// [profileComplete] false means the user ran it past the incomplete-profile
+  /// disclaimer.
+  static Future<void> smartMatchingRun({required bool profileComplete}) =>
+      _log('conference_smart_matching_run',
+          screen: 'conference_smart_matching',
+          extra: {'profile_complete': profileComplete});
+
+  static Future<void> smartMatchingCompleteProfileTapped() =>
+      _log('conference_smart_matching_complete_profile_tapped',
+          screen: 'conference_smart_matching');
+
+  static Future<void> smartMatchingFailed() =>
+      _log('conference_smart_matching_failed', screen: 'conference_smart_matching');
+
   static Future<void> networkingToggled({required bool enabled}) =>
       _log('conference_networking_toggled',
           screen: 'conference_networking', extra: {'enabled': enabled});
