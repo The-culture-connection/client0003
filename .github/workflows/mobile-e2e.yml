@@ -1,6 +1,6 @@
 # Playwright suite for the mobile app's web build on Railway
-# (mobile-test-suite/). Runs after Railway reports a successful deploy of the
-# test-suite service, or by hand from the Actions tab.
+# (mobile-test-suite/). Runs after Railway reports a successful Stage deploy,
+# or by hand from the Actions tab.
 #
 # Secrets: QA_EMAIL, QA_PASSWORD (the dedicated QA account), optional
 # SUITE_PASSWORD (if the service sets one). Variable: SUITE_URL.
@@ -17,10 +17,13 @@ concurrency:
 
 jobs:
   e2e:
+    # Railway names GitHub deployments "<project> / <environment>" with no
+    # service name, so this runs after any successful Stage deploy (web app or
+    # this suite) — both can change what the tests see.
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event.deployment_status.state == 'success' &&
-       contains(github.event.deployment.environment, 'mobile-test-suite'))
+       github.event.deployment.environment == 'Mortar Digital Curriculum / Stage')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:

@@ -64,5 +64,5 @@ Use port 3000 — `localhost:3000` is on the callable CORS allowlist; other
 ports fail at sign-in.
 
 In GitHub Actions (`.github/workflows/mobile-e2e.yml`) the suite runs after
-each successful Railway deploy of this service, or on demand. It needs
+each successful Railway deploy to the Stage environment, or on demand. It needs
 secrets `QA_EMAIL`, `QA_PASSWORD` and variable `SUITE_URL`.
