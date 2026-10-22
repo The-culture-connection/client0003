@@ -140,6 +140,7 @@ import {
 } from "../lib/curriculum";
 import { AppAccessHubPanel } from "../components/admin/AppAccessHubPanel";
 import { AdminEmailManagementPanel } from "../components/admin/AdminEmailManagementPanel";
+import { AdminHubspotPanel } from "../components/admin/AdminHubspotPanel";
 import { AdminEmailTestingPanel } from "../components/admin/AdminEmailTestingPanel";
 import { sendEventRegistrantEmail } from "../lib/adminEmail";
 import { MobileModerationPanel } from "../components/admin/MobileModerationPanel";
@@ -2411,6 +2412,7 @@ export function AdminPage() {
 
         <TabsContent value="email-management" className="space-y-6">
           <AdminEmailManagementPanel />
+          <AdminHubspotPanel />
         </TabsContent>
 
         <TabsContent value="email-testing" className="space-y-6">

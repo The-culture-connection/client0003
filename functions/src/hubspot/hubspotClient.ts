@@ -154,6 +154,89 @@ async function postHubspot(
   );
 }
 
+export type ArchiveContactResult = {
+  email: string;
+  /** "deleted" | "not_found" (never reached HubSpot) | "failed" */
+  outcome: "deleted" | "not_found" | "failed";
+  errorMessage?: string;
+};
+
+/** GET/DELETE with the same retry policy as postHubspot. */
+async function requestHubspot(
+  method: "GET" | "DELETE",
+  url: string,
+  token: string,
+  maxAttempts = 3
+): Promise<{statusCode: number; body: JsonObject | string}> {
+  let lastError: Error | null = null;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: {"accept": "application/json", "authorization": `Bearer ${token}`},
+      });
+      const text = await res.text();
+      let parsed: JsonObject | string = text;
+      try {
+        parsed = JSON.parse(text) as JsonObject;
+      } catch {
+        // keep raw text (DELETE returns an empty 204 body)
+      }
+      if (!res.ok && attempt < maxAttempts && shouldRetry(res.status, String(parsed))) {
+        const retryAfterSec = Number(res.headers.get("retry-after") ?? "0");
+        await sleep(retryAfterSec > 0 ? retryAfterSec * 1000 : 500 * attempt);
+        continue;
+      }
+      return {statusCode: res.status, body: parsed};
+    } catch (e) {
+      lastError = e instanceof Error ? e : new Error(String(e));
+      if (attempt < maxAttempts && shouldRetry(0, lastError.message)) {
+        await sleep(500 * attempt);
+        continue;
+      }
+      break;
+    }
+  }
+  throw new Error(`HubSpot request failed after retries: ${lastError?.message ?? "unknown error"}`);
+}
+
+/**
+ * Deletes (archives) the HubSpot contact with [email], if there is one.
+ * Archived contacts stay restorable in HubSpot for 90 days.
+ */
+export async function archiveContactByEmail(
+  email: string,
+  options?: {token?: string}
+): Promise<ArchiveContactResult> {
+  const token = resolveHubspotToken(options?.token);
+  const base = "https://api.hubapi.com/crm/v3/objects/contacts";
+  try {
+    const found = await requestHubspot(
+      "GET",
+      `${base}/${encodeURIComponent(email)}?idProperty=email&properties=email`,
+      token
+    );
+    if (found.statusCode === 404) return {email, outcome: "not_found"};
+    const id = typeof found.body === "object" ? String(found.body["id"] ?? "") : "";
+    if (found.statusCode !== 200 || !id) {
+      return {email, outcome: "failed", errorMessage: `lookup HTTP ${found.statusCode}`};
+    }
+    const del = await requestHubspot("DELETE", `${base}/${id}`, token);
+    const ok = del.statusCode === 204 || del.statusCode === 200;
+    await logSyncActivity({
+      action: "archive_contact",
+      status: ok ? "success" : "failed",
+      statusCode: del.statusCode,
+      details: {email},
+    });
+    return ok ?
+      {email, outcome: "deleted"} :
+      {email, outcome: "failed", errorMessage: `delete HTTP ${del.statusCode}`};
+  } catch (e) {
+    return {email, outcome: "failed", errorMessage: e instanceof Error ? e.message : String(e)};
+  }
+}
+
 /**
  * Upsert up to HUBSPOT_BATCH_LIMIT contacts by email.
  * Fails soft: returns ok=false rather than throwing, so one bad batch

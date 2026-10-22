@@ -43,6 +43,8 @@ export type HubspotSyncOptions = {
 
 export type HubspotSyncResult = {
   dryRun: boolean;
+  /** True when a live run was skipped because sync is paused from the admin portal. */
+  skippedPaused?: boolean;
   scanned: number;
   mapped: number;
   skippedNoEmail: number;
@@ -91,6 +93,20 @@ export async function runHubspotUserSync(
     unknownRoles: [],
   };
   const unknownRoleSet = new Set<string>();
+
+  // Paused from the admin portal (adminHubspotControl): no live writes until
+  // an admin resumes. Dry runs still work, so payloads can be inspected.
+  if (!dryRun) {
+    const status = await db.doc(STATUS_DOC_PATH).get();
+    if (status.data()?.paused === true) {
+      logger.info("HubSpot sync skipped: paused", {trigger: options.trigger ?? "unknown"});
+      await db.doc(STATUS_DOC_PATH).set(
+        {last_skipped_paused_at: FieldValue.serverTimestamp()},
+        {merge: true}
+      );
+      return {...result, skippedPaused: true};
+    }
+  }
 
   // Dedupe by email across the whole scan: if two user docs resolve to the
   // same email, only the most recently updated doc is sent. Prevents one

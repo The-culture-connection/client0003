@@ -128,6 +128,7 @@ export {mobilePaymentReturn} from "./http/mobilePaymentReturn";
 
 export {syncUsersToHubspot} from "./hubspot/syncUsersToHubspot";
 export {adminRunHubspotSync} from "./callables/adminRunHubspotSync";
+export {adminHubspotControl} from "./callables/adminHubspotControl";
 
 export { onSurveyResponseCreated } from "./analytics/triggers/onSurveyResponseCreated";
 
