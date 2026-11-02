@@ -217,7 +217,7 @@ export const router = createBrowserRouter([
     path: "/",
     Component: ProtectedRoot,
     children: [
-      { index: true, loader: () => redirect("/dashboard") },
+      // No index route here: it would outrank the public landing page at "/".
       { path: "dashboard", Component: WebDashboard },
       { path: "mortar-info", Component: MortarInfoPage },
       { path: "curriculum", Component: WebCurriculum },
