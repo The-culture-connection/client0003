@@ -31,6 +31,13 @@ export const createCheckoutInputSchema = z.discriminatedUnion("purchase_type", [
     client_platform: z.enum(["web", "ios", "android"]).default("web"),
   }),
   z.object({
+    purchase_type: z.literal("bundle"),
+    course_id: z.string().min(1),
+    success_url: z.string().url().optional(),
+    cancel_url: z.string().url().optional(),
+    client_platform: z.enum(["web", "ios", "android"]).default("web"),
+  }),
+  z.object({
     purchase_type: z.literal("event"),
     event_id: z.string().min(1),
     /** Which Firestore collection hosts the canonical event doc for pricing. */
@@ -98,9 +105,45 @@ function readTicketPriceCents(data: FirebaseFirestore.DocumentData): number {
   return 0;
 }
 
+/**
+ * Paid modules in a course the user does not own yet, with the curriculum
+ * module id that fulfillment grants (same id rule as single-module checkout).
+ */
+async function unpaidCourseModules(
+  db: Firestore,
+  course: FirebaseFirestore.DocumentData,
+  uid: string | undefined
+): Promise<Array<{title: string; price: number; grantId: string; courseModuleId: string}>> {
+  const modules = (course.modules as Array<Record<string, unknown>>) ?? [];
+  const mappingModules =
+    (course.curriculumMapping as {modules?: Array<{moduleId?: string}>} | undefined)?.modules ?? [];
+  let owned = new Set<string>();
+  if (uid) {
+    const userSnap = await db.collection("users").doc(uid).get();
+    const list = userSnap.data()?.membership?.paid_modules;
+    if (Array.isArray(list)) owned = new Set(list.filter((x): x is string => typeof x === "string"));
+  }
+  // Modules are stored in display order; mapping rows are aligned by index after sorting.
+  const sorted = modules
+    .map((m, i) => ({m, i}))
+    .sort((a, b) => Number(a.m.order ?? 0) - Number(b.m.order ?? 0));
+  const out: Array<{title: string; price: number; grantId: string; courseModuleId: string}> = [];
+  sorted.forEach(({m}, sortedIndex) => {
+    const price = Number(m.price ?? 0);
+    if (!(price > 0)) return;
+    const courseModuleId = String(m.id ?? "");
+    const grantId = mappingModules[sortedIndex]?.moduleId ?? courseModuleId;
+    if (!grantId) return;
+    if (owned.has(grantId) || (courseModuleId && owned.has(courseModuleId))) return;
+    out.push({title: String(m.title ?? "Course module"), price, grantId, courseModuleId});
+  });
+  return out;
+}
+
 export async function resolveCheckoutPricing(
   db: Firestore,
-  input: CreateCheckoutInput
+  input: CreateCheckoutInput,
+  uid?: string
 ): Promise<ResolvedCheckout> {
   switch (input.purchase_type) {
   case "module": {
@@ -150,6 +193,47 @@ export async function resolveCheckoutPricing(
         course_id: input.course_id,
         module_id: String(mod.id ?? input.module_id),
         curriculum_module_id: curriculumModuleId,
+      },
+    };
+  }
+  case "bundle": {
+    const courseSnap = await db.collection(COURSES_COLLECTION).doc(input.course_id).get();
+    if (!courseSnap.exists) {
+      throw new HttpsError("not-found", "Course not found");
+    }
+    const course = courseSnap.data()!;
+    const currency = String(course.currency ?? "usd").toLowerCase();
+    const bundlePrice = Number(course.bundlePrice ?? 0);
+    if (!(bundlePrice > 0)) {
+      throw new HttpsError("failed-precondition", "This course is not sold as a bundle");
+    }
+    const unpaid = await unpaidCourseModules(db, course, uid);
+    if (unpaid.length === 0) {
+      throw new HttpsError("failed-precondition", "You already own every module in this course");
+    }
+    // Never charge more than buying the remaining modules one at a time.
+    const remainingTotal = unpaid.reduce((sum, m) => sum + m.price, 0);
+    const amountCents = dollarsToCents(Math.min(bundlePrice, remainingTotal), currency);
+    const title = String(course.title ?? "Course");
+    const moduleIds = unpaid.map((m) => m.grantId).join(",");
+
+    return {
+      currency,
+      line_items: [
+        {
+          name: `${title} — all modules bundle`,
+          amount_cents: amountCents,
+          quantity: 1,
+          metadata: {
+            course_id: input.course_id,
+            module_ids: moduleIds,
+          },
+        },
+      ],
+      metadata: {
+        purchase_type: "bundle",
+        course_id: input.course_id,
+        module_ids: moduleIds,
       },
     };
   }

@@ -37,7 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshRoles = async () => {
     if (user) {
-      const userWithRoles = await getCurrentUserWithRoles();
+      const userWithRoles = await getCurrentUserWithRoles({ fresh: true });
       if (userWithRoles) {
         setUser(userWithRoles);
       }
@@ -45,8 +45,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signIn = async (email: string, password: string): Promise<UserWithRoles> => {
-    const firebaseUser = await firebaseSignIn(email, password);
-    const userWithRoles = await getCurrentUserWithRoles();
+    await firebaseSignIn(email, password);
+    const userWithRoles = await getCurrentUserWithRoles({ fresh: true });
     if (!userWithRoles) {
       throw new Error("Failed to get user with roles");
     }
@@ -55,8 +55,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signUp = async (email: string, password: string): Promise<UserWithRoles> => {
-    const firebaseUser = await firebaseSignUp(email, password);
-    const userWithRoles = await getCurrentUserWithRoles();
+    await firebaseSignUp(email, password);
+    const userWithRoles = await getCurrentUserWithRoles({ fresh: true });
     if (!userWithRoles) {
       throw new Error("Failed to get user with roles");
     }
@@ -71,14 +71,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Listen to auth state changes
   useEffect(() => {
+    // Tracks the latest auth event so a slow role lookup from an earlier
+    // event can't overwrite a newer one.
+    let latest = 0;
     const unsubscribe = onAuthChange(async (firebaseUser) => {
-      if (firebaseUser) {
-        const userWithRoles = await getCurrentUserWithRoles();
-        setUser(userWithRoles);
-      } else {
-        setUser(null);
+      const seq = ++latest;
+      try {
+        if (firebaseUser) {
+          const userWithRoles = await getCurrentUserWithRoles({ fresh: true });
+          if (seq === latest) setUser(userWithRoles);
+        } else if (seq === latest) {
+          setUser(null);
+        }
+      } catch (error) {
+        // Previously an error here left `loading` true forever: a spinner
+        // that only a refresh could clear.
+        console.error("Auth state handling failed:", error);
+        if (seq === latest) setUser(null);
+      } finally {
+        if (seq === latest) setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => unsubscribe();

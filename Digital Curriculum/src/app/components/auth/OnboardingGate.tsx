@@ -7,15 +7,27 @@ import { db } from "../../lib/firebase";
 import { trackEvent } from "../../analytics/trackEvent";
 import { WEB_ANALYTICS_EVENTS } from "@mortar/analytics-contract/mortarAnalyticsContract";
 
+/**
+ * Users already confirmed as onboarded this session. The gate used to re-read
+ * `users/{uid}` on every page change; once a profile is complete it stays
+ * complete, so one read per session is enough.
+ */
+const onboardedUids = new Set<string>();
+
 export function OnboardingGate({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [checking, setChecking] = useState(true);
+  const [checking, setChecking] = useState(() => !(user?.uid && onboardedUids.has(user.uid)));
 
   useEffect(() => {
     const checkOnboardingStatus = async () => {
       if (loading || !user?.uid) {
+        setChecking(false);
+        return;
+      }
+
+      if (onboardedUids.has(user.uid)) {
         setChecking(false);
         return;
       }
@@ -46,6 +58,7 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
 
         // If status is "complete", allow access (trust the status)
         if (status === "complete") {
+          onboardedUids.add(user.uid);
           setChecking(false);
           return;
         }
@@ -72,6 +85,7 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
         // If ALL required fields are present, treat as complete (even if status isn't set)
         if (hasIdentity && hasBusinessGoals && hasConfidentSkills && hasDesiredSkills && hasIndustry) {
           // User has all required fields, allow access
+          onboardedUids.add(user.uid);
           setChecking(false);
           return;
         }

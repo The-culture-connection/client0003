@@ -29,12 +29,51 @@ function PageLoader() {
  * course builder (react-dnd, pptx import), the lesson player (pdfjs-dist /
  * react-pdf), the Data Room (jszip) and analytics panels (recharts).
  */
+const CHUNK_RELOAD_KEY = "mortar:chunk-reload-at";
+
+/**
+ * Load a route chunk, surviving the two failures that used to need a manual
+ * refresh (sometimes several):
+ *  - a flaky network: retry the import once after a short pause;
+ *  - a new deploy: the browser still runs the old index.html, whose hashed
+ *    chunk names no longer exist on the server. Reload once to pick up the new
+ *    build. The timestamp guard stops a reload loop if the chunk is truly gone.
+ */
+async function loadChunk<M>(load: () => Promise<M>): Promise<M> {
+  try {
+    return await load();
+  } catch (firstError) {
+    await new Promise((r) => setTimeout(r, 600));
+    try {
+      return await load();
+    } catch {
+      let last = 0;
+      try {
+        last = Number(sessionStorage.getItem(CHUNK_RELOAD_KEY) ?? 0);
+      } catch {
+        /* storage unavailable */
+      }
+      if (Date.now() - last > 30_000) {
+        try {
+          sessionStorage.setItem(CHUNK_RELOAD_KEY, String(Date.now()));
+        } catch {
+          /* storage unavailable */
+        }
+        window.location.reload();
+        // Keep Suspense showing the loader while the page reloads.
+        return new Promise<M>(() => {});
+      }
+      throw firstError;
+    }
+  }
+}
+
 function lazyPage<M extends Record<string, unknown>>(
   load: () => Promise<M>,
   name: keyof M & string
 ): ComponentType {
   const LazyComponent = lazy(async () => {
-    const mod = await load();
+    const mod = await loadChunk(load);
     return { default: mod[name] as ComponentType };
   });
   return function LazyRoute() {
@@ -65,6 +104,7 @@ const MobileProfile = lazyPage(() => import("./pages/mobile/Profile"), "MobilePr
 const MobileOnboarding = lazyPage(() => import("./pages/mobile/Onboarding"), "MobileOnboarding");
 const OnboardingPage = lazyPage(() => import("./pages/Onboarding"), "OnboardingPage");
 const MortarInfoPage = lazyPage(() => import("./pages/MortarInfo"), "MortarInfoPage");
+const LandingPage = lazyPage(() => import("./pages/MortarInfo"), "MortarInfoPage");
 const DiscussionsPage = lazyPage(() => import("./pages/Discussions"), "DiscussionsPage");
 const DiscussionDetailPage = lazyPage(() => import("./pages/DiscussionDetail"), "DiscussionDetailPage");
 const GroupDetailPage = lazyPage(() => import("./pages/GroupDetail"), "GroupDetailPage");
@@ -113,9 +153,11 @@ function ProtectedRoot() {
 }
 
 export const router = createBrowserRouter([
+  // Public landing page: the MORTAR Masters overview people see before they
+  // sign in (it used to appear only after onboarding, at /mortar-info).
   {
     path: "/",
-    loader: () => redirect("/login"),
+    Component: LandingPage,
   },
   {
     path: "/login",

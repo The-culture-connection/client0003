@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router";
+import { useNavigate, Link, useSearchParams } from "react-router";
 import { Button } from "../components/ui/button";
 import { SpaceBackdrop } from "../components/SpaceBackdrop";
 import { Input } from "../components/ui/input";
@@ -16,7 +16,9 @@ export function LoginPage() {
   useScreenAnalytics("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [searchParams] = useSearchParams();
+  // `?mode=signup` comes from the landing page's "Get started" button.
+  const [isSignUp, setIsSignUp] = useState(searchParams.get("mode") === "signup");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -239,6 +241,9 @@ export function LoginPage() {
 
         {/* Alumni land here looking for the mobile network, not the curriculum. */}
         <div className="mt-4 border-t border-border pt-4 text-center">
+          <Link to="/" className="block mb-2 text-sm text-muted-foreground hover:text-foreground">
+            ← About MORTAR Masters
+          </Link>
           <Link
             to={GET_THE_APP_PATH}
             className="text-sm text-muted-foreground hover:text-foreground"

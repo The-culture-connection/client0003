@@ -64,6 +64,18 @@ app.get("/.well-known/apple-app-site-association", (_req, res, next) => {
  */
 app.use(
   express.static(DIST, {
+    // Vite names everything under /assets/ by content hash, so those files can
+    // be cached for a year — repeat visits stop re-downloading the app.
+    // Everything else (index.html above all) must be revalidated each time, or
+    // browsers keep an old index.html that points at chunks a newer deploy has
+    // removed, and the page fails until it is refreshed.
+    setHeaders(res, filePath) {
+      if (filePath.includes(`${path.sep}assets${path.sep}`)) {
+        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      } else {
+        res.setHeader("Cache-Control", "no-cache");
+      }
+    },
     dotfiles: "allow",
     // The SPA fallback owns missing paths; don't let static serve index.html
     // for a bare directory request and bypass it.
@@ -86,6 +98,7 @@ app.use((req, res) => {
     res.status(405).type("text/plain").send("Method Not Allowed");
     return;
   }
+  res.setHeader("Cache-Control", "no-cache");
   res.status(200).sendFile(INDEX);
 });
 

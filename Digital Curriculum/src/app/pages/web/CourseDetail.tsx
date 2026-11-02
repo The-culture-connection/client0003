@@ -6,17 +6,15 @@ import { Badge } from "../../components/ui/badge";
 import { Progress } from "../../components/ui/progress";
 import {
   BookOpen,
-  Clock,
   DollarSign,
   ArrowLeft,
   Play,
   CheckCircle2,
   FileText,
-  Calendar,
   User,
+  Award,
 } from "lucide-react";
 import { getCourse, getLessonsWithQuiz, getLessonSurveyCounts, type Course, type Module } from "../../lib/courses";
-import { format } from "date-fns";
 import { useAuth } from "../../components/auth/AuthProvider";
 import {
   getCourseProgress,
@@ -37,7 +35,7 @@ import {
   userOwnsAllPaidModules,
   unpaidPaidModuleTotalCents,
 } from "../../lib/moduleAccess";
-import { checkoutModule } from "../../lib/stripeCheckout";
+import { checkoutBundle, checkoutModule } from "../../lib/stripeCheckout";
 import { setAdminReviewSession } from "../../lib/adminReviewMode";
 import { Lock } from "lucide-react";
 
@@ -57,6 +55,7 @@ export function CourseDetail() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [paidModuleIds, setPaidModuleIds] = useState<string[]>([]);
   const [purchasingModuleId, setPurchasingModuleId] = useState<string | null>(null);
+  const [purchasingBundle, setPurchasingBundle] = useState(false);
 
   useEffect(() => {
     if (!courseId || !user) {
@@ -173,10 +172,15 @@ export function CourseDetail() {
     );
   }
 
-  const totalDurationMonths = course.totalDuration || course.modules.reduce((sum, m) => sum + (m.durationMonths || 0), 0);
   const ownsAllPaidModules = isAdmin || userOwnsAllPaidModules(course, paidModuleIds);
   const unpaidTotalDollars = unpaidPaidModuleTotalCents(course, paidModuleIds) / 100;
   const showCoursePriceBadge = !ownsAllPaidModules && unpaidTotalDollars > 0 && course.currency;
+  // Bundle: one price for every paid module still locked. The server charges
+  // the lower of the bundle price and the remaining modules' total.
+  const bundlePriceDollars = Number(course.bundlePrice ?? 0);
+  const bundleChargeDollars = Math.min(bundlePriceDollars, unpaidTotalDollars);
+  const showBundleOffer =
+    !ownsAllPaidModules && bundlePriceDollars > 0 && unpaidTotalDollars > bundlePriceDollars && Boolean(course.id);
   const courseProgressValue = courseProgress
     ? calculateCourseProgress(
         course,
@@ -195,17 +199,6 @@ export function CourseDetail() {
   const isCourseCompleted = hasProgressData && !reviewMode && (courseProgress?.completed || courseProgressValue === 100);
   const displayProgressValue = hasProgressData ? courseProgressValue : Math.min(courseProgressValue, 99);
 
-  // Countdown in days: only when user has started the course (startedAt set)
-  const startedAt = courseProgress?.startedAt;
-  const startedAtDate = startedAt && typeof (startedAt as { toDate?: () => Date }).toDate === "function"
-    ? (startedAt as { toDate: () => Date }).toDate()
-    : startedAt && typeof (startedAt as { seconds?: number }).seconds === "number"
-      ? new Date((startedAt as { seconds: number }).seconds * 1000)
-      : null;
-  const totalDurationDays = totalDurationMonths * 30;
-  const endDate = startedAtDate ? new Date(startedAtDate.getTime() + totalDurationDays * 24 * 60 * 60 * 1000) : null;
-  const daysLeft = endDate ? Math.max(0, Math.ceil((endDate.getTime() - Date.now()) / (24 * 60 * 60 * 1000))) : null;
-
   return (
     <div className="p-4 sm:p-6 max-w-7xl mx-auto">
       {/* Header */}
@@ -222,9 +215,6 @@ export function CourseDetail() {
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2">
-              <Badge variant="outline" className="border-accent text-accent">
-                {course.status || "published"}
-              </Badge>
               {isAdmin && (
                 <Button
                   variant="outline"
@@ -266,24 +256,6 @@ export function CourseDetail() {
                 <BookOpen className="w-4 h-4" />
                 <span>{course.modules.length} Module{course.modules.length !== 1 ? "s" : ""}</span>
               </div>
-              {totalDurationMonths > 0 && (
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4" />
-                  {startedAtDate ? (
-                    <span>{totalDurationDays} days{daysLeft != null && <span className="text-foreground font-medium"> · {daysLeft} days left</span>}</span>
-                  ) : (
-                    <span>{totalDurationMonths} Month{totalDurationMonths !== 1 ? "s" : ""}</span>
-                  )}
-                </div>
-              )}
-              {course.createdAt && (
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4" />
-                  <span>
-                    Created {format(course.createdAt.toDate(), "MMM d, yyyy")}
-                  </span>
-                </div>
-              )}
             </div>
             {courseProgress && !reviewMode && (
               <div className="mt-4">
@@ -304,6 +276,40 @@ export function CourseDetail() {
           </div>
         </div>
       </div>
+
+      {showBundleOffer && (
+        <Card className="p-6 mb-6 border-2 border-accent">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-accent">Bundle &amp; save</p>
+              <h2 className="text-xl font-bold text-foreground mt-1">Get all modules for one price</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                ${bundleChargeDollars.toFixed(2)}{" "}
+                <span className="line-through">${unpaidTotalDollars.toFixed(2)}</span>
+                {" "}— save ${(unpaidTotalDollars - bundleChargeDollars).toFixed(2)} versus buying them one at a time.
+              </p>
+            </div>
+            <Button
+              className="bg-accent hover:bg-accent/90 text-accent-foreground font-bold"
+              disabled={purchasingBundle}
+              onClick={async () => {
+                if (!course.id) return;
+                setPurchasingBundle(true);
+                try {
+                  await checkoutBundle({ courseId: course.id });
+                } catch (e) {
+                  console.error(e);
+                  alert(e instanceof Error ? e.message : "Checkout failed");
+                } finally {
+                  setPurchasingBundle(false);
+                }
+              }}
+            >
+              {purchasingBundle ? "Redirecting…" : `Buy bundle · $${bundleChargeDollars.toFixed(2)}`}
+            </Button>
+          </div>
+        </Card>
+      )}
 
       {/* Modules */}
       <div className="space-y-4">
@@ -329,38 +335,36 @@ export function CourseDetail() {
               const hasModulePaidAccess =
                 isAdmin ||
                 userHasModuleAccess(module, paidModuleIds, curriculumModuleId);
-              const moduleDurationMonths = module.durationMonths || 0;
-              const moduleDurationDays = moduleDurationMonths * 30;
-              let moduleEndDate: Date | null = null;
-              let moduleDaysLeft: number | null = null;
-              if (startedAtDate && moduleDurationDays > 0) {
-                const cumulativeMonths = course.modules
-                  .sort((a, b) => (a.order || 0) - (b.order || 0))
-                  .slice(0, moduleIndex + 1)
-                  .reduce((sum, m) => sum + (m.durationMonths || 0), 0);
-                moduleEndDate = new Date(startedAtDate.getTime() + cumulativeMonths * 30 * 24 * 60 * 60 * 1000);
-                moduleDaysLeft = Math.max(0, Math.ceil((moduleEndDate.getTime() - Date.now()) / (24 * 60 * 60 * 1000)));
-              }
               return (
               <Card key={module.id || moduleIndex} className="p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <Badge variant="outline" className="text-xs">
-                        Module {module.order || moduleIndex + 1}
+                        {module.order === 0 ? "Start here" : `Module ${module.order || moduleIndex + 1}`}
                       </Badge>
+                      {!reviewMode &&
+                        module.certificateOnCompletion !== false &&
+                        curriculumModuleId &&
+                        courseProgress?.modulesCompleted?.[curriculumModuleId] && (
+                          <button
+                            type="button"
+                            onClick={() => navigate("/data-room")}
+                            className="inline-flex items-center gap-1 text-xs font-medium text-green-600 border border-green-600 rounded-md px-2 py-0.5 hover:bg-green-600/10"
+                          >
+                            <Award className="w-3 h-3" />
+                            Certificate earned · View
+                          </button>
+                        )}
+                      {Number(module.price) <= 0 && (
+                        <Badge variant="secondary" className="text-xs">
+                          Free
+                        </Badge>
+                      )}
                       {!hasModulePaidAccess && Number(module.price) > 0 && (
                         <Badge variant="secondary" className="text-xs">
                           <DollarSign className="w-3 h-3 mr-1" />
                           {module.price.toFixed(2)}
-                        </Badge>
-                      )}
-                      {module.durationMonths && module.durationMonths > 0 && (
-                        <Badge variant="secondary" className="text-xs">
-                          <Clock className="w-3 h-3 mr-1" />
-                          {startedAtDate
-                            ? `${moduleDurationDays} days${moduleDaysLeft != null ? ` · ${moduleDaysLeft} days left` : ""}`
-                            : `${module.durationMonths} Month${module.durationMonths !== 1 ? "s" : ""}`}
                         </Badge>
                       )}
                     </div>
@@ -559,11 +563,6 @@ export function CourseDetail() {
                                       </span>
                                     )}
                                   </div>
-                                  )}
-                                  {lesson.slideFileName && (
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                      {lesson.slideFileName}
-                                    </p>
                                   )}
                                 </div>
                               </div>

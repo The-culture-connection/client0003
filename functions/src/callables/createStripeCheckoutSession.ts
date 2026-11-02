@@ -72,7 +72,7 @@ export const createStripeCheckoutSession = onCall(
     const purchaseType = purchaseTypeFromInput(input);
     const clientPlatform = input.client_platform;
 
-    const resolved = await resolveCheckoutPricing(db, input);
+    const resolved = await resolveCheckoutPricing(db, input, uid);
     const amountCents = totalAmountCents(resolved);
 
     const orderRef = db.collection(PAYMENT_ORDERS_COLLECTION).doc();

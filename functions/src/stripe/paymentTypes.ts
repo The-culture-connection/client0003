@@ -8,7 +8,8 @@ export const COLLECTION_EVENTS_MOBILE = "events_mobile";
 export const COURSES_COLLECTION = "courses";
 export const CONFERENCES_COLLECTION = "conferences";
 
-export type StripePurchaseType = "module" | "event" | "shop" | "conference";
+/** `bundle` = every paid module in a course at the course's `bundlePrice`. */
+export type StripePurchaseType = "module" | "bundle" | "event" | "shop" | "conference";
 
 export type PaymentOrderStatus = "pending" | "completed" | "failed" | "expired";
 

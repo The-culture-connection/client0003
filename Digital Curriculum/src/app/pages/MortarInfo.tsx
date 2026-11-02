@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router";
 import { useScreenAnalytics } from "../analytics/useScreenAnalytics";
 import { Button } from "../components/ui/button";
+import { useAuth } from "../components/auth/AuthProvider";
 import {
   ANDROID_PLAY_STORE_URL,
   GET_THE_APP_PATH,
@@ -9,6 +10,16 @@ import {
 } from "../lib/appStoreLinks";
 
 const YOUTUBE_EMBED_URL = "https://www.youtube.com/embed/ScN2yhwYoqw?start=1";
+
+const WELCOME_MODULE = {
+  title: "Welcome",
+  description:
+    "Start here — a free welcome video introducing the MORTAR Entrepreneurship Academy and how the course works.",
+} as const;
+
+/** Display pricing for the landing page. Checkout always charges what is set on the course itself. */
+const MODULE_PRICE_DOLLARS = 75;
+const BUNDLE_PRICE_DOLLARS = 200;
 
 const COURSE_MODULES = [
   {
@@ -43,9 +54,26 @@ const COURSE_MODULES = [
   },
 ] as const;
 
+/**
+ * MORTAR Masters info page.
+ *
+ * Shown publicly at `/` as the landing page people see before signing in, and
+ * at `/mortar-info` for signed-in users. The calls to action adapt to whether
+ * the visitor is signed in.
+ */
 export function MortarInfoPage() {
   useScreenAnalytics("mortar_info");
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const signedIn = Boolean(user);
+
+  const secondaryCta = signedIn
+    ? { label: "Dashboard", onClick: () => navigate("/dashboard") }
+    : { label: "Log in", onClick: () => navigate("/login") };
+  const primaryCta = {
+    label: "Get started now",
+    onClick: () => navigate(signedIn ? "/curriculum" : "/login?mode=signup"),
+  };
 
   return (
     <div className="min-h-screen bg-white text-neutral-900">
@@ -72,17 +100,17 @@ export function MortarInfoPage() {
             <Button
               variant="outline"
               size="lg"
-              onClick={() => navigate("/dashboard")}
+              onClick={secondaryCta.onClick}
               className="min-w-[160px] bg-white border-2 border-neutral-900 text-neutral-900 font-semibold hover:bg-neutral-100"
             >
-              Dashboard
+              {secondaryCta.label}
             </Button>
             <Button
               size="lg"
-              onClick={() => navigate("/curriculum")}
+              onClick={primaryCta.onClick}
               className="min-w-[200px] bg-[#871002] hover:bg-[#6d0d02] text-white uppercase tracking-wide font-semibold"
             >
-              Get started now
+              {primaryCta.label}
             </Button>
           </div>
           <img
@@ -145,7 +173,39 @@ export function MortarInfoPage() {
             Three verses. Fifteen lessons. Everything you need to build, grow, and own your business.
           </p>
 
+          {/* Pricing: welcome module free, each verse sold alone or all three as a bundle. */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-12">
+            <div className="bg-white rounded-lg border border-neutral-200 px-6 py-5 text-center">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neutral-500">Per module</p>
+              <p className="mt-1 text-3xl font-bold text-neutral-900">${MODULE_PRICE_DOLLARS}</p>
+              <p className="mt-1 text-sm text-neutral-600">Unlock one verse at a time.</p>
+            </div>
+            <div className="bg-white rounded-lg border-2 border-[#871002] px-6 py-5 text-center">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#871002]">
+                Bundle &amp; save
+              </p>
+              <p className="mt-1 text-3xl font-bold text-neutral-900">
+                ${BUNDLE_PRICE_DOLLARS}
+                <span className="ml-2 text-base font-normal text-neutral-500 line-through">
+                  ${MODULE_PRICE_DOLLARS * 3}
+                </span>
+              </p>
+              <p className="mt-1 text-sm text-neutral-600">All three modules, one price.</p>
+            </div>
+          </div>
+
           <div className="space-y-10">
+            <div className="bg-white rounded-lg border border-neutral-200 shadow-sm overflow-hidden">
+              <div className="bg-neutral-900 px-6 py-4 flex items-center justify-between gap-4">
+                <h3 className="text-lg md:text-xl font-bold text-white uppercase tracking-wide">
+                  {WELCOME_MODULE.title}
+                </h3>
+                <span className="text-xs font-semibold uppercase tracking-wide bg-white text-neutral-900 px-2 py-1">
+                  Free
+                </span>
+              </div>
+              <p className="px-6 py-4 text-neutral-600">{WELCOME_MODULE.description}</p>
+            </div>
             {COURSE_MODULES.map((module, moduleIndex) => (
               <div key={module.title} className="bg-white rounded-lg border border-neutral-200 shadow-sm overflow-hidden">
                 <div className="bg-[#871002] px-6 py-4">
@@ -216,17 +276,17 @@ export function MortarInfoPage() {
             <Button
               variant="outline"
               size="lg"
-              onClick={() => navigate("/dashboard")}
+              onClick={secondaryCta.onClick}
               className="min-w-[160px] bg-white border-2 border-neutral-900 text-neutral-900 font-semibold hover:bg-neutral-100"
             >
-              Dashboard
+              {secondaryCta.label}
             </Button>
             <Button
               size="lg"
-              onClick={() => navigate("/curriculum")}
+              onClick={primaryCta.onClick}
               className="min-w-[200px] bg-[#871002] hover:bg-[#6d0d02] text-white uppercase tracking-wide font-semibold"
             >
-              Get started now
+              {primaryCta.label}
             </Button>
           </div>
 

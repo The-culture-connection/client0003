@@ -217,6 +217,27 @@ export async function sendPurchaseConfirmationEmail(params: {
       });
       break;
     }
+    case "bundle": {
+      const courseId = metadata.course_id;
+      if (!courseId) break;
+      // Reuses the module confirmation template; the "module" is the bundle.
+      const mod = await loadModuleTitle(db, courseId, "");
+      await sendOnce("payment_module_purchase_confirmed", {
+        to: email,
+        recipientUid: uid,
+        params: paymentModuleConfirmedParams({
+          userEmail: email,
+          userName: userName ?? undefined,
+          order_id: orderId,
+          course_title: mod.courseTitle,
+          module_title: "All modules (bundle)",
+          curriculum_url: mod.curriculumUrl,
+          amount_total: snapshot.total_cents,
+          currency,
+        }),
+      });
+      break;
+    }
     case "conference": {
       const conferenceId = metadata.conference_id;
       if (!conferenceId) break;

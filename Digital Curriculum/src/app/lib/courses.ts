@@ -51,6 +51,8 @@ export interface Module {
   durationMonths?: number; // Duration in months to complete this module
   skills?: string[]; // Optional skill labels (e.g. from onboarding taxonomy)
   completionBadgeIds?: string[]; // Optional badge ids to award on module completion
+  /** Issue a certificate when a learner completes this module. Defaults to true. */
+  certificateOnCompletion?: boolean;
   skillCertificates?: Array<{
     skill: string;
     pdfUrl: string;
@@ -80,6 +82,8 @@ export interface Course {
   contentVersion?: number;
   totalDuration?: number; // Total course duration in minutes
   totalPrice?: number; // Total price of all modules (calculated)
+  /** Price in dollars for every paid module at once ("bundle and save"). 0/unset = no bundle. */
+  bundlePrice?: number;
   curriculumMapping?: {
     curriculumId: string;
     modules: Array<{

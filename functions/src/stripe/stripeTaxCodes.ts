@@ -25,6 +25,7 @@ export function taxCodeForCheckoutLine(
   case "shop":
     return CLOTHING_AND_FOOTWEAR;
   case "module":
+  case "bundle":
     return TRAINING_SELF_STUDY_WEB;
   case "event":
   case "conference":

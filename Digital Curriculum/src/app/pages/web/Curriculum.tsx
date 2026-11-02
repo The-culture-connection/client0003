@@ -505,12 +505,6 @@ export function WebCurriculum() {
                           <FileText className="w-4 h-4" />
                           <span>{course.modules.length} module{course.modules.length !== 1 ? "s" : ""}</span>
                         </div>
-                        {((course.totalDuration ?? 0) > 0) && (
-                          <div className="flex items-center gap-1.5">
-                            <Clock className="w-4 h-4" />
-                            <span>{course.totalDuration} month{course.totalDuration !== 1 ? "s" : ""}</span>
-                          </div>
-                        )}
                       </div>
                       <div className="mb-3">
                         <div className="flex items-center justify-between mb-1.5">

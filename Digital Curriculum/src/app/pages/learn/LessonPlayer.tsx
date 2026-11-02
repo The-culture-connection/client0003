@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useRef } from "react";
+import { toast } from "sonner";
 import { useParams, useNavigate } from "react-router";
 import { getSlides, getBlocks, getLesson, getLessonImages, getLessonContent, getCourseSlideCounts, type Slide, type Block, type Lesson, type LessonImage, type LessonContentSlide, type LessonQuiz, type LessonSurveyCheckpoint } from "../../lib/curriculum";
 import { getPaidModuleIds, userHasModuleAccess } from "../../lib/moduleAccess";
@@ -385,18 +386,29 @@ export function LessonPlayer() {
       } catch (err) {
         console.error("Failed to award module completion badges:", err);
       }
-      // Shareable module completion certificate (template PDF → dataroom).
-      if (user && courseId) {
-        for (const mid of newlyCompletedModuleIds) {
-          const mi = mappingModules.findIndex((m) => m.moduleId === mid);
-          const moduleTitle = mi >= 0 ? course.modules?.[mi]?.title : undefined;
-          if (!moduleTitle) continue;
-          try {
-            await awardSkillAndCertificate(user.uid, courseId, course.title ?? "Course", moduleTitle);
-          } catch (err) {
-            console.error("Failed to create module certificate:", err);
-          }
+    }
+
+    // A certificate for every completed module. Runs for all completed modules,
+    // not just newly completed ones, so learners who finished a module before
+    // certificates were issued still get theirs (createSkillCertificate is
+    // idempotent per learner + course + title). Modules flagged
+    // `certificateOnCompletion: false` (the free Welcome module) are skipped.
+    const sortedModules = [...(course.modules ?? [])].sort((a, b) => (a.order || 0) - (b.order || 0));
+    for (const [mi, mapModule] of mappingModules.entries()) {
+      const mid = mapModule.moduleId;
+      if (!mid || !nextModulesCompleted[mid]) continue;
+      const mod = sortedModules[mi];
+      if (!mod?.title || mod.certificateOnCompletion === false) continue;
+      try {
+        const issued = await awardSkillAndCertificate(user.uid, courseId, course.title ?? "Course", mod.title);
+        if (issued) {
+          toast.success(`Module complete — your "${mod.title}" certificate is ready`, {
+            description: "Find it in your Data Room.",
+            duration: 10000,
+          });
         }
+      } catch (err) {
+        console.error("Failed to create module certificate:", err);
       }
     }
   };

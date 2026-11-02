@@ -87,6 +87,26 @@ export async function checkoutModule(params: {
   );
 }
 
+/** Buy every paid module in a course at the course's bundle price. */
+export async function checkoutBundle(params: {
+  courseId: string;
+  clientPlatform?: PaymentClientPlatform;
+}): Promise<void> {
+  const platform = params.clientPlatform ?? "web";
+  await startCheckout(
+    {
+      purchase_type: "bundle",
+      course_id: params.courseId,
+      client_platform: platform,
+      ...originRedirects(platform, {
+        success: `/payment/success?course_id=${encodeURIComponent(params.courseId)}`,
+        cancel: `/courses/${encodeURIComponent(params.courseId)}`,
+      }),
+    },
+    WEB_ANALYTICS_EVENTS.PAYMENT_MODULE_PURCHASE_CLICKED
+  );
+}
+
 export async function checkoutEventTicket(params: {
   eventId: string;
   collection?: typeof COLLECTION_EVENTS | typeof COLLECTION_EVENTS_MOBILE;

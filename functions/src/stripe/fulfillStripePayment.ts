@@ -248,6 +248,15 @@ export async function fulfillStripePayment(params: {
     await grantModuleAccess(db, uid, [moduleId]);
     break;
   }
+  case "bundle": {
+    const moduleIds = (metadata.module_ids ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (moduleIds.length === 0) throw new Error("Missing module_ids in bundle payment metadata");
+    await grantModuleAccess(db, uid, moduleIds);
+    break;
+  }
   case "event": {
     const eventId = metadata.event_id;
     const eventCollection = metadata.event_collection || COLLECTION_EVENTS_MOBILE;

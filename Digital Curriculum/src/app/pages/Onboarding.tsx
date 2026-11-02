@@ -32,7 +32,7 @@ export function OnboardingPage() {
 
   // Completion screen's auto-advance timer. Tracked so it can be cancelled when
   // the user moves on manually — otherwise the stale timer fired AFTER they had
-  // already clicked through to the dashboard and dragged them back to /mortar-info.
+  // already clicked through to the dashboard and dragged them back to the dashboard.
   const autoAdvanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cancelAutoAdvance = () => {
     if (autoAdvanceTimerRef.current !== null) {
@@ -178,7 +178,7 @@ export function OnboardingPage() {
         cancelAutoAdvance();
         autoAdvanceTimerRef.current = setTimeout(() => {
           autoAdvanceTimerRef.current = null;
-          navigate("/mortar-info");
+          navigate("/dashboard");
         }, 3000);
       }
     } catch (error: any) {
@@ -308,7 +308,7 @@ export function OnboardingPage() {
           <Button
             onClick={() => {
               cancelAutoAdvance();
-              navigate("/mortar-info");
+              navigate("/dashboard");
             }}
             className="bg-mortar-brick hover:bg-mortar-brick/90 text-white font-bold"
           >

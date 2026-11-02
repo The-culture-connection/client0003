@@ -207,6 +207,8 @@ export function CourseBuilder() {
   // Course Metadata
   const [courseTitle, setCourseTitle] = useState("");
   const [courseDescription, setCourseDescription] = useState("");
+  /** Price for buying every paid module at once ("" = no bundle offered). */
+  const [bundlePrice, setBundlePrice] = useState("");
 
   // Modules
   const [moduleCount, setModuleCount] = useState(1);
@@ -330,6 +332,7 @@ export function CourseBuilder() {
         const cid = course.curriculumMapping.curriculumId;
         setCourseTitle(course.title || "");
         setCourseDescription(course.description || "");
+        setBundlePrice(course.bundlePrice ? String(course.bundlePrice) : "");
         setCreatedCourseId(editingCourseId);
         setCurriculumId(cid);
 
@@ -1083,6 +1086,9 @@ export function CourseBuilder() {
         curriculumMapping: mapping,
       };
 
+      const bundleDollars = parseFloat(bundlePrice || "0");
+      courseData.bundlePrice = Number.isFinite(bundleDollars) && bundleDollars > 0 ? bundleDollars : 0;
+
       // Only add description if it has a value
       if (courseDescription && courseDescription.trim()) {
         courseData.description = courseDescription.trim();
@@ -1514,6 +1520,22 @@ export function CourseBuilder() {
                 onChange={(e) => setCourseDescription(e.target.value)}
                 rows={4}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Bundle price ($)</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="e.g., 200 — leave blank for no bundle"
+                value={bundlePrice}
+                onChange={(e) => setBundlePrice(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                One price for every paid module in the course. Learners who already own some modules
+                are never charged more than the modules they have left.
+              </p>
             </div>
           </Card>
         </TabsContent>

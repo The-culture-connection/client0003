@@ -98,16 +98,64 @@ export async function signOutUser(): Promise<void> {
 /**
  * Get current user with roles from custom claims, with Firestore users/{uid}.roles as source of truth when present
  */
-export async function getCurrentUserWithRoles(): Promise<UserWithRoles | null> {
+/** Resolve `p`, or reject after `ms` so one stalled request can't hang the app. */
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(`timed out after ${ms}ms`)), ms);
+    p.then(
+      (v) => {
+        clearTimeout(t);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(t);
+        reject(e);
+      }
+    );
+  });
+}
+
+const ROLES_CACHE_MS = 15_000;
+let rolesCache: { uid: string; at: number; promise: Promise<string[]> } | null = null;
+
+/**
+ * Get the current user with roles. Many pages call this on load; within a short
+ * window they share one lookup instead of each re-reading `users/{uid}`.
+ * Pass `{ fresh: true }` after a role change to bypass the cache.
+ */
+export async function getCurrentUserWithRoles(
+  options?: { fresh?: boolean }
+): Promise<UserWithRoles | null> {
   const user = auth.currentUser;
   if (!user) return null;
 
+  const now = Date.now();
+  if (
+    options?.fresh ||
+    !rolesCache ||
+    rolesCache.uid !== user.uid ||
+    now - rolesCache.at > ROLES_CACHE_MS
+  ) {
+    rolesCache = { uid: user.uid, at: now, promise: loadRoles(user) };
+    // Don't keep a failed lookup cached.
+    rolesCache.promise.catch(() => {
+      rolesCache = null;
+    });
+  }
+  const roles = await rolesCache.promise;
+  return {
+    ...user,
+    roles,
+  };
+}
+
+async function loadRoles(user: User): Promise<string[]> {
   let roles: string[] = [];
 
   try {
     // 1. Prefer Firestore (source of truth for roles stored in DB, e.g. Admin/superAdmin)
     const userRef = doc(db, "users", user.uid);
-    const userSnap = await getDoc(userRef);
+    const userSnap = await withTimeout(getDoc(userRef), 10_000);
     if (userSnap.exists()) {
       const data = userSnap.data();
       const firestoreRoles = data?.roles;
@@ -122,7 +170,7 @@ export async function getCurrentUserWithRoles(): Promise<UserWithRoles | null> {
   // 2. If no roles from Firestore, use custom claims (ID token)
   if (roles.length === 0) {
     try {
-      const tokenResult = await getIdTokenResult(user, true);
+      const tokenResult = await withTimeout(getIdTokenResult(user, true), 8_000);
       const rolesClaim = (tokenResult.claims.roles ?? {}) as Record<string, boolean> | string[];
       if (Array.isArray(rolesClaim)) {
         roles = rolesClaim;
@@ -134,10 +182,7 @@ export async function getCurrentUserWithRoles(): Promise<UserWithRoles | null> {
     }
   }
 
-  return {
-    ...user,
-    roles,
-  };
+  return roles;
 }
 
 /**
