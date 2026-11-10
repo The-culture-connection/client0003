@@ -154,6 +154,7 @@ import { ImplicitFeedbackReportPanel } from "../components/admin/ImplicitFeedbac
 import { AdminBadgesPanel } from "../components/admin/AdminBadgesPanel";
 import { ConferencesPanel } from "../components/admin/ConferencesPanel";
 import { BetaTestingPanel } from "../components/admin/BetaTestingPanel";
+import { StaffSkillsResponsesPanel } from "../components/admin/StaffSkillsResponsesPanel";
 import { registerDigitalCurriculumAlumniEligible } from "../lib/expansionEligible";
 import {
   formatAvailabilityWindowLabel,
@@ -2375,6 +2376,8 @@ export function AdminPage() {
               </div>
             )}
           </Card>
+
+          <StaffSkillsResponsesPanel />
         </TabsContent>
 
         <TabsContent value="analytics" className="space-y-6">

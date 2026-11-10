@@ -127,7 +127,7 @@ export function AdminCommandCenter() {
     {
       icon: UserCog,
       title: "Role & admins",
-      description: "Manage admin access and user roles",
+      description: "Manage admin access and user roles, and see staff Skills & Passions responses",
       href: adminPanelPath("admins"),
       gradient: "from-yellow-500/20 to-yellow-500/5",
       iconColor: "text-yellow-500",
