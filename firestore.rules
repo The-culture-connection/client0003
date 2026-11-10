@@ -154,6 +154,31 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // --- Staff Skills & Passions form (Digital Curriculum /staff-skills) ---
+    // One response per signed-in person, keyed by uid. Owner writes their own;
+    // staff read all of them to plan trainings.
+    match /staff_skills_profiles/{userId} {
+      allow read: if isOwner(userId) || hasStaffClaim();
+      allow create, update: if isOwner(userId)
+        && request.resource.data.user_id == userId;
+      allow delete: if hasStaffClaim();
+    }
+
+    // Skills/passions people added that weren't in the starter list. Any
+    // signed-in user can add one (create only — the id is derived from the
+    // label, so re-adding an existing entry is rejected as an update) and
+    // everyone signed in can read them for search. Staff can tidy the list.
+    match /staff_skill_catalog/{entryId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.created_by == request.auth.uid
+        && request.resource.data.kind in ['skill', 'passion']
+        && request.resource.data.label is string
+        && request.resource.data.label.size() > 0
+        && request.resource.data.label.size() <= 60;
+      allow update, delete: if hasStaffClaim();
+    }
+
     // --- Web join (legacy); see file header ---
     match /invite_codes/{docId} {
       allow read: if true;

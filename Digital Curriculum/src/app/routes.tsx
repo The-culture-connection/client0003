@@ -124,6 +124,7 @@ const PublicCertificatePage = lazyPage(() => import("./pages/PublicCertificate")
 const DeleteAccountPage = lazyPage(() => import("./pages/DeleteAccount"), "DeleteAccountPage");
 const ChildSafetyPage = lazyPage(() => import("./pages/ChildSafety"), "ChildSafetyPage");
 const GetTheAppPage = lazyPage(() => import("./pages/GetTheApp"), "GetTheAppPage");
+const StaffSkillsPage = lazyPage(() => import("./pages/StaffSkills"), "StaffSkillsPage");
 const ConferenceTicketsPage = lazyPage(
   () => import("./pages/ConferenceTickets"),
   "ConferenceTicketsPage"
@@ -204,6 +205,17 @@ export const router = createBrowserRouter([
   {
     path: "/tickets",
     Component: ConferenceTicketsPage,
+  },
+  // Staff Skills & Passions form. Sign-in required (AuthGuard sends people to
+  // /login?redirect=… and back), but outside OnboardingGate on purpose so staff
+  // don't have to complete learner onboarding before filling it out.
+  {
+    path: "/staff-skills",
+    Component: () => (
+      <AuthGuard>
+        <StaffSkillsPage />
+      </AuthGuard>
+    ),
   },
   {
     path: "/onboarding",

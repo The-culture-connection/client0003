@@ -29,7 +29,10 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    // Remember where they were headed so login/sign-up can bring them back.
+    const target = `${location.pathname}${location.search}`;
+    const to = target && target !== "/" ? `/login?redirect=${encodeURIComponent(target)}` : "/login";
+    return <Navigate to={to} replace />;
   }
 
   return <>{children}</>;

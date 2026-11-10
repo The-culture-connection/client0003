@@ -26,13 +26,21 @@ export function LoginPage() {
   const navigate = useNavigate();
   const { user, signIn, signUp } = useAuth();
   const { adminViewMode } = useAdminViewMode();
+  // Set by AuthGuard: the protected page the person tried to open. Only
+  // same-site paths are honored (no "//host" or absolute URLs).
+  const rawRedirect = searchParams.get("redirect");
+  const redirectTo =
+    rawRedirect && rawRedirect.startsWith("/") && !rawRedirect.startsWith("//") && !rawRedirect.startsWith("/login")
+      ? rawRedirect
+      : null;
+  const homeFor = (roles?: string[]) =>
+    redirectTo ?? (isStaffAdminRole(roles) ? staffPrimaryHomePath(adminViewMode) : "/dashboard");
 
   useEffect(() => {
     if (!user) return;
-    navigate(isStaffAdminRole(user.roles) ? staffPrimaryHomePath(adminViewMode) : "/dashboard", {
-      replace: true,
-    });
-  }, [user, adminViewMode, navigate]);
+    navigate(homeFor(user.roles), { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, adminViewMode, navigate, redirectTo]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,11 +55,11 @@ export function LoginPage() {
       if (isSignUp) {
         const u = await signUp(email, password);
         trackEvent(WEB_ANALYTICS_EVENTS.LOGIN_SIGN_UP_SUCCEEDED, { mode: "sign_up" });
-        navigate(isStaffAdminRole(u.roles) ? staffPrimaryHomePath(adminViewMode) : "/dashboard");
+        navigate(homeFor(u.roles));
       } else {
         const u = await signIn(email, password);
         trackEvent(WEB_ANALYTICS_EVENTS.LOGIN_SIGN_IN_SUCCEEDED, { mode: "sign_in" });
-        navigate(isStaffAdminRole(u.roles) ? staffPrimaryHomePath(adminViewMode) : "/dashboard");
+        navigate(homeFor(u.roles));
       }
     } catch (err: any) {
       trackEvent(WEB_ANALYTICS_EVENTS.LOGIN_SIGN_IN_FAILED, {
@@ -172,6 +180,12 @@ export function LoginPage() {
           <p className="text-muted-foreground">
             {isSignUp ? "Create your account" : "Sign in to your account"}
           </p>
+          {redirectTo?.startsWith("/staff-skills") && (
+            <p className="mt-3 rounded-lg border border-accent/40 bg-accent/10 p-3 text-sm text-foreground">
+              Sign in or create an account to fill out the MORTAR staff Skills &amp; Passions form.
+              You&apos;ll go straight to it afterwards.
+            </p>
+          )}
         </div>
 
         {error && (
